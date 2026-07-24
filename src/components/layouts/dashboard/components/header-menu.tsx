@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useLocation } from "react-router-dom";
 import { useMenu } from "@/hooks/use-menu";
+import { useIntl } from "react-intl";
 import { cn } from "@/lib/utils";
 import { MENU_HEADER } from "@/config/dashboard.config";
 import { Separator } from "@/components/ui/separator";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 export function HeaderMenu() {
   const { pathname } = useLocation();
   const { isActive } = useMenu(pathname);
+  const intl = useIntl();
 
   return (
     <div className="flex items-stretch">
@@ -31,7 +33,7 @@ export function HeaderMenu() {
               >
                 <Link to={item.path || '#'}>
                   {item.icon && <item.icon className="size-4"/>}
-                  {item.title}
+                  {intl.formatMessage({ id: item.title })}
                 </Link>
               </Button>
             )

@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useLocation } from "react-router-dom";
 import { useMenu } from "@/hooks/use-menu";
+import { useIntl } from "react-intl";
 import { Menu } from "lucide-react";
 import { MENU_HEADER } from "@/config/dashboard.config";
 import {
@@ -14,13 +15,14 @@ import { Button } from "@/components/ui/button";
 export function HeaderMenuMobile() {
   const { pathname } = useLocation();
   const { isActive } = useMenu(pathname);
+  const intl = useIntl();
 
   return (
     <div className="p-4">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="w-full justify-start">
-            <Menu /> Main Menu
+            <Menu /> {intl.formatMessage({ id: 'Main Menu' })}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width)">
@@ -35,7 +37,7 @@ export function HeaderMenuMobile() {
               >
                 <Link to={item.path || '#'}>
                   {item.icon && <item.icon className="size-4"/>}
-                  {item.title}
+                  {intl.formatMessage({ id: item.title })}
                 </Link>
               </DropdownMenuItem>
             )

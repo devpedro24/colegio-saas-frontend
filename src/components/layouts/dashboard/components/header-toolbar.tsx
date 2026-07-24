@@ -1,5 +1,10 @@
 import { BellDot, Settings, Users, Clock, User, Bell, Keyboard, Gift, HelpCircle, LogOut, VolumeX, Download, ExternalLink, Sun, Moon, Globe } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useIntl } from "react-intl";
 import { toAbsoluteUrl } from "@/lib/helpers";
+import { useI18n } from "@/i18n/i18n-context";
+import { LOCALES, LOCALE_LABELS, LOCALE_FLAGS } from "@/i18n/config";
+import type { Locale } from "@/i18n/config";
 import {
   Avatar,
   AvatarFallback,
@@ -12,7 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,  
+  DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
@@ -21,29 +26,19 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useTheme } from "next-themes";
-import { useState } from "react";
 
-const I18N_LANGUAGES = [
-  {
-    label: 'Español',
-    code: 'es',
-    direction: 'ltr',
-    flag: toAbsoluteUrl('/media/flags/colombia.svg'),
-  },
-  {
-    label: 'English',
-    code: 'en',
-    direction: 'ltr',
-    flag: toAbsoluteUrl('/media/flags/united-states.svg'),
-  },
-];
+const LANGUAGES = LOCALES.map((code) => ({
+  code,
+  label: LOCALE_LABELS[code],
+  flag: toAbsoluteUrl(LOCALE_FLAGS[code]),
+}));
 
 export function HeaderToolbar() {
+  const intl = useIntl();
+  const t = (id: string) => intl.formatMessage({ id });
   const { theme, setTheme } = useTheme();
-  const [language, setLanguage] = useState('es');
-  const currentLanguage =
-    I18N_LANGUAGES.find((item) => item.code === language) ?? I18N_LANGUAGES[0];
+  const { locale, setLocale } = useI18n();
+  const currentLanguage = LANGUAGES.find((item) => item.code === locale) ?? LANGUAGES[0];
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
@@ -53,7 +48,7 @@ export function HeaderToolbar() {
     <nav className="flex items-center gap-2.5">
       <Button variant="outline" className="bg-[#521AF2] text-white hover:bg-[#541af291] hover:text-white border-0">
         <Users className="size-4 text-white" />
-        <span>Add Teammate</span>
+        <span>{t('Add Teammate')}</span>
       </Button>
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white hover:bg-[#26272F]">
@@ -66,7 +61,7 @@ export function HeaderToolbar() {
       <DropdownMenu>
         <DropdownMenuTrigger className="cursor-pointer">
           <Avatar className="size-7">
-            <AvatarImage  src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="Avatar" />
+            <AvatarImage src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="Avatar" />
             <AvatarFallback>CH</AvatarFallback>
             <AvatarIndicator className="-end-2 -top-2">
               <AvatarStatus variant="online" className="size-2.5" />
@@ -74,10 +69,10 @@ export function HeaderToolbar() {
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-64" side="bottom" align="end" sideOffset={11}>
-          {/* User Information Section */}
+          {/* Datos del usuario */}
           <div className="flex items-center gap-3 p-3">
             <Avatar>
-              <AvatarImage  src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="Avatar" />
+              <AvatarImage src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="Avatar" />
               <AvatarFallback>S</AvatarFallback>
               <AvatarIndicator className="-end-1.5 -top-1.5">
                 <AvatarStatus variant="online" className="size-2.5" />
@@ -85,54 +80,54 @@ export function HeaderToolbar() {
             </Avatar>
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-foreground">Sean</span>
-              <span className="text-xs text-muted-foreground">Online</span>
+              <span className="text-xs text-muted-foreground">{t('Online')}</span>
             </div>
           </div>
-          
+
           <DropdownMenuItem className="cursor-pointer py-1 rounded-md border border-border hover:bg-muted">
             <Clock/>
-            <span>Set status</span>
+            <span>{t('Set status')}</span>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
 
-          {/* Notification and Settings Section */}
+          {/* Notificaciones y ajustes */}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <VolumeX/>
-              <span>Mute notifications</span>
+              <span>{t('Mute notifications')}</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-48">
-              <DropdownMenuItem>For 30 minutes</DropdownMenuItem>
-              <DropdownMenuItem>For 1 hour</DropdownMenuItem>
-              <DropdownMenuItem>For 4 hours</DropdownMenuItem>
-              <DropdownMenuItem>Until tomorrow</DropdownMenuItem>
-              <DropdownMenuItem>Until next week</DropdownMenuItem>
-              <DropdownMenuItem>Custom date and time</DropdownMenuItem>
+              <DropdownMenuItem>{t('For 30 minutes')}</DropdownMenuItem>
+              <DropdownMenuItem>{t('For 1 hour')}</DropdownMenuItem>
+              <DropdownMenuItem>{t('For 4 hours')}</DropdownMenuItem>
+              <DropdownMenuItem>{t('Until tomorrow')}</DropdownMenuItem>
+              <DropdownMenuItem>{t('Until next week')}</DropdownMenuItem>
+              <DropdownMenuItem>{t('Custom date and time')}</DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
           <DropdownMenuItem>
             <User/>
-            <span>Profile</span>
+            <span>{t('Profile')}</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem>
             <Settings/>
-            <span>Settings</span>
+            <span>{t('Settings')}</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem>
             <Bell/>
-            <span>Notification settings</span>
+            <span>{t('Notification settings')}</span>
           </DropdownMenuItem>
 
-          {/* Language Selector */}
+          {/* Selector de idioma */}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="flex items-center gap-2 [&_[data-slot=dropdown-menu-sub-trigger-indicator]]:hidden hover:[&_[data-slot=badge]]:border-input data-[state=open]:[&_[data-slot=badge]]:border-input">
               <Globe />
               <span className="flex items-center justify-between gap-2 grow relative">
-                Idioma
+                {t('Language')}
                 <Badge
                   variant="outline"
                   className="absolute end-0 top-1/2 -translate-y-1/2"
@@ -147,8 +142,8 @@ export function HeaderToolbar() {
               </span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-48">
-              <DropdownMenuRadioGroup value={language} onValueChange={setLanguage}>
-                {I18N_LANGUAGES.map((item) => (
+              <DropdownMenuRadioGroup value={locale} onValueChange={(value) => setLocale(value as Locale)}>
+                {LANGUAGES.map((item) => (
                   <DropdownMenuRadioItem
                     key={item.code}
                     value={item.code}
@@ -168,44 +163,42 @@ export function HeaderToolbar() {
 
           <DropdownMenuSeparator />
 
-          {/* Theme Toggle */}
+          {/* Tema */}
           <DropdownMenuItem onClick={toggleTheme}>
             {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
-            <span>{theme === "light" ? "Dark mode" : "Light mode"}</span>
+            <span>{theme === "light" ? t('Dark mode') : t('Light mode')}</span>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
 
-          {/* Business-Focused Application Section */}
           <DropdownMenuItem>
             <Keyboard/>
-            <span>Keyboard shortcuts</span>
+            <span>{t('Keyboard shortcuts')}</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem>
             <Gift/>
-            <span>Referrals</span>
-            <Badge variant="info" appearance="light" className="ms-auto">New</Badge>
+            <span>{t('Referrals')}</span>
+            <Badge variant="info" appearance="light" className="ms-auto">{t('New')}</Badge>
           </DropdownMenuItem>
 
-          <DropdownMenuItem >
+          <DropdownMenuItem>
             <Download/>
-            <span>Download apps</span>
+            <span>{t('Download apps')}</span>
             <ExternalLink className="size-3 ms-auto" />
           </DropdownMenuItem>
 
           <DropdownMenuItem>
             <HelpCircle/>
-            <span>Help</span>
+            <span>{t('Help')}</span>
             <ExternalLink className="size-3 ms-auto" />
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
 
-          {/* Action Items */}
           <DropdownMenuItem>
             <LogOut/>
-            <span>Log out</span>
+            <span>{t('Log out')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

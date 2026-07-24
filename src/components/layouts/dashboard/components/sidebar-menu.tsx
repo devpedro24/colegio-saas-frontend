@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Link, useLocation } from "react-router";
+import { useIntl } from "react-intl";
 import { MENU_SIDEBAR } from "@/config/dashboard.config";
 import {
   AccordionMenu,
@@ -11,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function SidebarMenu() {
   const { pathname } = useLocation();
+  const intl = useIntl();
 
   // Memoize matchPath to prevent unnecessary re-renders
   const matchPath = useCallback(
@@ -37,14 +39,14 @@ export function SidebarMenu() {
           return (
             <AccordionMenuGroup key={index}>
               <AccordionMenuLabel>
-                {item.title}
+                {intl.formatMessage({ id: item.title })}
               </AccordionMenuLabel>
               {item.children?.map((child, index) => {
                 return (
                   <AccordionMenuItem key={index} value={child.path || '#'}>
                     <Link to={child.path || '#'}>
                       {child.icon && <child.icon />}
-                      <span>{child.title}</span>
+                      <span>{intl.formatMessage({ id: child.title })}</span>
                     </Link>          
                   </AccordionMenuItem>
                 )
