@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu } from 'lucide-react';
+import { GraduationCap, Menu } from 'lucide-react';
 import { useLayout } from './context';
-import { toAbsoluteUrl } from '@/lib/helpers';
 import { HeaderMenuMobile } from './header-menu-mobile';
 import {
   Sheet,
@@ -13,7 +12,6 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { SidebarHeader } from './sidebar-header';
-import { SidebarSearch } from './sidebar-search';
 import { SidebarMenu } from './sidebar-menu';
 
 export function HeaderLogo() {
@@ -44,7 +42,6 @@ export function HeaderLogo() {
             <SheetBody className="flex flex-col grow p-0">
               <HeaderMenuMobile />
               <SidebarHeader />
-              <SidebarSearch />
               <SidebarMenu />
             </SheetBody>
           </SheetContent>
@@ -60,10 +57,10 @@ export function HeaderLogo() {
             shadow-[0_0_0_1px_#009229]
           "
         >
-          <img src={toAbsoluteUrl('/media/app/logo-33.svg')} alt="image" className="min-w-[18px]" />
+          <GraduationCap className="text-white min-w-[18px] size-[18px]" />
         </div>
         <span className="text-white text-xl font-medium hidden lg:block">
-          Metronic
+          Colegio SaaS
         </span>
       </Link>
     </div>

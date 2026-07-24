@@ -66,7 +66,7 @@ export function HeaderToolbar() {
       <DropdownMenu>
         <DropdownMenuTrigger className="cursor-pointer">
           <Avatar className="size-7">
-            <AvatarImage  src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="@reui" />
+            <AvatarImage  src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="Avatar" />
             <AvatarFallback>CH</AvatarFallback>
             <AvatarIndicator className="-end-2 -top-2">
               <AvatarStatus variant="online" className="size-2.5" />
@@ -77,7 +77,7 @@ export function HeaderToolbar() {
           {/* User Information Section */}
           <div className="flex items-center gap-3 p-3">
             <Avatar>
-              <AvatarImage  src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="@reui" />
+              <AvatarImage  src={toAbsoluteUrl('/media/avatars/300-2.png')} alt="Avatar" />
               <AvatarFallback>S</AvatarFallback>
               <AvatarIndicator className="-end-1.5 -top-1.5">
                 <AvatarStatus variant="online" className="size-2.5" />

@@ -160,5 +160,5 @@ html {
   @apply w-full mx-auto px-4 lg:px-5;
 }
 
-/* Metronic Configs */
-@import './config.metronic.css';
+/* Theme */
+@import './theme.css';
