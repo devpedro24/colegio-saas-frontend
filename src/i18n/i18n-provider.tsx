@@ -6,6 +6,8 @@ import { I18nContext } from './i18n-context';
 import en from './messages/en.json';
 import es from './messages/es.json';
 
+// Convencion: claves semanticas (ej. 'colegios.create'); el texto vive en los
+// catalogos por idioma: es.json (espanol) y en.json (ingles).
 const MESSAGES: Record<Locale, Record<string, string>> = {
   es,
   en,
@@ -34,10 +36,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     <I18nContext.Provider value={contextValue}>
       <IntlProvider
         locale={locale}
-        defaultLocale="en"
+        defaultLocale="es"
         messages={MESSAGES[locale]}
         onError={() => {
-          // En inglés la clave ES el texto: ignoramos los avisos de traducción faltante.
+          // En espanol la clave ES el texto: ignoramos los avisos de traduccion faltante.
         }}
       >
         {children}
