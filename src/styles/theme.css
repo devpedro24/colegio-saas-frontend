@@ -16,6 +16,8 @@
 
 /** Custom Font Size **/
 @theme {
+  /* Fuente amigable (redondeada) para toda la app. */
+  --font-sans: 'Nunito', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --text-2sm: 0.8125rem;
   --text-2sm--line-height: calc(1.075 / 0.8125);
   --text-2xs: 0.6875rem;

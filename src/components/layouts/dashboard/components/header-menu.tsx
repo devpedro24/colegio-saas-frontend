@@ -14,7 +14,7 @@ export function HeaderMenu() {
 
   return (
     <div className="flex items-stretch">
-      <Separator orientation="vertical" className="hidden lg:block h-7 mx-5 my-auto bg-[#26272F]"/>
+      <Separator orientation="vertical" className="hidden lg:block h-7 mx-5 my-auto bg-white/15"/>
       <div className="grid">
         <nav className="list-none flex items-center gap-2.5">
           {MENU_HEADER.map((item, index) => {
@@ -25,9 +25,9 @@ export function HeaderMenu() {
                 variant="ghost"
                 className={cn(
                   "inline-flex items-center text-sm font-medium",
-                  active 
-                    ? "bg-[#26272F] text-white hover:text-white border font-normal border-[#363843] hover:bg-[#26272F]" 
-                    : "text-white/80 hover:text-white hover:bg-[#26272F]"
+                  active
+                    ? "bg-white/15 text-white hover:text-white border font-normal border-white/20 hover:bg-white/15"
+                    : "text-white/80 hover:text-white hover:bg-white/10"
                 )}
                 asChild
               >

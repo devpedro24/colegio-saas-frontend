@@ -6,6 +6,7 @@ const HEADER_HEIGHT = "60px";
 const HEADER_HEIGHT_MOBILE = "60px";
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "16rem";
+const SIDEBAR_WIDTH_ICON = "4.75rem";
 
 // Define the shape of the layout state
 interface LayoutState {
@@ -33,6 +34,7 @@ export function LayoutProvider({ children, style: customStyle, bodyClassName = '
   const defaultStyle: React.CSSProperties = {
     '--sidebar-width': SIDEBAR_WIDTH,
     '--sidebar-width-mobile': SIDEBAR_WIDTH_MOBILE,
+    '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
     '--header-height': HEADER_HEIGHT,
     '--header-height-mobile': HEADER_HEIGHT_MOBILE,
   } as React.CSSProperties;

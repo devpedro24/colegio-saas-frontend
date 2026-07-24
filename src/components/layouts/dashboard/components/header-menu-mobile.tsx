@@ -22,7 +22,7 @@ export function HeaderMenuMobile() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="w-full justify-start">
-            <Menu /> {intl.formatMessage({ id: 'Main Menu' })}
+            <Menu /> {intl.formatMessage({ id: 'menu.main' })}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width)">

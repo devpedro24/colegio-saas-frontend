@@ -1,125 +1,69 @@
 import { MenuConfig } from "@/config/types";
-import {
-  ChartLine,
-  Cog,
-  GlobeLock,
-  Gauge,
-  LockKeyholeOpen,
-  Mailbox,
-  OctagonAlert,
-  Settings,
-  Users,
-  Download,
-  FileChartLine,
-  SquareActivity,
-  House,
-  Settings2,
-  Network,
-  ShieldUser
-} from "lucide-react";
+import { ShieldUser, ShieldCheck, Building2, CreditCard, House, Users, Settings2, Network } from "lucide-react";
 
+// Menu lateral del COLEGIO (rector).
 export const MENU_SIDEBAR: MenuConfig = [
   {
-    title: 'Configuration',
+    title: 'menu.administration',
     children: [
       {
-        title: 'API Setup',
-        path: '#',
-        icon: Settings
-      },
-      {
-        title: 'Team Settings',
-        path: '/dashboard',
-        icon: Users
-      },
-      {
-        title: 'Authentication',
-        path: '#',
-        icon: Mailbox
-      },
-      {
-        title: 'Endpoints Configs',
-        path: '#',
-        icon: Cog
-      },
-      {
-        title: 'Rate Limiting',
-        path: '#',
-        icon: ChartLine
+        title: 'menu.rolesPermissions',
+        path: '/configuracion/roles',
+        icon: ShieldUser,
       },
     ],
   },
-  {
-    title: 'Security',
-    children: [
-      {
-        title: 'Data Encryption',
-        path: '#',
-        icon: GlobeLock
-      },
-      {
-        title: 'Rate Limiting',
-        path: '#',
-        icon: Gauge
-      },
-      {
-        title: 'Access Control',
-        path: '#',
-        icon: LockKeyholeOpen
-      },
-      {
-        title: 'Incident Response',
-        path: '#',
-        icon: OctagonAlert
-      },
-    ],
-  },
-  {
-    title: 'Analytics',
-    children: [
-      {
-        title: 'Fetching Data',
-        path: '#',
-        icon: Download
-      },
-      {
-        title: 'Custom Reports',
-        path: '#',
-        icon: FileChartLine
-      },
-      {
-        title: 'Real Time Analytics',
-        path: '#',
-        icon: SquareActivity
-      },
-    ],
-  }
 ];
 
+// Menu lateral del SUPERADMINISTRADOR (plataforma).
+export const MENU_SIDEBAR_PLATFORM: MenuConfig = [
+  {
+    title: 'menu.platform',
+    children: [
+      {
+        title: 'menu.schools',
+        path: '/plataforma/colegios',
+        icon: Building2,
+      },
+      {
+        title: 'menu.plans',
+        path: '/plataforma/planes',
+        icon: CreditCard,
+      },
+      {
+        title: 'menu.rbacGlobal',
+        path: '/plataforma/roles-permisos',
+        icon: ShieldCheck,
+      },
+    ],
+  },
+];
+
+// Menu superior del header (barra oscura). Se conserva para uso futuro.
 export const MENU_HEADER: MenuConfig = [
   {
-    title: 'Dashboards',
+    title: 'menu.h.dashboards',
     path: '/dashboard',
-    icon: House
+    icon: House,
   },
   {
-    title: 'Public Profile',
+    title: 'menu.h.publicProfile',
     path: '#',
-    icon: Users
+    icon: Users,
   },
   {
-    title: 'Account Settings',
+    title: 'menu.h.accountSettings',
     path: '#',
-    icon: Settings2
+    icon: Settings2,
   },
   {
-    title: 'Network',
+    title: 'menu.h.network',
     path: '#',
-    icon: Network
+    icon: Network,
   },
   {
-    title: 'Authentication',
+    title: 'menu.h.authentication',
     path: '#',
-    icon: ShieldUser
+    icon: ShieldUser,
   },
 ];
