@@ -1,46 +1,27 @@
-# Colegio SaaS — Frontend
+# React + TypeScript + Vite
 
-Interfaz web de la **plataforma SaaS de gestión académica y de convivencia para
-colegios de Colombia**. Consume el backend multi-tenant (`../colegio-saas-backend`).
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-- **Stack:** React 19 · Vite 7 · TypeScript · Tailwind CSS 4 · Radix UI · TanStack Query/Table · React Hook Form + Zod · React Router 7 · react-intl (i18n).
+Currently, two official plugins are available:
 
-## Requisitos
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-- Node.js 20+
-- npm 10+
+## Expanding the ESLint configuration
 
-## Puesta en marcha
+If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
 
-```bash
-npm install
-npm run dev
+- Configure the top-level `parserOptions` property like this:
+
+```js
+   parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    project: ['./tsconfig.json', './tsconfig.node.json'],
+    tsconfigRootDir: __dirname,
+   },
 ```
 
-La app abre en `http://localhost:5173` y entra directo al **dashboard**.
-
-## Scripts
-
-| Comando | Descripción |
-|---|---|
-| `npm run dev` | Servidor de desarrollo (Vite) |
-| `npm run build` | Build de producción (`tsc && vite build`) |
-| `npm run preview` | Sirve el build de producción |
-| `npm run lint` | Lint con ESLint |
-| `npm run format` | Formatea con Prettier |
-
-## Estructura
-
-| Ruta | Qué es |
-|---|---|
-| `src/components/layouts/dashboard/` | Layout principal (header, sidebar, toolbar) |
-| `src/pages/dashboard/` | Página del dashboard |
-| `src/config/dashboard.config.tsx` | Menús del layout (sidebar / header) |
-| `src/routing/` | Configuración de rutas (React Router) |
-| `src/components/ui/` | Componentes de UI reutilizables |
-| `src/styles/` | Estilos globales y de tema (Tailwind) |
-
-## Idioma
-
-El menú de perfil incluye un selector de idioma (Español / Inglés). El idioma por
-defecto es **Español (es-CO)**.
+- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
+- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
+- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list

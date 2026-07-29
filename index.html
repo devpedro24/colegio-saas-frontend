@@ -1,47 +1,49 @@
-<!doctype html>
-<html class="h-full" lang="es" dir="ltr">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="/media/app/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta charset="utf-8" />
-    <title>Colegio SaaS</title>
-    <meta
-      name="description"
-      content="Plataforma de gestion academica y de convivencia escolar"
-    />
-    <meta
-      name="keywords"
-      content="colegio, saas, gestion academica, convivencia, dashboard"
-    />
-    <meta name="author" content="Colegio SaaS" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
-    />
-    <style>
-      .dark body {
-        background-color: hsl(240 10% 4%);
-      }
-    </style>
-    <script>
-      (function () {
-        try {
-          const theme = localStorage.getItem('theme') || 'system';
-          const prefersDark = window.matchMedia(
-            '(prefers-color-scheme: dark)',
-          ).matches;
-          const isDarkMode =
-            theme === 'dark' || (theme === 'system' && prefersDark);
-          if (isDarkMode) document.documentElement.classList.add('dark');
-        } catch (e) {}
-      })();
-    </script>
-  </head>
-  <body class="text-foreground bg-background flex h-full text-base antialiased">
-    <div class="flex grow" id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="description" content="Plataforma de gestión escolar" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
+  <title>Colegio SaaS</title>
+  <link rel="shortcut icon" href="/favicon.svg" />
+  <link rel="stylesheet" id="layout-styles-anchor" href="/splash-screen.css" />
+</head>
+
+<body id="kt_body" class="page-loading">
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <!--begin::Theme mode setup on page load-->
+  <script>
+    let themeMode = 'system'
+
+    if (localStorage.getItem('kt_theme_mode_value')) {
+      themeMode = localStorage.getItem('kt_theme_mode_value')
+    }
+
+    if (themeMode === 'system') {
+      themeMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+
+    document.documentElement.setAttribute('data-bs-theme', themeMode)
+  </script>
+  <!--end::Theme mode setup on page load-->
+
+  <div id="root"></div>
+
+  <!--begin::Loading markup-->
+  <div id="splash-screen" class="splash-screen">
+    <div style="font-size:1.75rem;font-weight:700;color:#6A23FF;margin-bottom:1.5rem">Colegio SaaS</div>
+    <div class="loader-wrapper">
+      <span class="loader"></span>
+      <span class="loading-text">Loading...</span>
+    </div>
+  </div>
+  <!--end::Loading markup-->
+
+  <div id="root-modals"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
