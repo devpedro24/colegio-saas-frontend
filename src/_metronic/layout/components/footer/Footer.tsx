@@ -1,4 +1,5 @@
 import {useEffect} from 'react'
+import {FormattedMessage} from 'react-intl'
 import {ILayout, useLayout} from '../../core'
 
 const Footer = () => {
@@ -12,25 +13,27 @@ const Footer = () => {
         <span className='text-gray-500 fw-semibold me-1'>
           {new Date().getFullYear().toString()}&copy;
         </span>
-        <span className='text-gray-500'>Colegio SaaS</span>
+        <span className='text-gray-500'>
+          <FormattedMessage id='footer.brand' defaultMessage='Colegio SaaS' />
+        </span>
       </div>
 
       <ul className='menu menu-gray-500 menu-hover-primary fw-semibold order-1'>
         <li className='menu-item'>
           <a href='#' className='menu-link px-2'>
-            Acerca de
+            <FormattedMessage id='footer.about' defaultMessage='Acerca de' />
           </a>
         </li>
 
         <li className='menu-item'>
           <a href='#' className='menu-link px-2'>
-            Soporte
+            <FormattedMessage id='footer.support' defaultMessage='Soporte' />
           </a>
         </li>
 
         <li className='menu-item'>
           <a href='#' className='menu-link px-2'>
-            Contacto
+            <FormattedMessage id='footer.contact' defaultMessage='Contacto' />
           </a>
         </li>
       </ul>
