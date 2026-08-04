@@ -9,6 +9,7 @@ import {WithChildren} from '../../_metronic/helpers'
 const PrivateRoutes = () => {
   const AccountPage = lazy(() => import('../modules/accounts/AccountPage'))
   const ConfigPage = lazy(() => import('../pages/config/ConfigPage'))
+  const AcademicoPage = lazy(() => import('../pages/academico/AcademicoPage'))
 
   return (
     <Routes>
@@ -31,6 +32,14 @@ const PrivateRoutes = () => {
           element={
             <SuspensedView>
               <ConfigPage />
+            </SuspensedView>
+          }
+        />
+        <Route
+          path='academico/*'
+          element={
+            <SuspensedView>
+              <AcademicoPage />
             </SuspensedView>
           }
         />

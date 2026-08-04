@@ -1,4 +1,5 @@
 import {useEffect} from 'react'
+import {useIntl} from 'react-intl'
 import clsx from 'clsx'
 import {Link} from 'react-router-dom'
 import {Modal} from 'bootstrap'
@@ -9,6 +10,7 @@ import {Navbar} from './Navbar'
 
 export function HeaderWrapper() {
   const {config, classes} = useLayout()
+  const intl = useIntl()
   if (config.app?.header?.default?.container === 'fluid') {
     LayoutSetup.classes.headerContainer.push('container-fluid')
   } else {
@@ -63,7 +65,13 @@ export function HeaderWrapper() {
       >
         {/* begin::Header mobile toggle */}
         {config.app?.sidebar?.display && (
-          <div className='d-flex align-items-center d-lg-none ms-n2 me-2' title='Show sidebar menu'>
+          <div
+            className='d-flex align-items-center d-lg-none ms-n2 me-2'
+            title={intl.formatMessage({
+              id: 'header.toggle.sidebarMenu',
+              defaultMessage: 'Mostrar menú lateral',
+            })}
+          >
             <div
               className='btn btn-icon btn-color-white btn-active-color-primary w-35px h-35px'
               id='kt_app_sidebar_mobile_toggle'

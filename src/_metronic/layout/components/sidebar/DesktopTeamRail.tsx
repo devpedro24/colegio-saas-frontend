@@ -1,30 +1,52 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
 import {createPortal} from 'react-dom'
+import {useIntl} from 'react-intl'
 import {toAbsoluteUrl} from '../../../helpers'
-import {Team} from './MobileTeamSelector'
+import {RailItem} from './MobileTeamSelector'
 
 type Props = {
-  teams: Team[]
-  defaultIndex?: number
+  items: RailItem[]
+  /** id del ítem activo (controlado por el padre). */
+  activeId: string
+  /** Selección de un ítem (el padre decide qué hacer). */
+  onSelect: (item: RailItem) => void
 }
 
 // Misma lógica que el selector móvil (recientes + buscador con scroll ~9) pero adaptada al rail
-// de 70px: los MAX_RECENT recientes como avatares seleccionables (ring primario en la activa) y
+// de 70px: los MAX_RECENT recientes como caritas seleccionables (ring primario en la activa) y
 // un botón de búsqueda que abre un POPOVER a la derecha del rail. El popover se renderiza con
 // createPortal a document.body (position: fixed) para NO ser recortado por el overflow del
 // sidebar (hover-scroll-overlay-y); se posiciona junto al botón con getBoundingClientRect.
 //
-// Los 5 del rail son "last recent" (orden MRU): al seleccionar uno que NO está entre los
-// recientes visibles (p.ej. desde el buscador), pasa al frente y aparece primero en el rail.
+// La carita "Plataforma" (isPlatform) queda SIEMPRE primera; los colegios rotan por MRU.
 const MAX_RECENT = 5
 const MAX_VISIBLE = 9
 const POPOVER_WIDTH = 280
 const POPOVER_MAX_HEIGHT = 440
 
-const DesktopTeamRail = ({teams, defaultIndex = 0}: Props) => {
-  const [selected, setSelected] = useState(defaultIndex)
-  // Orden de recencia (índices de teams, más reciente primero). El rail muestra los primeros 5.
-  const [order, setOrder] = useState<number[]>(() => teams.map((_, i) => i))
+/** Carita: avatar si lo hay; si no, inicial en un círculo (color distinto para "Plataforma"). */
+function Face({item, size}: {item: RailItem; size: number}) {
+  if (item.avatar) {
+    return (
+      <div className={`symbol symbol-${size}px symbol-circle`}>
+        <img src={toAbsoluteUrl(`media/avatars/${item.avatar}`)} alt={item.name} />
+      </div>
+    )
+  }
+  const cls = item.isPlatform ? 'bg-primary text-inverse-primary' : 'bg-light-primary text-primary'
+  return (
+    <div className={`symbol symbol-${size}px symbol-circle`}>
+      <span className={`symbol-label fw-bold ${cls}`}>
+        {item.initial ?? item.name.charAt(0).toUpperCase()}
+      </span>
+    </div>
+  )
+}
+
+const DesktopTeamRail = ({items, activeId, onSelect}: Props) => {
+  const intl = useIntl()
+  // Orden de recencia (ids, más reciente primero). El rail muestra los primeros MAX_RECENT.
+  const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id))
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [pos, setPos] = useState<{top: number; left: number}>({top: 0, left: 0})
@@ -32,13 +54,35 @@ const DesktopTeamRail = ({teams, defaultIndex = 0}: Props) => {
   const btnRef = useRef<HTMLButtonElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
 
-  const recentIdx = order.slice(0, MAX_RECENT)
+  const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
+
+  // Mantén el orden MRU sincronizado con los items (añade nuevos al final, quita los que ya no están).
+  useEffect(() => {
+    setOrder((prev) => {
+      const ids = items.map((i) => i.id)
+      const kept = prev.filter((id) => ids.includes(id))
+      const added = ids.filter((id) => !kept.includes(id))
+      return [...kept, ...added]
+    })
+  }, [items])
+
+  // La carita "Plataforma" va siempre primero; el resto conserva el orden MRU.
+  const pinned = (ids: string[]) => {
+    const platform = ids.filter((id) => byId.get(id)?.isPlatform)
+    const rest = ids.filter((id) => !byId.get(id)?.isPlatform)
+    return [...platform, ...rest]
+  }
+
+  const recent = pinned(order)
+    .slice(0, MAX_RECENT)
+    .map((id) => byId.get(id))
+    .filter((i): i is RailItem => !!i)
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return teams
-    return teams.filter((t) => t.name.toLowerCase().includes(q))
-  }, [teams, query])
+    if (!q) return items
+    return items.filter((i) => i.name.toLowerCase().includes(q))
+  }, [items, query])
 
   const openSearch = () => {
     if (btnRef.current) {
@@ -74,13 +118,17 @@ const DesktopTeamRail = ({teams, defaultIndex = 0}: Props) => {
     }
   }, [searchOpen])
 
-  // Selecciona un colegio. Si NO está entre los recientes visibles, lo mueve al FRENTE (se
-  // vuelve el más reciente) para que aparezca primero en el rail. Si ya es reciente, solo marca.
-  const pick = (idx: number) => {
-    setSelected(idx)
-    setOrder((prev) =>
-      prev.slice(0, MAX_RECENT).includes(idx) ? prev : [idx, ...prev.filter((i) => i !== idx)]
-    )
+  // Selecciona un ítem. Si es un colegio que NO está entre los recientes visibles, lo mueve al
+  // FRENTE (más reciente) para que aparezca primero en el rail. "Plataforma" no rota.
+  const pick = (item: RailItem) => {
+    if (!item.isPlatform) {
+      setOrder((prev) =>
+        prev.slice(0, MAX_RECENT).includes(item.id)
+          ? prev
+          : [item.id, ...prev.filter((id) => id !== item.id)],
+      )
+    }
+    onSelect(item)
     setSearchOpen(false)
     setQuery('')
   }
@@ -88,22 +136,18 @@ const DesktopTeamRail = ({teams, defaultIndex = 0}: Props) => {
   return (
     <>
       {/* begin::Recientes (selector) */}
-      {recentIdx.map((idx) => {
-        const t = teams[idx]
-        const active = idx === selected
+      {recent.map((t) => {
+        const active = t.id === activeId
         return (
           <button
-            key={idx}
+            key={t.id}
             type='button'
             title={t.name}
             className='btn btn-icon btn-default mx-auto mb-4 p-0'
-            onClick={() => pick(idx)}
+            onClick={() => pick(t)}
           >
-            <div
-              className='symbol symbol-40px symbol-circle'
-              style={{boxShadow: active ? '0 0 0 3px var(--bs-primary)' : undefined}}
-            >
-              <img src={toAbsoluteUrl(`media/avatars/${t.avatar}`)} alt={t.name} />
+            <div style={{boxShadow: active ? '0 0 0 3px var(--bs-primary)' : undefined, borderRadius: '50%'}}>
+              <Face item={t} size={40} />
             </div>
           </button>
         )
@@ -114,7 +158,7 @@ const DesktopTeamRail = ({teams, defaultIndex = 0}: Props) => {
       <button
         ref={btnRef}
         type='button'
-        title='Buscar colegio'
+        title={intl.formatMessage({id: 'impersonation.searchColegio', defaultMessage: 'Buscar colegio'})}
         className={`btn btn-icon btn-color-gray-600 btn-active-color-primary w-40px h-40px mx-auto mb-4${
           searchOpen ? ' active' : ''
         }`}
@@ -148,7 +192,10 @@ const DesktopTeamRail = ({teams, defaultIndex = 0}: Props) => {
                 autoFocus
                 type='text'
                 className='form-control form-control-sm form-control-solid ps-10'
-                placeholder='Buscar colegio...'
+                placeholder={intl.formatMessage({
+                  id: 'impersonation.searchPlaceholder',
+                  defaultMessage: 'Buscar colegio...',
+                })}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -157,22 +204,21 @@ const DesktopTeamRail = ({teams, defaultIndex = 0}: Props) => {
             {/* Lista con scroll (~9 visibles) */}
             <div className='scroll-y' style={{maxHeight: MAX_VISIBLE * 40, overflowY: 'auto'}}>
               {list.map((t) => {
-                const idx = teams.indexOf(t)
-                const active = idx === selected
+                const active = t.id === activeId
                 return (
                   <a
-                    key={idx}
+                    key={t.id}
                     href='#'
                     className={`d-flex align-items-center px-3 py-2 rounded bg-hover-light text-hover-primary${
                       active ? ' bg-light-primary' : ''
                     }`}
                     onClick={(e) => {
                       e.preventDefault()
-                      pick(idx)
+                      pick(t)
                     }}
                   >
-                    <div className='symbol symbol-30px me-3'>
-                      <img src={toAbsoluteUrl(`media/avatars/${t.avatar}`)} alt={t.name} />
+                    <div className='me-3'>
+                      <Face item={t} size={30} />
                     </div>
                     <span className='flex-grow-1 fw-semibold fs-6 text-gray-800'>{t.name}</span>
                     {active && <i className='ki-solid ki-check fs-3 text-primary'></i>}
@@ -181,11 +227,13 @@ const DesktopTeamRail = ({teams, defaultIndex = 0}: Props) => {
               })}
 
               {list.length === 0 && (
-                <div className='text-muted px-3 py-4 text-center fs-7'>Sin resultados</div>
+                <div className='text-muted px-3 py-4 text-center fs-7'>
+                  {intl.formatMessage({id: 'impersonation.noResults', defaultMessage: 'Sin resultados'})}
+                </div>
               )}
             </div>
           </div>,
-          document.body
+          document.body,
         )}
       {/* end::Popover */}
     </>

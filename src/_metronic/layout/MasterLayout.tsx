@@ -7,6 +7,7 @@ import {Sidebar} from './components/sidebar'
 import {ActivityDrawer, DrawerMessenger, InviteUsers} from '../partials'
 import {PageDataProvider} from './core'
 import {reInitMenu} from '../helpers'
+import {ImpersonationBanner} from '../../app/modules/impersonation/ImpersonationBanner'
 
 const MasterLayout = () => {
   const location = useLocation()
@@ -28,6 +29,9 @@ const MasterLayout = () => {
               <Sidebar />
               {/* begin::Main */}
               <div className='app-main flex-column flex-row-fluid' id='kt_app_main'>
+                {/* Banner de suplantación: sólo visible cuando hay un colegio activo. Va ARRIBA
+                    del contenido principal, dentro del área de contenido. */}
+                <ImpersonationBanner />
                 {/* begin::Content wrapper */}
                 <div className='d-flex flex-column flex-column-fluid'>
                   <Outlet />

@@ -1,10 +1,23 @@
 // app-navbar (inner) portado literal de demo46/index.html.
+// i18n: el HTML se inyecta via dangerouslySetInnerHTML, asi que las etiquetas visibles
+// se resuelven con intl.formatMessage ANTES de inyectar. El defaultMessage va en ES.
+// Los registros de ejemplo (nombres, correos, titulos de proyectos/notificaciones, codigos
+// #45670 y etiquetas de tiempo "1 hr") son datos placeholder de la plantilla y NO se traducen.
 /* eslint-disable */
-export const NAVBAR_HTML = String.raw`
+import type {IntlShape} from 'react-intl'
+
+export const getNavbarHtml = (intl: IntlShape) => {
+  const t = (id: string, defaultMessage: string) => intl.formatMessage({id, defaultMessage})
+  const tv = (id: string, defaultMessage: string, values: Record<string, any>) =>
+    intl.formatMessage({id, defaultMessage}, values)
+  return String.raw`
 								<!--begin::Invite-->
 								<div class="align-items-center ms-1 ms-lg-3 d-none d-sm-flex">
-									<a href="#" class="btn btn-flex flex-center btn-primary h-35px h-md-40px" data-bs-toggle="modal" data-bs-target="#kt_modal_upgrade_plan">Upgrade 
-									<span class="d-none d-sm-block ps-1">Plan</span></a>
+									<a href="#" class="btn btn-flex flex-center btn-primary h-35px h-md-40px" data-bs-toggle="modal" data-bs-target="#kt_modal_upgrade_plan">${t(
+										'header.navbar.upgrade',
+										'Mejorar'
+									)}
+									<span class="d-none d-sm-block ps-1">${t('header.navbar.planWord', 'plan')}</span></a>
 								</div>
 								<!--end::Invite-->
 								<!--begin::Search-->
@@ -34,7 +47,10 @@ export const NAVBAR_HTML = String.raw`
 													</i>
 													<!--end::Icon-->
 													<!--begin::Input-->
-													<input type="text" class="search-input form-control form-control-flush ps-10" name="search" value="" placeholder="Search..." data-kt-search-element="input" />
+													<input type="text" class="search-input form-control form-control-flush ps-10" name="search" value="" placeholder="${t(
+														'header.search.placeholder',
+														'Buscar...'
+													)}" data-kt-search-element="input" />
 													<!--end::Input-->
 													<!--begin::Spinner-->
 													<span class="search-spinner position-absolute top-50 end-0 translate-middle-y lh-0 d-none me-1" data-kt-search-element="spinner">
@@ -52,7 +68,10 @@ export const NAVBAR_HTML = String.raw`
 													<!--begin::Toolbar-->
 													<div class="position-absolute top-50 end-0 translate-middle-y" data-kt-search-element="toolbar">
 														<!--begin::Preferences toggle-->
-														<div data-kt-search-element="preferences-show" class="btn btn-icon w-20px btn-sm btn-active-color-primary me-1" data-bs-toggle="tooltip" title="Show search preferences">
+														<div data-kt-search-element="preferences-show" class="btn btn-icon w-20px btn-sm btn-active-color-primary me-1" data-bs-toggle="tooltip" title="${t(
+															'header.search.preferencesTooltip',
+															'Mostrar preferencias de búsqueda'
+														)}">
 															<i class="ki-duotone ki-setting-2 fs-2">
 																<span class="path1"></span>
 																<span class="path2"></span>
@@ -60,7 +79,10 @@ export const NAVBAR_HTML = String.raw`
 														</div>
 														<!--end::Preferences toggle-->
 														<!--begin::Advanced search toggle-->
-														<div data-kt-search-element="advanced-options-form-show" class="btn btn-icon w-20px btn-sm btn-active-color-primary" data-bs-toggle="tooltip" title="Show more search options">
+														<div data-kt-search-element="advanced-options-form-show" class="btn btn-icon w-20px btn-sm btn-active-color-primary" data-bs-toggle="tooltip" title="${t(
+															'header.search.moreOptionsTooltip',
+															'Mostrar más opciones de búsqueda'
+														)}">
 															<i class="ki-duotone ki-down fs-2"></i>
 														</div>
 														<!--end::Advanced search toggle-->
@@ -76,7 +98,10 @@ export const NAVBAR_HTML = String.raw`
 													<!--begin::Items-->
 													<div class="scroll-y mh-100px mh-sm-200px mh-lg-350px">
 														<!--begin::Category title-->
-														<h3 class="fs-5 text-muted m-0 pb-5" data-kt-search-element="category-title">Users</h3>
+														<h3 class="fs-5 text-muted m-0 pb-5" data-kt-search-element="category-title">${t(
+															'header.menu.users',
+															'Usuarios'
+														)}</h3>
 														<!--end::Category title-->
 														<!--begin::Item-->
 														<a href="#" class="d-flex text-gray-900 text-hover-primary align-items-center mb-5">
@@ -154,7 +179,10 @@ export const NAVBAR_HTML = String.raw`
 														</a>
 														<!--end::Item-->
 														<!--begin::Category title-->
-														<h3 class="fs-5 text-muted m-0 pt-5 pb-5" data-kt-search-element="category-title">Customers</h3>
+														<h3 class="fs-5 text-muted m-0 pt-5 pb-5" data-kt-search-element="category-title">${t(
+															'header.menu.customers',
+															'Clientes'
+														)}</h3>
 														<!--end::Category title-->
 														<!--begin::Item-->
 														<a href="#" class="d-flex text-gray-900 text-hover-primary align-items-center mb-5">
@@ -242,7 +270,10 @@ export const NAVBAR_HTML = String.raw`
 														</a>
 														<!--end::Item-->
 														<!--begin::Category title-->
-														<h3 class="fs-5 text-muted m-0 pt-5 pb-5" data-kt-search-element="category-title">Projects</h3>
+														<h3 class="fs-5 text-muted m-0 pt-5 pb-5" data-kt-search-element="category-title">${t(
+															'header.menu.projects',
+															'Proyectos'
+														)}</h3>
 														<!--end::Category title-->
 														<!--begin::Item-->
 														<a href="#" class="d-flex text-gray-900 text-hover-primary align-items-center mb-5">
@@ -340,7 +371,10 @@ export const NAVBAR_HTML = String.raw`
 													<!--begin::Heading-->
 													<div class="d-flex flex-stack fw-semibold mb-4">
 														<!--begin::Label-->
-														<span class="text-muted fs-6 me-2">Recently Searched:</span>
+														<span class="text-muted fs-6 me-2">${t(
+															'header.search.recentlySearched',
+															'Búsquedas recientes:'
+														)}</span>
 														<!--end::Label-->
 													</div>
 													<!--end::Heading-->
@@ -505,8 +539,14 @@ export const NAVBAR_HTML = String.raw`
 													<!--end::Icon-->
 													<!--begin::Message-->
 													<div class="pb-15 fw-semibold">
-														<h3 class="text-gray-600 fs-5 mb-2">No result found</h3>
-														<div class="text-muted fs-7">Please try again with a different query</div>
+														<h3 class="text-gray-600 fs-5 mb-2">${t(
+															'header.search.noResult',
+															'No se encontraron resultados'
+														)}</h3>
+														<div class="text-muted fs-7">${t(
+															'header.search.tryAgain',
+															'Intenta de nuevo con una consulta diferente'
+														)}</div>
 													</div>
 													<!--end::Message-->
 												</div>
@@ -516,11 +556,17 @@ export const NAVBAR_HTML = String.raw`
 											<!--begin::Preferences-->
 											<form data-kt-search-element="advanced-options-form" class="pt-1 d-none">
 												<!--begin::Heading-->
-												<h3 class="fw-semibold text-gray-900 mb-7">Advanced Search</h3>
+												<h3 class="fw-semibold text-gray-900 mb-7">${t(
+													'header.search.advancedTitle',
+													'Búsqueda avanzada'
+												)}</h3>
 												<!--end::Heading-->
 												<!--begin::Input group-->
 												<div class="mb-5">
-													<input type="text" class="form-control form-control-sm form-control-solid" placeholder="Contains the word" name="query" />
+													<input type="text" class="form-control form-control-sm form-control-solid" placeholder="${t(
+														'header.search.containsWord',
+														'Contiene la palabra'
+													)}" name="query" />
 												</div>
 												<!--end::Input group-->
 												<!--begin::Input group-->
@@ -530,25 +576,37 @@ export const NAVBAR_HTML = String.raw`
 														<!--begin::Option-->
 														<label>
 															<input type="radio" class="btn-check" name="type" value="has" checked="checked" />
-															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary">All</span>
+															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary">${t(
+																'header.search.all',
+																'Todos'
+															)}</span>
 														</label>
 														<!--end::Option-->
 														<!--begin::Option-->
 														<label>
 															<input type="radio" class="btn-check" name="type" value="users" />
-															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">Users</span>
+															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">${t(
+																'header.menu.users',
+																'Usuarios'
+															)}</span>
 														</label>
 														<!--end::Option-->
 														<!--begin::Option-->
 														<label>
 															<input type="radio" class="btn-check" name="type" value="orders" />
-															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">Orders</span>
+															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">${t(
+																'header.search.orders',
+																'Pedidos'
+															)}</span>
 														</label>
 														<!--end::Option-->
 														<!--begin::Option-->
 														<label>
 															<input type="radio" class="btn-check" name="type" value="projects" />
-															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">Projects</span>
+															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">${t(
+																'header.menu.projects',
+																'Proyectos'
+															)}</span>
 														</label>
 														<!--end::Option-->
 													</div>
@@ -557,12 +615,18 @@ export const NAVBAR_HTML = String.raw`
 												<!--end::Input group-->
 												<!--begin::Input group-->
 												<div class="mb-5">
-													<input type="text" name="assignedto" class="form-control form-control-sm form-control-solid" placeholder="Assigned to" value="" />
+													<input type="text" name="assignedto" class="form-control form-control-sm form-control-solid" placeholder="${t(
+														'header.search.assignedTo',
+														'Asignado a'
+													)}" value="" />
 												</div>
 												<!--end::Input group-->
 												<!--begin::Input group-->
 												<div class="mb-5">
-													<input type="text" name="collaborators" class="form-control form-control-sm form-control-solid" placeholder="Collaborators" value="" />
+													<input type="text" name="collaborators" class="form-control form-control-sm form-control-solid" placeholder="${t(
+														'header.search.collaborators',
+														'Colaboradores'
+													)}" value="" />
 												</div>
 												<!--end::Input group-->
 												<!--begin::Input group-->
@@ -572,13 +636,19 @@ export const NAVBAR_HTML = String.raw`
 														<!--begin::Option-->
 														<label>
 															<input type="radio" class="btn-check" name="attachment" value="has" checked="checked" />
-															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary">Has attachment</span>
+															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary">${t(
+																'header.search.hasAttachment',
+																'Con adjunto'
+															)}</span>
 														</label>
 														<!--end::Option-->
 														<!--begin::Option-->
 														<label>
 															<input type="radio" class="btn-check" name="attachment" value="any" />
-															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">Any</span>
+															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">${t(
+																'header.search.any',
+																'Cualquiera'
+															)}</span>
 														</label>
 														<!--end::Option-->
 													</div>
@@ -588,10 +658,10 @@ export const NAVBAR_HTML = String.raw`
 												<!--begin::Input group-->
 												<div class="mb-5">
 													<select name="timezone" aria-label="Select a Timezone" data-control="select2" data-dropdown-parent="#kt_header_search" data-placeholder="date_period" class="form-select form-select-sm form-select-solid">
-														<option value="next">Within the next</option>
-														<option value="last">Within the last</option>
-														<option value="between">Between</option>
-														<option value="on">On</option>
+														<option value="next">${t('header.search.withinNext', 'En los próximos')}</option>
+														<option value="last">${t('header.search.withinLast', 'En los últimos')}</option>
+														<option value="between">${t('header.search.between', 'Entre')}</option>
+														<option value="on">${t('header.search.on', 'El')}</option>
 													</select>
 												</div>
 												<!--end::Input group-->
@@ -599,16 +669,19 @@ export const NAVBAR_HTML = String.raw`
 												<div class="row mb-8">
 													<!--begin::Col-->
 													<div class="col-6">
-														<input type="number" name="date_number" class="form-control form-control-sm form-control-solid" placeholder="Lenght" value="" />
+														<input type="number" name="date_number" class="form-control form-control-sm form-control-solid" placeholder="${t(
+															'header.search.length',
+															'Cantidad'
+														)}" value="" />
 													</div>
 													<!--end::Col-->
 													<!--begin::Col-->
 													<div class="col-6">
 														<select name="date_typer" aria-label="Select a Timezone" data-control="select2" data-dropdown-parent="#kt_header_search" data-placeholder="Period" class="form-select form-select-sm form-select-solid">
-															<option value="days">Days</option>
-															<option value="weeks">Weeks</option>
-															<option value="months">Months</option>
-															<option value="years">Years</option>
+															<option value="days">${t('header.search.days', 'Días')}</option>
+															<option value="weeks">${t('header.search.weeks', 'Semanas')}</option>
+															<option value="months">${t('header.search.months', 'Meses')}</option>
+															<option value="years">${t('header.search.years', 'Años')}</option>
 														</select>
 													</div>
 													<!--end::Col-->
@@ -616,8 +689,14 @@ export const NAVBAR_HTML = String.raw`
 												<!--end::Input group-->
 												<!--begin::Actions-->
 												<div class="d-flex justify-content-end">
-													<button type="reset" class="btn btn-sm btn-light fw-bold btn-active-light-primary me-2" data-kt-search-element="advanced-options-form-cancel">Cancel</button>
-													<a href="#" class="btn btn-sm fw-bold btn-primary" data-kt-search-element="advanced-options-form-search">Search</a>
+													<button type="reset" class="btn btn-sm btn-light fw-bold btn-active-light-primary me-2" data-kt-search-element="advanced-options-form-cancel">${t(
+														'common.cancel',
+														'Cancelar'
+													)}</button>
+													<a href="#" class="btn btn-sm fw-bold btn-primary" data-kt-search-element="advanced-options-form-search">${t(
+														'header.search.searchBtn',
+														'Buscar'
+													)}</a>
 												</div>
 												<!--end::Actions-->
 											</form>
@@ -625,12 +704,18 @@ export const NAVBAR_HTML = String.raw`
 											<!--begin::Preferences-->
 											<form data-kt-search-element="preferences" class="pt-1 d-none">
 												<!--begin::Heading-->
-												<h3 class="fw-semibold text-gray-900 mb-7">Search Preferences</h3>
+												<h3 class="fw-semibold text-gray-900 mb-7">${t(
+													'header.search.preferencesTitle',
+													'Preferencias de búsqueda'
+												)}</h3>
 												<!--end::Heading-->
 												<!--begin::Input group-->
 												<div class="pb-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
-														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">Projects</span>
+														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
+															'header.menu.projects',
+															'Proyectos'
+														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" checked="checked" />
 													</label>
 												</div>
@@ -638,7 +723,10 @@ export const NAVBAR_HTML = String.raw`
 												<!--begin::Input group-->
 												<div class="py-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
-														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">Targets</span>
+														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
+															'header.menu.targets',
+															'Objetivos'
+														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" checked="checked" />
 													</label>
 												</div>
@@ -646,7 +734,10 @@ export const NAVBAR_HTML = String.raw`
 												<!--begin::Input group-->
 												<div class="py-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
-														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">Affiliate Programs</span>
+														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
+															'header.search.affiliatePrograms',
+															'Programas de afiliados'
+														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" />
 													</label>
 												</div>
@@ -654,7 +745,10 @@ export const NAVBAR_HTML = String.raw`
 												<!--begin::Input group-->
 												<div class="py-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
-														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">Referrals</span>
+														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
+															'header.user.referrals',
+															'Referidos'
+														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" checked="checked" />
 													</label>
 												</div>
@@ -662,15 +756,24 @@ export const NAVBAR_HTML = String.raw`
 												<!--begin::Input group-->
 												<div class="py-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
-														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">Users</span>
+														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
+															'header.menu.users',
+															'Usuarios'
+														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" />
 													</label>
 												</div>
 												<!--end::Input group-->
 												<!--begin::Actions-->
 												<div class="d-flex justify-content-end pt-7">
-													<button type="reset" class="btn btn-sm btn-light fw-bold btn-active-light-primary me-2" data-kt-search-element="preferences-dismiss">Cancel</button>
-													<button type="submit" class="btn btn-sm fw-bold btn-primary">Save Changes</button>
+													<button type="reset" class="btn btn-sm btn-light fw-bold btn-active-light-primary me-2" data-kt-search-element="preferences-dismiss">${t(
+														'common.cancel',
+														'Cancelar'
+													)}</button>
+													<button type="submit" class="btn btn-sm fw-bold btn-primary">${t(
+														'common.save',
+														'Guardar cambios'
+													)}</button>
 												</div>
 												<!--end::Actions-->
 											</form>
@@ -695,19 +798,31 @@ export const NAVBAR_HTML = String.raw`
 										<!--begin::Heading-->
 										<div class="d-flex flex-column bgi-no-repeat rounded-top" style="background-image:url('/media/misc/menu-header-bg.jpg')">
 											<!--begin::Title-->
-											<h3 class="text-white fw-semibold px-9 mt-3 mt-sm-10 mb-3 mb-sm-6">Notifications
-											<span class="fs-8 opacity-75 ps-3">24 reports</span></h3>
+											<h3 class="text-white fw-semibold px-9 mt-3 mt-sm-10 mb-3 mb-sm-6">${t(
+												'header.notifications.title',
+												'Notificaciones'
+											)}
+											<span class="fs-8 opacity-75 ps-3">${tv('header.notifications.reportsCount', '{count} reportes', {count: 24})}</span></h3>
 											<!--end::Title-->
 											<!--begin::Tabs-->
 											<ul class="nav nav-line-tabs nav-line-tabs-2x nav-stretch fw-semibold px-9">
 												<li class="nav-item">
-													<a class="nav-link text-white opacity-75 opacity-state-100 pb-4" data-bs-toggle="tab" href="#kt_topbar_notifications_1">Alerts</a>
+													<a class="nav-link text-white opacity-75 opacity-state-100 pb-4" data-bs-toggle="tab" href="#kt_topbar_notifications_1">${t(
+														'header.notifications.alerts',
+														'Alertas'
+													)}</a>
 												</li>
 												<li class="nav-item">
-													<a class="nav-link text-white opacity-75 opacity-state-100 pb-4 active" data-bs-toggle="tab" href="#kt_topbar_notifications_2">Updates</a>
+													<a class="nav-link text-white opacity-75 opacity-state-100 pb-4 active" data-bs-toggle="tab" href="#kt_topbar_notifications_2">${t(
+														'header.notifications.updates',
+														'Novedades'
+													)}</a>
 												</li>
 												<li class="nav-item">
-													<a class="nav-link text-white opacity-75 opacity-state-100 pb-4" data-bs-toggle="tab" href="#kt_topbar_notifications_3">Logs</a>
+													<a class="nav-link text-white opacity-75 opacity-state-100 pb-4" data-bs-toggle="tab" href="#kt_topbar_notifications_3">${t(
+														'header.notifications.logs',
+														'Registros'
+													)}</a>
 												</li>
 											</ul>
 											<!--end::Tabs-->
@@ -931,7 +1046,10 @@ export const NAVBAR_HTML = String.raw`
 												<!--end::Items-->
 												<!--begin::View more-->
 												<div class="py-3 text-center border-top">
-													<a href="#" class="btn btn-color-gray-600 btn-active-color-primary">View All 
+													<a href="#" class="btn btn-color-gray-600 btn-active-color-primary">${t(
+														'header.navbar.viewAll',
+														'Ver todo'
+													)}
 													<i class="ki-duotone ki-arrow-right fs-5">
 														<span class="path1"></span>
 														<span class="path2"></span>
@@ -947,14 +1065,23 @@ export const NAVBAR_HTML = String.raw`
 													<!--begin::Section-->
 													<div class="pt-10 pb-0">
 														<!--begin::Title-->
-														<h3 class="text-gray-900 text-center fw-bold">Get Pro Access</h3>
+														<h3 class="text-gray-900 text-center fw-bold">${t(
+															'header.notifications.getProAccess',
+															'Obtén acceso Pro'
+														)}</h3>
 														<!--end::Title-->
 														<!--begin::Text-->
-														<div class="text-center text-gray-600 fw-semibold pt-1">Outlines keep you honest. They stoping you from amazing poorly about drive</div>
+														<div class="text-center text-gray-600 fw-semibold pt-1">${t(
+															'header.notifications.getProDesc',
+															'Un buen esquema te mantiene enfocado y evita que te desvíes del objetivo.'
+														)}</div>
 														<!--end::Text-->
 														<!--begin::Action-->
 														<div class="text-center mt-5 mb-9">
-															<a href="#" class="btn btn-sm btn-primary px-6" data-bs-toggle="modal" data-bs-target="#kt_modal_upgrade_plan">Upgrade</a>
+															<a href="#" class="btn btn-sm btn-primary px-6" data-bs-toggle="modal" data-bs-target="#kt_modal_upgrade_plan">${t(
+																'header.navbar.upgrade',
+																'Mejorar'
+															)}</a>
 														</div>
 														<!--end::Action-->
 													</div>
@@ -1180,7 +1307,10 @@ export const NAVBAR_HTML = String.raw`
 												<!--end::Items-->
 												<!--begin::View more-->
 												<div class="py-3 text-center border-top">
-													<a href="#" class="btn btn-color-gray-600 btn-active-color-primary">View All 
+													<a href="#" class="btn btn-color-gray-600 btn-active-color-primary">${t(
+														'header.navbar.viewAll',
+														'Ver todo'
+													)}
 													<i class="ki-duotone ki-arrow-right fs-5">
 														<span class="path1"></span>
 														<span class="path2"></span>
@@ -1210,10 +1340,14 @@ export const NAVBAR_HTML = String.raw`
 										<!--begin::Heading-->
 										<div class="d-flex flex-column flex-center bgi-no-repeat rounded-top px-9 py-10" style="background-image:url('/media/misc/menu-header-bg.jpg')">
 											<!--begin::Title-->
-											<h3 class="text-white fw-semibold mb-3">Quick Links</h3>
+											<h3 class="text-white fw-semibold mb-3">${t('header.quicklinks.title', 'Accesos rápidos')}</h3>
 											<!--end::Title-->
 											<!--begin::Status-->
-											<span class="badge bg-primary text-inverse-primary py-2 px-3">25 pending tasks</span>
+											<span class="badge bg-primary text-inverse-primary py-2 px-3">${tv(
+												'header.quicklinks.pendingTasks',
+												'{count} tareas pendientes',
+												{count: 25}
+											)}</span>
 											<!--end::Status-->
 										</div>
 										<!--end::Heading-->
@@ -1227,8 +1361,8 @@ export const NAVBAR_HTML = String.raw`
 														<span class="path2"></span>
 														<span class="path3"></span>
 													</i>
-													<span class="fs-5 fw-semibold text-gray-800 mb-0">Accounting</span>
-													<span class="fs-7 text-gray-500">eCommerce</span>
+													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.quicklinks.accounting', 'Contabilidad')}</span>
+													<span class="fs-7 text-gray-500">${t('header.menu.ecommerce', 'eCommerce')}</span>
 												</a>
 											</div>
 											<!--end:Item-->
@@ -1239,8 +1373,8 @@ export const NAVBAR_HTML = String.raw`
 														<span class="path1"></span>
 														<span class="path2"></span>
 													</i>
-													<span class="fs-5 fw-semibold text-gray-800 mb-0">Administration</span>
-													<span class="fs-7 text-gray-500">Console</span>
+													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.quicklinks.administration', 'Administración')}</span>
+													<span class="fs-7 text-gray-500">${t('header.quicklinks.console', 'Consola')}</span>
 												</a>
 											</div>
 											<!--end:Item-->
@@ -1251,8 +1385,8 @@ export const NAVBAR_HTML = String.raw`
 														<span class="path1"></span>
 														<span class="path2"></span>
 													</i>
-													<span class="fs-5 fw-semibold text-gray-800 mb-0">Projects</span>
-													<span class="fs-7 text-gray-500">Pending Tasks</span>
+													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.menu.projects', 'Proyectos')}</span>
+													<span class="fs-7 text-gray-500">${t('header.quicklinks.pendingTasksLabel', 'Tareas pendientes')}</span>
 												</a>
 											</div>
 											<!--end:Item-->
@@ -1263,8 +1397,8 @@ export const NAVBAR_HTML = String.raw`
 														<span class="path1"></span>
 														<span class="path2"></span>
 													</i>
-													<span class="fs-5 fw-semibold text-gray-800 mb-0">Customers</span>
-													<span class="fs-7 text-gray-500">Latest cases</span>
+													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.menu.customers', 'Clientes')}</span>
+													<span class="fs-7 text-gray-500">${t('header.quicklinks.latestCases', 'Últimos casos')}</span>
 												</a>
 											</div>
 											<!--end:Item-->
@@ -1272,7 +1406,10 @@ export const NAVBAR_HTML = String.raw`
 										<!--end:Nav-->
 										<!--begin::View more-->
 										<div class="py-2 text-center border-top">
-											<a href="#" class="btn btn-color-gray-600 btn-active-color-primary">View All 
+											<a href="#" class="btn btn-color-gray-600 btn-active-color-primary">${t(
+												'header.navbar.viewAll',
+												'Ver todo'
+											)}
 											<i class="ki-duotone ki-arrow-right fs-5">
 												<span class="path1"></span>
 												<span class="path2"></span>
@@ -1302,7 +1439,7 @@ export const NAVBAR_HTML = String.raw`
 												<!--end::Avatar-->
 												<!--begin::Username-->
 												<div class="d-flex flex-column">
-													<div class="fw-bold d-flex align-items-center fs-5">Max Smith 
+													<div class="fw-bold d-flex align-items-center fs-5">Max Smith
 													<span class="badge badge-light-success fw-bold fs-8 px-2 py-1 ms-2">Pro</span></div>
 													<a href="#" class="fw-semibold text-muted text-hover-primary fs-7">max@kt.com</a>
 												</div>
@@ -1315,13 +1452,16 @@ export const NAVBAR_HTML = String.raw`
 										<!--end::Menu separator-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
-											<a href="#" data-kt-nav="/account/overview" class="menu-link px-5">My Profile</a>
+											<a href="#" data-kt-nav="/account/overview" class="menu-link px-5">${t(
+												'header.user.myProfile',
+												'Mi perfil'
+											)}</a>
 										</div>
 										<!--end::Menu item-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
 											<a href="#" class="menu-link px-5">
-												<span class="menu-text">My Projects</span>
+												<span class="menu-text">${t('header.menu.myProjects', 'Mis proyectos')}</span>
 												<span class="menu-badge">
 													<span class="badge badge-light-danger badge-circle fw-bold fs-7">3</span>
 												</span>
@@ -1331,30 +1471,33 @@ export const NAVBAR_HTML = String.raw`
 										<!--begin::Menu item-->
 										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
 											<a href="#" class="menu-link px-5">
-												<span class="menu-title">My Subscription</span>
+												<span class="menu-title">${t('header.user.mySubscription', 'Mi suscripción')}</span>
 												<span class="menu-arrow"></span>
 											</a>
 											<!--begin::Menu sub-->
 											<div class="menu-sub menu-sub-dropdown w-175px py-4">
 												<!--begin::Menu item-->
 												<div class="menu-item px-3">
-													<a href="#" class="menu-link px-5">Referrals</a>
+													<a href="#" class="menu-link px-5">${t('header.user.referrals', 'Referidos')}</a>
 												</div>
 												<!--end::Menu item-->
 												<!--begin::Menu item-->
 												<div class="menu-item px-3">
-													<a href="#" class="menu-link px-5">Billing</a>
+													<a href="#" class="menu-link px-5">${t('header.user.billing', 'Facturación')}</a>
 												</div>
 												<!--end::Menu item-->
 												<!--begin::Menu item-->
 												<div class="menu-item px-3">
-													<a href="#" class="menu-link px-5">Payments</a>
+													<a href="#" class="menu-link px-5">${t('header.user.payments', 'Pagos')}</a>
 												</div>
 												<!--end::Menu item-->
 												<!--begin::Menu item-->
 												<div class="menu-item px-3">
-													<a href="#" class="menu-link d-flex flex-stack px-5">Statements 
-													<span class="ms-2 lh-0" data-bs-toggle="tooltip" title="View your statements">
+													<a href="#" class="menu-link d-flex flex-stack px-5">${t('header.user.statements', 'Estados de cuenta')}
+													<span class="ms-2 lh-0" data-bs-toggle="tooltip" title="${t(
+														'header.user.statementsTooltip',
+														'Ver tus estados de cuenta'
+													)}">
 														<i class="ki-duotone ki-information-5 fs-5">
 															<span class="path1"></span>
 															<span class="path2"></span>
@@ -1371,7 +1514,10 @@ export const NAVBAR_HTML = String.raw`
 													<div class="menu-content px-3">
 														<label class="form-check form-switch form-check-custom form-check-solid">
 															<input class="form-check-input w-30px h-20px" type="checkbox" value="1" checked="checked" name="notifications" />
-															<span class="form-check-label text-muted fs-7">Notifications</span>
+															<span class="form-check-label text-muted fs-7">${t(
+																'header.notifications.title',
+																'Notificaciones'
+															)}</span>
 														</label>
 													</div>
 												</div>
@@ -1382,7 +1528,7 @@ export const NAVBAR_HTML = String.raw`
 										<!--end::Menu item-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
-											<a href="#" class="menu-link px-5">My Statements</a>
+											<a href="#" class="menu-link px-5">${t('header.user.myStatements', 'Mis estados de cuenta')}</a>
 										</div>
 										<!--end::Menu item-->
 										<!--begin::Menu separator-->
@@ -1391,7 +1537,7 @@ export const NAVBAR_HTML = String.raw`
 										<!--begin::Menu item-->
 										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
 											<a href="#" class="menu-link px-5">
-												<span class="menu-title position-relative">Mode 
+												<span class="menu-title position-relative">${t('header.user.mode', 'Modo')}
 												<span class="ms-5 position-absolute translate-middle-y top-50 end-0">
 													<i class="ki-duotone ki-night-day theme-light-show fs-2">
 														<span class="path1"></span>
@@ -1430,7 +1576,7 @@ export const NAVBAR_HTML = String.raw`
 																<span class="path10"></span>
 															</i>
 														</span>
-														<span class="menu-title">Light</span>
+														<span class="menu-title">${t('header.mode.light', 'Claro')}</span>
 													</a>
 												</div>
 												<!--end::Menu item-->
@@ -1443,7 +1589,7 @@ export const NAVBAR_HTML = String.raw`
 																<span class="path2"></span>
 															</i>
 														</span>
-														<span class="menu-title">Dark</span>
+														<span class="menu-title">${t('header.mode.dark', 'Oscuro')}</span>
 													</a>
 												</div>
 												<!--end::Menu item-->
@@ -1458,7 +1604,7 @@ export const NAVBAR_HTML = String.raw`
 																<span class="path4"></span>
 															</i>
 														</span>
-														<span class="menu-title">System</span>
+														<span class="menu-title">${t('header.mode.system', 'Sistema')}</span>
 													</a>
 												</div>
 												<!--end::Menu item-->
@@ -1469,8 +1615,11 @@ export const NAVBAR_HTML = String.raw`
 										<!--begin::Menu item-->
 										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
 											<a href="#" class="menu-link px-5">
-												<span class="menu-title position-relative">Language 
-												<span data-kt-lang-display class="fs-8 rounded bg-light px-3 py-2 position-absolute translate-middle-y top-50 end-0">English 
+												<span class="menu-title position-relative">${t('header.user.language', 'Idioma')}
+												<span data-kt-lang-display class="fs-8 rounded bg-light px-3 py-2 position-absolute translate-middle-y top-50 end-0">${t(
+													'header.lang.en',
+													'Inglés'
+												)}
 												<img class="w-15px h-15px rounded-1 ms-2" src="/media/flags/united-states.svg" alt="" /></span></span>
 											</a>
 											<!--begin::Menu sub-->
@@ -1480,7 +1629,7 @@ export const NAVBAR_HTML = String.raw`
 													<a href="#" data-kt-lang="en" class="menu-link d-flex px-5 active">
 													<span class="symbol symbol-20px me-4">
 														<img class="rounded-1" src="/media/flags/united-states.svg" alt="" />
-													</span>English</a>
+													</span>${t('header.lang.en', 'Inglés')}</a>
 												</div>
 												<!--end::Menu item-->
 												<!--begin::Menu item-->
@@ -1488,7 +1637,7 @@ export const NAVBAR_HTML = String.raw`
 													<a href="#" data-kt-lang="es" class="menu-link d-flex px-5">
 													<span class="symbol symbol-20px me-4">
 														<img class="rounded-1" src="/media/flags/spain.svg" alt="" />
-													</span>Spanish</a>
+													</span>${t('header.lang.es', 'Español')}</a>
 												</div>
 												<!--end::Menu item-->
 											</div>
@@ -1497,12 +1646,15 @@ export const NAVBAR_HTML = String.raw`
 										<!--end::Menu item-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5 my-1">
-											<a href="#" class="menu-link px-5">Account Settings</a>
+											<a href="#" class="menu-link px-5">${t('header.user.accountSettings', 'Ajustes de la cuenta')}</a>
 										</div>
 										<!--end::Menu item-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
-											<a href="#" data-kt-action="logout" class="menu-link px-5">Sign Out</a>
+											<a href="#" data-kt-action="logout" class="menu-link px-5">${t(
+												'header.user.signOut',
+												'Cerrar sesión'
+											)}</a>
 										</div>
 										<!--end::Menu item-->
 									</div>
@@ -1511,7 +1663,10 @@ export const NAVBAR_HTML = String.raw`
 								</div>
 								<!--end::User menu-->
 								<!--begin::Header menu toggle-->
-								<div class="app-navbar-item d-none" title="Show header menu">
+								<div class="app-navbar-item d-none" title="${t(
+									'header.toggle.headerMenu',
+									'Mostrar menú del encabezado'
+								)}">
 									<div class="btn btn-icon btn-color-white btn-active-color-primary w-30px h-30px w-md-35px h-md-35px" id="kt_app_header_menu_toggle">
 										<i class="ki-duotone ki-text-align-left fs-2 fs-md-1 fw-bold">
 											<span class="path1"></span>
@@ -1524,3 +1679,4 @@ export const NAVBAR_HTML = String.raw`
 								<!--end::Header menu toggle-->
 							</div>
 `
+}

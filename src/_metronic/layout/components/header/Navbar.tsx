@@ -1,16 +1,17 @@
 import {useEffect} from 'react'
+import {useIntl} from 'react-intl'
 import {useNavigate} from 'react-router-dom'
 import {toAbsoluteUrl, withBase} from '../../../helpers'
-import {NAVBAR_HTML} from './_NavbarContent'
+import {getNavbarHtml} from './_NavbarContent'
 import {ThemeModeComponent} from '../../../assets/ts/layout'
 import {setLanguage, useLang} from '../../../i18n/Metronici18n'
 import {useAuth} from '../../../../app/modules/auth'
 
 // Idiomas soportados (badge del trigger + estado activo). El submenu de demo46 se recorto a
-// English + Spanish, cada item con data-kt-lang.
-const LANGS: Record<string, {name: string; flag: string}> = {
-  en: {name: 'English', flag: 'united-states'},
-  es: {name: 'Spanish', flag: 'spain'},
+// English + Spanish, cada item con data-kt-lang. El nombre visible se traduce con i18n.
+const LANGS: Record<string, {nameId: string; nameDefault: string; flag: string}> = {
+  en: {nameId: 'header.lang.en', nameDefault: 'Inglés', flag: 'united-states'},
+  es: {nameId: 'header.lang.es', nameDefault: 'Español', flag: 'spain'},
 }
 
 // app-navbar de demo46 (inyectada). El modo de tema (Light/Dark/System) lo maneja el
@@ -20,6 +21,7 @@ const LANGS: Record<string, {name: string; flag: string}> = {
 const Navbar = () => {
   const navigate = useNavigate()
   const lang = useLang()
+  const intl = useIntl()
   const {logout} = useAuth()
 
   useEffect(() => {
@@ -32,10 +34,11 @@ const Navbar = () => {
       el.classList.toggle('active', el.getAttribute('data-kt-lang') === lang)
     })
     const current = LANGS[lang] || LANGS.en
+    const currentName = intl.formatMessage({id: current.nameId, defaultMessage: current.nameDefault})
     const display = document.querySelector<HTMLElement>('[data-kt-lang-display]')
     if (display) {
       display.innerHTML =
-        `${current.name} ` +
+        `${currentName} ` +
         `<img class="w-15px h-15px rounded-1 ms-2" src="${toAbsoluteUrl(
           'media/flags/' + current.flag + '.svg'
         )}" alt="" />`
@@ -78,12 +81,12 @@ const Navbar = () => {
     // Fase de CAPTURA: KTMenu hace stopPropagation en algunos .menu-link, asi corremos antes.
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [navigate, lang, logout])
+  }, [navigate, lang, logout, intl])
 
   return (
     <div
       className='app-navbar flex-shrink-0'
-      dangerouslySetInnerHTML={{__html: withBase(NAVBAR_HTML)}}
+      dangerouslySetInnerHTML={{__html: withBase(getNavbarHtml(intl))}}
     />
   )
 }
