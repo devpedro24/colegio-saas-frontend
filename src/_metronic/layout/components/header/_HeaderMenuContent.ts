@@ -5,15 +5,12 @@
 /* eslint-disable */
 import type {IntlShape} from 'react-intl'
 
-export type HeaderMenuSede = {id: string; nombre: string}
-
 export const getHeaderMenuHtml = (
   intl: IntlShape,
   opts?: {
     isPlatform?: boolean
     isTenantUser?: boolean
     activeColegio?: boolean
-    sedes?: HeaderMenuSede[]
   }
 ) => {
   const t = (id: string, defaultMessage: string) => intl.formatMessage({id, defaultMessage})
@@ -26,47 +23,6 @@ export const getHeaderMenuHtml = (
   //  - MODO PLATAFORMA: superadmin SIN colegio activo -> secciones de plataforma (Configuración).
   const colegioMode = opts?.isTenantUser === true || (opts?.isPlatform === true && opts?.activeColegio === true)
   const platformMode = opts?.isPlatform === true && opts?.activeColegio !== true
-
-  // Submenú 'Sedes': una entrada por sede del colegio -> /academico/sedes/:id.
-  // Solo se renderiza si el colegio tiene sedes registradas.
-  const sedes = opts?.sedes ?? []
-  const sedesBlock = colegioMode && sedes.length > 0
-    ? String.raw`
-											<!--begin:Menu item-->
-											<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="right-start" class="menu-item menu-lg-down-accordion">
-												<!--begin:Menu link-->
-												<span class="menu-link">
-													<span class="menu-bullet">
-														<span class="bullet bullet-dot"></span>
-													</span>
-													<span class="menu-title">${t('academico.sede.menu.label', 'Sedes')}</span>
-													<span class="menu-arrow"></span>
-												</span>
-												<!--end:Menu link-->
-												<!--begin:Menu sub-->
-												<div class="menu-sub menu-sub-lg-down-accordion menu-sub-lg-dropdown menu-active-bg px-lg-2 py-lg-4 w-lg-225px">
-													${sedes
-                              .map(
-                                (sede) => `
-													<!--begin:Menu item-->
-													<div class="menu-item">
-														<!--begin:Menu link-->
-														<a class="menu-link" href="#" data-kt-nav="/academico/sedes/${esc(sede.id)}">
-															<span class="menu-bullet">
-																<span class="bullet bullet-dot"></span>
-															</span>
-															<span class="menu-title">${esc(sede.nombre)}</span>
-														</a>
-														<!--end:Menu link-->
-													</div>
-													<!--end:Menu item-->`
-                              )
-                              .join('\n')}
-												</div>
-												<!--end:Menu sub-->
-											</div>
-											<!--end:Menu item-->`
-    : ''
 
   // Bloque 'Académico' (años lectivos / estructura / configuración del colegio / sedes): visible en MODO COLEGIO.
   const academicoBlock = colegioMode
@@ -117,7 +73,18 @@ export const getHeaderMenuHtml = (
 												<!--end:Menu link-->
 											</div>
 											<!--end:Menu item-->
-											${sedesBlock}
+											<!--begin:Menu item-->
+											<div class="menu-item">
+												<!--begin:Menu link-->
+												<a class="menu-link" href="#" data-kt-nav="/academico/usuarios">
+													<span class="menu-bullet">
+														<span class="bullet bullet-dot"></span>
+													</span>
+													<span class="menu-title">${t('academico.usuarios.title', 'Usuarios')}</span>
+												</a>
+												<!--end:Menu link-->
+											</div>
+											<!--end:Menu item-->
 										</div>
 										<!--end:Menu sub-->
 									</div>

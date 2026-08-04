@@ -1,5 +1,4 @@
-/* eslint-disable no-prototype-builtins */
-import {useEffect, useMemo, useState} from 'react'
+import {useEffect, useMemo} from 'react'
 import {useIntl} from 'react-intl'
 import {Link} from 'react-router-dom'
 import {ILayout, useLayout} from '../../core'
@@ -12,31 +11,7 @@ import {useToast} from '@/lib/ui/toast'
 import {useColegios} from '@/app/pages/config/colegios/colegios.api'
 import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 import {useEnterColegio, useExitColegio} from '@/app/modules/impersonation/impersonation.api'
-import {useSedes} from '@/app/pages/academico/estructura/estructura.api'
-
-type AvatarItem = {
-  avatar: string
-  name: string
-  active?: boolean
-}
-
-// Caritas placeholder demo. SOLO se usan para un usuario que NO es superadmin (no impersona):
-// mantienen el look demo46 con avatares fijos + MRU. Para el superadmin, el rail se arma con
-// colegios reales (ver PlatformDesktopRail / PlatformMobileSelector).
-const TEAMS: AvatarItem[] = [
-  {avatar: '300-2.jpg', name: 'Karina Clark'},
-  {avatar: '300-7.jpg', name: 'Olivia Bold', active: true},
-  {avatar: '300-10.jpg', name: 'Ana Clark'},
-  {avatar: '300-1.jpg', name: 'Nick Logan'},
-  {avatar: '300-3.jpg', name: 'Kevin Leonard'},
-  {avatar: '300-21.jpg', name: 'Robert Doe'},
-  {avatar: '300-6.jpg', name: 'Emma Bold'},
-  {avatar: '300-13.jpg', name: 'Sean Bean'},
-  {avatar: '300-20.jpg', name: 'Brian Cox'},
-]
-
-const DEMO_ITEMS: RailItem[] = TEAMS.map((t, i) => ({id: String(i), name: t.name, avatar: t.avatar}))
-const DEMO_DEFAULT_ID = String(Math.max(0, TEAMS.findIndex((t) => t.active)))
+import {useSedes, sedeSubdomainUrl} from '@/app/pages/academico/estructura/estructura.api'
 
 // id sintético de la carita FIJA "Plataforma" (modo superadmin, sin colegio activo).
 const PLATFORM_ID = '__platform__'
@@ -128,16 +103,64 @@ const PlatformMobileSelector = () => {
   return <MobileTeamSelector items={items} activeId={activeId} onSelect={onSelect} />
 }
 
-// Rail demo (usuario NO superadmin): selección local, sólo estética.
-const DemoDesktopRail = () => {
-  const [activeId, setActiveId] = useState(DEMO_DEFAULT_ID)
-  return <DesktopTeamRail items={DEMO_ITEMS} activeId={activeId} onSelect={(it) => setActiveId(it.id)} />
+/**
+ * Wiring del rail para un usuario de COLEGIO (rector/coordinador): las sedes del colegio.
+ * - activeId = sede principal (el colegio donde se está logueado).
+ * - Seleccionar una sede adicional navega a su subdominio (`window.location.assign`).
+ * - La sede principal no navega: es el contexto actual.
+ */
+function useSedeTeams() {
+  const {data: sedes} = useSedes(true)
+
+  const items = useMemo<RailItem[]>(
+    () =>
+      (sedes ?? []).map((s) => ({
+        id: String(s.id),
+        name: s.nombre,
+        initial: s.nombre.charAt(0).toUpperCase(),
+      })),
+    [sedes],
+  )
+
+  const principal = useMemo(
+    () => (sedes ?? []).find((s) => s.es_principal) ?? (sedes ?? [])[0],
+    [sedes],
+  )
+
+  const activeId = principal ? String(principal.id) : items[0]?.id ?? ''
+
+  const onSelect = (item: RailItem) => {
+    const sede = (sedes ?? []).find((s) => String(s.id) === item.id)
+    // Sede principal = el colegio actual: no se navega.
+    if (!sede || sede.es_principal || !sede.tenant_domain) return
+    window.location.assign(sedeSubdomainUrl(sede.tenant_domain))
+  }
+
+  return {items, activeId, onSelect}
 }
 
-const DemoMobileSelector = () => {
-  const [activeId, setActiveId] = useState(DEMO_DEFAULT_ID)
+const SedeDesktopRail = () => {
+  const {items, activeId, onSelect} = useSedeTeams()
   return (
-    <MobileTeamSelector items={DEMO_ITEMS} activeId={activeId} onSelect={(it) => setActiveId(it.id)} />
+    <DesktopTeamRail
+      items={items}
+      activeId={activeId}
+      onSelect={onSelect}
+      searchTitle='Buscar sede'
+      searchPlaceholder='Buscar sede...'
+    />
+  )
+}
+
+const SedeMobileSelector = () => {
+  const {items, activeId, onSelect} = useSedeTeams()
+  return (
+    <MobileTeamSelector
+      items={items}
+      activeId={activeId}
+      onSelect={onSelect}
+      searchPlaceholder='Buscar sede...'
+    />
   )
 }
 
@@ -149,10 +172,6 @@ const Sidebar = () => {
 
   const isPlatform = currentUser?.is_platform === true
   const isTenantUser = !!currentUser && currentUser.is_platform !== true
-  const colegioMode = isTenantUser || (isPlatform && !!activeColegio)
-
-  // Sedes del colegio activo para el submenú 'Sedes' del menú móvil (solo en modo colegio).
-  const {data: sedes} = useSedes(colegioMode)
 
   useEffect(() => {
     updateDOM(config)
@@ -164,7 +183,7 @@ const Sidebar = () => {
   // inyectado (secciones visibles) cambia y KTMenu debe recablearse sobre el nuevo árbol.
   useEffect(() => {
     reInitMenu()
-  }, [activeColegio, isPlatform, isTenantUser, sedes])
+  }, [activeColegio, isPlatform, isTenantUser])
 
   if (!config.app?.sidebar?.display) {
     return null
@@ -194,8 +213,8 @@ const Sidebar = () => {
       >
         {/* ===================== DESKTOP: rail de caritas (70px) ===================== */}
         <div className='app-navbar flex-column flex-center py-4 d-none d-lg-flex'>
-          {/* Superadmin: Plataforma + colegios reales (MRU). Resto: rail demo. */}
-          {isPlatform ? <PlatformDesktopRail /> : <DemoDesktopRail />}
+          {/* Superadmin: Plataforma + colegios reales (MRU). Resto: sedes del colegio. */}
+          {isPlatform ? <PlatformDesktopRail /> : <SedeDesktopRail />}
 
           {/* begin::Separator */}
           <div className='separator mb-4 border-gray-300 mx-5'></div>
@@ -217,7 +236,7 @@ const Sidebar = () => {
         {/* ===================== MOVIL: selector Thunder + menu Apps ===================== */}
         <div className='d-flex d-lg-none flex-column w-100 p-4'>
           {/* Selector de caritas */}
-          {isPlatform ? <PlatformMobileSelector /> : <DemoMobileSelector />}
+          {isPlatform ? <PlatformMobileSelector /> : <SedeMobileSelector />}
 
           <div className='separator my-4'></div>
 
@@ -232,7 +251,6 @@ const Sidebar = () => {
                   isPlatform,
                   isTenantUser,
                   activeColegio: !!activeColegio,
-                  sedes: sedes?.map((s) => ({id: String(s.id), nombre: s.nombre})) ?? [],
                 })
               ),
             }}

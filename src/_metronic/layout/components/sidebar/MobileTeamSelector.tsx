@@ -21,6 +21,8 @@ type Props = {
   activeId: string
   /** Selección de un ítem (el padre decide qué hacer: entrar/salir de suplantación, etc.). */
   onSelect: (item: RailItem) => void
+  /** Placeholder del buscador. Default: "Buscar colegio...". */
+  searchPlaceholder?: string
 }
 
 // Sin buscar mostramos solo los MAX_RECENT más recientes. Al buscar, filtra por nombre en toda
@@ -50,7 +52,7 @@ function Face({item, size}: {item: RailItem; size: number}) {
 // Selector estilo "Thunder" adaptado a clases Metronic: trigger = carita + nombre + chevron; al
 // abrir, lista de opciones seleccionables (check en la activa) con scroll interno y buscador al
 // final. La carita "Plataforma" (isPlatform) queda SIEMPRE primera. Sólo se usa en el MÓVIL.
-const MobileTeamSelector = ({items, activeId, onSelect}: Props) => {
+const MobileTeamSelector = ({items, activeId, onSelect, searchPlaceholder}: Props) => {
   const intl = useIntl()
   const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id))
   const [open, setOpen] = useState(false)
@@ -165,10 +167,13 @@ const MobileTeamSelector = ({items, activeId, onSelect}: Props) => {
               <input
                 type='text'
                 className='form-control form-control-sm form-control-solid ps-10'
-                placeholder={intl.formatMessage({
-                  id: 'impersonation.searchPlaceholder',
-                  defaultMessage: 'Buscar colegio...',
-                })}
+                placeholder={
+                  searchPlaceholder ??
+                  intl.formatMessage({
+                    id: 'impersonation.searchPlaceholder',
+                    defaultMessage: 'Buscar colegio...',
+                  })
+                }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />

@@ -10,6 +10,10 @@ type Props = {
   activeId: string
   /** Selección de un ítem (el padre decide qué hacer). */
   onSelect: (item: RailItem) => void
+  /** Título (tooltip) del botón de búsqueda. Default: "Buscar colegio". */
+  searchTitle?: string
+  /** Placeholder del buscador. Default: "Buscar colegio...". */
+  searchPlaceholder?: string
 }
 
 // Misma lógica que el selector móvil (recientes + buscador con scroll ~9) pero adaptada al rail
@@ -43,7 +47,7 @@ function Face({item, size}: {item: RailItem; size: number}) {
   )
 }
 
-const DesktopTeamRail = ({items, activeId, onSelect}: Props) => {
+const DesktopTeamRail = ({items, activeId, onSelect, searchTitle, searchPlaceholder}: Props) => {
   const intl = useIntl()
   // Orden de recencia (ids, más reciente primero). El rail muestra los primeros MAX_RECENT.
   const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id))
@@ -158,7 +162,10 @@ const DesktopTeamRail = ({items, activeId, onSelect}: Props) => {
       <button
         ref={btnRef}
         type='button'
-        title={intl.formatMessage({id: 'impersonation.searchColegio', defaultMessage: 'Buscar colegio'})}
+        title={
+          searchTitle ??
+          intl.formatMessage({id: 'impersonation.searchColegio', defaultMessage: 'Buscar colegio'})
+        }
         className={`btn btn-icon btn-color-gray-600 btn-active-color-primary w-40px h-40px mx-auto mb-4${
           searchOpen ? ' active' : ''
         }`}
@@ -192,10 +199,13 @@ const DesktopTeamRail = ({items, activeId, onSelect}: Props) => {
                 autoFocus
                 type='text'
                 className='form-control form-control-sm form-control-solid ps-10'
-                placeholder={intl.formatMessage({
-                  id: 'impersonation.searchPlaceholder',
-                  defaultMessage: 'Buscar colegio...',
-                })}
+                placeholder={
+                  searchPlaceholder ??
+                  intl.formatMessage({
+                    id: 'impersonation.searchPlaceholder',
+                    defaultMessage: 'Buscar colegio...',
+                  })
+                }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />

@@ -30,6 +30,19 @@ export const GRUPOS_KEY = ['estructura', 'grupos'] as const
 export const BLOQUES_KEY = ['estructura', 'bloques-horarios'] as const
 export const ESPACIOS_KEY = ['estructura', 'espacios-fisicos'] as const
 
+/**
+ * URL de una sede adicional: su tenant vive en `https://{tenant_domain}.{base}` donde
+ * `base` es el hostname actual menos el primer segmento. Desde el colegio
+ * (colegio-rbac.localhost) → base = localhost; desde una sede (norte.colegio-rbac.localhost)
+ * → base = colegio-rbac.localhost.
+ */
+export function sedeSubdomainUrl(tenantDomain: string): string {
+  const host = window.location.hostname
+  const parts = host.split('.')
+  const base = parts.length > 1 ? parts.slice(1).join('.') : host
+  return `${window.location.protocol}//${tenantDomain}.${base}`
+}
+
 // ---- Sedes ----
 
 export function useSedes(enabled = true) {
@@ -48,10 +61,15 @@ export function useSede(id: string | undefined) {
   })
 }
 
+export interface SedeCreateResult {
+  data: Sede
+  coordinador_password?: string | null
+}
+
 export function useCreateSede() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: CreateSedeInput) => api.post<{data: Sede}>('/estructura/sedes', input),
+    mutationFn: (input: CreateSedeInput) => api.post<SedeCreateResult>('/estructura/sedes', input),
     onSuccess: () => queryClient.invalidateQueries({queryKey: SEDES_KEY}),
   })
 }

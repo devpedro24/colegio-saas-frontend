@@ -4,11 +4,22 @@ import {Link, Navigate, useParams} from 'react-router-dom'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
 import {useImpersonation} from '../../../modules/impersonation/impersonation.store'
-import {useSede} from '../estructura/estructura.api'
+import {sedeSubdomainUrl, useSede} from '../estructura/estructura.api'
 
-// Pagina propia de una sede (/academico/sedes/:id). Por ahora muestra los datos de la
-// sede; los modulos de la estructura (jornadas, niveles, grados, grupos, bloques,
-// espacios) se habilitaran proximamente.
+const tenantStatusBadge = (status: string | null): {cls: string; label: string} => {
+  switch (status) {
+    case 'active':
+      return {cls: 'badge badge-light-success', label: 'academico.estructura.sede.tenantStatus.activo'}
+    case 'in_retention':
+      return {cls: 'badge badge-light-warning', label: 'academico.estructura.sede.tenantStatus.cuarentena'}
+    default:
+      return {cls: 'badge badge-light-secondary', label: 'academico.estructura.sede.tenantStatus.inactivo'}
+  }
+}
+
+// Pagina propia de una sede (/academico/sedes/:id). Muestra los datos de la sede, su state
+// de tenant hijo (subdominio, coordinador, tenant id) y permite abrir el subdominio en otra
+// pestaña. Los modulos de la estructura se habilitaran proximamente.
 const SedeDetallePage: FC = () => {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
@@ -36,6 +47,14 @@ const SedeDetallePage: FC = () => {
     },
   ]
 
+  const canOpen = !!sede?.tenant_domain && sede.tenant_status === 'active'
+
+  const openCampus = () => {
+    if (sede?.tenant_domain) {
+      window.open(sedeSubdomainUrl(sede.tenant_domain), '_blank', 'noopener,noreferrer')
+    }
+  }
+
   return (
     <>
       <PageTitle breadcrumbs={breadcrumbs}>
@@ -47,13 +66,28 @@ const SedeDetallePage: FC = () => {
             <h3 className='fw-bold mb-1'>{t('academico.sede.detail.title')}</h3>
             <span className='text-muted fs-7'>{t('academico.sede.detail.subtitle')}</span>
           </div>
-          <Link to='/academico/configuracion?tab=sedes' className='btn btn-light btn-sm'>
-            <i className='ki-duotone ki-arrow-left fs-3 me-1'>
-              <span className='path1'></span>
-              <span className='path2'></span>
-            </i>
-            {t('academico.sede.detail.back')}
-          </Link>
+          <div className='d-flex align-items-center gap-2'>
+            <button
+              type='button'
+              className={`btn btn-primary btn-sm${canOpen ? '' : ' disabled'}`}
+              disabled={!canOpen}
+              title={canOpen ? undefined : t('academico.sede.detail.openDisabled')}
+              onClick={openCampus}
+            >
+              <i className='ki-duotone ki-exit-right-corner fs-3 me-1'>
+                <span className='path1'></span>
+                <span className='path2'></span>
+              </i>
+              {t('academico.sede.detail.open')}
+            </button>
+            <Link to='/academico/configuracion?tab=sedes' className='btn btn-light btn-sm'>
+              <i className='ki-duotone ki-arrow-left fs-3 me-1'>
+                <span className='path1'></span>
+                <span className='path2'></span>
+              </i>
+              {t('academico.sede.detail.back')}
+            </Link>
+          </div>
         </div>
 
         {isLoading && (
@@ -131,6 +165,50 @@ const SedeDetallePage: FC = () => {
                 </div>
               </div>
             </div>
+
+            {!sede.es_principal && (
+              <div className='card mb-6'>
+                <div className='card-header border-0 pt-6'>
+                  <div className='card-title flex-column align-items-start'>
+                    <h3 className='fw-bold mb-1'>{t('academico.sede.detail.tenant')}</h3>
+                    <span className='text-muted fs-7'>{t('academico.estructura.sede.tenantInfo')}</span>
+                  </div>
+                </div>
+                <div className='card-body pt-4'>
+                  <div className='row g-6'>
+                    <div className='col-md-4'>
+                      <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
+                        {t('academico.sede.detail.subdominio')}
+                      </div>
+                      <div className='text-gray-800 fw-semibold'>{sede.tenant_domain ?? '—'}</div>
+                    </div>
+                    <div className='col-md-4'>
+                      <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
+                        {t('academico.sede.detail.coordinador')}
+                      </div>
+                      <div className='text-gray-800 fw-semibold'>{sede.coordinador_email ?? '—'}</div>
+                    </div>
+                    <div className='col-md-4'>
+                      <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
+                        {t('academico.sede.detail.tenantStatus')}
+                      </div>
+                      {(() => {
+                        const badge = tenantStatusBadge(sede.tenant_status)
+                        return <span className={badge.cls}>{t(badge.label)}</span>
+                      })()}
+                    </div>
+                    <div className='col-md-4'>
+                      <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
+                        {t('academico.sede.detail.tenantId')}
+                      </div>
+                      <span className='text-gray-800 fw-semibold font-monospace'>
+                        {sede.tenant_id ?? '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className='card'>
               <div className='card-header border-0 pt-6'>

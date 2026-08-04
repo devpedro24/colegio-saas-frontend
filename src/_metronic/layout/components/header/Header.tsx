@@ -1,4 +1,3 @@
-/* eslint-disable no-prototype-builtins */
 import {FC, useEffect} from 'react'
 import {useIntl} from 'react-intl'
 import {ILayout, useLayout} from '../../core'
@@ -6,7 +5,6 @@ import {reInitMenu, withBase} from '../../../helpers'
 import {getHeaderMenuHtml} from './_HeaderMenuContent'
 import {useAuth} from '../../../../app/modules/auth'
 import {useImpersonation} from '../../../../app/modules/impersonation/impersonation.store'
-import {useSedes} from '../../../../app/pages/academico/estructura/estructura.api'
 
 // Menu #kt_app_header_menu portado literal de demo46 (Home / Pages / Apps / Help con
 // mega-menus por hover). El comportamiento hover lo maneja KTMenu (data-kt-menu-trigger).
@@ -21,10 +19,6 @@ const Header: FC = () => {
 
   const isPlatform = currentUser?.is_platform === true
   const isTenantUser = !!currentUser && currentUser.is_platform !== true
-  const colegioMode = isTenantUser || (isPlatform && !!activeColegio)
-
-  // Sedes del colegio activo para el submenú 'Sedes' del header (solo en modo colegio).
-  const {data: sedes} = useSedes(colegioMode)
 
   useEffect(() => {
     updateDOM(config)
@@ -33,7 +27,7 @@ const Header: FC = () => {
   // Recablea KTMenu al cambiar de modo (el HTML inyectado cambia sus secciones).
   useEffect(() => {
     reInitMenu()
-  }, [activeColegio, isPlatform, isTenantUser, sedes])
+  }, [activeColegio, isPlatform, isTenantUser])
 
   return (
     <div
@@ -46,7 +40,6 @@ const Header: FC = () => {
             isPlatform,
             isTenantUser,
             activeColegio: !!activeColegio,
-            sedes: sedes?.map((s) => ({id: String(s.id), nombre: s.nombre})) ?? [],
           })
         ),
       }}
