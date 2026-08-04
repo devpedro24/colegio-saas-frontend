@@ -1,7 +1,11 @@
 import {FC, useEffect, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
-import {Colegio} from '../colegios.types'
+import {FormattedMessage, useIntl} from 'react-intl'
+import {ApiError} from '@/lib/api/client'
+import {useToast} from '@/lib/ui/toast'
+import {useRectorPassword, useResetRectorPassword} from '../colegios.api'
+import {Colegio, ResetPasswordResponse} from '../colegios.types'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
 
@@ -11,25 +15,216 @@ type Props = {
   onClose: () => void
 }
 
-// Genera una contrasena temporal "aleatoria" solo para la demo (sin backend).
-function mockPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
-  let out = ''
-  for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)]
-  return out
-}
-
-// Modal "Contrasena del rector". Como la clave se guarda cifrada no se puede recuperar
-// la anterior: se regenera una nueva y se muestra una sola vez. Solo UI.
+// Modal "Contrasena del rector". Consulta primero la clave temporal VIGENTE
+// (GET /rector-password, no la invalida): si el rector aun no la cambio la
+// muestra; si ya la cambio ofrece reestablecerla (POST /reset-password genera
+// una nueva y la devuelve UNA vez).
 const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
-  const [generated, setGenerated] = useState<string | null>(null)
+  const intl = useIntl()
+  const t = (id: string) => intl.formatMessage({id})
+  const toast = useToast()
+  const reset = useResetRectorPassword()
+  const [generated, setGenerated] = useState<ResetPasswordResponse | null>(null)
+
+  // Consulta el estado actual (temporal/changed/none) del rector.
+  const {data: pwInfo, isLoading, isError} = useRectorPassword(show ? colegio?.id ?? null : null)
 
   // Al cerrar, limpia la contrasena mostrada para no dejarla en el DOM.
   useEffect(() => {
-    if (!show) setGenerated(null)
+    if (!show) {
+      setGenerated(null)
+      reset.reset()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show])
 
-  const regenerate = () => setGenerated(mockPassword())
+  const regenerate = () => {
+    if (!colegio) return
+    reset.mutate(colegio.id, {
+      onSuccess: (data) => {
+        setGenerated(data)
+        toast.success(t('colegios.pwd.toast'))
+      },
+      onError: (err) => {
+        const message = err instanceof ApiError ? err.message : t('colegios.pwd.error')
+        toast.error(message)
+      },
+    })
+  }
+
+  const copy = (value: string) => {
+    navigator.clipboard?.writeText(value).then(() => toast.success(t('colegios.pwd.copied')))
+  }
+
+  const renderBody = () => {
+    if (generated) {
+      return (
+        <>
+          <div className='text-muted fs-7 mb-5'>{t('colegios.pwd.once')}</div>
+          <div className='mb-3'>
+            <span className='text-muted'>{t('colegios.f.school')} </span>
+            <span className='fw-bold text-gray-800'>{colegio?.name}</span>
+          </div>
+          <div className='mb-3'>
+            <span className='text-muted'>{t('colegios.f.rector')} </span>
+            <span className='fw-bold text-gray-800'>{generated.rector_email}</span>
+          </div>
+          <div>
+            <span className='text-muted'>{t('colegios.f.tempPassword')}</span>
+            <div className='mt-2 rounded bg-light-primary text-primary font-monospace fs-4 fw-bold px-4 py-3 text-center'>
+              {generated.rector_password}
+            </div>
+          </div>
+        </>
+      )
+    }
+
+    if (isLoading) {
+      return (
+        <div className='d-flex justify-content-center align-items-center py-10'>
+          <span className='spinner-border text-primary' role='status'></span>
+        </div>
+      )
+    }
+
+    if (isError || !pwInfo) {
+      return (
+        <div className='alert alert-danger d-flex align-items-start py-4'>
+          <i className='ki-duotone ki-information fs-2 text-danger me-3'>
+            <span className='path1'></span>
+            <span className='path2'></span>
+            <span className='path3'></span>
+          </i>
+          <span>{t('colegios.pwd.loadError')}</span>
+        </div>
+      )
+    }
+
+    if (pwInfo.status === 'temporal' && pwInfo.rector_password) {
+      return (
+        <>
+          <div className='alert alert-primary d-flex align-items-center py-3'>
+            <i className='ki-duotone ki-information-5 fs-2 me-3'>
+              <span className='path1'></span>
+              <span className='path2'></span>
+            </i>
+            <span className='fs-7'>{t('colegios.pwd.temporalActive')}</span>
+          </div>
+          <div className='mb-3'>
+            <span className='text-muted'>{t('colegios.f.rector')} </span>
+            <span className='fw-bold text-gray-800'>{pwInfo.rector_email}</span>
+          </div>
+          <div className='mb-5'>
+            <span className='text-muted'>{t('colegios.pwd.currentLabel')}</span>
+            <div className='d-flex align-items-stretch gap-2'>
+              <div className='flex-grow-1 mt-2 rounded bg-light-primary text-primary font-monospace fs-4 fw-bold px-4 py-3 text-center'>
+                {pwInfo.rector_password}
+              </div>
+              <button
+                type='button'
+                className='btn btn-icon btn-light-primary align-self-end'
+                onClick={() => copy(pwInfo.rector_password ?? '')}
+                title={t('colegios.pwd.copy')}
+              >
+                <i className='ki-duotone ki-copy fs-2'>
+                  <span className='path1'></span>
+                  <span className='path2'></span>
+                  <span className='path3'></span>
+                </i>
+              </button>
+            </div>
+          </div>
+        </>
+      )
+    }
+
+    if (pwInfo.status === 'changed') {
+      return (
+        <div className='alert alert-warning d-flex align-items-start py-4'>
+          <i className='ki-duotone ki-information fs-2 text-warning me-3'>
+            <span className='path1'></span>
+            <span className='path2'></span>
+            <span className='path3'></span>
+          </i>
+          <span>
+            <FormattedMessage
+              id='colegios.pwd.changedBody'
+              values={{
+                name: <span className='fw-bold text-gray-900'>{colegio?.name}</span>,
+              }}
+            />
+          </span>
+        </div>
+      )
+    }
+
+    // status === 'none': no hay clave guardada, se ofrece regenerar.
+    return (
+      <div className='text-gray-700 fs-6'>
+        <FormattedMessage
+          id='colegios.pwd.noneBody'
+          values={{name: <span className='fw-bold text-gray-900'>{colegio?.name}</span>}}
+        />
+      </div>
+    )
+  }
+
+  const renderFooter = () => {
+    if (generated) {
+      return (
+        <button type='button' className='btn btn-primary' onClick={onClose}>
+          {t('common.close')}
+        </button>
+      )
+    }
+
+    const showRegenerate = isError || !pwInfo || pwInfo.status !== 'changed'
+    const showReset = !isError && pwInfo?.status === 'changed'
+
+    return (
+      <>
+        <button type='button' className='btn btn-light' onClick={onClose}>
+          {t('common.cancel')}
+        </button>
+        {showReset && (
+          <button type='button' className='btn btn-primary' onClick={regenerate} disabled={reset.isPending}>
+            {reset.isPending ? (
+              <span className='indicator-progress d-block'>
+                {t('colegios.pwd.regenerating')}
+                <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
+              </span>
+            ) : (
+              <>
+                <i className='ki-duotone ki-key fs-3'>
+                  <span className='path1'></span>
+                  <span className='path2'></span>
+                </i>
+                {t('colegios.pwd.reset')}
+              </>
+            )}
+          </button>
+        )}
+        {showRegenerate && (
+          <button type='button' className='btn btn-light-primary' onClick={regenerate} disabled={reset.isPending}>
+            {reset.isPending ? (
+              <span className='indicator-progress d-block'>
+                {t('colegios.pwd.regenerating')}
+                <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
+              </span>
+            ) : (
+              <>
+                <i className='ki-duotone ki-key fs-3'>
+                  <span className='path1'></span>
+                  <span className='path2'></span>
+                </i>
+                {t('colegios.pwd.regenerate')}
+              </>
+            )}
+          </button>
+        )}
+      </>
+    )
+  }
 
   return createPortal(
     <Modal
@@ -43,7 +238,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
     >
       <div className='modal-header'>
         <h2 className='fw-bold'>
-          {generated ? 'Nueva contrasena generada' : 'Contrasena del rector'}
+          {generated ? t('colegios.pwd.newTitle') : t('colegios.pwd.title')}
         </h2>
         <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={onClose}>
           <i className='ki-duotone ki-cross fs-1'>
@@ -53,56 +248,9 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
         </div>
       </div>
 
-      <div className='modal-body py-lg-10 px-lg-10'>
-        {generated ? (
-          <>
-            <div className='text-muted fs-7 mb-5'>
-              Guardala ahora: por seguridad solo se muestra una vez.
-            </div>
-            <div className='mb-3'>
-              <span className='text-muted'>Colegio: </span>
-              <span className='fw-bold text-gray-800'>{colegio?.name}</span>
-            </div>
-            <div className='mb-3'>
-              <span className='text-muted'>Rector: </span>
-              <span className='fw-bold text-gray-800'>{colegio?.rector.email}</span>
-            </div>
-            <div>
-              <span className='text-muted'>Contrasena temporal:</span>
-              <div className='mt-2 rounded bg-light-primary text-primary font-monospace fs-4 fw-bold px-4 py-3 text-center'>
-                {generated}
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className='text-gray-700 fs-6'>
-            Se generara una nueva contrasena temporal para el rector de{' '}
-            <span className='fw-bold text-gray-900'>{colegio?.name}</span> (
-            {colegio?.rector.email}). La contrasena anterior dejara de funcionar.
-          </div>
-        )}
-      </div>
+      <div className='modal-body py-lg-10 px-lg-10'>{renderBody()}</div>
 
-      <div className='modal-footer'>
-        {generated ? (
-          <button type='button' className='btn btn-primary' onClick={onClose}>
-            Cerrar
-          </button>
-        ) : (
-          <>
-            <button type='button' className='btn btn-light' onClick={onClose}>
-              Cancelar
-            </button>
-            <button type='button' className='btn btn-primary' onClick={regenerate}>
-              <i className='ki-duotone ki-key fs-3'>
-                <span className='path1'></span>
-                <span className='path2'></span>
-              </i>
-              Regenerar contrasena
-            </button>
-          </>
-        )}
-      </div>
+      <div className='modal-footer'>{renderFooter()}</div>
     </Modal>,
     modalsRoot
   )
