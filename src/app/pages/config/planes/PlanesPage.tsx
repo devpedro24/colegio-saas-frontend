@@ -1,166 +1,204 @@
-import {FC, useState} from 'react'
+import {FC, useMemo, useState} from 'react'
+import {useIntl} from 'react-intl'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
-import {planes as planesMock, featureLabel} from './planes.mock'
-import {Plan, PlanPeriod} from './planes.types'
+import {usePlanes} from './planes.api'
+import {Plan, PlanLimit} from './planes.types'
 import {PlanFormDialog} from './components/PlanFormDialog'
-import {DeletePlanDialog} from './components/DeletePlanDialog'
 
-const configBreadCrumbs: Array<PageLink> = [
-  {
-    title: 'Configuracion',
-    path: '/configuracion/planes',
-    isSeparator: false,
-    isActive: false,
-  },
-]
-
-// Sufijo del precio segun periodicidad (solo diseno).
-const PERIOD_SUFFIX: Record<PlanPeriod, string> = {
-  mensual: '/mes',
-  anual: '/anual',
-}
-
-// Formatea el precio en pesos colombianos (sin decimales).
-const formatPrice = (value: number): string => `$${value.toLocaleString('es-CO')}`
+// Formatea un precio (string numerico del backend) en pesos colombianos.
+const formatPrice = (value: string | null): string | null =>
+  value == null ? null : `$${Number(value).toLocaleString('es-CO')}`
 
 const PlanesPage: FC = () => {
+  const intl = useIntl()
+  const t = (id: string, values?: Record<string, string | number>) =>
+    intl.formatMessage({id}, values)
+
+  const configBreadCrumbs: Array<PageLink> = [
+    {
+      title: t('config.breadcrumb'),
+      path: '/configuracion/planes',
+      isSeparator: false,
+      isActive: false,
+    },
+  ]
+
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<Plan | null>(null)
-  const [deleting, setDeleting] = useState<Plan | null>(null)
+
+  const {data, isLoading, isError} = usePlanes()
+  const planes = data?.data ?? []
+  const limits = data?.catalog.limits ?? []
+
+  // key de feature -> id i18n de su label (el backend manda el id en catalog.features).
+  const featureLabelId = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const f of data?.catalog.features ?? []) map.set(f.key, f.label)
+    return map
+  }, [data?.catalog.features])
+
+  const featureLabel = (key: string): string => {
+    const id = featureLabelId.get(key)
+    return id ? intl.formatMessage({id}) : key
+  }
+
+  // Valor de un limite del plan: numero formateado o "Ilimitado" (null).
+  const limitValue = (plan: Plan, key: PlanLimit['key']): string => {
+    const v = plan[key]
+    return v == null ? t('common.unlimited') : v.toLocaleString('es-CO')
+  }
 
   return (
     <>
-      <PageTitle breadcrumbs={configBreadCrumbs}>Planes</PageTitle>
+      <PageTitle breadcrumbs={configBreadCrumbs}>{t('planes.title')}</PageTitle>
       <Content>
         {/* begin::Cabecera */}
         <div className='d-flex flex-wrap align-items-center justify-content-between gap-3 mb-6'>
           <div className='d-flex flex-column'>
-            <h3 className='fw-bold text-gray-900 mb-1'>Planes</h3>
-            <span className='text-muted fs-7'>
-              Crea y configura los planes de membresia y sus features
-            </span>
+            <h3 className='fw-bold text-gray-900 mb-1'>{t('planes.title')}</h3>
+            <span className='text-muted fs-7'>{t('planes.subtitle')}</span>
           </div>
-          <button
-            type='button'
-            className='btn btn-primary'
-            onClick={() => setShowCreate(true)}
-          >
+          <button type='button' className='btn btn-primary' onClick={() => setShowCreate(true)}>
             <i className='ki-duotone ki-plus fs-2'></i>
-            Nuevo plan
+            {t('planes.new')}
           </button>
         </div>
         {/* end::Cabecera */}
 
-        {/* begin::Grid de planes (col-md-4, se apila en movil) */}
-        <div className='row g-6 g-xl-9'>
-          {planesMock.map((plan) => (
-            <div className='col-md-6 col-lg-4' key={plan.id}>
-              {/* begin::Card plan */}
-              <div className='card h-100'>
-                <div className='card-body d-flex flex-column p-9'>
-                  {/* Nombre + estado */}
-                  <div className='d-flex align-items-center justify-content-between mb-3'>
-                    <h2 className='fw-bold text-gray-900 mb-0'>{plan.name}</h2>
-                    <span
-                      className={
-                        plan.active
-                          ? 'badge badge-light-success'
-                          : 'badge badge-light-secondary'
-                      }
-                    >
-                      {plan.active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </div>
+        {/* Loading */}
+        {isLoading && (
+          <div className='d-flex justify-content-center align-items-center py-20'>
+            <span className='spinner-border text-primary me-3' role='status'></span>
+            <span className='text-muted fs-6'>{t('planes.loading')}</span>
+          </div>
+        )}
 
-                  {/* Precio grande + /mes */}
-                  <div className='d-flex align-items-baseline mb-4'>
-                    {plan.price !== null ? (
-                      <>
-                        <span className='fs-3x fw-bold text-gray-900'>
-                          {formatPrice(plan.price)}
+        {/* Error */}
+        {isError && !isLoading && (
+          <div className='alert alert-danger d-flex align-items-center'>
+            <i className='ki-duotone ki-information fs-2 text-danger me-3'>
+              <span className='path1'></span>
+              <span className='path2'></span>
+              <span className='path3'></span>
+            </i>
+            <span>{t('planes.loadError')}</span>
+          </div>
+        )}
+
+        {/* begin::Grid de planes */}
+        {!isLoading && !isError && (
+          <div className='row g-6 g-xl-9'>
+            {planes.length === 0 && (
+              <div className='col-12'>
+                <div className='text-center text-muted py-20'>{t('planes.empty')}</div>
+              </div>
+            )}
+            {planes.map((plan) => {
+              const monthly = formatPrice(plan.price_monthly)
+              const annual = formatPrice(plan.price_annual)
+              return (
+                <div className='col-md-6 col-lg-4' key={plan.id}>
+                  {/* begin::Card plan */}
+                  <div className='card h-100'>
+                    <div className='card-body d-flex flex-column p-9'>
+                      {/* Nombre + estado */}
+                      <div className='d-flex align-items-center justify-content-between mb-3'>
+                        <h2 className='fw-bold text-gray-900 mb-0'>{plan.name}</h2>
+                        <span
+                          className={
+                            plan.is_active
+                              ? 'badge badge-light-success'
+                              : 'badge badge-light-secondary'
+                          }
+                        >
+                          {plan.is_active ? t('planes.active') : t('planes.inactive')}
                         </span>
-                        <span className='fs-6 fw-semibold text-muted ms-2'>
-                          {PERIOD_SUFFIX[plan.period]}
-                        </span>
-                      </>
-                    ) : (
-                      <span className='fs-4 fw-semibold text-muted'>Precio por definir</span>
-                    )}
-                  </div>
+                      </div>
 
-                  {/* Descripcion */}
-                  <p className='text-muted fs-6 mb-2'>{plan.description}</p>
+                      {/* Precio mensual grande + anual */}
+                      <div className='mb-4'>
+                        {monthly ? (
+                          <div className='d-flex align-items-baseline'>
+                            <span className='fs-3x fw-bold text-gray-900'>{monthly}</span>
+                            <span className='fs-6 fw-semibold text-muted ms-2'>
+                              {t('planes.perMonth')}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className='fs-4 fw-semibold text-muted'>{t('planes.priceTbd')}</span>
+                        )}
+                        {annual && (
+                          <div className='fs-7 fw-semibold text-muted mt-1'>
+                            {annual} {t('planes.perYear')}
+                          </div>
+                        )}
+                      </div>
 
-                  <div className='separator separator-dashed my-5'></div>
+                      {/* Descripcion */}
+                      {plan.description && (
+                        <p className='text-muted fs-6 mb-2'>{plan.description}</p>
+                      )}
 
-                  {/* Features con check-circle */}
-                  <div className='mb-8 flex-grow-1'>
-                    <div className='text-muted fw-semibold fs-7 text-uppercase mb-4'>
-                      {plan.features.length} features incluidas
-                    </div>
-                    {plan.features.map((key) => (
-                      <div className='d-flex align-items-center mb-4' key={key}>
-                        <i className='ki-duotone ki-check-circle fs-3 text-success me-3'>
+                      <div className='separator separator-dashed my-5'></div>
+
+                      {/* Limites */}
+                      <div className='row g-3 mb-6'>
+                        {limits.map((l) => (
+                          <div className='col-6' key={l.key}>
+                            <div className='text-muted fs-8 text-uppercase'>
+                              {t(l.label)}
+                            </div>
+                            <div className='fw-bold text-gray-800 fs-6'>
+                              {limitValue(plan, l.key)}
+                              {l.unit && plan[l.key] != null ? ` ${t(l.unit)}` : ''}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Features con check-circle */}
+                      <div className='mb-8 flex-grow-1'>
+                        <div className='text-muted fw-semibold fs-7 text-uppercase mb-4'>
+                          {t('planes.featuresCount', {count: plan.features.length})}
+                        </div>
+                        {plan.features.map((key) => (
+                          <div className='d-flex align-items-center mb-4' key={key}>
+                            <i className='ki-duotone ki-check-circle fs-3 text-success me-3'>
+                              <span className='path1'></span>
+                              <span className='path2'></span>
+                            </i>
+                            <span className='fw-semibold text-gray-700 fs-6'>{featureLabel(key)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Accion: Editar (los planes no se eliminan en el backend) */}
+                      <button
+                        type='button'
+                        className='btn btn-light-primary w-100'
+                        onClick={() => setEditing(plan)}
+                      >
+                        <i className='ki-duotone ki-pencil fs-4'>
                           <span className='path1'></span>
                           <span className='path2'></span>
                         </i>
-                        <span className='fw-semibold text-gray-700 fs-6'>
-                          {featureLabel(key)}
-                        </span>
-                      </div>
-                    ))}
+                        {t('planes.edit')}
+                      </button>
+                    </div>
                   </div>
-
-                  {/* Acciones: Editar + Eliminar */}
-                  <div className='d-flex gap-3'>
-                    <button
-                      type='button'
-                      className='btn btn-light-primary flex-grow-1'
-                      onClick={() => setEditing(plan)}
-                    >
-                      <i className='ki-duotone ki-pencil fs-4'>
-                        <span className='path1'></span>
-                        <span className='path2'></span>
-                      </i>
-                      Editar
-                    </button>
-                    <button
-                      type='button'
-                      className='btn btn-icon btn-light-danger'
-                      title='Eliminar plan'
-                      onClick={() => setDeleting(plan)}
-                    >
-                      <i className='ki-duotone ki-trash fs-4'>
-                        <span className='path1'></span>
-                        <span className='path2'></span>
-                        <span className='path3'></span>
-                        <span className='path4'></span>
-                        <span className='path5'></span>
-                      </i>
-                    </button>
-                  </div>
+                  {/* end::Card plan */}
                 </div>
-              </div>
-              {/* end::Card plan */}
-            </div>
-          ))}
-        </div>
+              )
+            })}
+          </div>
+        )}
         {/* end::Grid de planes */}
       </Content>
 
-      {/* Modales (solo UI: abren/cierran, sin submit real) */}
+      {/* Modales conectados al backend real */}
       <PlanFormDialog show={showCreate} plan={null} onClose={() => setShowCreate(false)} />
-      <PlanFormDialog
-        show={editing !== null}
-        plan={editing}
-        onClose={() => setEditing(null)}
-      />
-      <DeletePlanDialog
-        show={deleting !== null}
-        plan={deleting}
-        onClose={() => setDeleting(null)}
-      />
+      <PlanFormDialog show={editing !== null} plan={editing} onClose={() => setEditing(null)} />
     </>
   )
 }
