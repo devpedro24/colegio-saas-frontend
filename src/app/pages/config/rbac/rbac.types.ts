@@ -1,67 +1,94 @@
 // Tipos del panel del superadmin para el catalogo CENTRAL de RBAC (roles, permisos,
-// matriz global). Espeja colegio-saas-frontend/src/features/rbac-admin/rbac-admin.types.ts,
-// re-nombrados sin el prefijo "Admin" y adaptados a datos mock (solo diseno).
+// matriz global), alineados con el backend real
+// (App\Http\Controllers\Api\Platform\RbacController).
 
-// Clasificacion de una celda (rol x permiso) de la matriz.
+/** Clasificacion de una celda (rol x permiso). */
 export type CellType = 'structural' | 'configurable' | 'denied'
 
-// Niveles estructurales (otorgado y bloqueado). El valor de la celda estructural es
-// uno de estos niveles; se muestra como etiqueta en la UI.
-export type StructuralLevel = 'crud' | 'editar' | 'ver' | 'reportar' | 'aprobar' | 'c' | 'auto'
-
-// Valor crudo de una celda en el mock:
-//   - un StructuralLevel  -> estructural (otorgado + bloqueado)
-//   - 'cfg'               -> configurable, por defecto OFF
-//   - 'cfg_on'            -> configurable, por defecto ON
-//   - ausente             -> denegado
-export type CellValue = StructuralLevel | 'cfg' | 'cfg_on'
-
-// Rol del catalogo central.
+/** Rol del catalogo central. */
 export interface RbacRole {
   id: number
   key: string
   label: string
-  isSystem: boolean
-  sortOrder: number
+  is_system: boolean
+  sort_order: number
 }
 
-// Permiso del catalogo central. `cells` guarda el valor por rol (mapa rol -> CellValue);
-// un rol ausente = denegado. `featureKey` liga el permiso a una feature de plan (gating).
+/** Permiso del catalogo central. `feature_key` liga el permiso a una feature de plan (gating). */
 export interface RbacPermission {
   id: number
   key: string
   module: string
   action: string
-  featureKey: string | null
-  isSystem: boolean
-  sortOrder: number
-  cells: Partial<Record<string, CellValue>>
+  feature_key: string | null
+  description: string | null
+  is_system: boolean
+  sort_order: number
 }
 
-// Feature de plan (de PlanCatalog) para ligar permisos y hacer gating con candado.
+/**
+ * Celda de la matriz global (rol x permiso). El backend SOLO persiste filas
+ * structural/configurable; una celda ausente = denegado.
+ */
+export interface RbacMatrixCell {
+  role_key: string
+  permission_key: string
+  type: 'structural' | 'configurable'
+  level: string | null
+  default_granted: boolean
+}
+
+/** Feature de plan (de PlanCatalog) para ligar permisos y hacer gating. label = clave i18n. */
 export interface RbacFeature {
+  key: string
+  category: string
+  label: string
+  description: string
+}
+
+/** Categoria del catalogo de features. label = clave i18n. */
+export interface RbacCategory {
   key: string
   label: string
 }
 
-// Estado clasificado de una celda concreta (para pintar el badge en la matriz).
-export interface CellState {
-  type: CellType
-  level: StructuralLevel | null
-  defaultGranted: boolean
+/** Catalogo RBAC completo (GET /rbac/catalog). */
+export interface RbacCatalog {
+  roles: RbacRole[]
+  permissions: RbacPermission[]
+  matrix: RbacMatrixCell[]
+  levels: string[]
+  features: RbacFeature[]
+  categories: RbacCategory[]
 }
 
-// Entrada del formulario de permiso (crear/editar). `key` solo al crear (inmutable).
+/** Estado clasificado de una celda (para pintar el badge y precargar el editor). */
+export interface CellState {
+  type: CellType
+  level: string | null
+  default_granted: boolean
+}
+
+/** Entrada del formulario de permiso. `key` solo al crear (inmutable despues). */
 export interface PermissionInput {
   key?: string
   module: string
   action: string
-  featureKey: string | null
+  feature_key: string | null
   description: string | null
 }
 
-// Entrada del formulario de rol (crear/editar). `key` solo al crear.
+/** Entrada del formulario de rol. `key` solo al crear. */
 export interface RoleInput {
   key?: string
   label: string
+}
+
+/** Payload de PUT /rbac/matrix (set de una celda). */
+export interface MatrixCellInput {
+  role_key: string
+  permission_key: string
+  type: CellType
+  level?: string | null
+  default_granted?: boolean
 }
