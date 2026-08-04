@@ -1,4 +1,5 @@
 import {useState, FC} from 'react'
+import {FormattedMessage} from 'react-intl'
 import {IEmailPreferences, emailPreferences} from '../SettingsModel'
 
 const EmailPreferences: FC = () => {
@@ -29,7 +30,9 @@ const EmailPreferences: FC = () => {
         aria-controls='kt_account_email_preferences'
       >
         <div className='card-title m-0'>
-          <h3 className='fw-bold m-0'>Email Preferences</h3>
+          <h3 className='fw-bold m-0'>
+            <FormattedMessage id='account.email.title' defaultMessage='Preferencias de correo' />
+          </h3>
         </div>
       </div>
 
@@ -50,9 +53,17 @@ const EmailPreferences: FC = () => {
               />
 
               <span className='form-check-label d-flex flex-column align-items-start'>
-                <span className='fw-bolder fs-5 mb-0'>Successful Payments</span>
+                <span className='fw-bolder fs-5 mb-0'>
+                  <FormattedMessage
+                    id='account.email.successfulPayments'
+                    defaultMessage='Pagos exitosos'
+                  />
+                </span>
                 <span className='text-muted fs-6'>
-                  Receive a notification for every successful payment.
+                  <FormattedMessage
+                    id='account.email.successfulPaymentsDesc'
+                    defaultMessage='Recibe una notificación por cada pago exitoso.'
+                  />
                 </span>
               </span>
             </label>
@@ -73,9 +84,14 @@ const EmailPreferences: FC = () => {
               />
 
               <span className='form-check-label d-flex flex-column align-items-start'>
-                <span className='fw-bolder fs-5 mb-0'>Payouts</span>
+                <span className='fw-bolder fs-5 mb-0'>
+                  <FormattedMessage id='account.email.payouts' defaultMessage='Pagos enviados' />
+                </span>
                 <span className='text-muted fs-6'>
-                  Receive a notification for every initiated payout.
+                  <FormattedMessage
+                    id='account.email.payoutsDesc'
+                    defaultMessage='Recibe una notificación por cada pago enviado.'
+                  />
                 </span>
               </span>
             </label>
@@ -96,9 +112,17 @@ const EmailPreferences: FC = () => {
               />
 
               <span className='form-check-label d-flex flex-column align-items-start'>
-                <span className='fw-bolder fs-5 mb-0'>Fee Collection</span>
+                <span className='fw-bolder fs-5 mb-0'>
+                  <FormattedMessage
+                    id='account.email.feeCollection'
+                    defaultMessage='Cobro de comisiones'
+                  />
+                </span>
                 <span className='text-muted fs-6'>
-                  Receive a notification each time you collect a fee from sales
+                  <FormattedMessage
+                    id='account.email.feeCollectionDesc'
+                    defaultMessage='Recibe una notificación cada vez que cobres una comisión por ventas.'
+                  />
                 </span>
               </span>
             </label>
@@ -119,10 +143,17 @@ const EmailPreferences: FC = () => {
               />
 
               <span className='form-check-label d-flex flex-column align-items-start'>
-                <span className='fw-bolder fs-5 mb-0'>Customer Payment Dispute</span>
+                <span className='fw-bolder fs-5 mb-0'>
+                  <FormattedMessage
+                    id='account.email.paymentDispute'
+                    defaultMessage='Disputa de pago del cliente'
+                  />
+                </span>
                 <span className='text-muted fs-6'>
-                  Receive a notification if a payment is disputed by a customer and for dispute
-                  purposes.
+                  <FormattedMessage
+                    id='account.email.paymentDisputeDesc'
+                    defaultMessage='Recibe una notificación si un cliente disputa un pago y con fines de disputa.'
+                  />
                 </span>
               </span>
             </label>
@@ -143,9 +174,17 @@ const EmailPreferences: FC = () => {
               />
 
               <span className='form-check-label d-flex flex-column align-items-start'>
-                <span className='fw-bolder fs-5 mb-0'>Refund Alerts</span>
+                <span className='fw-bolder fs-5 mb-0'>
+                  <FormattedMessage
+                    id='account.email.refundAlerts'
+                    defaultMessage='Alertas de reembolso'
+                  />
+                </span>
                 <span className='text-muted fs-6'>
-                  Receive a notification if a payment is stated as risk by the Finance Department.
+                  <FormattedMessage
+                    id='account.email.refundAlertsDesc'
+                    defaultMessage='Recibe una notificación si el departamento de finanzas marca un pago como riesgo.'
+                  />
                 </span>
               </span>
             </label>
@@ -166,10 +205,17 @@ const EmailPreferences: FC = () => {
               />
 
               <span className='form-check-label d-flex flex-column align-items-start'>
-                <span className='fw-bolder fs-5 mb-0'>Invoice Payments</span>
+                <span className='fw-bolder fs-5 mb-0'>
+                  <FormattedMessage
+                    id='account.email.invoicePayments'
+                    defaultMessage='Pagos de facturas'
+                  />
+                </span>
                 <span className='text-muted fs-6'>
-                  Receive a notification if a customer sends an incorrect amount to pay their
-                  invoice.
+                  <FormattedMessage
+                    id='account.email.invoicePaymentsDesc'
+                    defaultMessage='Recibe una notificación si un cliente envía un monto incorrecto para pagar su factura.'
+                  />
                 </span>
               </span>
             </label>
@@ -190,21 +236,31 @@ const EmailPreferences: FC = () => {
               />
 
               <span className='form-check-label d-flex flex-column align-items-start'>
-                <span className='fw-bolder fs-5 mb-0'>Webhook API Endpoints</span>
+                <span className='fw-bolder fs-5 mb-0'>
+                  <FormattedMessage
+                    id='account.email.webhooks'
+                    defaultMessage='Endpoints de la API de webhooks'
+                  />
+                </span>
                 <span className='text-muted fs-6'>
-                  Receive notifications for consistently failing webhook API endpoints.
+                  <FormattedMessage
+                    id='account.email.webhooksDesc'
+                    defaultMessage='Recibe notificaciones por endpoints de la API de webhooks que fallan constantemente.'
+                  />
                 </span>
               </span>
             </label>
           </div>
 
           <div className='card-footer d-flex justify-content-end py-6 px-9'>
-            <button className='btn btn-lightbtn-active-light-primary me-2'>Discard</button>
+            <button className='btn btn-lightbtn-active-light-primary me-2'>
+              <FormattedMessage id='account.discard' defaultMessage='Descartar' />
+            </button>
             <button type='button' onClick={click} className='btn btn-primary'>
-              {!loading && 'Save Changes'}
+              {!loading && <FormattedMessage id='common.save' defaultMessage='Guardar cambios' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
-                  Please wait...{' '}
+                  <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />{' '}
                   <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                 </span>
               )}

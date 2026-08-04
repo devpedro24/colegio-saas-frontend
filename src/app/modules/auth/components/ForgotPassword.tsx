@@ -1,25 +1,29 @@
-import {useState} from 'react'
+import {useMemo, useState} from 'react'
 import * as Yup from 'yup'
 import clsx from 'clsx'
 import {Link} from 'react-router-dom'
 import {useFormik} from 'formik'
+import {FormattedMessage, useIntl, IntlShape} from 'react-intl'
 import {requestPassword} from '../core/_requests'
 
 const initialValues = {
   email: 'admin@demo.com',
 }
 
-const forgotPasswordSchema = Yup.object().shape({
-  email: Yup.string()
-    .email('Wrong email format')
-    .min(3, 'Minimum 3 symbols')
-    .max(50, 'Maximum 50 symbols')
-    .required('Email is required'),
-})
+const makeForgotPasswordSchema = (intl: IntlShape) =>
+  Yup.object().shape({
+    email: Yup.string()
+      .email(intl.formatMessage({id: 'auth.validation.emailInvalid', defaultMessage: 'Formato de correo electrónico inválido'}))
+      .min(3, intl.formatMessage({id: 'auth.validation.min', defaultMessage: 'Mínimo {min} caracteres'}, {min: 3}))
+      .max(50, intl.formatMessage({id: 'auth.validation.max', defaultMessage: 'Máximo {max} caracteres'}, {max: 50}))
+      .required(intl.formatMessage({id: 'auth.validation.emailRequired', defaultMessage: 'El correo electrónico es obligatorio'})),
+  })
 
 export function ForgotPassword() {
+  const intl = useIntl()
   const [loading, setLoading] = useState(false)
   const [hasErrors, setHasErrors] = useState<boolean | undefined>(undefined)
+  const forgotPasswordSchema = useMemo(() => makeForgotPasswordSchema(intl), [intl])
   const formik = useFormik({
     initialValues,
     validationSchema: forgotPasswordSchema,
@@ -36,7 +40,12 @@ export function ForgotPassword() {
             setHasErrors(true)
             setLoading(false)
             setSubmitting(false)
-            setStatus('The login detail is incorrect')
+            setStatus(
+              intl.formatMessage({
+                id: 'auth.login.error',
+                defaultMessage: 'Los datos de acceso son incorrectos',
+              })
+            )
           })
       }, 1000)
     },
@@ -51,12 +60,17 @@ export function ForgotPassword() {
     >
       <div className='text-center mb-10'>
         {/* begin::Title */}
-        <h1 className='text-gray-900 fw-bolder mb-3'>Forgot Password ?</h1>
+        <h1 className='text-gray-900 fw-bolder mb-3'>
+          <FormattedMessage id='auth.forgotPassword.title' defaultMessage='¿Olvidaste tu contraseña?' />
+        </h1>
         {/* end::Title */}
 
         {/* begin::Link */}
         <div className='text-gray-500 fw-semibold fs-6'>
-          Enter your email to reset your password.
+          <FormattedMessage
+            id='auth.forgotPassword.subtitle'
+            defaultMessage='Ingresa tu correo electrónico para restablecer tu contraseña.'
+          />
         </div>
         {/* end::Link */}
       </div>
@@ -65,21 +79,31 @@ export function ForgotPassword() {
       {hasErrors === true && (
         <div className='mb-lg-15 alert alert-danger'>
           <div className='alert-text font-weight-bold'>
-            Sorry, looks like there are some errors detected, please try again.
+            <FormattedMessage
+              id='auth.forgotPassword.error'
+              defaultMessage='Lo sentimos, se detectaron algunos errores. Por favor, inténtalo de nuevo.'
+            />
           </div>
         </div>
       )}
 
       {hasErrors === false && (
         <div className='mb-10 bg-light-info p-8 rounded'>
-          <div className='text-info'>Sent password reset. Please check your email</div>
+          <div className='text-info'>
+            <FormattedMessage
+              id='auth.forgotPassword.success'
+              defaultMessage='Hemos enviado el restablecimiento de contraseña. Por favor, revisa tu correo electrónico.'
+            />
+          </div>
         </div>
       )}
       {/* end::Title */}
 
       {/* begin::Form group */}
       <div className='fv-row mb-8'>
-        <label className='form-label fw-bolder text-gray-900 fs-6'>Email</label>
+        <label className='form-label fw-bolder text-gray-900 fs-6'>
+          <FormattedMessage id='auth.field.email' defaultMessage='Correo electrónico' />
+        </label>
         <input
           type='email'
           placeholder=''
@@ -106,10 +130,12 @@ export function ForgotPassword() {
       {/* begin::Form group */}
       <div className='d-flex flex-wrap justify-content-center pb-lg-0'>
         <button type='submit' id='kt_password_reset_submit' className='btn btn-primary me-4'>
-          <span className='indicator-label'>Submit</span>
+          <span className='indicator-label'>
+            <FormattedMessage id='auth.common.submit' defaultMessage='Enviar' />
+          </span>
           {loading && (
             <span className='indicator-progress'>
-              Please wait...
+              <FormattedMessage id='auth.common.pleaseWait' defaultMessage='Por favor espera...' />
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           )}
@@ -121,7 +147,7 @@ export function ForgotPassword() {
             className='btn btn-light'
             disabled={formik.isSubmitting || !formik.isValid}
           >
-            Cancel
+            <FormattedMessage id='auth.common.cancel' defaultMessage='Cancelar' />
           </button>
         </Link>{' '}
       </div>

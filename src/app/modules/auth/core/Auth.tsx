@@ -3,7 +3,8 @@ import {FC, useState, useEffect, createContext, useContext, Dispatch, SetStateAc
 import {LayoutSplashScreen} from '../../../../_metronic/layout/core'
 import {AuthModel, UserModel} from './_models'
 import * as authHelper from './AuthHelpers'
-import {getUserByToken} from './_requests'
+import {getUserByToken, logout as requestLogout} from './_requests'
+import {clearImpersonation} from '../../impersonation/impersonation.store'
 import {WithChildren} from '../../../../_metronic/helpers'
 
 type AuthContextProps = {
@@ -41,8 +42,12 @@ const AuthProvider: FC<WithChildren> = ({children}) => {
   }
 
   const logout = () => {
+    // Invalida el token en el backend (best-effort) y luego limpia el estado local,
+    // incluyendo la suplantación de colegio (colegio activo + token de impersonación).
+    requestLogout().catch(() => {})
     saveAuth(undefined)
     setCurrentUser(undefined)
+    clearImpersonation()
   }
 
   return (

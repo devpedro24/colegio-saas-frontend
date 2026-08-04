@@ -1,64 +1,117 @@
-import axios from "axios";
-import { AuthModel, UserModel } from "./_models";
+import { api, ApiError, setToken } from '@/lib/api/client'
+import { AuthModel, UserModel } from './_models'
 
-const API_URL = import.meta.env.VITE_APP_API_URL;
+/**
+ * Autenticacion REAL contra el backend Laravel (Sanctum).
+ *
+ * Contrato (dominio central, middleware auth:sanctum):
+ *   POST /login   { email, password, code? } -> { token, user }
+ *   GET  /me                                 -> { user }
+ *   POST /logout                             -> invalida el token del usuario
+ *
+ * Si el usuario tiene MFA activo, POST /login sin `code` responde 422 con
+ * { mfa_required: true }; el frontend entonces pide el codigo y reintenta con `code`.
+ *
+ * El token se guarda con el api client (localStorage key 'colegio-saas.auth-token')
+ * y se inyecta como `Authorization: Bearer <token>` en cada peticion.
+ */
 
-export const GET_USER_BY_ACCESSTOKEN_URL = `${API_URL}/verify_token`;
-export const LOGIN_URL = `${API_URL}/login`;
-export const REGISTER_URL = `${API_URL}/register`;
-export const REQUEST_PASSWORD_URL = `${API_URL}/forgot_password`;
-
-// ---- Mock local (sin backend): entrar con admin@demo.com / demo ----
-const DEMO_EMAIL = "admin@demo.com";
-const DEMO_PASSWORD = "demo";
-const DEMO_TOKEN = "demo-mock-token";
-
-const DEMO_USER: UserModel = {
-  id: 1,
-  username: "admin",
-  password: undefined,
-  email: DEMO_EMAIL,
-  first_name: "Admin",
-  last_name: "Demo",
-  fullname: "Admin Demo",
-  roles: [1],
-  language: "es",
-  auth: { api_token: DEMO_TOKEN },
-};
-
-// Server should return AuthModel
-export function login(email: string, password: string) {
-  if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-    return Promise.resolve({ data: { api_token: DEMO_TOKEN } as AuthModel });
-  }
-  return Promise.reject(new Error("Credenciales invalidas"));
+interface LoginResponse {
+  token: string
+  user: UserModel
 }
 
-// Server should return AuthModel
-export function register(
+/**
+ * Inicia sesion: POST /login, guarda el token y devuelve el AuthModel de Metronic.
+ * `code` es el codigo TOTP de 6 digitos; se envia solo cuando el backend lo exige (MFA).
+ */
+export async function login(
   email: string,
-  firstname: string,
-  lastname: string,
   password: string,
-  password_confirmation: string
-) {
-  return axios.post(REGISTER_URL, {
+  code?: string,
+): Promise<{ data: AuthModel }> {
+  const { token } = await api.post<LoginResponse>('/login', {
     email,
-    first_name: firstname,
-    last_name: lastname,
+    password,
+    ...(code ? { code } : {}),
+  })
+  setToken(token)
+  return { data: { api_token: token } }
+}
+
+/**
+ * ¿El error de login indica que se requiere MFA? El backend responde 422 con
+ * `{ mfa_required: true }` (o, alternativamente, con message/errors 'mfa_required').
+ */
+export function isMfaRequiredError(error: unknown): boolean {
+  if (!(error instanceof ApiError) || error.status !== 422) {
+    return false
+  }
+  const data = error.data as { mfa_required?: boolean } | undefined
+  return (
+    data?.mfa_required === true ||
+    error.message === 'mfa_required' ||
+    Boolean(error.fieldError('mfa_required'))
+  )
+}
+
+/**
+ * Recupera el usuario autenticado: GET /me.
+ * El token se toma del almacenamiento local (via el api client), por eso el
+ * parametro `_token` se ignora; se mantiene para no cambiar la firma que espera
+ * la plantilla (AuthInit / Login).
+ */
+export async function getUserByToken(_token: string): Promise<{ data: UserModel }> {
+  const { user } = await api.get<{ user: UserModel }>('/me')
+  return { data: normalizeUser(user) }
+}
+
+/** Cierra sesion en el backend (invalida el token) y limpia el token local. */
+export async function logout(): Promise<void> {
+  try {
+    await api.post('/logout')
+  } finally {
+    setToken(null)
+  }
+}
+
+/**
+ * Registro. El backend aun no expone este endpoint (fases siguientes); se deja
+ * cableado contra el api client para que compile y quede listo.
+ */
+export async function register(
+  email: string,
+  first_name: string,
+  last_name: string,
+  password: string,
+  password_confirmation: string,
+): Promise<{ data: AuthModel }> {
+  const { token } = await api.post<LoginResponse>('/register', {
+    email,
+    first_name,
+    last_name,
     password,
     password_confirmation,
-  });
+  })
+  setToken(token)
+  return { data: { api_token: token } }
 }
 
-// Server should return object => { result: boolean } (Is Email in DB)
-export function requestPassword(email: string) {
-  return axios.post<{ result: boolean }>(REQUEST_PASSWORD_URL, {
-    email,
-  });
+/** Solicitud de restablecimiento de contrasena (endpoint pendiente en backend). */
+export async function requestPassword(email: string): Promise<{ result: boolean }> {
+  await api.post('/forgot-password', { email })
+  return { result: true }
 }
 
-export function getUserByToken(_token: string) {
-  // Mock local: cualquier token valido devuelve el usuario demo.
-  return Promise.resolve({ data: DEMO_USER });
+/** Mapea el usuario del backend a los campos de presentacion de la plantilla. */
+function normalizeUser(user: UserModel): UserModel {
+  const parts = (user.name ?? '').trim().split(/\s+/)
+  const first = parts.shift() ?? ''
+  const last = parts.join(' ')
+  return {
+    ...user,
+    first_name: user.first_name ?? first,
+    last_name: user.last_name ?? last,
+    fullname: user.fullname ?? user.name,
+  }
 }

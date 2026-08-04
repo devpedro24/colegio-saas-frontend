@@ -1,6 +1,7 @@
 
 import {useEffect} from 'react'
 import {Outlet, Link} from 'react-router-dom'
+import {FormattedMessage} from 'react-intl'
 import {toAbsoluteUrl} from '../../../_metronic/helpers'
 
 const AuthLayout = () => {
@@ -35,15 +36,15 @@ const AuthLayout = () => {
           {/* begin::Links */}
           <div className='d-flex fw-semibold text-primary fs-base'>
             <a href='#' className='px-5' target='_blank'>
-              Terms
+              <FormattedMessage id='auth.layout.terms' defaultMessage='Términos' />
             </a>
 
             <a href='#' className='px-5' target='_blank'>
-              Plans
+              <FormattedMessage id='auth.layout.plans' defaultMessage='Planes' />
             </a>
 
             <a href='#' className='px-5' target='_blank'>
-              Contact Us
+              <FormattedMessage id='auth.layout.contact' defaultMessage='Contáctanos' />
             </a>
           </div>
           {/* end::Links */}
@@ -75,22 +76,16 @@ const AuthLayout = () => {
 
           {/* begin::Title */}
           <h1 className='text-white fs-2qx fw-bolder text-center mb-7'>
-            Fast, Efficient and Productive
+            <FormattedMessage id='auth.layout.heroTitle' defaultMessage='Rápido, eficiente y productivo' />
           </h1>
           {/* end::Title */}
 
           {/* begin::Text */}
           <div className='text-white fs-base text-center'>
-            In this kind of post,{' '}
-            <a href='#' className='opacity-75-hover text-warning fw-bold me-1'>
-              the blogger
-            </a>
-            introduces a person they’ve interviewed <br /> and provides some background information
-            about
-            <a href='#' className='opacity-75-hover text-warning fw-bold me-1'>
-              the interviewee
-            </a>
-            and their <br /> work following this is a transcript of the interview.
+            <FormattedMessage
+              id='auth.layout.heroText'
+              defaultMessage='Gestiona la vida académica y la convivencia escolar de tu colegio en una sola plataforma, simple y segura.'
+            />
           </div>
           {/* end::Text */}
         </div>

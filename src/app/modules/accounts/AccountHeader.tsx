@@ -1,5 +1,6 @@
 import {FC, useEffect} from 'react'
 import {Link, useLocation} from 'react-router-dom'
+import {FormattedMessage, useIntl} from 'react-intl'
 import {KTIcon, reInitMenu, toAbsoluteUrl} from '../../../_metronic/helpers'
 
 // Header de cuenta con el diseno de demo46 (account/overview.html). Se quitaron a peticion:
@@ -8,6 +9,7 @@ import {KTIcon, reInitMenu, toAbsoluteUrl} from '../../../_metronic/helpers'
 // menu de 3 puntos, barra de Profile Completion y tabs Overview/Settings.
 const AccountHeader: FC = () => {
   const location = useLocation()
+  const intl = useIntl()
 
   useEffect(() => {
     reInitMenu()
@@ -90,21 +92,31 @@ const AccountHeader: FC = () => {
                       >
                         <div className='menu-item px-3'>
                           <div className='menu-content text-muted pb-2 px-3 fs-7 text-uppercase'>
-                            Payments
+                            <FormattedMessage id='account.menu.payments' defaultMessage='Pagos' />
                           </div>
                         </div>
                         <div className='menu-item px-3'>
                           <a href='#' className='menu-link px-3'>
-                            Create Invoice
+                            <FormattedMessage
+                              id='account.menu.createInvoice'
+                              defaultMessage='Crear factura'
+                            />
                           </a>
                         </div>
                         <div className='menu-item px-3'>
                           <a href='#' className='menu-link flex-stack px-3'>
-                            Create Payment
+                            <FormattedMessage
+                              id='account.menu.createPayment'
+                              defaultMessage='Crear pago'
+                            />
                             <span
                               className='ms-2'
                               data-bs-toggle='tooltip'
-                              title='Specify a target name for future usage and reference'
+                              title={intl.formatMessage({
+                                id: 'account.menu.createPaymentTooltip',
+                                defaultMessage:
+                                  'Especifica un nombre de destino para uso y referencia futuros',
+                              })}
                             >
                               <KTIcon iconName='information' className='fs-6' />
                             </span>
@@ -112,7 +124,10 @@ const AccountHeader: FC = () => {
                         </div>
                         <div className='menu-item px-3'>
                           <a href='#' className='menu-link px-3'>
-                            Generate Bill
+                            <FormattedMessage
+                              id='account.menu.generateBill'
+                              defaultMessage='Generar recibo'
+                            />
                           </a>
                         </div>
                         <div
@@ -121,23 +136,34 @@ const AccountHeader: FC = () => {
                           data-kt-menu-placement='right-end'
                         >
                           <a href='#' className='menu-link px-3'>
-                            <span className='menu-title'>Subscription</span>
+                            <span className='menu-title'>
+                              <FormattedMessage
+                                id='account.menu.subscription'
+                                defaultMessage='Suscripción'
+                              />
+                            </span>
                             <span className='menu-arrow'></span>
                           </a>
                           <div className='menu-sub menu-sub-dropdown w-175px py-4'>
                             <div className='menu-item px-3'>
                               <a href='#' className='menu-link px-3'>
-                                Plans
+                                <FormattedMessage id='account.menu.plans' defaultMessage='Planes' />
                               </a>
                             </div>
                             <div className='menu-item px-3'>
                               <a href='#' className='menu-link px-3'>
-                                Billing
+                                <FormattedMessage
+                                  id='account.menu.billing'
+                                  defaultMessage='Facturación'
+                                />
                               </a>
                             </div>
                             <div className='menu-item px-3'>
                               <a href='#' className='menu-link px-3'>
-                                Statements
+                                <FormattedMessage
+                                  id='account.menu.statements'
+                                  defaultMessage='Estados de cuenta'
+                                />
                               </a>
                             </div>
                             <div className='separator my-2'></div>
@@ -150,7 +176,12 @@ const AccountHeader: FC = () => {
                                     defaultChecked
                                     name='notifications'
                                   />
-                                  <span className='form-check-label text-muted fs-6'>Recuring</span>
+                                  <span className='form-check-label text-muted fs-6'>
+                                    <FormattedMessage
+                                      id='account.menu.recurring'
+                                      defaultMessage='Recurrente'
+                                    />
+                                  </span>
                                 </label>
                               </div>
                             </div>
@@ -158,7 +189,7 @@ const AccountHeader: FC = () => {
                         </div>
                         <div className='menu-item px-3 my-1'>
                           <a href='#' className='menu-link px-3'>
-                            Settings
+                            <FormattedMessage id='account.tab.settings' defaultMessage='Configuración' />
                           </a>
                         </div>
                       </div>
@@ -177,7 +208,12 @@ const AccountHeader: FC = () => {
                   {/* begin::Progress */}
                   <div className='d-flex align-items-center w-200px w-sm-300px flex-column mt-3'>
                     <div className='d-flex justify-content-between w-100 mt-auto mb-2'>
-                      <span className='fw-semibold fs-6 text-gray-500'>Profile Compleation</span>
+                      <span className='fw-semibold fs-6 text-gray-500'>
+                        <FormattedMessage
+                          id='account.profileCompletion'
+                          defaultMessage='Perfil completado'
+                        />
+                      </span>
                       <span className='fw-bold fs-6'>50%</span>
                     </div>
                     <div className='h-5px mx-3 w-100 bg-light mb-3'>
@@ -209,7 +245,7 @@ const AccountHeader: FC = () => {
                   }
                   to='/account/overview'
                 >
-                  Overview
+                  <FormattedMessage id='account.tab.overview' defaultMessage='Resumen' />
                 </Link>
               </li>
               <li className='nav-item mt-2'>
@@ -220,7 +256,7 @@ const AccountHeader: FC = () => {
                   }
                   to='/account/settings'
                 >
-                  Settings
+                  <FormattedMessage id='account.tab.settings' defaultMessage='Configuración' />
                 </Link>
               </li>
             </ul>

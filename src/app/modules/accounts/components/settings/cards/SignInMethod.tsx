@@ -1,75 +1,125 @@
 import {useState, FC} from 'react'
+import {FormattedMessage, useIntl} from 'react-intl'
 import {KTIcon} from '../../../../../../_metronic/helpers'
 import * as Yup from 'yup'
 import {useFormik} from 'formik'
-import {IUpdateEmail, IUpdatePassword, updateEmail, updatePassword} from '../SettingsModel'
+import {useAuth} from '../../../../auth'
+import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
+import {useChangeEmail, useChangePassword} from '@/app/pages/account/account.api'
 
-const emailFormValidationSchema = Yup.object().shape({
-  newEmail: Yup.string()
-    .email('Wrong email format')
-    .min(3, 'Minimum 3 symbols')
-    .max(50, 'Maximum 50 symbols')
-    .required('Email is required'),
-  confirmPassword: Yup.string()
-    .min(3, 'Minimum 3 symbols')
-    .max(50, 'Maximum 50 symbols')
-    .required('Password is required'),
-})
+interface EmailForm {
+  newEmail: string
+  confirmPassword: string
+}
 
-const passwordFormValidationSchema = Yup.object().shape({
-  currentPassword: Yup.string()
-    .min(3, 'Minimum 3 symbols')
-    .max(50, 'Maximum 50 symbols')
-    .required('Password is required'),
-  newPassword: Yup.string()
-    .min(3, 'Minimum 3 symbols')
-    .max(50, 'Maximum 50 symbols')
-    .required('Password is required'),
-  passwordConfirmation: Yup.string()
-    .min(3, 'Minimum 3 symbols')
-    .max(50, 'Maximum 50 symbols')
-    .required('Password is required')
-    .oneOf([Yup.ref('newPassword')], 'Passwords must match'),
-})
+interface PasswordForm {
+  currentPassword: string
+  newPassword: string
+  passwordConfirmation: string
+}
 
+// Card de "Método de inicio de sesión": cambiar CORREO y CONTRASEÑA reales
+// (POST /account/email y /account/password). La promoción de verificación en
+// dos pasos solo se muestra a usuarios de PLATAFORMA (superadmin): los usuarios
+// de colegio la ven resuelta en la card propia de MFA.
 const SignInMethod: FC = () => {
-  const [emailUpdateData, setEmailUpdateData] = useState<IUpdateEmail>(updateEmail)
-  const [passwordUpdateData, setPasswordUpdateData] = useState<IUpdatePassword>(updatePassword)
+  const intl = useIntl()
+  const toast = useToast()
+  const {currentUser, setCurrentUser} = useAuth()
+
+  const isPlatform = currentUser?.is_platform === true
 
   const [showEmailForm, setShowEmailForm] = useState<boolean>(false)
   const [showPasswordForm, setPasswordForm] = useState<boolean>(false)
 
   const [loading1, setLoading1] = useState(false)
+  const [loading2, setLoading2] = useState(false)
 
-  const formik1 = useFormik<IUpdateEmail>({
-    initialValues: {
-      ...emailUpdateData,
-    },
-    validationSchema: emailFormValidationSchema,
+  const emailMutation = useChangeEmail()
+  const passwordMutation = useChangePassword()
+
+  const emailSchema = Yup.object().shape({
+    newEmail: Yup.string().email('Formato de correo inválido').max(190, 'Máximo 190 caracteres').required('El correo es obligatorio'),
+    confirmPassword: Yup.string().required('La contraseña es obligatoria'),
+  })
+
+  const passwordSchema = Yup.object().shape({
+    currentPassword: Yup.string().required('La contraseña actual es obligatoria'),
+    newPassword: Yup.string()
+      .min(8, 'Mínimo 8 caracteres')
+      .required('La nueva contraseña es obligatoria'),
+    passwordConfirmation: Yup.string()
+      .required('Confirma la nueva contraseña')
+      .oneOf([Yup.ref('newPassword')], 'Las contraseñas no coinciden'),
+  })
+
+  const formik1 = useFormik<EmailForm>({
+    initialValues: {newEmail: currentUser?.email ?? '', confirmPassword: ''},
+    validationSchema: emailSchema,
     onSubmit: (values) => {
       setLoading1(true)
-      setTimeout(() => {
-        setEmailUpdateData(values)
-        setLoading1(false)
-        setShowEmailForm(false)
-      }, 1000)
+      emailMutation.mutate(
+        {email: values.newEmail.trim(), password: values.confirmPassword},
+        {
+          onSuccess: (data) => {
+            const user = data.user
+            if (user) {
+              setCurrentUser((prev) => (prev ? {...prev, email: user.email} : prev))
+            }
+            toast.success(data.message ?? 'Correo actualizado.')
+            setLoading1(false)
+            setShowEmailForm(false)
+          },
+          onError: (err) => {
+            if (err instanceof ApiError) {
+              const emailErr = err.fieldError('email')
+              const passErr = err.fieldError('password')
+              if (emailErr) formik1.setFieldError('newEmail', emailErr)
+              if (passErr) formik1.setFieldError('confirmPassword', passErr)
+              if (!emailErr && !passErr) toast.error(err.message)
+            } else {
+              toast.error('No se pudo actualizar el correo.')
+            }
+            setLoading1(false)
+          },
+        },
+      )
     },
   })
 
-  const [loading2, setLoading2] = useState(false)
-
-  const formik2 = useFormik<IUpdatePassword>({
-    initialValues: {
-      ...passwordUpdateData,
-    },
-    validationSchema: passwordFormValidationSchema,
+  const formik2 = useFormik<PasswordForm>({
+    initialValues: {currentPassword: '', newPassword: '', passwordConfirmation: ''},
+    validationSchema: passwordSchema,
     onSubmit: (values) => {
       setLoading2(true)
-      setTimeout(() => {
-        setPasswordUpdateData(values)
-        setLoading2(false)
-        setPasswordForm(false)
-      }, 1000)
+      passwordMutation.mutate(
+        {
+          current_password: values.currentPassword,
+          new_password: values.newPassword,
+          new_password_confirmation: values.passwordConfirmation,
+        },
+        {
+          onSuccess: (data) => {
+            toast.success(data.message ?? 'Contraseña actualizada.')
+            setLoading2(false)
+            setPasswordForm(false)
+            formik2.resetForm()
+          },
+          onError: (err) => {
+            if (err instanceof ApiError) {
+              const currentErr = err.fieldError('current_password')
+              if (currentErr) formik2.setFieldError('currentPassword', currentErr)
+              const newErr = err.fieldError('new_password')
+              if (newErr) formik2.setFieldError('newPassword', newErr)
+              if (!currentErr && !newErr) toast.error(err.message)
+            } else {
+              toast.error('No se pudo actualizar la contraseña.')
+            }
+            setLoading2(false)
+          },
+        },
+      )
     },
   })
 
@@ -82,7 +132,9 @@ const SignInMethod: FC = () => {
         data-bs-target='#kt_account_signin_method'
       >
         <div className='card-title m-0'>
-          <h3 className='fw-bold m-0'>Sign-in Method</h3>
+          <h3 className='fw-bold m-0'>
+            <FormattedMessage id='account.signin.title' defaultMessage='Método de inicio de sesión' />
+          </h3>
         </div>
       </div>
 
@@ -90,8 +142,10 @@ const SignInMethod: FC = () => {
         <div className='card-body border-top p-9'>
           <div className='d-flex flex-wrap align-items-center'>
             <div id='kt_signin_email' className={' ' + (showEmailForm && 'd-none')}>
-              <div className='fs-6 fw-bolder mb-1'>Email Address</div>
-              <div className='fw-bold text-gray-600'>admin@colegiosaas.com</div>
+              <div className='fs-6 fw-bolder mb-1'>
+                <FormattedMessage id='account.signin.emailAddress' defaultMessage='Correo electrónico' />
+              </div>
+              <div className='fw-bold text-gray-600'>{currentUser?.email ?? '—'}</div>
             </div>
 
             <div
@@ -108,13 +162,19 @@ const SignInMethod: FC = () => {
                   <div className='col-lg-6 mb-4 mb-lg-0'>
                     <div className='fv-row mb-0'>
                       <label htmlFor='emailaddress' className='form-label fs-6 fw-bolder mb-3'>
-                        Enter New Email Address
+                        <FormattedMessage
+                          id='account.signin.enterNewEmail'
+                          defaultMessage='Ingresa el nuevo correo electrónico'
+                        />
                       </label>
                       <input
                         type='email'
                         className='form-control form-control-lg form-control-solid'
                         id='emailaddress'
-                        placeholder='Email Address'
+                        placeholder={intl.formatMessage({
+                          id: 'account.signin.emailAddress',
+                          defaultMessage: 'Correo electrónico',
+                        })}
                         {...formik1.getFieldProps('newEmail')}
                       />
                       {formik1.touched.newEmail && formik1.errors.newEmail && (
@@ -130,7 +190,10 @@ const SignInMethod: FC = () => {
                         htmlFor='confirmemailpassword'
                         className='form-label fs-6 fw-bolder mb-3'
                       >
-                        Confirm Password
+                        <FormattedMessage
+                          id='account.signin.confirmPassword'
+                          defaultMessage='Confirma la contraseña'
+                        />
                       </label>
                       <input
                         type='password'
@@ -150,12 +213,15 @@ const SignInMethod: FC = () => {
                   <button
                     id='kt_signin_submit'
                     type='submit'
-                    className='btn btn-primary  me-2 px-6'
+                    className='btn btn-primary me-2 px-6'
+                    disabled={loading1}
                   >
-                    {!loading1 && 'Update Email'}
+                    {!loading1 && (
+                      <FormattedMessage id='account.signin.updateEmail' defaultMessage='Actualizar correo' />
+                    )}
                     {loading1 && (
                       <span className='indicator-progress' style={{display: 'block'}}>
-                        Please wait...{' '}
+                        <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />{' '}
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     )}
@@ -168,7 +234,7 @@ const SignInMethod: FC = () => {
                     }}
                     className='btn btn-color-gray-500 btn-active-light-primary px-6'
                   >
-                    Cancel
+                    <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
                   </button>
                 </div>
               </form>
@@ -181,7 +247,7 @@ const SignInMethod: FC = () => {
                 }}
                 className='btn btn-light btn-active-light-primary'
               >
-                Change Email
+                <FormattedMessage id='account.signin.changeEmail' defaultMessage='Cambiar correo' />
               </button>
             </div>
           </div>
@@ -190,7 +256,9 @@ const SignInMethod: FC = () => {
 
           <div className='d-flex flex-wrap align-items-center mb-10'>
             <div id='kt_signin_password' className={' ' + (showPasswordForm && 'd-none')}>
-              <div className='fs-6 fw-bolder mb-1'>Password</div>
+              <div className='fs-6 fw-bolder mb-1'>
+                <FormattedMessage id='account.signin.password' defaultMessage='Contraseña' />
+              </div>
               <div className='fw-bold text-gray-600'>************</div>
             </div>
 
@@ -208,7 +276,10 @@ const SignInMethod: FC = () => {
                   <div className='col-lg-4'>
                     <div className='fv-row mb-0'>
                       <label htmlFor='currentpassword' className='form-label fs-6 fw-bolder mb-3'>
-                        Current Password
+                        <FormattedMessage
+                          id='account.signin.currentPassword'
+                          defaultMessage='Contraseña actual'
+                        />
                       </label>
                       <input
                         type='password'
@@ -227,7 +298,10 @@ const SignInMethod: FC = () => {
                   <div className='col-lg-4'>
                     <div className='fv-row mb-0'>
                       <label htmlFor='newpassword' className='form-label fs-6 fw-bolder mb-3'>
-                        New Password
+                        <FormattedMessage
+                          id='account.signin.newPassword'
+                          defaultMessage='Nueva contraseña'
+                        />
                       </label>
                       <input
                         type='password'
@@ -246,7 +320,10 @@ const SignInMethod: FC = () => {
                   <div className='col-lg-4'>
                     <div className='fv-row mb-0'>
                       <label htmlFor='confirmpassword' className='form-label fs-6 fw-bolder mb-3'>
-                        Confirm New Password
+                        <FormattedMessage
+                          id='account.signin.confirmNewPassword'
+                          defaultMessage='Confirma la nueva contraseña'
+                        />
                       </label>
                       <input
                         type='password'
@@ -264,7 +341,10 @@ const SignInMethod: FC = () => {
                 </div>
 
                 <div className='form-text mb-5'>
-                  Password must be at least 8 character and contain symbols
+                  <FormattedMessage
+                    id='account.signin.passwordHint'
+                    defaultMessage='La contraseña debe tener al menos 8 caracteres y contener letras, números y símbolos'
+                  />
                 </div>
 
                 <div className='d-flex'>
@@ -272,11 +352,17 @@ const SignInMethod: FC = () => {
                     id='kt_password_submit'
                     type='submit'
                     className='btn btn-primary me-2 px-6'
+                    disabled={loading2}
                   >
-                    {!loading2 && 'Update Password'}
+                    {!loading2 && (
+                      <FormattedMessage
+                        id='account.signin.updatePassword'
+                        defaultMessage='Actualizar contraseña'
+                      />
+                    )}
                     {loading2 && (
                       <span className='indicator-progress' style={{display: 'block'}}>
-                        Please wait...{' '}
+                        <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />{' '}
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     )}
@@ -289,7 +375,7 @@ const SignInMethod: FC = () => {
                     type='button'
                     className='btn btn-color-gray-500 btn-active-light-primary px-6'
                   >
-                    Cancel
+                    <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
                   </button>
                 </div>
               </form>
@@ -305,31 +391,38 @@ const SignInMethod: FC = () => {
                 }}
                 className='btn btn-light btn-active-light-primary'
               >
-                Reset Password
+                <FormattedMessage id='account.signin.resetPassword' defaultMessage='Restablecer contraseña' />
               </button>
             </div>
           </div>
 
-          <div className='notice d-flex bg-light-primary rounded border-primary border border-dashed p-6'>
-            <KTIcon iconName='shield-tick' className='fs-2tx text-primary me-4' />
-            <div className='d-flex flex-stack flex-grow-1 flex-wrap flex-md-nowrap'>
-              <div className='mb-3 mb-md-0 fw-bold'>
-                <h4 className='text-gray-800 fw-bolder'>Secure Your Account</h4>
-                <div className='fs-6 text-gray-600 pe-7'>
-                  Two-factor authentication adds an extra layer of security to your account. To log
-                  in, in addition you'll need to provide a 6 digit code
+          {isPlatform && (
+            <div className='notice d-flex bg-light-primary rounded border-primary border border-dashed p-6'>
+              <KTIcon iconName='shield-tick' className='fs-2tx text-primary me-4' />
+              <div className='d-flex flex-stack flex-grow-1 flex-wrap flex-md-nowrap'>
+                <div className='mb-3 mb-md-0 fw-bold'>
+                  <h4 className='text-gray-800 fw-bolder'>
+                    <FormattedMessage
+                      id='account.signin.secureTitle'
+                      defaultMessage='Protege tu cuenta'
+                    />
+                  </h4>
+                  <div className='fs-6 text-gray-600 pe-7'>
+                    <FormattedMessage
+                      id='account.signin.secureBody'
+                      defaultMessage='La autenticación en dos pasos añade una capa extra de seguridad a tu cuenta. Para iniciar sesión, además deberás proporcionar un código de 6 dígitos.'
+                    />
+                  </div>
                 </div>
+                <a
+                  href='#kt_account_two_factor'
+                  className='btn btn-primary px-6 align-self-center text-nowrap'
+                >
+                  <FormattedMessage id='account.signin.enable' defaultMessage='Configurar' />
+                </a>
               </div>
-              <a
-                href='#'
-                className='btn btn-primary px-6 align-self-center text-nowrap'
-                data-bs-toggle='modal'
-                data-bs-target='#kt_modal_two_factor_authentication'
-              >
-                Enable
-              </a>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

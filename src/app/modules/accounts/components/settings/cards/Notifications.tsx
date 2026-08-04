@@ -1,4 +1,5 @@
 import React, {useState} from 'react'
+import {FormattedMessage} from 'react-intl'
 import {INotifications, notifications} from '../SettingsModel'
 
 const Notifications: React.FC = () => {
@@ -29,7 +30,9 @@ const Notifications: React.FC = () => {
         aria-controls='kt_account_notifications'
       >
         <div className='card-title m-0'>
-          <h3 className='fw-bold m-0'>Notifications</h3>
+          <h3 className='fw-bold m-0'>
+            <FormattedMessage id='account.notifications.title' defaultMessage='Notificaciones' />
+          </h3>
         </div>
       </div>
 
@@ -40,7 +43,12 @@ const Notifications: React.FC = () => {
               <table className='table table-row-dashed border-gray-300 align-middle gy-6'>
                 <tbody className='fs-6 fw-bold'>
                   <tr>
-                    <td className='min-w-250px fs-4 fw-bolder'>Notifications</td>
+                    <td className='min-w-250px fs-4 fw-bolder'>
+                      <FormattedMessage
+                        id='account.notifications.title'
+                        defaultMessage='Notificaciones'
+                      />
+                    </td>
                     <td className='w-125px'>
                       <div className='form-check form-check-solid'>
                         <input
@@ -62,7 +70,7 @@ const Notifications: React.FC = () => {
                           className='form-check-label ps-2'
                           htmlFor='kt_settings_notification_email'
                         >
-                          Email
+                          <FormattedMessage id='account.field.email' defaultMessage='Correo electrónico' />
                         </label>
                       </div>
                     </td>
@@ -87,14 +95,19 @@ const Notifications: React.FC = () => {
                           className='form-check-label ps-2'
                           htmlFor='kt_settings_notification_phone'
                         >
-                          Phone
+                          <FormattedMessage id='account.field.phone' defaultMessage='Teléfono' />
                         </label>
                       </div>
                     </td>
                   </tr>
 
                   <tr>
-                    <td>Billing Updates</td>
+                    <td>
+                      <FormattedMessage
+                        id='account.notifications.billingUpdates'
+                        defaultMessage='Actualizaciones de facturación'
+                      />
+                    </td>
                     <td>
                       <div className='form-check form-check-solid'>
                         <input
@@ -138,7 +151,12 @@ const Notifications: React.FC = () => {
                   </tr>
 
                   <tr>
-                    <td>New Team Members</td>
+                    <td>
+                      <FormattedMessage
+                        id='account.notifications.newTeamMembers'
+                        defaultMessage='Nuevos miembros del equipo'
+                      />
+                    </td>
                     <td>
                       <div className='form-check form-check-solid'>
                         <input
@@ -182,7 +200,12 @@ const Notifications: React.FC = () => {
                   </tr>
 
                   <tr>
-                    <td>Completed Projects</td>
+                    <td>
+                      <FormattedMessage
+                        id='account.notifications.completedProjects'
+                        defaultMessage='Proyectos completados'
+                      />
+                    </td>
                     <td>
                       <div className='form-check form-check-solid'>
                         <input
@@ -226,7 +249,12 @@ const Notifications: React.FC = () => {
                   </tr>
 
                   <tr>
-                    <td className='border-bottom-0'>Newsletters</td>
+                    <td className='border-bottom-0'>
+                      <FormattedMessage
+                        id='account.notifications.newsletters'
+                        defaultMessage='Boletines'
+                      />
+                    </td>
                     <td className='border-bottom-0'>
                       <div className='form-check form-check-solid'>
                         <input
@@ -274,12 +302,14 @@ const Notifications: React.FC = () => {
           </div>
 
           <div className='card-footer d-flex justify-content-end py-6 px-9'>
-            <button className='btn btn-light btn-active-light-primary me-2'>Discard</button>
+            <button className='btn btn-light btn-active-light-primary me-2'>
+              <FormattedMessage id='account.discard' defaultMessage='Descartar' />
+            </button>
             <button type='button' onClick={click} className='btn btn-primary'>
-              {!loading && 'Save Changes'}
+              {!loading && <FormattedMessage id='common.save' defaultMessage='Guardar cambios' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
-                  Please wait...{' '}
+                  <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />{' '}
                   <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                 </span>
               )}
