@@ -1,7 +1,8 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {
@@ -47,6 +48,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
   onClose,
 }) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data: sedes} = useSedes()
@@ -78,7 +80,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.estructura.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -87,7 +89,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
         {id: espacio.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.estructura.toast.updated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -96,7 +98,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.estructura.toast.created'))
+          toast.success(t('common.toast.created'))
           onClose()
         },
         onError,
@@ -176,14 +178,14 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
 
           <div className='row'>
             <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.espacio.sede')}</label>
+              <label className='fs-6 fw-semibold mb-2'>{t('common.field.sede')}</label>
               <select
                 className={`form-select form-select-solid ${fe('sede_id') ? 'is-invalid' : ''}`}
                 value={form.sede_id ?? ''}
                 onChange={(e) => set({sede_id: e.target.value || null})}
               >
                 <option value=''>{t('common.select')}</option>
-                {(sedes ?? []).map((s) => (
+                {(sedes?.data ?? []).map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nombre}
                   </option>
@@ -213,7 +215,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
             {pending ? (
               <span className='spinner-border spinner-border-sm align-middle'></span>
             ) : (
-              t('academico.estructura.save')
+              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})
             )}
           </button>
         </div>
@@ -225,6 +227,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
 
 const EspaciosTab: FC = () => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useEspaciosFisicos()
@@ -234,7 +237,7 @@ const EspaciosTab: FC = () => {
   const [edit, setEdit] = useState<EspacioFisico | null>(null)
   const [deleteId, setDeleteId] = useState<EspacioFisico | null>(null)
 
-  const list = data ?? []
+  const list = data?.data ?? []
 
   const estadoBadge = (estado: string) => {
     switch (estado) {
@@ -281,7 +284,7 @@ const EspaciosTab: FC = () => {
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
           <span className='spinner-border text-primary me-3' role='status'></span>
-          <span className='text-muted fs-6'>{t('academico.estructura.loading')}</span>
+          <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})}</span>
         </div>
       )}
 
@@ -292,7 +295,7 @@ const EspaciosTab: FC = () => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{t('academico.estructura.loadError')}</span>
+          <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})}</span>
         </div>
       )}
 
@@ -305,9 +308,9 @@ const EspaciosTab: FC = () => {
                 <th className='min-w-120px'>{t('academico.estructura.espacio.tipo')}</th>
                 <th className='min-w-100px'>{t('academico.estructura.espacio.capacidad')}</th>
                 <th className='min-w-140px'>{t('academico.estructura.espacio.ubicacion')}</th>
-                <th className='min-w-140px'>{t('academico.estructura.espacio.sede')}</th>
-                <th className='min-w-120px'>{t('academico.estructura.col.estado')}</th>
-                <th className='min-w-150px text-end'>{t('academico.estructura.col.actions')}</th>
+                <th className='min-w-140px'>{t('common.field.sede')}</th>
+                <th className='min-w-120px'>{t('common.status')}</th>
+                <th className='min-w-150px text-end'>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className='text-gray-600 fw-semibold'>
@@ -336,7 +339,7 @@ const EspaciosTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-primary btn-sm'
-                        title={t('academico.estructura.edit')}
+                        title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})}
                         onClick={() => {
                           setEdit(e)
                           setFormOpen(true)
@@ -350,7 +353,7 @@ const EspaciosTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-danger btn-sm'
-                        title={t('academico.estructura.delete')}
+                        title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})}
                         onClick={() => setDeleteId(e)}
                       >
                         <i className='ki-duotone ki-trash fs-5'>
@@ -368,7 +371,7 @@ const EspaciosTab: FC = () => {
               {list.length === 0 && (
                 <tr>
                   <td colSpan={7} className='text-center text-muted py-10'>
-                    {t('academico.estructura.empty')}
+                    {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})}
                   </td>
                 </tr>
               )}
@@ -394,11 +397,11 @@ const EspaciosTab: FC = () => {
           if (!deleteId) return
           del.mutate(deleteId.id, {
             onSuccess: () => {
-              toast.success(t('academico.estructura.toast.deleted'))
+              toast.success(t('common.toast.deleted'))
               setDeleteId(null)
             },
             onError: () => {
-              toast.error(t('academico.estructura.toast.deleteError'))
+              toast.error(t('common.toast.deleteError'))
               setDeleteId(null)
             },
           })

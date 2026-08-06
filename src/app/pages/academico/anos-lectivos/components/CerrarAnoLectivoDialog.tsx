@@ -31,7 +31,7 @@ const CerrarAnoLectivoDialog: FC<Props> = ({show, ano, onClose}) => {
         onClose()
       },
       onError: (err) => {
-        const message = err instanceof ApiError ? err.message : t('academico.anos.toast.cerrarError')
+        const message = err instanceof ApiError ? err.message : t('common.toast.genericError')
         toast.error(message)
       },
     })

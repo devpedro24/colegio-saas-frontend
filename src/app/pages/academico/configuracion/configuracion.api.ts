@@ -1,4 +1,4 @@
-// Capa de datos del feature Configuracion del colegio: funciones sobre el api client
+﻿// Capa de datos del feature Configuracion del colegio: funciones sobre el api client
 // + hooks de TanStack Query. Rutas tenant bajo /api. La escala, el metodo de aprobacion
 // y el modelo pedagogico se consultan filtrados por ?ano_lectivo_id=.
 
@@ -25,8 +25,7 @@ export function useDatosInstitucionales() {
     queryKey: DATOS_INSTITUCIONALES_KEY,
     queryFn: () =>
       api
-        .get<{data: DatosInstitucionales}>('/config/datos-institucionales')
-        .then((res) => res.data),
+        .get<{data: DatosInstitucionales}>('/config/datos-institucionales'),
   })
 }
 
@@ -53,8 +52,7 @@ export function useEscalas(anoLectivoId: string | null) {
     enabled: !!anoLectivoId,
     queryFn: () =>
       api
-        .get<{data: EscalaValorativa[]}>(`/config/escalas?ano_lectivo_id=${anoLectivoId}`)
-        .then((res) => res.data),
+        .get<{data: EscalaValorativa[]}>(`/config/escalas?ano_lectivo_id=${anoLectivoId}`),
   })
 }
 
@@ -101,8 +99,7 @@ export function useMetodosAprobacion(anoLectivoId: string | null) {
       api
         .get<{data: MetodoAprobacion[]}>(
           `/config/metodos-aprobacion?ano_lectivo_id=${anoLectivoId}`
-        )
-        .then((res) => res.data),
+        ),
   })
 }
 
@@ -149,8 +146,7 @@ export function useModelosPedagogicos(anoLectivoId: string | null) {
       api
         .get<{data: ModeloPedagogico[]}>(
           `/config/modelos-pedagogicos?ano_lectivo_id=${anoLectivoId}`
-        )
-        .then((res) => res.data),
+        ),
   })
 }
 

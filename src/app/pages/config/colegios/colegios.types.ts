@@ -49,6 +49,7 @@ export interface CreateColegioResponse {
 /** Body de PUT /colegios/{id} (update). */
 export interface UpdateColegioInput {
   name: string
+  slug: string
   legal_name: string | null
   nit: string | null
   plan: string

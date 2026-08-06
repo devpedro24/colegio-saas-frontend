@@ -71,7 +71,7 @@ const CellForm: FC<{
         </div>
 
         {/* Tipo de celda */}
-        <label className='fs-6 fw-semibold mb-2 d-block'>{t('rbac.cell.state')}</label>
+        <label className='fs-6 fw-semibold mb-2 d-block'>{t('common.status')}</label>
         <div className='btn-group w-100 mb-6' role='group'>
           {TYPE_VALUES.map((value) => (
             <button
@@ -129,7 +129,7 @@ const CellForm: FC<{
         <button type='button' className='btn btn-primary' onClick={apply} disabled={setCell.isPending}>
           {setCell.isPending ? (
             <span className='indicator-progress d-block'>
-              {t('common.saving')}
+              {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (

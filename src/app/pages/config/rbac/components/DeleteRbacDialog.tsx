@@ -21,7 +21,7 @@ type Props = {
 // Los del sistema (is_system) no llegan aca: no muestran boton de eliminar.
 const DeleteRbacDialog: FC<Props> = ({show, entity, name, onConfirm, pending, onClose}) => {
   const intl = useIntl()
-  const entityLabel = intl.formatMessage({id: `rbac.entity.${entity}`})
+  const entityLabel = intl.formatMessage({id: `entity.${entity}`})
 
   return createPortal(
     <Modal

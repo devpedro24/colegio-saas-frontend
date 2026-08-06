@@ -100,7 +100,7 @@ const ProfileDetails: FC = () => {
           <div className='card-body border-top p-9'>
             <div className='row mb-6'>
               <label className='col-lg-4 col-form-label required fw-bold fs-6'>
-                <FormattedMessage id='account.field.fullName' defaultMessage='Nombre completo' />
+                <FormattedMessage id='common.name' defaultMessage='Nombre completo' />
               </label>
 
               <div className='col-lg-8 fv-row'>
@@ -150,7 +150,7 @@ const ProfileDetails: FC = () => {
               {!loading && <FormattedMessage id='common.save' defaultMessage='Guardar cambios' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
-                  <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                  <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
                   <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                 </span>
               )}

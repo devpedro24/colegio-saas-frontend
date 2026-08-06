@@ -102,7 +102,7 @@ export function ForgotPassword() {
       {/* begin::Form group */}
       <div className='fv-row mb-8'>
         <label className='form-label fw-bolder text-gray-900 fs-6'>
-          <FormattedMessage id='auth.field.email' defaultMessage='Correo electrónico' />
+          <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
         </label>
         <input
           type='email'
@@ -135,7 +135,7 @@ export function ForgotPassword() {
           </span>
           {loading && (
             <span className='indicator-progress'>
-              <FormattedMessage id='auth.common.pleaseWait' defaultMessage='Por favor espera...' />
+              <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           )}
@@ -147,7 +147,7 @@ export function ForgotPassword() {
             className='btn btn-light'
             disabled={formik.isSubmitting || !formik.isValid}
           >
-            <FormattedMessage id='auth.common.cancel' defaultMessage='Cancelar' />
+            <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
           </button>
         </Link>{' '}
       </div>

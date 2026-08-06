@@ -1,4 +1,4 @@
-// Capa de datos del feature Colegios: funciones sobre el api client + hooks de
+﻿// Capa de datos del feature Colegios: funciones sobre el api client + hooks de
 // TanStack Query. Todas las rutas viven bajo /api (proxied) con auth Bearer y el
 // middleware 'platform' del backend.
 
@@ -22,7 +22,7 @@ export const COLEGIOS_KEY = ['colegios'] as const
 export function useColegios() {
   return useQuery({
     queryKey: COLEGIOS_KEY,
-    queryFn: () => api.get<{data: Colegio[]}>('/colegios').then((res) => res.data),
+    queryFn: () => api.get<{data: Colegio[]}>('/colegios'),
   })
 }
 
@@ -108,7 +108,7 @@ export function useColegioSedes(id: string | null) {
   return useQuery({
     queryKey: sedesKey(id),
     queryFn: () =>
-      api.get<{data: ColegioSede[]}>(`/colegios/${id}/sedes`).then((res) => res.data),
+      api.get<{data: ColegioSede[]}>(`/colegios/${id}/sedes`),
     enabled: id !== null,
   })
 }

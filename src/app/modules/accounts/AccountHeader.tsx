@@ -92,7 +92,7 @@ const AccountHeader: FC = () => {
                       >
                         <div className='menu-item px-3'>
                           <div className='menu-content text-muted pb-2 px-3 fs-7 text-uppercase'>
-                            <FormattedMessage id='account.menu.payments' defaultMessage='Pagos' />
+                            <FormattedMessage id='common.payments' defaultMessage='Pagos' />
                           </div>
                         </div>
                         <div className='menu-item px-3'>
@@ -147,7 +147,7 @@ const AccountHeader: FC = () => {
                           <div className='menu-sub menu-sub-dropdown w-175px py-4'>
                             <div className='menu-item px-3'>
                               <a href='#' className='menu-link px-3'>
-                                <FormattedMessage id='account.menu.plans' defaultMessage='Planes' />
+                                <FormattedMessage id='common.plans' defaultMessage='Planes' />
                               </a>
                             </div>
                             <div className='menu-item px-3'>

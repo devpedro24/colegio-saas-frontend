@@ -1,7 +1,8 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useCreateEscala, useDeleteEscala, useEscalas, useUpdateEscala} from '../configuracion.api'
@@ -51,6 +52,7 @@ const EscalaForm: FC<{
   onClose: () => void
 }> = ({anoLectivoId, escala, onClose}) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const create = useCreateEscala(anoLectivoId)
@@ -82,7 +84,7 @@ const EscalaForm: FC<{
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.config.escala.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -91,7 +93,7 @@ const EscalaForm: FC<{
         {id: escala.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.config.escala.toast.updated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -100,7 +102,7 @@ const EscalaForm: FC<{
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.config.escala.toast.created'))
+          toast.success(t('common.toast.created'))
           onClose()
         },
         onError,
@@ -211,11 +213,11 @@ const EscalaForm: FC<{
         <button type='submit' className='btn btn-primary' disabled={pending}>
           {pending ? (
             <span className='indicator-progress d-block'>
-              {t('common.saving')}
+              {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            t('academico.config.escala.save')
+            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.escala'})})
           )}
         </button>
       </div>
@@ -226,6 +228,7 @@ const EscalaForm: FC<{
 // Bloque 4: escala valorativa. Lista + crear/editar/eliminar, filtrada por ano lectivo.
 const EscalasCard: FC<Props> = ({anoLectivoId}) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useEscalas(anoLectivoId)
@@ -234,7 +237,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<EscalaValorativa | null>(null)
 
-  const escalas = data ?? []
+  const escalas = data?.data ?? []
 
   const openCreate = () => {
     setEditing(null)
@@ -251,10 +254,10 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
 
   const handleDelete = (e: EscalaValorativa) => {
     del.mutate(e.id, {
-      onSuccess: () => toast.success(t('academico.config.escala.toast.deleted')),
+      onSuccess: () => toast.success(t('common.toast.deleted')),
       onError: (err) => {
         const message =
-          err instanceof ApiError ? err.message : t('academico.config.escala.toast.deleteError')
+          err instanceof ApiError ? err.message : t('common.toast.deleteError')
         toast.error(message)
       },
     })
@@ -281,7 +284,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
         {isLoading && (
           <div className='d-flex justify-content-center align-items-center py-10'>
             <span className='spinner-border text-primary me-3' role='status'></span>
-            <span className='text-muted fs-6'>{t('academico.config.escala.loading')}</span>
+            <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.escala'})})}</span>
           </div>
         )}
 
@@ -292,7 +295,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{t('academico.config.escala.loadError')}</span>
+            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.escala'})})}</span>
           </div>
         )}
 
@@ -301,11 +304,11 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
             <table className='table table-row-dashed align-middle gs-0 gy-4'>
               <thead>
                 <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
-                  <th className='min-w-150px'>{t('academico.config.escala.col.nombre')}</th>
-                  <th className='min-w-125px'>{t('academico.config.escala.col.nivel')}</th>
+                  <th className='min-w-150px'>{t('common.name')}</th>
+                  <th className='min-w-125px'>{t('common.field.nivel')}</th>
                   <th className='min-w-100px'>{t('academico.config.escala.col.tipo')}</th>
                   <th className='min-w-100px'>{t('academico.config.escala.col.rango')}</th>
-                  <th className='min-w-100px text-end'>{t('academico.config.escala.col.actions')}</th>
+                  <th className='min-w-100px text-end'>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className='text-gray-600 fw-semibold'>
@@ -316,7 +319,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
                     <td>{t(`academico.config.escala.tipo.${e.tipo}`)}</td>
                     <td>
                       {e.tipo === 'numerica' && e.valor_min !== null && e.valor_max !== null
-                        ? `${e.valor_min} – ${e.valor_max}`
+                        ? `${e.valor_min} — ${e.valor_max}`
                         : '—'}
                     </td>
                     <td>
@@ -324,7 +327,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
                         <button
                           type='button'
                           className='btn btn-icon btn-light-primary btn-sm me-2'
-                          title={t('academico.config.escala.edit')}
+                          title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.escala'})})}
                           onClick={() => openEdit(e)}
                         >
                           <i className='ki-duotone ki-pencil fs-6'>
@@ -335,7 +338,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
                         <button
                           type='button'
                           className='btn btn-icon btn-light-danger btn-sm'
-                          title={t('academico.config.escala.delete')}
+                          title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.escala'})})}
                           disabled={del.isPending}
                           onClick={() => handleDelete(e)}
                         >
@@ -354,7 +357,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
                 {escalas.length === 0 && (
                   <tr>
                     <td colSpan={5} className='text-center text-muted py-10'>
-                      {t('academico.config.escala.empty')}
+                      {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.escala'})})}
                     </td>
                   </tr>
                 )}

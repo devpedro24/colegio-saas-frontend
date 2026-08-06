@@ -138,7 +138,7 @@ const TwoFactorAuth: FC = () => {
               <div className='d-flex flex-wrap align-items-center'>
                 <div>
                   <div className='fs-6 fw-bolder mb-1'>
-                    <FormattedMessage id='account.mfa.status' defaultMessage='Estado' />
+                    <FormattedMessage id='common.status' defaultMessage='Estado' />
                   </div>
                   <div className='d-flex align-items-center'>
                     <span className='badge badge-light-success fw-bold me-2'>
@@ -208,7 +208,7 @@ const TwoFactorAuth: FC = () => {
                     >
                       {disableMutation.isPending ? (
                         <span className='indicator-progress d-block'>
-                          <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />
+                          <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
                           <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                         </span>
                       ) : (
@@ -295,7 +295,7 @@ const TwoFactorAuth: FC = () => {
                 >
                   {confirmMutation.isPending ? (
                     <span className='indicator-progress d-block'>
-                      <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />
+                      <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
                       <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                     </span>
                   ) : (
@@ -336,7 +336,7 @@ const TwoFactorAuth: FC = () => {
                 >
                   {setupMutation.isPending ? (
                     <span className='indicator-progress d-block'>
-                      <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />
+                      <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
                       <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                     </span>
                   ) : (

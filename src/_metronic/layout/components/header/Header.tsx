@@ -4,6 +4,7 @@ import {ILayout, useLayout} from '../../core'
 import {reInitMenu, withBase} from '../../../helpers'
 import {getHeaderMenuHtml} from './_HeaderMenuContent'
 import {useAuth} from '../../../../app/modules/auth'
+import {useAuthz} from '../../../../app/modules/auth/core/authz'
 import {useImpersonation} from '../../../../app/modules/impersonation/impersonation.store'
 
 // Menu #kt_app_header_menu portado literal de demo46 (Home / Pages / Apps / Help con
@@ -15,10 +16,12 @@ const Header: FC = () => {
   const {config} = useLayout()
   const intl = useIntl()
   const {currentUser} = useAuth()
+  const {hasPermission} = useAuthz()
   const {activeColegio} = useImpersonation()
 
   const isPlatform = currentUser?.is_platform === true
   const isTenantUser = !!currentUser && currentUser.is_platform !== true
+  const canManageUsers = hasPermission('usuarios.gestionar')
 
   useEffect(() => {
     updateDOM(config)
@@ -40,6 +43,7 @@ const Header: FC = () => {
             isPlatform,
             isTenantUser,
             activeColegio: !!activeColegio,
+            canManageUsers,
           })
         ),
       }}

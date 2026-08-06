@@ -1,4 +1,4 @@
-// Capa de datos de suplantación (endpoints CENTRALES de plataforma).
+﻿// Capa de datos de suplantación (endpoints CENTRALES de plataforma).
 //
 // Estos endpoints viven bajo '/platform/*', así que el api client los trata SIEMPRE como
 // rutas de plataforma: usan el token NORMAL del superadmin y NO envían header X-Tenant,

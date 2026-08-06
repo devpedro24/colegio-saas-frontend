@@ -1,7 +1,8 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useCreateNivel, useDeleteNivel, useNiveles, useUpdateNivel} from '../estructura.api'
@@ -30,6 +31,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
   onClose,
 }) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const create = useCreateNivel()
@@ -58,7 +60,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.estructura.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -67,7 +69,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
         {id: nivel.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.estructura.toast.updated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -76,7 +78,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.estructura.toast.created'))
+          toast.success(t('common.toast.created'))
           onClose()
         },
         onError,
@@ -155,7 +157,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
             {pending ? (
               <span className='spinner-border spinner-border-sm align-middle'></span>
             ) : (
-              t('academico.estructura.save')
+              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.nivel'})})
             )}
           </button>
         </div>
@@ -167,6 +169,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
 
 const NivelesTab: FC = () => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string, values?: Record<string, string | number>) =>
     intl.formatMessage({id}, values)
   const toast = useToast()
@@ -177,7 +180,7 @@ const NivelesTab: FC = () => {
   const [edit, setEdit] = useState<Nivel | null>(null)
   const [deleteId, setDeleteId] = useState<Nivel | null>(null)
 
-  const list = data ?? []
+  const list = data?.data ?? []
 
   return (
     <>
@@ -198,7 +201,7 @@ const NivelesTab: FC = () => {
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
           <span className='spinner-border text-primary me-3' role='status'></span>
-          <span className='text-muted fs-6'>{t('academico.estructura.loading')}</span>
+          <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.nivel'})})}</span>
         </div>
       )}
 
@@ -209,7 +212,7 @@ const NivelesTab: FC = () => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{t('academico.estructura.loadError')}</span>
+          <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.nivel'})})}</span>
         </div>
       )}
 
@@ -222,8 +225,8 @@ const NivelesTab: FC = () => {
                 <th className='min-w-150px'>{t('academico.estructura.nivel.nivelEducativo')}</th>
                 <th className='min-w-100px'>{t('academico.estructura.nivel.orden')}</th>
                 <th className='min-w-120px'>{t('academico.estructura.grado.nombre')}</th>
-                <th className='min-w-100px'>{t('academico.estructura.col.estado')}</th>
-                <th className='min-w-150px text-end'>{t('academico.estructura.col.actions')}</th>
+                <th className='min-w-100px'>{t('common.status')}</th>
+                <th className='min-w-150px text-end'>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className='text-gray-600 fw-semibold'>
@@ -263,7 +266,7 @@ const NivelesTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-primary btn-sm'
-                        title={t('academico.estructura.edit')}
+                        title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.nivel'})})}
                         onClick={() => {
                           setEdit(n)
                           setFormOpen(true)
@@ -277,7 +280,7 @@ const NivelesTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-danger btn-sm'
-                        title={t('academico.estructura.delete')}
+                        title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.nivel'})})}
                         onClick={() => setDeleteId(n)}
                       >
                         <i className='ki-duotone ki-trash fs-5'>
@@ -295,7 +298,7 @@ const NivelesTab: FC = () => {
               {list.length === 0 && (
                 <tr>
                   <td colSpan={6} className='text-center text-muted py-10'>
-                    {t('academico.estructura.empty')}
+                    {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.nivel'})})}
                   </td>
                 </tr>
               )}
@@ -321,11 +324,11 @@ const NivelesTab: FC = () => {
           if (!deleteId) return
           del.mutate(deleteId.id, {
             onSuccess: () => {
-              toast.success(t('academico.estructura.toast.deleted'))
+              toast.success(t('common.toast.deleted'))
               setDeleteId(null)
             },
             onError: () => {
-              toast.error(t('academico.estructura.toast.deleteError'))
+              toast.error(t('common.toast.deleteError'))
               setDeleteId(null)
             },
           })

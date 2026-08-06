@@ -1,4 +1,4 @@
-// Capa de datos de MFA (verificación en dos pasos / TOTP): hooks de TanStack Query
+﻿// Capa de datos de MFA (verificación en dos pasos / TOTP): hooks de TanStack Query
 // sobre el api client. Las rutas viven bajo /api (proxied); el proxy enruta al backend
 // del tenant o de plataforma según con qué usuario se haya iniciado sesión.
 

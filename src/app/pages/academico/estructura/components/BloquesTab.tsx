@@ -1,7 +1,8 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {
@@ -42,6 +43,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
   onClose,
 }) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data: jornadas} = useJornadas()
@@ -70,7 +72,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.estructura.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -79,7 +81,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
         {id: bloque.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.estructura.toast.updated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -88,7 +90,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.estructura.toast.created'))
+          toast.success(t('common.toast.created'))
           onClose()
         },
         onError,
@@ -120,7 +122,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
         <div className='modal-body py-lg-10 px-lg-10'>
           <div className='fv-row mb-7'>
             <label className='required fs-6 fw-semibold mb-2'>
-              {t('academico.estructura.bloque.jornada')}
+              {t('common.field.jornada')}
             </label>
             <select
               className={`form-select form-select-solid ${fe('jornada_id') ? 'is-invalid' : ''}`}
@@ -128,7 +130,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
               onChange={(e) => set({jornada_id: e.target.value})}
             >
               <option value=''>{t('common.select')}</option>
-              {(jornadas ?? []).map((j) => (
+              {(jornadas?.data ?? []).map((j) => (
                 <option key={j.id} value={j.id}>
                   {j.nombre}
                 </option>
@@ -215,7 +217,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
             {pending ? (
               <span className='spinner-border spinner-border-sm align-middle'></span>
             ) : (
-              t('academico.estructura.save')
+              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.bloqueHorario'})})
             )}
           </button>
         </div>
@@ -227,6 +229,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
 
 const BloquesTab: FC = () => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useBloquesHorarios()
@@ -236,7 +239,7 @@ const BloquesTab: FC = () => {
   const [edit, setEdit] = useState<BloqueHorario | null>(null)
   const [deleteId, setDeleteId] = useState<BloqueHorario | null>(null)
 
-  const list = data ?? []
+  const list = data?.data ?? []
 
   return (
     <>
@@ -257,7 +260,7 @@ const BloquesTab: FC = () => {
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
           <span className='spinner-border text-primary me-3' role='status'></span>
-          <span className='text-muted fs-6'>{t('academico.estructura.loading')}</span>
+          <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.bloqueHorario'})})}</span>
         </div>
       )}
 
@@ -268,7 +271,7 @@ const BloquesTab: FC = () => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{t('academico.estructura.loadError')}</span>
+          <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.bloqueHorario'})})}</span>
         </div>
       )}
 
@@ -278,13 +281,13 @@ const BloquesTab: FC = () => {
             <thead>
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='min-w-120px'>{t('academico.estructura.bloque.nombre')}</th>
-                <th className='min-w-150px'>{t('academico.estructura.bloque.jornada')}</th>
+                <th className='min-w-150px'>{t('common.field.jornada')}</th>
                 <th className='min-w-160px'>{t('academico.estructura.bloque.horaInicio')}</th>
                 <th className='min-w-160px'>{t('academico.estructura.bloque.horaFin')}</th>
                 <th className='min-w-100px'>{t('academico.estructura.bloque.orden')}</th>
                 <th className='min-w-100px'>{t('academico.estructura.bloque.descanso')}</th>
-                <th className='min-w-100px'>{t('academico.estructura.col.estado')}</th>
-                <th className='min-w-150px text-end'>{t('academico.estructura.col.actions')}</th>
+                <th className='min-w-100px'>{t('common.status')}</th>
+                <th className='min-w-150px text-end'>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className='text-gray-600 fw-semibold'>
@@ -334,7 +337,7 @@ const BloquesTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-primary btn-sm'
-                        title={t('academico.estructura.edit')}
+                        title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.bloqueHorario'})})}
                         onClick={() => {
                           setEdit(b)
                           setFormOpen(true)
@@ -348,7 +351,7 @@ const BloquesTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-danger btn-sm'
-                        title={t('academico.estructura.delete')}
+                        title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.bloqueHorario'})})}
                         onClick={() => setDeleteId(b)}
                       >
                         <i className='ki-duotone ki-trash fs-5'>
@@ -366,7 +369,7 @@ const BloquesTab: FC = () => {
               {list.length === 0 && (
                 <tr>
                   <td colSpan={8} className='text-center text-muted py-10'>
-                    {t('academico.estructura.empty')}
+                    {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.bloqueHorario'})})}
                   </td>
                 </tr>
               )}
@@ -392,11 +395,11 @@ const BloquesTab: FC = () => {
           if (!deleteId) return
           del.mutate(deleteId.id, {
             onSuccess: () => {
-              toast.success(t('academico.estructura.toast.deleted'))
+              toast.success(t('common.toast.deleted'))
               setDeleteId(null)
             },
             onError: () => {
-              toast.error(t('academico.estructura.toast.deleteError'))
+              toast.error(t('common.toast.deleteError'))
               setDeleteId(null)
             },
           })

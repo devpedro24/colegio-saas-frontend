@@ -1,19 +1,20 @@
-import {FC} from 'react'
+﻿import {FC} from 'react'
 import {useIntl} from 'react-intl'
 import {Link, Navigate, useParams} from 'react-router-dom'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
 import {useImpersonation} from '../../../modules/impersonation/impersonation.store'
+import {useAuthz} from '../../../modules/auth/core/authz'
 import {sedeSubdomainUrl, useSede} from '../estructura/estructura.api'
 
 const tenantStatusBadge = (status: string | null): {cls: string; label: string} => {
   switch (status) {
     case 'active':
-      return {cls: 'badge badge-light-success', label: 'academico.estructura.sede.tenantStatus.activo'}
+      return {cls: 'badge badge-light-success', label: 'common.active'}
     case 'in_retention':
       return {cls: 'badge badge-light-warning', label: 'academico.estructura.sede.tenantStatus.cuarentena'}
     default:
-      return {cls: 'badge badge-light-secondary', label: 'academico.estructura.sede.tenantStatus.inactivo'}
+      return {cls: 'badge badge-light-secondary', label: 'common.inactive'}
   }
 }
 
@@ -25,10 +26,12 @@ const SedeDetallePage: FC = () => {
   const t = (id: string) => intl.formatMessage({id})
   const {id} = useParams<{id: string}>()
   const {activeColegio} = useImpersonation()
-  const {data: sede, isLoading, isError} = useSede(id)
+  const {isPlatform} = useAuthz()
+  const {data: sedeWrap, isLoading, isError} = useSede(id)
+  const sede = (sedeWrap as any)?.data
 
   // Mismo gating que el resto del modulo Academico.
-  if (!activeColegio) {
+  if (isPlatform && !activeColegio) {
     return <Navigate to='/academico/anos-lectivos' replace />
   }
 
@@ -78,7 +81,7 @@ const SedeDetallePage: FC = () => {
                 <span className='path1'></span>
                 <span className='path2'></span>
               </i>
-              {t('academico.sede.detail.open')}
+              {t('academico.sede.open')}
             </button>
             <Link to='/academico/configuracion?tab=sedes' className='btn btn-light btn-sm'>
               <i className='ki-duotone ki-arrow-left fs-3 me-1'>
@@ -94,7 +97,7 @@ const SedeDetallePage: FC = () => {
           <div className='card'>
             <div className='card-body d-flex justify-content-center align-items-center py-15'>
               <span className='spinner-border text-primary me-3' role='status'></span>
-              <span className='text-muted fs-6'>{t('academico.estructura.loading')}</span>
+              <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}</span>
             </div>
           </div>
         )}
@@ -123,7 +126,7 @@ const SedeDetallePage: FC = () => {
                     <h3 className='fw-bold mb-0'>{sede.nombre}</h3>
                     {sede.es_principal && (
                       <span className='badge badge-light-primary'>
-                        {t('academico.estructura.sede.principalBadge')}
+                        {t('colegios.sedes.principal')}
                       </span>
                     )}
                     <span
@@ -135,8 +138,8 @@ const SedeDetallePage: FC = () => {
                     >
                       {t(
                         sede.estado === 'activa'
-                          ? 'academico.estructura.estado.activa'
-                          : 'academico.estructura.estado.inactiva'
+                          ? 'common.active'
+                          : 'common.inactive'
                       )}
                     </span>
                   </div>
@@ -146,21 +149,23 @@ const SedeDetallePage: FC = () => {
                 <div className='row g-6'>
                   <div className='col-md-4'>
                     <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
-                      {t('academico.estructura.sede.direccion')}
+                      {t('common.address')}
                     </div>
                     <div className='text-gray-800 fw-semibold'>{sede.direccion ?? '—'}</div>
                   </div>
                   <div className='col-md-4'>
                     <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
-                      {t('academico.estructura.sede.telefono')}
+                      {t('common.phone')}
                     </div>
                     <div className='text-gray-800 fw-semibold'>{sede.telefono ?? '—'}</div>
                   </div>
                   <div className='col-md-4'>
                     <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
-                      {t('academico.estructura.sede.responsable')}
+                      {t('academico.sede.detail.coordinador')}
                     </div>
-                    <div className='text-gray-800 fw-semibold'>{sede.responsable ?? '—'}</div>
+                    <div className='text-gray-800 fw-semibold'>
+                      {sede.coordinador_name ? `${sede.coordinador_name} Â· ${sede.coordinador_email}` : (sede.coordinador_email ?? '—')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -178,32 +183,18 @@ const SedeDetallePage: FC = () => {
                   <div className='row g-6'>
                     <div className='col-md-4'>
                       <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
-                        {t('academico.sede.detail.subdominio')}
+                        {t('common.subdomain')}
                       </div>
                       <div className='text-gray-800 fw-semibold'>{sede.tenant_domain ?? '—'}</div>
                     </div>
                     <div className='col-md-4'>
                       <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
-                        {t('academico.sede.detail.coordinador')}
-                      </div>
-                      <div className='text-gray-800 fw-semibold'>{sede.coordinador_email ?? '—'}</div>
-                    </div>
-                    <div className='col-md-4'>
-                      <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
-                        {t('academico.sede.detail.tenantStatus')}
+                        {t('common.status')}
                       </div>
                       {(() => {
                         const badge = tenantStatusBadge(sede.tenant_status)
                         return <span className={badge.cls}>{t(badge.label)}</span>
                       })()}
-                    </div>
-                    <div className='col-md-4'>
-                      <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
-                        {t('academico.sede.detail.tenantId')}
-                      </div>
-                      <span className='text-gray-800 fw-semibold font-monospace'>
-                        {sede.tenant_id ?? '—'}
-                      </span>
                     </div>
                   </div>
                 </div>

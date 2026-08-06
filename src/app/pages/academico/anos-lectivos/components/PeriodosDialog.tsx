@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -66,7 +66,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
   const update = useUpdatePeriodo(ano.id)
   const del = useDeletePeriodo(ano.id)
 
-  const periodos = data ?? []
+  const periodos = data?.data ?? []
   const nextOrden = periodos.length + 1
 
   const [editing, setEditing] = useState<Periodo | null>(null)
@@ -109,7 +109,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.periodos.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -118,7 +118,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
         {id: editing.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.periodos.toast.updated'))
+            toast.success(t('common.toast.updated'))
             startCreate()
           },
           onError,
@@ -127,7 +127,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.periodos.toast.created'))
+          toast.success(t('common.toast.created'))
           startCreate()
         },
         onError,
@@ -138,12 +138,12 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
   const handleDelete = (p: Periodo) => {
     del.mutate(p.id, {
       onSuccess: () => {
-        toast.success(t('academico.periodos.toast.deleted'))
+        toast.success(t('common.toast.deleted'))
         if (editing?.id === p.id) startCreate()
       },
       onError: (err) => {
         const message =
-          err instanceof ApiError ? err.message : t('academico.periodos.toast.deleteError')
+          err instanceof ApiError ? err.message : t('common.toast.deleteError')
         toast.error(message)
       },
     })
@@ -155,7 +155,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-10'>
           <span className='spinner-border text-primary me-3' role='status'></span>
-          <span className='text-muted fs-6'>{t('academico.periodos.loading')}</span>
+          <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.periodo'})})}</span>
         </div>
       )}
 
@@ -166,7 +166,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{t('academico.periodos.loadError')}</span>
+          <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.periodo'})})}</span>
         </div>
       )}
 
@@ -176,11 +176,11 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
             <thead>
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='w-40px'>{t('academico.periodos.col.orden')}</th>
-                <th className='min-w-150px'>{t('academico.periodos.col.nombre')}</th>
+                <th className='min-w-150px'>{t('common.name')}</th>
                 <th className='min-w-175px'>{t('academico.periodos.col.fechas')}</th>
                 <th className='min-w-75px'>{t('academico.periodos.col.peso')}</th>
-                <th className='min-w-100px'>{t('academico.periodos.col.estado')}</th>
-                <th className='min-w-100px text-end'>{t('academico.periodos.col.actions')}</th>
+                <th className='min-w-100px'>{t('common.status')}</th>
+                <th className='min-w-100px text-end'>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className='text-gray-600 fw-semibold'>
@@ -202,7 +202,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
                         <button
                           type='button'
                           className='btn btn-icon btn-light-primary btn-sm me-2'
-                          title={t('academico.periodos.edit')}
+                          title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.periodo'})})}
                           onClick={() => startEdit(p)}
                         >
                           <i className='ki-duotone ki-pencil fs-6'>
@@ -213,7 +213,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
                         <button
                           type='button'
                           className='btn btn-icon btn-light-danger btn-sm'
-                          title={t('academico.periodos.delete')}
+                          title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.periodo'})})}
                           disabled={del.isPending}
                           onClick={() => handleDelete(p)}
                         >
@@ -233,7 +233,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
               {periodos.length === 0 && (
                 <tr>
                   <td colSpan={6} className='text-center text-muted py-8'>
-                    {t('academico.periodos.empty')}
+                    {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.periodo'})})}
                   </td>
                 </tr>
               )}
@@ -245,7 +245,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
       {/* Formulario en linea: crear / editar periodo */}
       <div className='separator separator-dashed mb-6'></div>
       <h4 className='fw-bold mb-4'>
-        {editing ? t('academico.periodos.formTitleEdit') : t('academico.periodos.formTitleNew')}
+        {editing ? t('academico.periodos.formTitleEdit') : t('academico.periodos.new')}
       </h4>
       <form onSubmit={handleSubmit}>
         <div className='row'>
@@ -321,11 +321,11 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
           <button type='submit' className='btn btn-primary' disabled={pending}>
             {pending ? (
               <span className='indicator-progress d-block'>
-                {t('common.saving')}
+                {t('common.pleaseWait')}
                 <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
               </span>
             ) : (
-              t('academico.periodos.save')
+              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.periodo'})})
             )}
           </button>
         </div>

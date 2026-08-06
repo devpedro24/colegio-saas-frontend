@@ -43,24 +43,24 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
     reset.mutate(colegio.id, {
       onSuccess: (data) => {
         setGenerated(data)
-        toast.success(t('colegios.pwd.toast'))
+        toast.success(t('common.pwd.toast'))
       },
       onError: (err) => {
-        const message = err instanceof ApiError ? err.message : t('colegios.pwd.error')
+        const message = err instanceof ApiError ? err.message : t('common.pwd.error')
         toast.error(message)
       },
     })
   }
 
   const copy = (value: string) => {
-    navigator.clipboard?.writeText(value).then(() => toast.success(t('colegios.pwd.copied')))
+    navigator.clipboard?.writeText(value).then(() => toast.success(t('common.pwd.copied')))
   }
 
   const renderBody = () => {
     if (generated) {
       return (
         <>
-          <div className='text-muted fs-7 mb-5'>{t('colegios.pwd.once')}</div>
+          <div className='text-muted fs-7 mb-5'>{t('common.pwd.once')}</div>
           <div className='mb-3'>
             <span className='text-muted'>{t('colegios.f.school')} </span>
             <span className='fw-bold text-gray-800'>{colegio?.name}</span>
@@ -95,7 +95,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{t('colegios.pwd.loadError')}</span>
+          <span>{t('common.pwd.loadError')}</span>
         </div>
       )
     }
@@ -108,14 +108,14 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
               <span className='path1'></span>
               <span className='path2'></span>
             </i>
-            <span className='fs-7'>{t('colegios.pwd.temporalActive')}</span>
+            <span className='fs-7'>{t('common.pwd.temporalActive')}</span>
           </div>
           <div className='mb-3'>
             <span className='text-muted'>{t('colegios.f.rector')} </span>
             <span className='fw-bold text-gray-800'>{pwInfo.rector_email}</span>
           </div>
           <div className='mb-5'>
-            <span className='text-muted'>{t('colegios.pwd.currentLabel')}</span>
+            <span className='text-muted'>{t('common.pwd.currentLabel')}</span>
             <div className='d-flex align-items-stretch gap-2'>
               <div className='flex-grow-1 mt-2 rounded bg-light-primary text-primary font-monospace fs-4 fw-bold px-4 py-3 text-center'>
                 {pwInfo.rector_password}
@@ -124,7 +124,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
                 type='button'
                 className='btn btn-icon btn-light-primary align-self-end'
                 onClick={() => copy(pwInfo.rector_password ?? '')}
-                title={t('colegios.pwd.copy')}
+                title={t('common.pwd.copy')}
               >
                 <i className='ki-duotone ki-copy fs-2'>
                   <span className='path1'></span>
@@ -190,7 +190,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
           <button type='button' className='btn btn-primary' onClick={regenerate} disabled={reset.isPending}>
             {reset.isPending ? (
               <span className='indicator-progress d-block'>
-                {t('colegios.pwd.regenerating')}
+                {t('common.pwd.regenerating')}
                 <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
               </span>
             ) : (
@@ -199,7 +199,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
                   <span className='path1'></span>
                   <span className='path2'></span>
                 </i>
-                {t('colegios.pwd.reset')}
+                {t('common.pwd.reset')}
               </>
             )}
           </button>
@@ -208,7 +208,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
           <button type='button' className='btn btn-light-primary' onClick={regenerate} disabled={reset.isPending}>
             {reset.isPending ? (
               <span className='indicator-progress d-block'>
-                {t('colegios.pwd.regenerating')}
+                {t('common.pwd.regenerating')}
                 <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
               </span>
             ) : (
@@ -217,7 +217,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
                   <span className='path1'></span>
                   <span className='path2'></span>
                 </i>
-                {t('colegios.pwd.regenerate')}
+                {t('common.pwd.regenerate')}
               </>
             )}
           </button>
@@ -238,7 +238,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
     >
       <div className='modal-header'>
         <h2 className='fw-bold'>
-          {generated ? t('colegios.pwd.newTitle') : t('colegios.pwd.title')}
+          {generated ? t('common.pwd.newTitle') : t('common.pwd.title')}
         </h2>
         <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={onClose}>
           <i className='ki-duotone ki-cross fs-1'>

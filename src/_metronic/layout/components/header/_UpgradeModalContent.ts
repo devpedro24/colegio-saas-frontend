@@ -635,7 +635,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 								<span class="indicator-label">${t('header.upgrade.cta', 'Mejorar plan')}</span>
 								<!--end::Indicator label-->
 								<!--begin::Indicator progress-->
-								<span class="indicator-progress">${t('header.upgrade.pleaseWait', 'Espera un momento...')}
+								<span class="indicator-progress">${t('common.pleaseWait', 'Espera un momento...')}
 								<span class="spinner-border spinner-border-sm align-middle ms-2"></span></span>
 								<!--end::Indicator progress-->
 							</button>

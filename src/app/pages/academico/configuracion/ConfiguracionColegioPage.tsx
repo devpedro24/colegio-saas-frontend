@@ -1,4 +1,4 @@
-import {FC, useEffect, useMemo, useState} from 'react'
+﻿import {FC, useEffect, useMemo, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {useSearchParams} from 'react-router-dom'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
@@ -26,7 +26,7 @@ const ConfiguracionColegioPage: FC = () => {
   ]
 
   // Soporta /academico/configuracion?tab=sedes (enlace "Volver" desde el detalle de una sede).
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>(() => {
     const valid: Tab[] = ['datos', 'escala', 'metodo', 'modelo', 'sedes']
     const requested = searchParams.get('tab') as Tab | null
@@ -35,7 +35,7 @@ const ConfiguracionColegioPage: FC = () => {
   const [anoLectivoId, setAnoLectivoId] = useState<string>('')
 
   const {data: anos} = useAnosLectivos()
-  const anosList = useMemo(() => anos ?? [], [anos])
+  const anosList = useMemo(() => anos?.data ?? [], [anos])
 
   // Selecciona por defecto el ano en curso; si no hay, el primero de la lista.
   useEffect(() => {
@@ -97,7 +97,7 @@ const ConfiguracionColegioPage: FC = () => {
                   className={`nav-link btn btn-link text-nowrap ${
                     tab === tb.key ? 'active' : ''
                   }`}
-                  onClick={() => setTab(tb.key)}
+                  onClick={() => { setTab(tb.key); setSearchParams({tab: tb.key}) }}
                 >
                   {tb.label}
                 </button>

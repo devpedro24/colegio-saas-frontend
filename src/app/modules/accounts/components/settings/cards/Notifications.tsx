@@ -31,7 +31,7 @@ const Notifications: React.FC = () => {
       >
         <div className='card-title m-0'>
           <h3 className='fw-bold m-0'>
-            <FormattedMessage id='account.notifications.title' defaultMessage='Notificaciones' />
+            <FormattedMessage id='common.notifications' defaultMessage='Notificaciones' />
           </h3>
         </div>
       </div>
@@ -45,7 +45,7 @@ const Notifications: React.FC = () => {
                   <tr>
                     <td className='min-w-250px fs-4 fw-bolder'>
                       <FormattedMessage
-                        id='account.notifications.title'
+                        id='common.notifications'
                         defaultMessage='Notificaciones'
                       />
                     </td>
@@ -70,7 +70,7 @@ const Notifications: React.FC = () => {
                           className='form-check-label ps-2'
                           htmlFor='kt_settings_notification_email'
                         >
-                          <FormattedMessage id='account.field.email' defaultMessage='Correo electrónico' />
+                          <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
                         </label>
                       </div>
                     </td>
@@ -95,7 +95,7 @@ const Notifications: React.FC = () => {
                           className='form-check-label ps-2'
                           htmlFor='kt_settings_notification_phone'
                         >
-                          <FormattedMessage id='account.field.phone' defaultMessage='Teléfono' />
+                          <FormattedMessage id='common.phone' defaultMessage='Teléfono' />
                         </label>
                       </div>
                     </td>
@@ -309,7 +309,7 @@ const Notifications: React.FC = () => {
               {!loading && <FormattedMessage id='common.save' defaultMessage='Guardar cambios' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
-                  <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                  <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
                   <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                 </span>
               )}

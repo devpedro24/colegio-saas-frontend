@@ -7,6 +7,7 @@ import {getHeaderMenuHtml} from '../header/_HeaderMenuContent'
 import {MobileTeamSelector, RailItem} from './MobileTeamSelector'
 import {DesktopTeamRail} from './DesktopTeamRail'
 import {useAuth} from '../../../../app/modules/auth'
+import {useAuthz} from '../../../../app/modules/auth/core/authz'
 import {useToast} from '@/lib/ui/toast'
 import {useColegios} from '@/app/pages/config/colegios/colegios.api'
 import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
@@ -39,7 +40,7 @@ function usePlatformTeams() {
       initial: 'P',
       isPlatform: true,
     }
-    const schools: RailItem[] = (colegios ?? []).map((c) => ({
+    const schools: RailItem[] = (colegios?.data ?? []).map((c) => ({
       id: c.id,
       name: c.name,
       initial: c.name.charAt(0).toUpperCase(),
@@ -65,6 +66,7 @@ function usePlatformTeams() {
         })
       }
       clear()
+      window.location.href = '/dashboard'
       return
     }
     // Ya estoy administrando ese colegio: no hago nada.
@@ -79,6 +81,7 @@ function usePlatformTeams() {
             {colegio: res.data.colegio.name},
           ),
         )
+        window.location.href = '/dashboard'
       },
       onError: () =>
         toast.error(
@@ -114,7 +117,7 @@ function useSedeTeams() {
 
   const items = useMemo<RailItem[]>(
     () =>
-      (sedes ?? []).map((s) => ({
+      (sedes?.data ?? []).map((s) => ({
         id: String(s.id),
         name: s.nombre,
         initial: s.nombre.charAt(0).toUpperCase(),
@@ -123,24 +126,28 @@ function useSedeTeams() {
   )
 
   const principal = useMemo(
-    () => (sedes ?? []).find((s) => s.es_principal) ?? (sedes ?? [])[0],
+    () => (sedes?.data ?? []).find((s) => !s.tenant_id) ?? (sedes?.data ?? [])[0],
     [sedes],
   )
+
+  // La rail solo tiene sentido si hay sedes adicionales navegables.
+  const adicionales = (sedes?.data ?? []).filter((s) => !!s.tenant_id && s.tenant_domain).length
 
   const activeId = principal ? String(principal.id) : items[0]?.id ?? ''
 
   const onSelect = (item: RailItem) => {
-    const sede = (sedes ?? []).find((s) => String(s.id) === item.id)
-    // Sede principal = el colegio actual: no se navega.
-    if (!sede || sede.es_principal || !sede.tenant_domain) return
-    window.location.assign(sedeSubdomainUrl(sede.tenant_domain))
+    const sede = (sedes?.data ?? []).find((s) => String(s.id) === item.id)
+    // Sede principal (colegio actual): no se navega.
+    if (!sede || !sede.tenant_id || !sede.tenant_domain) return
+    window.open(sedeSubdomainUrl(sede.tenant_domain), '_blank', 'noopener,noreferrer')
   }
 
-  return {items, activeId, onSelect}
+  return {items, activeId, onSelect, adicionales}
 }
 
 const SedeDesktopRail = () => {
-  const {items, activeId, onSelect} = useSedeTeams()
+  const {items, activeId, onSelect, adicionales} = useSedeTeams()
+  if (adicionales === 0) return null
   return (
     <DesktopTeamRail
       items={items}
@@ -153,7 +160,8 @@ const SedeDesktopRail = () => {
 }
 
 const SedeMobileSelector = () => {
-  const {items, activeId, onSelect} = useSedeTeams()
+  const {items, activeId, onSelect, adicionales} = useSedeTeams()
+  if (adicionales === 0) return null
   return (
     <MobileTeamSelector
       items={items}
@@ -168,16 +176,35 @@ const Sidebar = () => {
   const {config} = useLayout()
   const intl = useIntl()
   const {currentUser} = useAuth()
+  const {hasPermission} = useAuthz()
   const {activeColegio} = useImpersonation()
+  const {data: sedesForRail, isLoading: sedesLoading} = useSedes(true)
 
   const isPlatform = currentUser?.is_platform === true
   const isTenantUser = !!currentUser && currentUser.is_platform !== true
+  const canManageUsers = hasPermission('usuarios.gestionar')
+
+  // La rail desktop solo se muestra si hay sedes adicionales navegables (no
+  // principal) o si se está en modo plataforma pura (siempre tiene colegios).
+  // Mientras cargan las sedes no ocultamos para evitar flicker.
+  const sedesAdicionales = (sedesForRail?.data ?? []).filter((s) => !!s.tenant_id && s.tenant_domain).length
+  const showDesktopBlock = (isPlatform && !activeColegio) || sedesAdicionales > 0
+  const showSidebar = showDesktopBlock || sedesLoading
 
   useEffect(() => {
-    updateDOM(config)
+    if (showSidebar) {
+      updateDOM(config)
+    } else {
+      // Sin sidebar visible: el app-main debe ocupar el 100% del ancho.
+      document.body.removeAttribute('data-kt-app-sidebar-enabled')
+      document.body.removeAttribute('data-kt-app-sidebar-fixed')
+      document.body.removeAttribute('data-kt-app-sidebar-push-header')
+      document.body.removeAttribute('data-kt-app-sidebar-push-toolbar')
+      document.body.removeAttribute('data-kt-app-sidebar-push-footer')
+    }
     // Cablea KTMenu para el menu Apps del sidebar movil (data-kt-menu) y re-inicializa drawers.
     reInitMenu()
-  }, [config])
+  }, [config, showSidebar])
 
   // Re-inicializa el menú móvil cuando cambia el MODO (plataforma <-> colegio), porque el HTML
   // inyectado (secciones visibles) cambia y KTMenu debe recablearse sobre el nuevo árbol.
@@ -185,7 +212,7 @@ const Sidebar = () => {
     reInitMenu()
   }, [activeColegio, isPlatform, isTenantUser])
 
-  if (!config.app?.sidebar?.display) {
+  if (!config.app?.sidebar?.display || !showSidebar) {
     return null
   }
 
@@ -212,31 +239,33 @@ const Sidebar = () => {
         data-kt-scroll-offset='5px'
       >
         {/* ===================== DESKTOP: rail de caritas (70px) ===================== */}
-        <div className='app-navbar flex-column flex-center py-4 d-none d-lg-flex'>
-          {/* Superadmin: Plataforma + colegios reales (MRU). Resto: sedes del colegio. */}
-          {isPlatform ? <PlatformDesktopRail /> : <SedeDesktopRail />}
+        {showDesktopBlock && (
+          <div className='app-navbar flex-column flex-center py-4 d-none d-lg-flex'>
+            {/* Superadmin: Plataforma + colegios reales (MRU). Resto: sedes del colegio. */}
+            {(isPlatform && !activeColegio) ? <PlatformDesktopRail /> : <SedeDesktopRail />}
 
-          {/* begin::Separator */}
-          <div className='separator mb-4 border-gray-300 mx-5'></div>
-          {/* end::Separator */}
+            {/* begin::Separator */}
+            <div className='separator mb-4 border-gray-300 mx-5'></div>
+            {/* end::Separator */}
 
-          {/* begin::Navbar item */}
-          <div className='app-navbar-item flex-center'>
-            <Link
-              to='/account/overview'
-              className='btn btn-icon btn-color-gray-600 bg-gray-200 btn-active-primary w-40px h-40px btn-accent'
-            >
-              <i className='ki-duotone ki-plus fs-1'></i>
-            </Link>
+            {/* begin::Navbar item */}
+            <div className='app-navbar-item flex-center'>
+              <Link
+                to='/account/overview'
+                className='btn btn-icon btn-color-gray-600 bg-gray-200 btn-active-primary w-40px h-40px btn-accent'
+              >
+                <i className='ki-duotone ki-plus fs-1'></i>
+              </Link>
+            </div>
+            {/* end::Navbar item */}
           </div>
-          {/* end::Navbar item */}
-        </div>
+        )}
         {/* ===================== end DESKTOP rail ===================== */}
 
         {/* ===================== MOVIL: selector Thunder + menu Apps ===================== */}
         <div className='d-flex d-lg-none flex-column w-100 p-4'>
           {/* Selector de caritas */}
-          {isPlatform ? <PlatformMobileSelector /> : <SedeMobileSelector />}
+          {(isPlatform && !activeColegio) ? <PlatformMobileSelector /> : <SedeMobileSelector />}
 
           <div className='separator my-4'></div>
 
@@ -251,6 +280,7 @@ const Sidebar = () => {
                   isPlatform,
                   isTenantUser,
                   activeColegio: !!activeColegio,
+                  canManageUsers,
                 })
               ),
             }}

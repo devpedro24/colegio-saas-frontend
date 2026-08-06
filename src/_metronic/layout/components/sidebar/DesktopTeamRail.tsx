@@ -91,8 +91,11 @@ const DesktopTeamRail = ({items, activeId, onSelect, searchTitle, searchPlacehol
   const openSearch = () => {
     if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect()
-      let top = r.top + r.height / 2 - POPOVER_MAX_HEIGHT / 2
-      top = Math.max(12, Math.min(top, window.innerHeight - POPOVER_MAX_HEIGHT - 12))
+      let top = r.top
+      if (top + POPOVER_MAX_HEIGHT > window.innerHeight) {
+        top = Math.max(8, window.innerHeight - POPOVER_MAX_HEIGHT - 8)
+      }
+      top = Math.max(8, top)
       const left = r.right + 12
       setPos({top, left})
     }
@@ -164,7 +167,7 @@ const DesktopTeamRail = ({items, activeId, onSelect, searchTitle, searchPlacehol
         type='button'
         title={
           searchTitle ??
-          intl.formatMessage({id: 'impersonation.searchColegio', defaultMessage: 'Buscar colegio'})
+          intl.formatMessage({id: 'common.search', defaultMessage: 'Buscar colegio'})
         }
         className={`btn btn-icon btn-color-gray-600 btn-active-color-primary w-40px h-40px mx-auto mb-4${
           searchOpen ? ' active' : ''

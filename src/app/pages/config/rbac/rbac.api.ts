@@ -1,4 +1,4 @@
-// Capa de datos del feature RBAC: funciones sobre el api client + hooks de
+﻿// Capa de datos del feature RBAC: funciones sobre el api client + hooks de
 // TanStack Query. Rutas bajo /api (proxied) con auth Bearer y middleware 'platform'.
 // Esta es la administracion del catalogo CENTRAL (fuente de verdad del RBAC).
 

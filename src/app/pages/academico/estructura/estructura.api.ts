@@ -1,4 +1,4 @@
-// Capa de datos del feature Estructura organizacional: funciones del api client
+﻿// Capa de datos del feature Estructura organizacional: funciones del api client
 // + hooks de TanStack Query. Todas bajo /api/estructura (permiso
 // academico.estructura.gestionar). Dominio en espanol, alineado con el backend.
 
@@ -33,8 +33,8 @@ export const ESPACIOS_KEY = ['estructura', 'espacios-fisicos'] as const
 /**
  * URL de una sede adicional: su tenant vive en `https://{tenant_domain}.{base}` donde
  * `base` es el hostname actual menos el primer segmento. Desde el colegio
- * (colegio-rbac.localhost) → base = localhost; desde una sede (norte.colegio-rbac.localhost)
- * → base = colegio-rbac.localhost.
+ * (colegio-rbac.localhost) â†’ base = localhost; desde una sede (norte.colegio-rbac.localhost)
+ * â†’ base = colegio-rbac.localhost.
  */
 export function sedeSubdomainUrl(tenantDomain: string): string {
   const host = window.location.hostname
@@ -49,7 +49,7 @@ export function useSedes(enabled = true) {
   return useQuery({
     queryKey: SEDES_KEY,
     enabled,
-    queryFn: () => api.get<{data: Sede[]}>('/estructura/sedes').then((res) => res.data),
+    queryFn: () => api.get<{data: Sede[]}>('/estructura/sedes'),
   })
 }
 
@@ -57,7 +57,7 @@ export function useSede(id: string | undefined) {
   return useQuery({
     queryKey: [...SEDES_KEY, id ?? '_'],
     enabled: id !== undefined && id !== null,
-    queryFn: () => api.get<{data: Sede}>(`/estructura/sedes/${id}`).then((res) => res.data),
+    queryFn: () => api.get<{data: Sede}>(`/estructura/sedes/${id}`),
   })
 }
 
@@ -99,7 +99,7 @@ export function useJornadas(sedeId?: string | null) {
     enabled: sedeId === undefined || sedeId !== null, // sin filtro => lista completa
     queryFn: () => {
       const q = sedeId ? `?sede_id=${sedeId}` : ''
-      return api.get<{data: Jornada[]}>(`/estructura/jornadas${q}`).then((res) => res.data)
+      return api.get<{data: Jornada[]}>(`/estructura/jornadas${q}`)
     },
   })
 }
@@ -134,7 +134,7 @@ export function useDeleteJornada() {
 export function useNiveles() {
   return useQuery({
     queryKey: NIVELES_KEY,
-    queryFn: () => api.get<{data: Nivel[]}>('/estructura/niveles').then((res) => res.data),
+    queryFn: () => api.get<{data: Nivel[]}>('/estructura/niveles'),
   })
 }
 
@@ -169,7 +169,7 @@ export function useGrados(nivelId?: string) {
   return useQuery({
     queryKey: GRADOS_KEY,
     enabled: nivelId === undefined, // filtro por nivel se delibera en componente
-    queryFn: () => api.get<{data: Grado[]}>('/estructura/grados').then((res) => res.data),
+    queryFn: () => api.get<{data: Grado[]}>('/estructura/grados'),
   })
 }
 
@@ -206,7 +206,7 @@ export function useGrupos(anoLectivoId?: string) {
     enabled: anoLectivoId === undefined || anoLectivoId !== null,
     queryFn: () => {
       const params = anoLectivoId ? `?ano_lectivo_id=${anoLectivoId}` : ''
-      return api.get<{data: Grupo[]}>(`/estructura/grupos${params}`).then((res) => res.data)
+      return api.get<{data: Grupo[]}>(`/estructura/grupos${params}`)
     },
   })
 }
@@ -246,7 +246,6 @@ export function useBloquesHorarios(jornadaId?: string) {
       const params = jornadaId ? `?jornada_id=${jornadaId}` : ''
       return api
         .get<{data: BloqueHorario[]}>(`/estructura/bloques-horarios${params}`)
-        .then((res) => res.data)
     },
   })
 }
@@ -287,7 +286,7 @@ export function useEspaciosFisicos(sedeId?: string) {
       const params = sedeId ? `?sede_id=${sedeId}` : ''
       return api
         .get<{data: EspacioFisico[]}>(`/estructura/espacios-fisicos${params}`)
-        .then((res) => res.data)
+        
     },
   })
 }
@@ -315,5 +314,15 @@ export function useDeleteEspacioFisico() {
   return useMutation({
     mutationFn: (id: string) => api.delete<{data: null}>(`/estructura/espacios-fisicos/${id}`),
     onSuccess: () => queryClient.invalidateQueries({queryKey: ESPACIOS_KEY}),
+  })
+}
+
+/** POST /estructura/sedes/{id}/heredar — copia config del colegio a la sede. */
+export function useHeredarSede() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({id, categorias}: {id: string; categorias: string[]}) =>
+      api.post(`/estructura/sedes/${id}/heredar`, {categorias}),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: SEDES_KEY}),
   })
 }

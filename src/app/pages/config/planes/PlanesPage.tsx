@@ -1,4 +1,4 @@
-import {FC, useMemo, useState} from 'react'
+﻿import {FC, useMemo, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
@@ -51,12 +51,12 @@ const PlanesPage: FC = () => {
 
   return (
     <>
-      <PageTitle breadcrumbs={configBreadCrumbs}>{t('planes.title')}</PageTitle>
+      <PageTitle breadcrumbs={configBreadCrumbs}>{t('common.plans')}</PageTitle>
       <Content>
         {/* begin::Cabecera */}
         <div className='d-flex flex-wrap align-items-center justify-content-between gap-3 mb-6'>
           <div className='d-flex flex-column'>
-            <h3 className='fw-bold text-gray-900 mb-1'>{t('planes.title')}</h3>
+            <h3 className='fw-bold text-gray-900 mb-1'>{t('common.plans')}</h3>
             <span className='text-muted fs-7'>{t('planes.subtitle')}</span>
           </div>
           <button type='button' className='btn btn-primary' onClick={() => setShowCreate(true)}>
@@ -70,7 +70,7 @@ const PlanesPage: FC = () => {
         {isLoading && (
           <div className='d-flex justify-content-center align-items-center py-20'>
             <span className='spinner-border text-primary me-3' role='status'></span>
-            <span className='text-muted fs-6'>{t('planes.loading')}</span>
+            <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})}</span>
           </div>
         )}
 
@@ -82,7 +82,7 @@ const PlanesPage: FC = () => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{t('planes.loadError')}</span>
+            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})}</span>
           </div>
         )}
 
@@ -91,7 +91,7 @@ const PlanesPage: FC = () => {
           <div className='row g-6 g-xl-9'>
             {planes.length === 0 && (
               <div className='col-12'>
-                <div className='text-center text-muted py-20'>{t('planes.empty')}</div>
+                <div className='text-center text-muted py-20'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})}</div>
               </div>
             )}
             {planes.map((plan) => {
@@ -112,7 +112,7 @@ const PlanesPage: FC = () => {
                               : 'badge badge-light-secondary'
                           }
                         >
-                          {plan.is_active ? t('planes.active') : t('planes.inactive')}
+                          {plan.is_active ? t('common.active') : t('common.inactive')}
                         </span>
                       </div>
 
@@ -183,7 +183,7 @@ const PlanesPage: FC = () => {
                           <span className='path1'></span>
                           <span className='path2'></span>
                         </i>
-                        {t('planes.edit')}
+                        {intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})}
                       </button>
                     </div>
                   </div>

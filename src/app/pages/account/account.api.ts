@@ -1,4 +1,4 @@
-// Capa de datos de AJUSTES DE CUENTA: perfil, email, contraseña, desactivación y
+﻿// Capa de datos de AJUSTES DE CUENTA: perfil, email, contraseña, desactivación y
 // vinculación de Google. Hooks de TanStack Query sobre el api client (rutas bajo /api/account).
 
 import {useMutation} from '@tanstack/react-query'

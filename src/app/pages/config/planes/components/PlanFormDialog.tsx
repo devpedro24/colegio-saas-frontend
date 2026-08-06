@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -21,7 +21,7 @@ function slugify(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\\u0300-\\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }
@@ -91,7 +91,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('planes.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -100,7 +100,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
         {id: plan.id, input},
         {
           onSuccess: () => {
-            toast.success(t('planes.toast.updated', {name}))
+            toast.success(t('common.toast.updated', {name}))
             onClose()
           },
           onError,
@@ -111,7 +111,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
         {...input, sort_order: (planesData?.data.length ?? 0) + 1},
         {
           onSuccess: () => {
-            toast.success(t('planes.toast.created', {name}))
+            toast.success(t('common.toast.created', {name}))
             onClose()
           },
           onError,
@@ -140,7 +140,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
             {fe('name') && <div className='invalid-feedback'>{fe('name')}</div>}
           </div>
           <div className='col-md-5 fv-row mb-7'>
-            <label className='required fs-6 fw-semibold mb-2'>{t('planes.field.key')}</label>
+            <label className='required fs-6 fw-semibold mb-2'>{t('common.field.key')}</label>
             <input
               type='text'
               className={`form-control form-control-solid ${fe('key') ? 'is-invalid' : ''}`}
@@ -160,7 +160,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
 
         {/* Descripcion */}
         <div className='fv-row mb-7'>
-          <label className='fs-6 fw-semibold mb-2'>{t('planes.field.description')}</label>
+          <label className='fs-6 fw-semibold mb-2'>{t('common.description')}</label>
           <textarea
             className={`form-control form-control-solid ${fe('description') ? 'is-invalid' : ''}`}
             rows={2}
@@ -270,7 +270,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
             />
-            <span className='form-check-label fw-semibold text-gray-800'>{t('planes.field.active')}</span>
+            <span className='form-check-label fw-semibold text-gray-800'>{t('common.active')}</span>
           </label>
         </div>
 
@@ -311,13 +311,13 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
         <button type='submit' className='btn btn-primary' disabled={pending}>
           {pending ? (
             <span className='indicator-progress d-block'>
-              {t('common.saving')}
+              {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : isEdit ? (
-            t('common.save')
+            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})
           ) : (
-            t('planes.save')
+            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})
           )}
         </button>
       </div>
@@ -343,7 +343,7 @@ const PlanFormDialog: FC<Props> = ({show, plan, onClose}) => {
       <div className='modal-header'>
         <div className='d-flex flex-column'>
           <h2 className='fw-bold'>
-            {intl.formatMessage({id: isEdit ? 'planes.edit.title' : 'planes.new.title'})}
+            {intl.formatMessage({id: isEdit ? 'planes.edit.title' : 'planes.new'})}
           </h2>
           <span className='text-muted fs-7'>{intl.formatMessage({id: 'planes.form.subtitle'})}</span>
         </div>

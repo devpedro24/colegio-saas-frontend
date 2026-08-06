@@ -6,10 +6,12 @@
 
 export interface Sede {
   id: string
+  hashed_id: string
   nombre: string
   direccion: string | null
   telefono: string | null
   responsable: string | null
+  coordinador_name: string | null
   coordinador_email: string | null
   tenant_id: string | null
   tenant_slug: string | null

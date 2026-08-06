@@ -1,7 +1,8 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {
@@ -38,6 +39,7 @@ const JornadaFormDialog: FC<{
   onClose: () => void
 }> = ({show, jornada, onClose}) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data: sedes} = useSedes()
@@ -67,7 +69,7 @@ const JornadaFormDialog: FC<{
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.estructura.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -76,7 +78,7 @@ const JornadaFormDialog: FC<{
         {id: jornada.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.estructura.toast.updated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -85,7 +87,7 @@ const JornadaFormDialog: FC<{
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.estructura.toast.created'))
+          toast.success(t('common.toast.created'))
           onClose()
         },
         onError,
@@ -117,7 +119,7 @@ const JornadaFormDialog: FC<{
         <div className='modal-body py-lg-10 px-lg-10'>
           <div className='fv-row mb-7'>
             <label className='required fs-6 fw-semibold mb-2'>
-              {t('academico.estructura.jornada.sede')}
+              {t('common.field.sede')}
             </label>
             <select
               className={`form-select form-select-solid ${fe('sede_id') ? 'is-invalid' : ''}`}
@@ -125,7 +127,7 @@ const JornadaFormDialog: FC<{
               onChange={(e) => set({sede_id: e.target.value})}
             >
               <option value=''>{t('common.select')}</option>
-              {(sedes ?? []).map((s) => (
+              {(sedes?.data ?? []).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nombre}
                 </option>
@@ -181,7 +183,7 @@ const JornadaFormDialog: FC<{
             {pending ? (
               <span className='spinner-border spinner-border-sm align-middle'></span>
             ) : (
-              t('academico.estructura.save')
+              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.jornada'})})
             )}
           </button>
         </div>
@@ -193,6 +195,7 @@ const JornadaFormDialog: FC<{
 
 const JornadasTab: FC = () => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useJornadas()
@@ -202,7 +205,7 @@ const JornadasTab: FC = () => {
   const [edit, setEdit] = useState<Jornada | null>(null)
   const [deleteId, setDeleteId] = useState<Jornada | null>(null)
 
-  const list = data ?? []
+  const list = data?.data ?? []
 
   return (
     <>
@@ -223,7 +226,7 @@ const JornadasTab: FC = () => {
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
           <span className='spinner-border text-primary me-3' role='status'></span>
-          <span className='text-muted fs-6'>{t('academico.estructura.loading')}</span>
+          <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.jornada'})})}</span>
         </div>
       )}
 
@@ -234,7 +237,7 @@ const JornadasTab: FC = () => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{t('academico.estructura.loadError')}</span>
+          <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.jornada'})})}</span>
         </div>
       )}
 
@@ -244,10 +247,10 @@ const JornadasTab: FC = () => {
             <thead>
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='min-w-150px'>{t('academico.estructura.jornada.nombre')}</th>
-                <th className='min-w-150px'>{t('academico.estructura.jornada.sede')}</th>
+                <th className='min-w-150px'>{t('common.field.sede')}</th>
                 <th className='min-w-150px'>{t('academico.estructura.jornada.horaInicio')}</th>
-                <th className='min-w-100px'>{t('academico.estructura.col.estado')}</th>
-                <th className='min-w-150px text-end'>{t('academico.estructura.col.actions')}</th>
+                <th className='min-w-100px'>{t('common.status')}</th>
+                <th className='min-w-150px text-end'>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className='text-gray-600 fw-semibold'>
@@ -261,7 +264,7 @@ const JornadasTab: FC = () => {
                   </td>
                   <td>
                     <span className='text-gray-700'>
-                      {j.hora_inicio ? `${j.hora_inicio} → ${j.hora_fin}` : '—'}
+                      {j.hora_inicio ? `${j.hora_inicio} â†’ ${j.hora_fin}` : '—'}
                     </span>
                   </td>
                   <td>
@@ -274,8 +277,8 @@ const JornadasTab: FC = () => {
                     >
                       {t(
                         j.estado === 'activa'
-                          ? 'academico.estructura.estado.activa'
-                          : 'academico.estructura.estado.inactiva'
+                          ? 'common.active'
+                          : 'common.inactive'
                       )}
                     </span>
                   </td>
@@ -284,7 +287,7 @@ const JornadasTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-primary btn-sm'
-                        title={t('academico.estructura.edit')}
+                        title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.jornada'})})}
                         onClick={() => {
                           setEdit(j)
                           setFormOpen(true)
@@ -298,7 +301,7 @@ const JornadasTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-danger btn-sm'
-                        title={t('academico.estructura.delete')}
+                        title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.jornada'})})}
                         onClick={() => setDeleteId(j)}
                       >
                         <i className='ki-duotone ki-trash fs-5'>
@@ -316,7 +319,7 @@ const JornadasTab: FC = () => {
               {list.length === 0 && (
                 <tr>
                   <td colSpan={5} className='text-center text-muted py-10'>
-                    {t('academico.estructura.empty')}
+                    {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.jornada'})})}
                   </td>
                 </tr>
               )}
@@ -342,11 +345,11 @@ const JornadasTab: FC = () => {
           if (!deleteId) return
           del.mutate(deleteId.id, {
             onSuccess: () => {
-              toast.success(t('academico.estructura.toast.deleted'))
+              toast.success(t('common.toast.deleted'))
               setDeleteId(null)
             },
             onError: () => {
-              toast.error(t('academico.estructura.toast.deleteError'))
+              toast.error(t('common.toast.deleteError'))
               setDeleteId(null)
             },
           })

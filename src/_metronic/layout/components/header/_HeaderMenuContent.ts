@@ -11,6 +11,7 @@ export const getHeaderMenuHtml = (
     isPlatform?: boolean
     isTenantUser?: boolean
     activeColegio?: boolean
+    canManageUsers?: boolean
   }
 ) => {
   const t = (id: string, defaultMessage: string) => intl.formatMessage({id, defaultMessage})
@@ -73,14 +74,34 @@ export const getHeaderMenuHtml = (
 												<!--end:Menu link-->
 											</div>
 											<!--end:Menu item-->
+										</div>
+										<!--end:Menu sub-->
+									</div>
+									<!--end:Menu item-->`
+    : ''
+
+  // Bloque 'Gestion de usuarios' (usuarios del colegio / roles): visible en MODO COLEGIO
+  // SOLO si el rol tiene el permiso 'usuarios.gestionar'.
+  const usersBlock = colegioMode && (opts?.canManageUsers === true)
+    ? String.raw`
+									<!--begin:Menu item-->
+									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
+										<!--begin:Menu link-->
+										<span class="menu-link">
+											<span class="menu-title">${t('header.menu.userManagement', 'Gestión de usuarios')}</span>
+											<span class="menu-arrow d-lg-none"></span>
+										</span>
+										<!--end:Menu link-->
+										<!--begin:Menu sub-->
+										<div class="menu-sub menu-sub-lg-down-accordion menu-sub-lg-dropdown px-lg-2 py-lg-4 w-lg-225px">
 											<!--begin:Menu item-->
 											<div class="menu-item">
 												<!--begin:Menu link-->
-												<a class="menu-link" href="#" data-kt-nav="/academico/usuarios">
+												<a class="menu-link" href="#" data-kt-nav="/usuarios">
 													<span class="menu-bullet">
 														<span class="bullet bullet-dot"></span>
 													</span>
-													<span class="menu-title">${t('academico.usuarios.title', 'Usuarios')}</span>
+													<span class="menu-title">${t('header.menu.users', 'Usuarios')}</span>
 												</a>
 												<!--end:Menu link-->
 											</div>
@@ -124,7 +145,7 @@ export const getHeaderMenuHtml = (
 													<span class="menu-bullet">
 														<span class="bullet bullet-dot"></span>
 													</span>
-													<span class="menu-title">${t('planes.title', 'Planes')}</span>
+													<span class="menu-title">${t('common.plans', 'Planes')}</span>
 												</a>
 												<!--end:Menu link-->
 											</div>
@@ -147,7 +168,7 @@ export const getHeaderMenuHtml = (
 									<!--end:Menu item-->`
     : ''
 
-  return String.raw`${academicoBlock}${configBlock}
+  return String.raw`${academicoBlock}${usersBlock}${configBlock}
 									<!--begin:Menu item-->
 									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
 										<!--begin:Menu link-->

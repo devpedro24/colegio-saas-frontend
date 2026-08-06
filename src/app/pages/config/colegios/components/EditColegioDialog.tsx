@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -14,6 +14,15 @@ type Props = {
   show: boolean
   colegio: Colegio | null
   onClose: () => void
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 // Formulario interno: se remonta (via key) por colegio, asi el estado arranca
@@ -35,6 +44,7 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
       ? [{key: colegio.plan, name: colegio.plan}, ...activePlans]
       : activePlans
   const [name, setName] = useState(colegio.name)
+  const [slug, setSlug] = useState(colegio.slug)
   const [legalName, setLegalName] = useState(colegio.legal_name ?? '')
   const [nit, setNit] = useState(colegio.nit ?? '')
   const [plan, setPlan] = useState(colegio.plan)
@@ -50,6 +60,7 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
         id: colegio.id,
         input: {
           name,
+          slug,
           legal_name: legalName.trim() || null,
           nit: nit.trim() || null,
           plan,
@@ -57,7 +68,7 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
       },
       {
         onSuccess: () => {
-          toast.success(t('colegios.toast.updated', {name}))
+          toast.success(t('common.toast.updated', {name}))
           onClose()
         },
         onError: (err) => {
@@ -65,7 +76,7 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
             setError(err)
             if (!err.errors) toast.error(err.message)
           } else {
-            toast.error(t('colegios.toast.updateError'))
+            toast.error(t('common.toast.genericError'))
           }
         },
       }
@@ -83,21 +94,23 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
             className={`form-control form-control-solid ${fe('name') ? 'is-invalid' : ''}`}
             placeholder={t('colegios.field.namePh')}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); setSlug(slugify(e.target.value)) }}
           />
           {fe('name') && <div className='invalid-feedback'>{fe('name')}</div>}
         </div>
 
-        {/* Subdominio (solo lectura: no se puede cambiar) */}
+        {/* Subdominio (solo lectura: se auto-llena desde el nombre) */}
         <div className='fv-row mb-7'>
-          <label className='fs-6 fw-semibold mb-2'>{t('colegios.field.subdomain')}</label>
-          <input
-            type='text'
-            className='form-control form-control-solid'
-            value={colegio.subdomain}
-            disabled
-            readOnly
-          />
+          <label className='required fs-6 fw-semibold mb-2'>{t('common.subdomain')}</label>
+          <div className='input-group'>
+            <input
+              type='text'
+              className='form-control form-control-solid'
+              value={slug}
+              readOnly
+            />
+            <span className='input-group-text'>.localhost</span>
+          </div>
         </div>
 
         {/* Razon social + NIT */}
@@ -118,13 +131,13 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
           </div>
           <div className='col-md-6 fv-row mb-7'>
             <label className='fs-6 fw-semibold mb-2'>
-              {t('colegios.field.nit')}{' '}
+              {t('common.field.nit')}{' '}
               <span className='text-muted fw-normal'>({t('common.optional')})</span>
             </label>
             <input
               type='text'
               className={`form-control form-control-solid ${fe('nit') ? 'is-invalid' : ''}`}
-              placeholder={t('colegios.field.nitPh')}
+              placeholder={t('common.ph.nit')}
               value={nit}
               onChange={(e) => setNit(e.target.value)}
             />
@@ -160,11 +173,11 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
         <button type='submit' className='btn btn-primary' disabled={update.isPending}>
           {update.isPending ? (
             <span className='indicator-progress d-block'>
-              {t('common.saving')}
+              {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            t('common.save')
+            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.colegio'})})
           )}
         </button>
       </div>

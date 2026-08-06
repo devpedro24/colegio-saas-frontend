@@ -233,10 +233,10 @@ export function Registration() {
       {/* begin::Form group Email */}
       <div className='fv-row mb-8'>
         <label className='form-label fw-bolder text-gray-900 fs-6'>
-          <FormattedMessage id='auth.field.email' defaultMessage='Correo electrónico' />
+          <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
         </label>
         <input
-          placeholder={intl.formatMessage({id: 'auth.field.email', defaultMessage: 'Correo electrónico'})}
+          placeholder={intl.formatMessage({id: 'common.email', defaultMessage: 'Correo electrónico'})}
           type='email'
           autoComplete='off'
           {...formik.getFieldProps('email')}
@@ -262,12 +262,12 @@ export function Registration() {
       <div className='fv-row mb-8' data-kt-password-meter='true'>
         <div className='mb-1'>
           <label className='form-label fw-bolder text-gray-900 fs-6'>
-            <FormattedMessage id='auth.field.password' defaultMessage='Contraseña' />
+            <FormattedMessage id='common.password' defaultMessage='Contraseña' />
           </label>
           <div className='position-relative mb-3'>
             <input
               type='password'
-              placeholder={intl.formatMessage({id: 'auth.field.password', defaultMessage: 'Contraseña'})}
+              placeholder={intl.formatMessage({id: 'common.password', defaultMessage: 'Contraseña'})}
               autoComplete='off'
               {...formik.getFieldProps('password')}
               className={clsx(
@@ -382,12 +382,12 @@ export function Registration() {
         >
           {!loading && (
             <span className='indicator-label'>
-              <FormattedMessage id='auth.registration.submit' defaultMessage='Crear cuenta' />
+              <FormattedMessage id='auth.common.submit' defaultMessage='Crear cuenta' />
             </span>
           )}
           {loading && (
             <span className='indicator-progress' style={{display: 'block'}}>
-              <FormattedMessage id='auth.common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+              <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           )}
@@ -398,7 +398,7 @@ export function Registration() {
             id='kt_login_signup_form_cancel_button'
             className='btn btn-lg btn-light-primary w-100 mb-5'
           >
-            <FormattedMessage id='auth.common.cancel' defaultMessage='Cancelar' />
+            <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
           </button>
         </Link>
       </div>

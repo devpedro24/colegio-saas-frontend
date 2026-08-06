@@ -1,5 +1,6 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
 import {ApiError} from '@/lib/api/client'
@@ -22,6 +23,7 @@ const toDate = (value: string): string => (value ? value.slice(0, 10) : '')
 
 const AnosLectivosPage: FC = () => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string, values?: Record<string, string | number>) =>
     intl.formatMessage({id}, values)
 
@@ -43,7 +45,7 @@ const AnosLectivosPage: FC = () => {
   const {data, isLoading, isError} = useAnosLectivos()
   const iniciar = useIniciarAnoLectivo()
 
-  const list = data ?? []
+  const list = data?.data ?? []
 
   const statusBadge = (estado: string) => ({
     className: STATUS_CLASS[estado] ?? 'badge badge-light-secondary',
@@ -55,7 +57,7 @@ const AnosLectivosPage: FC = () => {
       onSuccess: () => toast.success(t('academico.anos.toast.iniciado', {name: ano.nombre})),
       onError: (err) => {
         const message =
-          err instanceof ApiError ? err.message : t('academico.anos.toast.iniciarError')
+          err instanceof ApiError ? err.message : t('common.toast.genericError')
         toast.error(message)
       },
     })
@@ -96,7 +98,7 @@ const AnosLectivosPage: FC = () => {
             {isLoading && (
               <div className='d-flex justify-content-center align-items-center py-15'>
                 <span className='spinner-border text-primary me-3' role='status'></span>
-                <span className='text-muted fs-6'>{t('academico.anos.loading')}</span>
+                <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})}</span>
               </div>
             )}
 
@@ -107,7 +109,7 @@ const AnosLectivosPage: FC = () => {
                   <span className='path2'></span>
                   <span className='path3'></span>
                 </i>
-                <span>{t('academico.anos.loadError')}</span>
+                <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})}</span>
               </div>
             )}
 
@@ -116,12 +118,12 @@ const AnosLectivosPage: FC = () => {
                 <table className='table table-row-dashed align-middle gs-0 gy-4'>
                   <thead>
                     <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
-                      <th className='min-w-150px'>{t('academico.anos.col.nombre')}</th>
+                      <th className='min-w-150px'>{t('common.name')}</th>
                       <th className='min-w-150px'>{t('academico.anos.col.calendario')}</th>
                       <th className='min-w-200px'>{t('academico.anos.col.fechas')}</th>
                       <th className='min-w-100px'>{t('academico.anos.col.periodos')}</th>
-                      <th className='min-w-125px'>{t('academico.anos.col.estado')}</th>
-                      <th className='min-w-250px text-end'>{t('academico.anos.col.actions')}</th>
+                      <th className='min-w-125px'>{t('common.status')}</th>
+                      <th className='min-w-250px text-end'>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className='text-gray-600 fw-semibold'>
@@ -176,7 +178,7 @@ const AnosLectivosPage: FC = () => {
                               <button
                                 type='button'
                                 className='btn btn-icon btn-light-primary btn-sm'
-                                title={t('academico.anos.edit')}
+                                title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})}
                                 onClick={() => openEdit(a)}
                               >
                                 <i className='ki-duotone ki-pencil fs-5'>
@@ -204,7 +206,7 @@ const AnosLectivosPage: FC = () => {
                                   className='btn btn-light-danger btn-sm'
                                   onClick={() => setCerrando(a)}
                                 >
-                                  {t('academico.anos.cerrar')}
+                                  {t('common.close')}
                                 </button>
                               )}
                             </div>
@@ -215,7 +217,7 @@ const AnosLectivosPage: FC = () => {
                     {list.length === 0 && (
                       <tr>
                         <td colSpan={6} className='text-center text-muted py-10'>
-                          {t('academico.anos.empty')}
+                          {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})}
                         </td>
                       </tr>
                     )}

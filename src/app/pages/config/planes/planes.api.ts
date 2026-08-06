@@ -1,4 +1,4 @@
-// Capa de datos del feature Planes: funciones sobre el api client + hooks de
+﻿// Capa de datos del feature Planes: funciones sobre el api client + hooks de
 // TanStack Query. Rutas bajo /api (proxied) con auth Bearer y middleware 'platform'.
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'

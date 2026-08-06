@@ -1,4 +1,4 @@
-import {FC, useMemo, useState} from 'react'
+﻿import {FC, useMemo, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
@@ -62,7 +62,7 @@ const ColegiosPage: FC = () => {
 
   // Busqueda local por nombre.
   const filtered = useMemo(() => {
-    const list = data ?? []
+    const list = data?.data ?? []
     const q = search.trim().toLowerCase()
     if (!q) return list
     return list.filter((c) => c.name.toLowerCase().includes(q))
@@ -75,7 +75,7 @@ const ColegiosPage: FC = () => {
         {id: colegio.id, status: 'active'},
         {
           onSuccess: () => toast.success(t('colegios.toast.enabled', {name: colegio.name})),
-          onError: () => toast.error(t('colegios.toast.enableError')),
+          onError: () => toast.error(t('common.toast.genericError')),
         }
       )
     } else {
@@ -109,7 +109,7 @@ const ColegiosPage: FC = () => {
                 <input
                   type='text'
                   className='form-control form-control-solid w-250px ps-12'
-                  placeholder={t('colegios.search')}
+                  placeholder={t('common.search')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -133,7 +133,7 @@ const ColegiosPage: FC = () => {
             {isLoading && (
               <div className='d-flex justify-content-center align-items-center py-15'>
                 <span className='spinner-border text-primary me-3' role='status'></span>
-                <span className='text-muted fs-6'>{t('colegios.loading')}</span>
+                <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.colegio'})})}</span>
               </div>
             )}
 
@@ -145,7 +145,7 @@ const ColegiosPage: FC = () => {
                   <span className='path2'></span>
                   <span className='path3'></span>
                 </i>
-                <span>{t('colegios.loadError')}</span>
+                <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.colegio'})})}</span>
               </div>
             )}
 
@@ -156,11 +156,11 @@ const ColegiosPage: FC = () => {
                   {/* begin::Head */}
                   <thead>
                     <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
-                      <th className='min-w-250px'>{t('colegios.col.name')}</th>
-                      <th className='min-w-175px'>{t('colegios.col.subdomain')}</th>
+                      <th className='min-w-250px'>{t('common.name')}</th>
+                      <th className='min-w-175px'>{t('common.subdomain')}</th>
                       <th className='min-w-100px'>{t('colegios.col.plan')}</th>
-                      <th className='min-w-125px'>{t('colegios.col.status')}</th>
-                      <th className='min-w-200px text-end'>{t('colegios.col.actions')}</th>
+                      <th className='min-w-125px'>{t('common.status')}</th>
+                      <th className='min-w-200px text-end'>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   {/* end::Head */}
@@ -202,7 +202,7 @@ const ColegiosPage: FC = () => {
                               <button
                                 type='button'
                                 className='btn btn-icon btn-light-primary btn-sm me-2'
-                                title={t('colegios.edit')}
+                                title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.colegio'})})}
                                 onClick={() => setEditing(c)}
                               >
                                 <i className='ki-duotone ki-pencil fs-5'>
@@ -214,7 +214,7 @@ const ColegiosPage: FC = () => {
                               <button
                                 type='button'
                                 className='btn btn-icon btn-light btn-sm me-2'
-                                title={t('colegios.rectorPassword')}
+                                title={t('common.pwd.title')}
                                 onClick={() => setPwdColegio(c)}
                               >
                                 <i className='ki-duotone ki-key fs-5'>
@@ -253,7 +253,7 @@ const ColegiosPage: FC = () => {
                     {filtered.length === 0 && (
                       <tr>
                         <td colSpan={5} className='text-center text-muted py-10'>
-                          {t('colegios.empty')}
+                          {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.colegio'})})}
                         </td>
                       </tr>
                     )}

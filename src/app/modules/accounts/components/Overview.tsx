@@ -34,7 +34,7 @@ export function Overview() {
       <div className='card-body p-9'>
         <div className='row mb-7'>
           <label className='col-lg-4 fw-semibold text-muted'>
-            <FormattedMessage id='account.field.fullName' defaultMessage='Nombre completo' />
+            <FormattedMessage id='common.name' defaultMessage='Nombre completo' />
           </label>
           <div className='col-lg-8'>
             <span className='fw-bold fs-6 text-gray-800'>{user?.name ?? '—'}</span>
@@ -43,7 +43,7 @@ export function Overview() {
 
         <div className='row mb-7'>
           <label className='col-lg-4 fw-semibold text-muted'>
-            <FormattedMessage id='account.overview.role' defaultMessage='Rol' />
+            <FormattedMessage id='common.field.rol' defaultMessage='Rol' />
           </label>
           <div className='col-lg-8'>
             <span className='fw-semibold fs-6 text-gray-800'>{roleLabel || '—'}</span>
@@ -52,7 +52,7 @@ export function Overview() {
 
         <div className='row mb-7'>
           <label className='col-lg-4 fw-semibold text-muted'>
-            <FormattedMessage id='account.field.email' defaultMessage='Correo electrónico' />
+            <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
           </label>
           <div className='col-lg-8'>
             <span className='fw-bold fs-6 text-gray-800'>{user?.email ?? '—'}</span>

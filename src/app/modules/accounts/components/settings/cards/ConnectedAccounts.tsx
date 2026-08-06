@@ -104,7 +104,7 @@ const ConnectedAccounts: FC = () => {
                   >
                     {unlinkMutation.isPending ? (
                       <span className='indicator-progress d-block'>
-                        <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />
+                        <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     ) : (
@@ -120,7 +120,7 @@ const ConnectedAccounts: FC = () => {
                   >
                     {connectMutation.isPending ? (
                       <span className='indicator-progress d-block'>
-                        <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />
+                        <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     ) : (

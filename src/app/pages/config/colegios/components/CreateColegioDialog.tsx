@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -44,7 +44,7 @@ function slugify(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\\u0300-\\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }
@@ -98,14 +98,14 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
       {
         onSuccess: (data) => {
           setCreated({data, rectorEmail: form.rector_email})
-          toast.success(t('colegios.toast.created', {name: data.colegio.name}))
+          toast.success(t('common.toast.created', {name: data.colegio.name}))
         },
         onError: (err) => {
           if (err instanceof ApiError) {
             setError(err)
             if (!err.errors) toast.error(err.message)
           } else {
-            toast.error(t('colegios.toast.createError'))
+            toast.error(t('common.toast.genericError'))
           }
         },
       }
@@ -123,7 +123,7 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
       backdrop={true}
     >
       <div className='modal-header'>
-        <h2 className='fw-bold'>{created ? t('colegios.created.title') : t('colegios.create.title')}</h2>
+        <h2 className='fw-bold'>{created ? t('colegios.created.title') : t('colegios.created.title')}</h2>
         <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={handleClose}>
           <i className='ki-duotone ki-cross fs-1'>
             <span className='path1'></span>
@@ -188,18 +188,19 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
 
             {/* Subdominio */}
             <div className='fv-row mb-7'>
-              <label className='required fs-6 fw-semibold mb-2'>{t('colegios.field.subdomain')}</label>
+              <label className='required fs-6 fw-semibold mb-2'>{t('common.subdomain')}</label>
               <div className='input-group'>
                 <input
                   type='text'
                   className={`form-control form-control-solid ${fe('slug') ? 'is-invalid' : ''}`}
                   placeholder={t('colegios.field.subdomainPh')}
                   value={form.slug}
-                  onChange={(e) => set({slug: e.target.value, slugTouched: true})}
+                  readOnly
                 />
                 <span className='input-group-text'>.localhost</span>
               </div>
               {fe('slug') && <div className='text-danger fs-7 mt-1'>{fe('slug')}</div>}
+              <div className='text-muted fs-8 mt-1'>{t('academico.estructura.sede.slugHelp')}</div>
             </div>
 
             {/* Razon social + NIT (opcionales) */}
@@ -220,13 +221,13 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
               </div>
               <div className='col-md-6 fv-row mb-7'>
                 <label className='fs-6 fw-semibold mb-2'>
-                  {t('colegios.field.nit')}{' '}
+                  {t('common.field.nit')}{' '}
                   <span className='text-muted fw-normal'>({t('common.optional')})</span>
                 </label>
                 <input
                   type='text'
                   className={`form-control form-control-solid ${fe('nit') ? 'is-invalid' : ''}`}
-                  placeholder={t('colegios.field.nitPh')}
+                  placeholder={t('common.ph.nit')}
                   value={form.nit}
                   onChange={(e) => set({nit: e.target.value})}
                 />
@@ -290,11 +291,11 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
             <button type='submit' className='btn btn-primary' disabled={create.isPending}>
               {create.isPending ? (
                 <span className='indicator-progress d-block'>
-                  {t('common.saving')}
+                  {t('common.pleaseWait')}
                   <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                 </span>
               ) : (
-                t('colegios.save')
+                intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.colegio'})})
               )}
             </button>
           </div>

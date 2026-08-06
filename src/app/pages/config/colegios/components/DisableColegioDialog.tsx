@@ -34,7 +34,7 @@ const DisableColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
         },
         onError: (err) => {
           const message =
-            err instanceof ApiError ? err.message : t('colegios.toast.disableError')
+            err instanceof ApiError ? err.message : t('common.toast.genericError')
           toast.error(message)
         },
       }

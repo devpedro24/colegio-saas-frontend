@@ -1,4 +1,4 @@
-import {FC, useEffect, useState} from 'react'
+﻿import {FC, useEffect, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -62,7 +62,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show])
 
-  const sedes = data ?? []
+  const sedes = data?.data ?? []
 
   const startCreate = () => {
     setCreating(true)
@@ -112,7 +112,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
         {id, sedeId: editingId, input},
         {
           onSuccess: () => {
-            toast.success(t('colegios.sedes.toast.updated'))
+            toast.success(t('common.toast.updated'))
             closeForm()
           },
           onError: (err) => {
@@ -120,7 +120,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
               setError(err)
               if (!err.errors) toast.error(err.message)
             } else {
-              toast.error(t('colegios.sedes.toast.error'))
+              toast.error(t('common.toast.genericError'))
             }
           },
         }
@@ -130,7 +130,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
         {id, input},
         {
           onSuccess: () => {
-            toast.success(t('colegios.sedes.toast.created'))
+            toast.success(t('common.toast.created'))
             setForm(EMPTY_FORM)
           },
           onError: (err) => {
@@ -138,7 +138,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
               setError(err)
               if (!err.errors) toast.error(err.message)
             } else {
-              toast.error(t('colegios.sedes.toast.error'))
+              toast.error(t('common.toast.genericError'))
             }
           },
         }
@@ -152,11 +152,11 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
       {id, sedeId: sede.id},
       {
         onSuccess: () => {
-          toast.success(t('colegios.sedes.toast.deleted'))
+          toast.success(t('common.toast.deleted'))
           setDeleteId(null)
         },
         onError: (err) => {
-          const message = err instanceof ApiError ? err.message : t('colegios.sedes.toast.error')
+          const message = err instanceof ApiError ? err.message : t('common.toast.genericError')
           toast.error(message)
           setDeleteId(null)
         },
@@ -207,7 +207,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{t('colegios.sedes.loadError')}</span>
+            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}</span>
           </div>
         )}
 
@@ -249,7 +249,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                   <div className='row'>
                     <div className='col-md-8 fv-row mb-4'>
                       <label className='fs-7 fw-semibold mb-2'>
-                        {t('colegios.sedes.field.address')}
+                        {t('common.address')}
                       </label>
                       <input
                         type='text'
@@ -263,7 +263,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                     </div>
                     <div className='col-md-4 fv-row mb-4'>
                       <label className='fs-7 fw-semibold mb-2'>
-                        {t('colegios.sedes.field.phone')}
+                        {t('common.phone')}
                       </label>
                       <input
                         type='text'
@@ -292,8 +292,8 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                           set({estado: e.target.value as ColegioSedeInput['estado']})
                         }
                       >
-                        <option value='activa'>{t('colegios.sedes.stateActive')}</option>
-                        <option value='inactiva'>{t('colegios.sedes.stateInactive')}</option>
+                        <option value='activa'>{t('common.active')}</option>
+                        <option value='inactiva'>{t('common.inactive')}</option>
                       </select>
                     </div>
                     <div className='d-flex gap-2'>
@@ -303,11 +303,11 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                       <button type='submit' className='btn btn-primary btn-sm' disabled={pending}>
                         {pending ? (
                           <span className='indicator-progress d-block'>
-                            {t('common.saving')}
+                            {t('common.pleaseWait')}
                             <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                           </span>
                         ) : (
-                          t('colegios.sedes.save')
+                          intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})
                         )}
                       </button>
                     </div>
@@ -326,15 +326,15 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
 
             {/* Lista */}
             {sedes.length === 0 ? (
-              <div className='text-center text-muted py-10 fs-6'>{t('colegios.sedes.empty')}</div>
+              <div className='text-center text-muted py-10 fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}</div>
             ) : (
               <div className='table-responsive'>
                 <table className='table table-row-dashed align-middle gs-0 gy-4'>
                   <thead>
                     <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
-                      <th className='min-w-200px'>{t('colegios.col.name')}</th>
-                      <th>{t('colegios.sedes.field.address')}</th>
-                      <th className='text-end min-w-140px'>{t('colegios.col.actions')}</th>
+                      <th className='min-w-200px'>{t('common.name')}</th>
+                      <th>{t('common.address')}</th>
+                      <th className='text-end min-w-140px'>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className='text-gray-600 fw-semibold'>
@@ -357,8 +357,8 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                                 }
                               >
                                 {sede.estado === 'activa'
-                                  ? t('colegios.sedes.stateActive')
-                                  : t('colegios.sedes.stateInactive')}
+                                  ? t('common.active')
+                                  : t('common.inactive')}
                               </span>
                             </div>
                             {sede.responsable && (
@@ -377,7 +377,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                             <div className='d-flex align-items-center justify-content-end gap-2'>
                               <span className='text-muted fs-7'>
                                 {intl.formatMessage(
-                                  {id: 'colegios.sedes.deleteConfirm'},
+                                  {id: 'common.confirmDelete'},
                                   {name: sede.nombre}
                                 )}
                               </span>
@@ -394,7 +394,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                                 disabled={remove.isPending}
                                 onClick={() => handleDelete(sede)}
                               >
-                                {t('common.delete')}
+                                {intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}
                               </button>
                             </div>
                           ) : (
@@ -402,7 +402,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                               <button
                                 type='button'
                                 className='btn btn-icon btn-light-primary btn-sm me-2'
-                                title={t('colegios.sedes.edit')}
+                                title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.sede'})})}
                                 onClick={() => startEdit(sede)}
                               >
                                 <i className='ki-duotone ki-pencil fs-5'>
@@ -413,7 +413,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                               <button
                                 type='button'
                                 className='btn btn-icon btn-light btn-sm'
-                                title={t('colegios.sedes.delete')}
+                                title={intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}
                                 onClick={() => setDeleteId(sede.id)}
                               >
                                 <i className='ki-duotone ki-trash fs-5'>

@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -80,7 +80,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.anos.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -89,7 +89,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
         {id: ano.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.anos.toast.updated', {name: input.nombre}))
+            toast.success(t('common.toast.updated', {name: input.nombre}))
             onClose()
           },
           onError,
@@ -98,7 +98,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.anos.toast.created', {name: input.nombre}))
+          toast.success(t('common.toast.created', {name: input.nombre}))
           onClose()
         },
         onError,
@@ -198,11 +198,11 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
         <button type='submit' className='btn btn-primary' disabled={pending}>
           {pending ? (
             <span className='indicator-progress d-block'>
-              {t('common.saving')}
+              {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            t('academico.anos.save')
+            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})
           )}
         </button>
       </div>
@@ -226,7 +226,7 @@ const AnoLectivoFormDialog: FC<Props> = ({show, ano, onClose}) => {
     >
       <div className='modal-header'>
         <h2 className='fw-bold'>
-          {ano ? t('academico.anos.edit.title') : t('academico.anos.create.title')}
+          {ano ? t('academico.anos.edit.title') : t('academico.anos.new')}
         </h2>
         <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={onClose}>
           <i className='ki-duotone ki-cross fs-1'>

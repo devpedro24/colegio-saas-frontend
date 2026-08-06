@@ -169,10 +169,10 @@ export function Login() {
       {/* begin::Form group */}
       <div className='fv-row mb-8'>
         <label className='form-label fs-6 fw-bolder text-gray-900'>
-          <FormattedMessage id='auth.field.email' defaultMessage='Correo electrónico' />
+          <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
         </label>
         <input
-          placeholder={intl.formatMessage({id: 'auth.field.email', defaultMessage: 'Correo electrónico'})}
+          placeholder={intl.formatMessage({id: 'common.email', defaultMessage: 'Correo electrónico'})}
           {...formik.getFieldProps('email')}
           className={clsx(
             'form-control bg-transparent',
@@ -196,7 +196,7 @@ export function Login() {
       {/* begin::Form group */}
       <div className='fv-row mb-3'>
         <label className='form-label fw-bolder text-gray-900 fs-6 mb-0'>
-          <FormattedMessage id='auth.field.password' defaultMessage='Contraseña' />
+          <FormattedMessage id='common.password' defaultMessage='Contraseña' />
         </label>
         <input
           type='password'
@@ -290,7 +290,7 @@ export function Login() {
           )}
           {loading && (
             <span className='indicator-progress' style={{display: 'block'}}>
-              <FormattedMessage id='auth.common.pleaseWait' defaultMessage='Por favor espera...' />
+              <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           )}

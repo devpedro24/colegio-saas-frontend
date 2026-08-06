@@ -1,6 +1,6 @@
 import {FC, useState} from 'react'
 import {useIntl} from 'react-intl'
-import {Navigate} from 'react-router-dom'
+import {Navigate, useSearchParams} from 'react-router-dom'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
 import {JornadasTab} from './components/JornadasTab'
@@ -10,6 +10,7 @@ import {GruposTab} from './components/GruposTab'
 import {BloquesTab} from './components/BloquesTab'
 import {EspaciosTab} from './components/EspaciosTab'
 import {useImpersonation} from '../../../modules/impersonation/impersonation.store'
+import {useAuthz} from '../../../modules/auth/core/authz'
 
 type Tab = 'jornadas' | 'niveles' | 'grados' | 'grupos' | 'bloques' | 'espacios'
 
@@ -20,6 +21,7 @@ const EstructuraPage: FC = () => {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const {activeColegio} = useImpersonation()
+  const {isPlatform} = useAuthz()
 
   const breadcrumbs: Array<PageLink> = [
     {
@@ -30,11 +32,16 @@ const EstructuraPage: FC = () => {
     },
   ]
 
-  const [tab, setTab] = useState<Tab>('jornadas')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(() => {
+    const valid: Tab[] = ['jornadas', 'niveles', 'grados', 'grupos', 'bloques', 'espacios']
+    const requested = searchParams.get('tab') as Tab | null
+    return requested && valid.includes(requested) ? requested : 'jornadas'
+  })
 
   // Mismo gating que el resto del modulo Academico: usuario de colegio o
   // superadmin suplantando (activeColegio). Sin impersonacion -> anos lectivos.
-  if (!activeColegio) {
+  if (isPlatform && !activeColegio) {
     return <Navigate to='/academico/anos-lectivos' replace />
   }
 
@@ -67,6 +74,7 @@ const EstructuraPage: FC = () => {
                     onClick={(e) => {
                       e.preventDefault()
                       setTab(item.key)
+                      setSearchParams({tab: item.key})
                     }}
                     href='#'
                   >

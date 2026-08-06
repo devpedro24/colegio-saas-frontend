@@ -1,5 +1,6 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useDatosInstitucionales, useUpdateDatosInstitucionales} from '../configuracion.api'
@@ -26,6 +27,7 @@ const fromDatos = (d: DatosInstitucionales | undefined): FormState => ({
 // Formulario interno: se remonta (via key) cuando llegan los datos del backend.
 const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const update = useUpdateDatosInstitucionales()
@@ -55,7 +57,7 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
             setError(err)
             if (!err.errors) toast.error(err.message)
           } else {
-            toast.error(t('academico.config.datos.toast.saveError'))
+            toast.error(t('common.toast.saveError'))
           }
         },
       }
@@ -79,11 +81,11 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
           {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='fs-6 fw-semibold mb-2'>{t('academico.config.datos.field.nit')}</label>
+          <label className='fs-6 fw-semibold mb-2'>{t('common.field.nit')}</label>
           <input
             type='text'
             className={`form-control form-control-solid ${fe('nit') ? 'is-invalid' : ''}`}
-            placeholder={t('academico.config.datos.field.nitPh')}
+            placeholder={t('common.ph.nit')}
             value={form.nit}
             onChange={(e) => set({nit: e.target.value})}
           />
@@ -104,7 +106,7 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
         </div>
         <div className='col-md-6 fv-row mb-7'>
           <label className='fs-6 fw-semibold mb-2'>
-            {t('academico.config.datos.field.telefono')}
+            {t('common.phone')}
           </label>
           <input
             type='text'
@@ -117,7 +119,7 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
         </div>
         <div className='col-md-6 fv-row mb-7'>
           <label className='fs-6 fw-semibold mb-2'>
-            {t('academico.config.datos.field.direccion')}
+            {t('common.address')}
           </label>
           <input
             type='text'
@@ -147,11 +149,11 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
         <button type='submit' className='btn btn-primary' disabled={update.isPending}>
           {update.isPending ? (
             <span className='indicator-progress d-block'>
-              {t('common.saving')}
+              {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            t('academico.config.datos.save')
+            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'config.breadcrumb'})})
           )}
         </button>
       </div>
@@ -162,6 +164,7 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
 // Bloque 1: datos institucionales. GET/PUT /config/datos-institucionales (sin filtro de ano).
 const DatosInstitucionalesCard: FC = () => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const {data, isLoading, isError} = useDatosInstitucionales()
 
@@ -177,7 +180,7 @@ const DatosInstitucionalesCard: FC = () => {
         {isLoading && (
           <div className='d-flex justify-content-center align-items-center py-10'>
             <span className='spinner-border text-primary me-3' role='status'></span>
-            <span className='text-muted fs-6'>{t('academico.config.datos.loading')}</span>
+            <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'config.breadcrumb'})})}</span>
           </div>
         )}
 
@@ -188,11 +191,11 @@ const DatosInstitucionalesCard: FC = () => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{t('academico.config.datos.loadError')}</span>
+            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'config.breadcrumb'})})}</span>
           </div>
         )}
 
-        {!isLoading && !isError && <DatosForm key={data?.nombre ?? 'empty'} datos={data} />}
+        {!isLoading && !isError && <DatosForm key={data?.data?.nombre ?? 'empty'} datos={data?.data} />}
       </div>
     </div>
   )

@@ -1,7 +1,8 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useCreateGrado, useDeleteGrado, useGrados, useNiveles, useUpdateGrado} from '../estructura.api'
@@ -32,6 +33,7 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
   onClose,
 }) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data: niveles} = useNiveles()
@@ -61,7 +63,7 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.estructura.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -70,7 +72,7 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
         {id: grado.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.estructura.toast.updated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -79,7 +81,7 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.estructura.toast.created'))
+          toast.success(t('common.toast.created'))
           onClose()
         },
         onError,
@@ -111,7 +113,7 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
         <div className='modal-body py-lg-10 px-lg-10'>
           <div className='fv-row mb-7'>
             <label className='required fs-6 fw-semibold mb-2'>
-              {t('academico.estructura.grado.nivel')}
+              {t('common.field.nivel')}
             </label>
             <select
               className={`form-select form-select-solid ${fe('nivel_id') ? 'is-invalid' : ''}`}
@@ -119,7 +121,7 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
               onChange={(e) => set({nivel_id: e.target.value})}
             >
               <option value=''>{t('common.select')}</option>
-              {(niveles ?? []).map((n) => (
+              {(niveles?.data ?? []).map((n) => (
                 <option key={n.id} value={n.id}>
                   {n.nombre}
                 </option>
@@ -175,7 +177,7 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
             {pending ? (
               <span className='spinner-border spinner-border-sm align-middle'></span>
             ) : (
-              t('academico.estructura.save')
+              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.grado'})})
             )}
           </button>
         </div>
@@ -187,6 +189,7 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
 
 const GradosTab: FC = () => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useGrados()
@@ -196,7 +199,7 @@ const GradosTab: FC = () => {
   const [edit, setEdit] = useState<Grado | null>(null)
   const [deleteId, setDeleteId] = useState<Grado | null>(null)
 
-  const list = data ?? []
+  const list = data?.data ?? []
 
   return (
     <>
@@ -217,7 +220,7 @@ const GradosTab: FC = () => {
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
           <span className='spinner-border text-primary me-3' role='status'></span>
-          <span className='text-muted fs-6'>{t('academico.estructura.loading')}</span>
+          <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.grado'})})}</span>
         </div>
       )}
 
@@ -228,7 +231,7 @@ const GradosTab: FC = () => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{t('academico.estructura.loadError')}</span>
+          <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.grado'})})}</span>
         </div>
       )}
 
@@ -239,10 +242,10 @@ const GradosTab: FC = () => {
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='min-w-150px'>{t('academico.estructura.grado.nombre')}</th>
                 <th className='min-w-150px'>{t('academico.estructura.grado.codigo')}</th>
-                <th className='min-w-150px'>{t('academico.estructura.grado.nivel')}</th>
+                <th className='min-w-150px'>{t('common.field.nivel')}</th>
                 <th className='min-w-100px'>{t('academico.estructura.grado.orden')}</th>
-                <th className='min-w-100px'>{t('academico.estructura.col.estado')}</th>
-                <th className='min-w-150px text-end'>{t('academico.estructura.col.actions')}</th>
+                <th className='min-w-100px'>{t('common.status')}</th>
+                <th className='min-w-150px text-end'>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className='text-gray-600 fw-semibold'>
@@ -280,7 +283,7 @@ const GradosTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-primary btn-sm'
-                        title={t('academico.estructura.edit')}
+                        title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.grado'})})}
                         onClick={() => {
                           setEdit(g)
                           setFormOpen(true)
@@ -294,7 +297,7 @@ const GradosTab: FC = () => {
                       <button
                         type='button'
                         className='btn btn-icon btn-light-danger btn-sm'
-                        title={t('academico.estructura.delete')}
+                        title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.grado'})})}
                         onClick={() => setDeleteId(g)}
                       >
                         <i className='ki-duotone ki-trash fs-5'>
@@ -312,7 +315,7 @@ const GradosTab: FC = () => {
               {list.length === 0 && (
                 <tr>
                   <td colSpan={6} className='text-center text-muted py-10'>
-                    {t('academico.estructura.empty')}
+                    {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.grado'})})}
                   </td>
                 </tr>
               )}
@@ -338,11 +341,11 @@ const GradosTab: FC = () => {
           if (!deleteId) return
           del.mutate(deleteId.id, {
             onSuccess: () => {
-              toast.success(t('academico.estructura.toast.deleted'))
+              toast.success(t('common.toast.deleted'))
               setDeleteId(null)
             },
             onError: () => {
-              toast.error(t('academico.estructura.toast.deleteError'))
+              toast.error(t('common.toast.deleteError'))
               setDeleteId(null)
             },
           })

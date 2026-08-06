@@ -1,7 +1,8 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {
@@ -45,6 +46,7 @@ const ModeloForm: FC<{
   onClose: () => void
 }> = ({anoLectivoId, modelo, onClose}) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const create = useCreateModelo(anoLectivoId)
@@ -73,7 +75,7 @@ const ModeloForm: FC<{
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.config.modelo.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -82,7 +84,7 @@ const ModeloForm: FC<{
         {id: modelo.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.config.modelo.toast.updated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -91,7 +93,7 @@ const ModeloForm: FC<{
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.config.modelo.toast.created'))
+          toast.success(t('common.toast.created'))
           onClose()
         },
         onError,
@@ -168,11 +170,11 @@ const ModeloForm: FC<{
         <button type='submit' className='btn btn-primary' disabled={pending}>
           {pending ? (
             <span className='indicator-progress d-block'>
-              {t('common.saving')}
+              {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            t('academico.config.modelo.save')
+            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.modelo'})})
           )}
         </button>
       </div>
@@ -189,6 +191,7 @@ const Bool: FC<{on: boolean; onLabel: string; offLabel: string}> = ({on, onLabel
 // Bloque 6: modelo pedagogico por nivel. Lista + crear/editar/eliminar, filtrada por ano.
 const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useModelosPedagogicos(anoLectivoId)
@@ -197,7 +200,7 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<ModeloPedagogico | null>(null)
 
-  const modelos = data ?? []
+  const modelos = data?.data ?? []
 
   const openCreate = () => {
     setEditing(null)
@@ -214,10 +217,10 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
 
   const handleDelete = (m: ModeloPedagogico) => {
     del.mutate(m.id, {
-      onSuccess: () => toast.success(t('academico.config.modelo.toast.deleted')),
+      onSuccess: () => toast.success(t('common.toast.deleted')),
       onError: (err) => {
         const message =
-          err instanceof ApiError ? err.message : t('academico.config.modelo.toast.deleteError')
+          err instanceof ApiError ? err.message : t('common.toast.deleteError')
         toast.error(message)
       },
     })
@@ -241,7 +244,7 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
         {isLoading && (
           <div className='d-flex justify-content-center align-items-center py-10'>
             <span className='spinner-border text-primary me-3' role='status'></span>
-            <span className='text-muted fs-6'>{t('academico.config.modelo.loading')}</span>
+            <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.modelo'})})}</span>
           </div>
         )}
 
@@ -252,7 +255,7 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{t('academico.config.modelo.loadError')}</span>
+            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.modelo'})})}</span>
           </div>
         )}
 
@@ -261,11 +264,11 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
             <table className='table table-row-dashed align-middle gs-0 gy-4'>
               <thead>
                 <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
-                  <th className='min-w-125px'>{t('academico.config.modelo.col.nivel')}</th>
+                  <th className='min-w-125px'>{t('common.field.nivel')}</th>
                   <th className='min-w-150px'>{t('academico.config.modelo.col.docente')}</th>
                   <th className='min-w-150px'>{t('academico.config.modelo.col.aula')}</th>
                   <th className='min-w-125px'>{t('academico.config.modelo.col.director')}</th>
-                  <th className='min-w-100px text-end'>{t('academico.config.modelo.col.actions')}</th>
+                  <th className='min-w-100px text-end'>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className='text-gray-600 fw-semibold'>
@@ -306,7 +309,7 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
                         <button
                           type='button'
                           className='btn btn-icon btn-light-primary btn-sm me-2'
-                          title={t('academico.config.modelo.edit')}
+                          title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.modelo'})})}
                           onClick={() => openEdit(m)}
                         >
                           <i className='ki-duotone ki-pencil fs-6'>
@@ -317,7 +320,7 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
                         <button
                           type='button'
                           className='btn btn-icon btn-light-danger btn-sm'
-                          title={t('academico.config.modelo.delete')}
+                          title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.modelo'})})}
                           disabled={del.isPending}
                           onClick={() => handleDelete(m)}
                         >
@@ -336,7 +339,7 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
                 {modelos.length === 0 && (
                   <tr>
                     <td colSpan={5} className='text-center text-muted py-10'>
-                      {t('academico.config.modelo.empty')}
+                      {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.modelo'})})}
                     </td>
                   </tr>
                 )}

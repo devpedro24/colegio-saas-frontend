@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -22,7 +22,7 @@ function slugify(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\\u0300-\\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/^\.+|\.+$/g, '')
 }
@@ -72,7 +72,7 @@ const PermForm: FC<{
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('rbac.perm.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -81,7 +81,7 @@ const PermForm: FC<{
         {id: permission.id, input},
         {
           onSuccess: () => {
-            toast.success(t('rbac.perm.toastUpdated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -92,7 +92,7 @@ const PermForm: FC<{
         {...input, key},
         {
           onSuccess: () => {
-            toast.success(t('rbac.perm.toastCreated'))
+            toast.success(t('common.toast.created'))
             onClose()
           },
           onError,
@@ -124,7 +124,7 @@ const PermForm: FC<{
 
         {/* Descripcion (accion) */}
         <div className='fv-row mb-7'>
-          <label className='required fs-6 fw-semibold mb-2'>{t('rbac.perm.action')}</label>
+          <label className='required fs-6 fw-semibold mb-2'>{t('common.description')}</label>
           <input
             type='text'
             className={`form-control form-control-solid ${fe('action') ? 'is-invalid' : ''}`}
@@ -137,7 +137,7 @@ const PermForm: FC<{
 
         {/* Clave (inmutable al editar) */}
         <div className='fv-row mb-7'>
-          <label className='required fs-6 fw-semibold mb-2'>{t('rbac.perm.key')}</label>
+          <label className='required fs-6 fw-semibold mb-2'>{t('common.field.key')}</label>
           <input
             type='text'
             className={`form-control form-control-solid ${fe('key') ? 'is-invalid' : ''}`}
@@ -194,11 +194,11 @@ const PermForm: FC<{
         <button type='submit' className='btn btn-primary' disabled={pending}>
           {pending ? (
             <span className='indicator-progress d-block'>
-              {t('common.saving')}
+              {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : isEdit ? (
-            t('common.save')
+            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.permiso'})})
           ) : (
             t('rbac.perm.create')
           )}
@@ -225,7 +225,7 @@ const PermissionFormDialog: FC<Props> = ({show, permission, features, onClose}) 
     >
       <div className='modal-header'>
         <h2 className='fw-bold'>
-          {intl.formatMessage({id: isEdit ? 'rbac.perm.editTitleDialog' : 'rbac.perm.newTitle'})}
+          {intl.formatMessage({id: isEdit ? 'rbac.perm.editTitle' : 'rbac.perm.new'})}
         </h2>
         <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={onClose}>
           <i className='ki-duotone ki-cross fs-1'>

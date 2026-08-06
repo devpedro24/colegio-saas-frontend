@@ -1,10 +1,25 @@
 
-import {useEffect} from 'react'
+import { useEffect, useState } from 'react'
 import {Outlet, Link} from 'react-router-dom'
 import {FormattedMessage} from 'react-intl'
 import {toAbsoluteUrl} from '../../../_metronic/helpers'
+import { api } from '@/lib/api/client'
 
 const AuthLayout = () => {
+  const [loading, setLoading] = useState(true)
+  const [invalid, setInvalid] = useState(false)
+
+  // Verifica que el tenant (subdominio) exista antes de mostrar el login.
+  // Subdominios no registrados muestran pantalla en blanco.
+  useEffect(() => {
+    const hostname = window.location.hostname
+    const isCentral = hostname === '127.0.0.1' || hostname === 'localhost'
+    if (isCentral) { setLoading(false); return }
+    api.get<{ok: boolean}>('/tenant-status')
+      .then(() => setLoading(false))
+      .catch(() => { setLoading(false); setInvalid(true) })
+  }, [])
+
   useEffect(() => {
     const root = document.getElementById('root')
     if (root) {
@@ -16,6 +31,9 @@ const AuthLayout = () => {
       }
     }
   }, [])
+
+  if (loading) return null
+  if (invalid) return <div style={{display: 'none'}} />
 
   return (
     <div className='d-flex flex-column flex-lg-row flex-column-fluid h-100'>
@@ -40,7 +58,7 @@ const AuthLayout = () => {
             </a>
 
             <a href='#' className='px-5' target='_blank'>
-              <FormattedMessage id='auth.layout.plans' defaultMessage='Planes' />
+              <FormattedMessage id='common.plans' defaultMessage='Planes' />
             </a>
 
             <a href='#' className='px-5' target='_blank'>

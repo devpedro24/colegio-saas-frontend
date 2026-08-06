@@ -1,4 +1,4 @@
-// Capa de datos del feature Anos lectivos: funciones sobre el api client + hooks de
+﻿// Capa de datos del feature Anos lectivos: funciones sobre el api client + hooks de
 // TanStack Query. Rutas tenant bajo /api (proxied) con auth Bearer (usuario de colegio).
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
@@ -19,11 +19,11 @@ export const ANOS_LECTIVOS_KEY = ['anos-lectivos'] as const
 export const periodosKey = (anoLectivoId: string) =>
   ['anos-lectivos', anoLectivoId, 'periodos'] as const
 
-/** GET /anos-lectivos — lista los anos lectivos del colegio. */
+/** GET /anos-lectivos - lista los anos lectivos del colegio. */
 export function useAnosLectivos() {
   return useQuery({
     queryKey: ANOS_LECTIVOS_KEY,
-    queryFn: () => api.get<{data: AnoLectivo[]}>('/anos-lectivos').then((res) => res.data),
+    queryFn: () => api.get<{data: AnoLectivo[]}>('/anos-lectivos'),
   })
 }
 
@@ -83,7 +83,7 @@ export function usePeriodos(anoLectivoId: string | null) {
     queryKey: periodosKey(anoLectivoId ?? '_'),
     enabled: !!anoLectivoId,
     queryFn: () =>
-      api.get<{data: Periodo[]}>(`/anos-lectivos/${anoLectivoId}/periodos`).then((res) => res.data),
+      api.get<{data: Periodo[]}>(`/anos-lectivos/${anoLectivoId}/periodos`),
   })
 }
 

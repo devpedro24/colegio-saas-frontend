@@ -260,7 +260,7 @@ const EmailPreferences: FC = () => {
               {!loading && <FormattedMessage id='common.save' defaultMessage='Guardar cambios' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
-                  <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                  <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
                   <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                 </span>
               )}

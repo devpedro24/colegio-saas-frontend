@@ -1,7 +1,8 @@
-import {FC, useState} from 'react'
+﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
+import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {
@@ -48,6 +49,7 @@ const MetodoForm: FC<{
   onClose: () => void
 }> = ({anoLectivoId, metodo, onClose}) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const create = useCreateMetodo(anoLectivoId)
@@ -75,7 +77,7 @@ const MetodoForm: FC<{
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.config.metodo.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -84,7 +86,7 @@ const MetodoForm: FC<{
         {id: metodo.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.config.metodo.toast.updated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -93,7 +95,7 @@ const MetodoForm: FC<{
     } else {
       create.mutate(input, {
         onSuccess: () => {
-          toast.success(t('academico.config.metodo.toast.created'))
+          toast.success(t('common.toast.created'))
           onClose()
         },
         onError,
@@ -161,11 +163,11 @@ const MetodoForm: FC<{
         <button type='submit' className='btn btn-primary' disabled={pending}>
           {pending ? (
             <span className='indicator-progress d-block'>
-              {t('common.saving')}
+              {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            t('academico.config.metodo.save')
+            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.metodo'})})
           )}
         </button>
       </div>
@@ -176,6 +178,7 @@ const MetodoForm: FC<{
 // Bloque 5: metodo de aprobacion. Lista + crear/editar/eliminar, filtrada por ano lectivo.
 const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
   const intl = useIntl()
+  useTenantSync()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useMetodosAprobacion(anoLectivoId)
@@ -184,7 +187,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<MetodoAprobacion | null>(null)
 
-  const metodos = data ?? []
+  const metodos = data?.data ?? []
 
   const openCreate = () => {
     setEditing(null)
@@ -201,10 +204,10 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
 
   const handleDelete = (m: MetodoAprobacion) => {
     del.mutate(m.id, {
-      onSuccess: () => toast.success(t('academico.config.metodo.toast.deleted')),
+      onSuccess: () => toast.success(t('common.toast.deleted')),
       onError: (err) => {
         const message =
-          err instanceof ApiError ? err.message : t('academico.config.metodo.toast.deleteError')
+          err instanceof ApiError ? err.message : t('common.toast.deleteError')
         toast.error(message)
       },
     })
@@ -228,7 +231,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
         {isLoading && (
           <div className='d-flex justify-content-center align-items-center py-10'>
             <span className='spinner-border text-primary me-3' role='status'></span>
-            <span className='text-muted fs-6'>{t('academico.config.metodo.loading')}</span>
+            <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.metodo'})})}</span>
           </div>
         )}
 
@@ -239,7 +242,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{t('academico.config.metodo.loadError')}</span>
+            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.metodo'})})}</span>
           </div>
         )}
 
@@ -251,7 +254,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
                   <th className='min-w-200px'>{t('academico.config.metodo.col.calculo')}</th>
                   <th className='min-w-100px'>{t('academico.config.metodo.col.notaMinima')}</th>
                   <th className='min-w-150px'>{t('academico.config.metodo.col.ambito')}</th>
-                  <th className='min-w-100px text-end'>{t('academico.config.metodo.col.actions')}</th>
+                  <th className='min-w-100px text-end'>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className='text-gray-600 fw-semibold'>
@@ -267,7 +270,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
                         <button
                           type='button'
                           className='btn btn-icon btn-light-primary btn-sm me-2'
-                          title={t('academico.config.metodo.edit')}
+                          title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.metodo'})})}
                           onClick={() => openEdit(m)}
                         >
                           <i className='ki-duotone ki-pencil fs-6'>
@@ -278,7 +281,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
                         <button
                           type='button'
                           className='btn btn-icon btn-light-danger btn-sm'
-                          title={t('academico.config.metodo.delete')}
+                          title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.metodo'})})}
                           disabled={del.isPending}
                           onClick={() => handleDelete(m)}
                         >
@@ -297,7 +300,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
                 {metodos.length === 0 && (
                   <tr>
                     <td colSpan={4} className='text-center text-muted py-10'>
-                      {t('academico.config.metodo.empty')}
+                      {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.metodo'})})}
                     </td>
                   </tr>
                 )}

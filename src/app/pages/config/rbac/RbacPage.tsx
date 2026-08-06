@@ -1,4 +1,4 @@
-import {FC, Fragment, useMemo, useState} from 'react'
+﻿import {FC, Fragment, useMemo, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
@@ -36,7 +36,7 @@ const CellBadge: FC<{state: CellState}> = ({state}) => {
     return (
       <span
         className='badge badge-light-primary'
-        title={`${intl.formatMessage({id: 'rbac.cell.structuralTitle'})} · ${level}`}
+        title={`${intl.formatMessage({id: 'rbac.cellType.structural'})} Â· ${level}`}
       >
         <LockIcon className='fs-8 me-1' />
         {level}
@@ -139,11 +139,11 @@ const RbacPage: FC = () => {
     const mutation = deleting.kind === 'permiso' ? deletePermission : deleteRole
     mutation.mutate(deleting.id, {
       onSuccess: () => {
-        toast.success(t(deleting.kind === 'permiso' ? 'rbac.toast.permDeleted' : 'rbac.toast.roleDeleted'))
+        toast.success(t(deleting.kind === 'permiso' ? 'common.toast.deleted' : 'common.toast.deleted'))
         setDeleting(null)
       },
       onError: (err) => {
-        toast.error(err instanceof ApiError ? err.message : t('rbac.toast.deleteError'))
+        toast.error(err instanceof ApiError ? err.message : t('common.toast.deleteError'))
       },
     })
   }
@@ -169,7 +169,7 @@ const RbacPage: FC = () => {
             {isLoading && (
               <div className='d-flex justify-content-center align-items-center py-15'>
                 <span className='spinner-border text-primary me-3' role='status'></span>
-                <span className='text-muted fs-6'>{t('rbac.loading')}</span>
+                <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.rol'})})}</span>
               </div>
             )}
 
@@ -181,7 +181,7 @@ const RbacPage: FC = () => {
                   <span className='path2'></span>
                   <span className='path3'></span>
                 </i>
-                <span>{t('rbac.loadError')}</span>
+                <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.rol'})})}</span>
               </div>
             )}
 
@@ -233,11 +233,11 @@ const RbacPage: FC = () => {
                       <table className='table table-row-dashed align-middle gs-0 gy-4'>
                         <thead>
                           <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
-                            <th className='min-w-200px'>{t('rbac.perm.col.module')}</th>
+                            <th className='min-w-200px'>{t('rbac.perm.module')}</th>
                             <th className='min-w-250px'>{t('rbac.perm.col.action')}</th>
-                            <th className='min-w-200px'>{t('rbac.perm.col.key')}</th>
+                            <th className='min-w-200px'>{t('common.field.key')}</th>
                             <th className='min-w-150px'>{t('rbac.perm.col.feature')}</th>
-                            <th className='min-w-125px text-end'>{t('rbac.perm.col.actions')}</th>
+                            <th className='min-w-125px text-end'>{t('common.actions')}</th>
                           </tr>
                         </thead>
                         <tbody className='text-gray-600 fw-semibold'>
@@ -280,7 +280,7 @@ const RbacPage: FC = () => {
                                     <button
                                       type='button'
                                       className='btn btn-icon btn-light-danger btn-sm'
-                                      title={t('rbac.perm.deleteTitle')}
+                                      title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.rol'})})}
                                       onClick={() =>
                                         setDeleting({kind: 'permiso', id: p.id, name: p.key})
                                       }
@@ -301,7 +301,7 @@ const RbacPage: FC = () => {
                           {permissions.length === 0 && (
                             <tr>
                               <td colSpan={5} className='text-center text-muted py-10'>
-                                {t('rbac.perm.empty')}
+                                {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.rol'})})}
                               </td>
                             </tr>
                           )}
@@ -328,9 +328,9 @@ const RbacPage: FC = () => {
                       <table className='table table-row-dashed align-middle gs-0 gy-4'>
                         <thead>
                           <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
-                            <th className='min-w-300px'>{t('rbac.role.col.role')}</th>
-                            <th className='min-w-200px'>{t('rbac.role.col.key')}</th>
-                            <th className='min-w-125px text-end'>{t('rbac.role.col.actions')}</th>
+                            <th className='min-w-300px'>{t('common.field.rol')}</th>
+                            <th className='min-w-200px'>{t('common.field.key')}</th>
+                            <th className='min-w-125px text-end'>{t('common.actions')}</th>
                           </tr>
                         </thead>
                         <tbody className='text-gray-600 fw-semibold'>
@@ -359,7 +359,7 @@ const RbacPage: FC = () => {
                                     <button
                                       type='button'
                                       className='btn btn-icon btn-light-danger btn-sm'
-                                      title={t('rbac.role.deleteTitle')}
+                                      title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.rol'})})}
                                       onClick={() => setDeleting({kind: 'rol', id: r.id, name: r.label})}
                                     >
                                       <i className='ki-duotone ki-trash fs-5'>
@@ -378,7 +378,7 @@ const RbacPage: FC = () => {
                           {roles.length === 0 && (
                             <tr>
                               <td colSpan={3} className='text-center text-muted py-10'>
-                                {t('rbac.role.empty')}
+                                {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.rol'})})}
                               </td>
                             </tr>
                           )}
@@ -459,7 +459,7 @@ const RbacPage: FC = () => {
                                       <button
                                         type='button'
                                         className='btn btn-sm btn-active-light-primary p-1'
-                                        title={t('rbac.matrix.editCell')}
+                                        title={t('rbac.cell.title')}
                                         onClick={() => openCell(role, perm)}
                                       >
                                         <CellBadge

@@ -143,7 +143,7 @@ const SignInMethod: FC = () => {
           <div className='d-flex flex-wrap align-items-center'>
             <div id='kt_signin_email' className={' ' + (showEmailForm && 'd-none')}>
               <div className='fs-6 fw-bolder mb-1'>
-                <FormattedMessage id='account.signin.emailAddress' defaultMessage='Correo electrónico' />
+                <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
               </div>
               <div className='fw-bold text-gray-600'>{currentUser?.email ?? '—'}</div>
             </div>
@@ -172,7 +172,7 @@ const SignInMethod: FC = () => {
                         className='form-control form-control-lg form-control-solid'
                         id='emailaddress'
                         placeholder={intl.formatMessage({
-                          id: 'account.signin.emailAddress',
+                          id: 'common.email',
                           defaultMessage: 'Correo electrónico',
                         })}
                         {...formik1.getFieldProps('newEmail')}
@@ -221,7 +221,7 @@ const SignInMethod: FC = () => {
                     )}
                     {loading1 && (
                       <span className='indicator-progress' style={{display: 'block'}}>
-                        <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                        <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     )}
@@ -257,7 +257,7 @@ const SignInMethod: FC = () => {
           <div className='d-flex flex-wrap align-items-center mb-10'>
             <div id='kt_signin_password' className={' ' + (showPasswordForm && 'd-none')}>
               <div className='fs-6 fw-bolder mb-1'>
-                <FormattedMessage id='account.signin.password' defaultMessage='Contraseña' />
+                <FormattedMessage id='common.password' defaultMessage='Contraseña' />
               </div>
               <div className='fw-bold text-gray-600'>************</div>
             </div>
@@ -362,7 +362,7 @@ const SignInMethod: FC = () => {
                     )}
                     {loading2 && (
                       <span className='indicator-progress' style={{display: 'block'}}>
-                        <FormattedMessage id='account.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                        <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     )}

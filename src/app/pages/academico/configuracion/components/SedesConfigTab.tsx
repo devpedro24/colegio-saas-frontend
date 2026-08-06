@@ -1,4 +1,4 @@
-import {FC, useState, type FormEvent} from 'react'
+﻿import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -9,11 +9,13 @@ import {
   sedeSubdomainUrl,
   useCreateSede,
   useDeleteSede,
+  useHeredarSede,
   useSedes,
   useUpdateSede,
 } from '../../estructura/estructura.api'
 import type {CreateSedeInput, Sede} from '../../estructura/estructura.types'
 import {DeleteConfirmDialog} from '../../estructura/components/DeleteConfirmDialog'
+import {HeredarDialog} from './HeredarDialog'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
 
@@ -84,13 +86,13 @@ const CoordinadorCredentialsDialog: FC<{
 
         <div className='fv-row mb-6'>
           <label className='fs-6 fw-semibold mb-2 text-muted'>
-            {t('academico.estructura.sede.password.email')}
+            {t('common.email')}
           </label>
           <input type='text' className='form-control form-control-solid' value={email ?? '—'} readOnly />
         </div>
         <div className='fv-row mb-6'>
           <label className='fs-6 fw-semibold mb-2 text-muted'>
-            {t('academico.estructura.sede.password.pass')}
+            {t('common.password')}
           </label>
           <input type='text' className='form-control form-control-solid' value={password ?? '—'} readOnly />
         </div>
@@ -103,7 +105,7 @@ const CoordinadorCredentialsDialog: FC<{
       </div>
       <div className='modal-footer'>
         <button type='button' className='btn btn-primary' onClick={onClose}>
-          {t('academico.estructura.sede.password.close')}
+          {t('common.close')}
         </button>
       </div>
     </Modal>,
@@ -162,7 +164,7 @@ const SedeFormDialog: FC<{
         setError(err)
         if (!err.errors) toast.error(err.message)
       } else {
-        toast.error(t('academico.estructura.toast.saveError'))
+        toast.error(t('common.toast.saveError'))
       }
     }
 
@@ -171,7 +173,7 @@ const SedeFormDialog: FC<{
         {id: sede.id, input},
         {
           onSuccess: () => {
-            toast.success(t('academico.estructura.toast.updated'))
+            toast.success(t('common.toast.updated'))
             onClose()
           },
           onError,
@@ -180,7 +182,7 @@ const SedeFormDialog: FC<{
     } else {
       create.mutate(input, {
         onSuccess: (res) => {
-          toast.success(t('academico.estructura.sede.toast.created'))
+          toast.success(t('common.toast.created'))
           onClose()
           onCreated(
             res.data.coordinador_email,
@@ -206,7 +208,7 @@ const SedeFormDialog: FC<{
         <h2 className='fw-bold'>
           {isEdit
             ? t('academico.estructura.sede.edit.title')
-            : t('academico.estructura.sede.create.title')}
+            : t('colegios.sedes.add')}
         </h2>
         <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={onClose}>
           <i className='ki-duotone ki-cross fs-1'>
@@ -219,7 +221,7 @@ const SedeFormDialog: FC<{
         <div className='modal-body py-lg-10 px-lg-10'>
           <div className='fv-row mb-7'>
             <label className='required fs-6 fw-semibold mb-2'>
-              {t('academico.estructura.sede.nombre')}
+              {t('colegios.sedes.field.name')}
             </label>
             <input
               type='text'
@@ -255,7 +257,7 @@ const SedeFormDialog: FC<{
 
           <div className='row'>
             <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.sede.direccion')}</label>
+              <label className='fs-6 fw-semibold mb-2'>{t('common.address')}</label>
               <input
                 type='text'
                 className={`form-control form-control-solid ${fe('direccion') ? 'is-invalid' : ''}`}
@@ -265,7 +267,7 @@ const SedeFormDialog: FC<{
               {fe('direccion') && <div className='invalid-feedback'>{fe('direccion')}</div>}
             </div>
             <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.sede.telefono')}</label>
+              <label className='fs-6 fw-semibold mb-2'>{t('common.phone')}</label>
               <input
                 type='text'
                 className={`form-control form-control-solid ${fe('telefono') ? 'is-invalid' : ''}`}
@@ -364,9 +366,9 @@ const SedeFormDialog: FC<{
             {pending ? (
               <span className='spinner-border spinner-border-sm align-middle'></span>
             ) : isEdit ? (
-              t('academico.estructura.save')
+              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})
             ) : (
-              t('academico.estructura.sede.save')
+              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})
             )}
           </button>
         </div>
@@ -379,11 +381,11 @@ const SedeFormDialog: FC<{
 const tenantStatusBadge = (status: string | null): {cls: string; label: string} => {
   switch (status) {
     case 'active':
-      return {cls: 'badge badge-light-success', label: 'academico.estructura.sede.tenantStatus.activo'}
+      return {cls: 'badge badge-light-success', label: 'common.active'}
     case 'in_retention':
       return {cls: 'badge badge-light-warning', label: 'academico.estructura.sede.tenantStatus.cuarentena'}
     default:
-      return {cls: 'badge badge-light-secondary', label: 'academico.estructura.sede.tenantStatus.inactivo'}
+      return {cls: 'badge badge-light-secondary', label: 'common.inactive'}
   }
 }
 
@@ -396,13 +398,15 @@ const SedesConfigTab: FC = () => {
   const navigate = useNavigate()
   const {data, isLoading, isError} = useSedes()
   const del = useDeleteSede()
+  const heredar = useHeredarSede()
 
   const [formOpen, setFormOpen] = useState(false)
   const [sedeEdit, setSedeEdit] = useState<Sede | null>(null)
   const [deleteId, setDeleteId] = useState<Sede | null>(null)
+  const [heredarSede, setHeredarSede] = useState<Sede | null>(null)
   const [creds, setCreds] = useState<{email: string | null; password: string | null; url: string | null} | null>(null)
 
-  const list = data ?? []
+  const list = data?.data ?? []
 
   const openCreate = () => {
     setSedeEdit(null)
@@ -417,11 +421,11 @@ const SedesConfigTab: FC = () => {
     if (!deleteId) return
     del.mutate(deleteId.id, {
       onSuccess: () => {
-        toast.success(t('academico.estructura.toast.deleted'))
+        toast.success(t('common.toast.deleted'))
         setDeleteId(null)
       },
       onError: () => {
-        toast.error(t('academico.estructura.toast.deleteError'))
+        toast.error(t('common.toast.deleteError'))
         setDeleteId(null)
       },
     })
@@ -447,7 +451,7 @@ const SedesConfigTab: FC = () => {
           {isLoading && (
             <div className='d-flex justify-content-center align-items-center py-15'>
               <span className='spinner-border text-primary me-3' role='status'></span>
-              <span className='text-muted fs-6'>{t('academico.estructura.loading')}</span>
+              <span className='text-muted fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}</span>
             </div>
           )}
 
@@ -458,7 +462,7 @@ const SedesConfigTab: FC = () => {
                 <span className='path2'></span>
                 <span className='path3'></span>
               </i>
-              <span>{t('academico.estructura.loadError')}</span>
+              <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}</span>
             </div>
           )}
 
@@ -467,12 +471,12 @@ const SedesConfigTab: FC = () => {
               <table className='table table-row-dashed align-middle gs-0 gy-4'>
                 <thead>
                   <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
-                    <th className='min-w-150px'>{t('academico.estructura.sede.nombre')}</th>
-                    <th className='min-w-150px'>{t('academico.estructura.sede.col.coordinador')}</th>
-                    <th className='min-w-150px'>{t('academico.estructura.sede.col.subdominio')}</th>
-                    <th className='min-w-100px'>{t('academico.estructura.col.estado')}</th>
+                    <th className='min-w-150px'>{t('colegios.sedes.field.name')}</th>
+                    <th className='min-w-150px'>{t('academico.sede.detail.coordinador')}</th>
+                    <th className='min-w-150px'>{t('common.subdomain')}</th>
+                    <th className='min-w-100px'>{t('common.status')}</th>
                     <th className='min-w-120px'>{t('academico.estructura.sede.col.tenant')}</th>
-                    <th className='min-w-150px text-end'>{t('academico.estructura.col.actions')}</th>
+                    <th className='min-w-150px text-end'>{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className='text-gray-600 fw-semibold'>
@@ -485,7 +489,7 @@ const SedesConfigTab: FC = () => {
                             <span className='text-gray-800 fw-bold'>{s.nombre}</span>
                             {s.es_principal && (
                               <span className='badge badge-light-primary'>
-                                {t('academico.estructura.sede.principalBadge')}
+                                {t('colegios.sedes.principal')}
                               </span>
                             )}
                           </div>
@@ -513,8 +517,8 @@ const SedesConfigTab: FC = () => {
                           >
                             {t(
                               s.estado === 'activa'
-                                ? 'academico.estructura.estado.activa'
-                                : 'academico.estructura.estado.inactiva'
+                                ? 'common.active'
+                                : 'common.inactive'
                             )}
                           </span>
                         </td>
@@ -531,14 +535,14 @@ const SedesConfigTab: FC = () => {
                               type='button'
                               className='btn btn-light-primary btn-sm'
                               title={t('academico.sede.open')}
-                              onClick={() => navigate(`/academico/sedes/${s.id}`)}
+                              onClick={() => navigate(`/academico/sedes/${s.hashed_id}`)}
                             >
                               {t('academico.sede.open')}
                             </button>
                             <button
                               type='button'
                               className='btn btn-icon btn-light-primary btn-sm'
-                              title={t('academico.estructura.edit')}
+                              title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.sede'})})}
                               onClick={() => openEdit(s)}
                             >
                               <i className='ki-duotone ki-pencil fs-5'>
@@ -548,8 +552,20 @@ const SedesConfigTab: FC = () => {
                             </button>
                             <button
                               type='button'
+                              className='btn btn-icon btn-light-success btn-sm'
+                              title={intl.formatMessage({id: 'academico.estructura.sede.heredar'})}
+                              onClick={() => setHeredarSede(s)}
+                            >
+                              <i className='ki-duotone ki-copy fs-5'>
+                                <span className='path1'></span>
+                                <span className='path2'></span>
+                                <span className='path3'></span>
+                              </i>
+                            </button>
+                            <button
+                              type='button'
                               className='btn btn-icon btn-light-danger btn-sm'
-                              title={t('academico.estructura.delete')}
+                              title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.sede'})})}
                               onClick={() => setDeleteId(s)}
                             >
                               <i className='ki-duotone ki-trash fs-5'>
@@ -568,7 +584,7 @@ const SedesConfigTab: FC = () => {
                   {list.length === 0 && (
                     <tr>
                       <td colSpan={6} className='text-center text-muted py-10'>
-                        {t('academico.estructura.empty')}
+                        {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.sede'})})}
                       </td>
                     </tr>
                   )}
@@ -602,6 +618,24 @@ const SedesConfigTab: FC = () => {
         pending={del.isPending}
         onConfirm={onDelete}
         onClose={() => setDeleteId(null)}
+      />
+      <HeredarDialog
+        show={heredarSede !== null}
+        sedeNombre={heredarSede?.nombre ?? ''}
+        pending={heredar.isPending}
+        onConfirm={(categorias) => {
+          if (!heredarSede) return
+          heredar.mutate({id: heredarSede.id, categorias}, {
+            onSuccess: () => {
+              toast.success(intl.formatMessage({id: 'academico.estructura.sede.heredarOk'}))
+              setHeredarSede(null)
+            },
+            onError: (err) => {
+              toast.error(err instanceof ApiError ? err.message : intl.formatMessage({id: 'common.toast.genericError'}))
+            },
+          })
+        }}
+        onClose={() => setHeredarSede(null)}
       />
     </>
   )
