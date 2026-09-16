@@ -7,6 +7,7 @@ import {useToast} from '@/lib/ui/toast'
 import {useUpdateColegio} from '../colegios.api'
 import {Colegio} from '../colegios.types'
 import {usePlanes} from '../../planes/planes.api'
+import {tenantDomainSuffix} from '@/lib/subdomain'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
 
@@ -109,7 +110,7 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
               value={slug}
               readOnly
             />
-            <span className='input-group-text'>.localhost</span>
+            <span className='input-group-text'>{tenantDomainSuffix()}</span>
           </div>
         </div>
 

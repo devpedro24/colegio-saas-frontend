@@ -4,6 +4,7 @@ import {Outlet, Link} from 'react-router-dom'
 import {FormattedMessage} from 'react-intl'
 import {toAbsoluteUrl} from '../../../_metronic/helpers'
 import { api } from '@/lib/api/client'
+import {isCentralHost} from '@/lib/subdomain'
 
 const AuthLayout = () => {
   const [loading, setLoading] = useState(true)
@@ -13,7 +14,7 @@ const AuthLayout = () => {
   // Subdominios no registrados muestran pantalla en blanco.
   useEffect(() => {
     const hostname = window.location.hostname
-    const isCentral = hostname === '127.0.0.1' || hostname === 'localhost'
+    const isCentral = isCentralHost(hostname)
     if (isCentral) { setLoading(false); return }
     api.get<{ok: boolean}>('/tenant-status')
       .then(() => setLoading(false))
@@ -48,26 +49,6 @@ const AuthLayout = () => {
           {/* end::Wrapper */}
         </div>
         {/* end::Form */}
-
-        {/* begin::Footer */}
-        <div className='d-flex flex-center flex-wrap px-5'>
-          {/* begin::Links */}
-          <div className='d-flex fw-semibold text-primary fs-base'>
-            <a href='#' className='px-5' target='_blank'>
-              <FormattedMessage id='auth.layout.terms' defaultMessage='Términos' />
-            </a>
-
-            <a href='#' className='px-5' target='_blank'>
-              <FormattedMessage id='common.plans' defaultMessage='Planes' />
-            </a>
-
-            <a href='#' className='px-5' target='_blank'>
-              <FormattedMessage id='auth.layout.contact' defaultMessage='Contáctanos' />
-            </a>
-          </div>
-          {/* end::Links */}
-        </div>
-        {/* end::Footer */}
       </div>
       {/* end::Body */}
 

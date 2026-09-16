@@ -1,7 +1,6 @@
 // Modal #kt_modal_upgrade_plan portado literal de demo46/index.html.
 // i18n: el HTML se inyecta via dangerouslySetInnerHTML, asi que las etiquetas visibles
 // se resuelven con intl.formatMessage ANTES de inyectar. El defaultMessage va en ES.
-/* eslint-disable */
 import type {IntlShape} from 'react-intl'
 
 export const getUpgradeModalHtml = (intl: IntlShape) => {

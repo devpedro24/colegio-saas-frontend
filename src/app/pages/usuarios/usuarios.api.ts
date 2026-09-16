@@ -23,7 +23,7 @@ export interface UsuarioCreateResult {
 export function useUsuarios(page: number = 1, perPage: number = 5) {
   return useQuery({
     queryKey: [...USUARIOS_KEY, {page, perPage}],
-    queryFn: () => api.get<{data: Usuario[]; meta: PaginationMeta}>(
+    queryFn: () => api.get<{data: Usuario[]; meta: PaginationMeta; roles: string[]}>(
       `/usuarios?page=${page}&per_page=${perPage}`
     ),
   })
@@ -46,26 +46,6 @@ export function useUpdateUsuario() {
     mutationFn: ({id, input}: {id: string; input: UsuarioUpdateInput}) =>
       api.put<{data: Usuario}>(`/usuarios/${id}`, input),
     onSuccess: () => queryClient.invalidateQueries({queryKey: USUARIOS_KEY}),
-  })
-}
-
-/** POST /api/usuarios/{id}/password — regenera la contrasena temporal. */
-export function useRegenerarPassword() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) =>
-      api.post<{data: Usuario; password: string}>(`/usuarios/${id}/password`).then((res) => res),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: USUARIOS_KEY}),
-  })
-}
-
-/** GET /api/usuarios/{id}/temporal-password — consulta el estado de la clave temporal. */
-export function useUserTemporalPassword(id: string | null, sedeId?: string | null) {
-  return useQuery({
-    queryKey: [...USUARIOS_KEY, id, 'temporal-password', sedeId ?? ''],
-    queryFn: () => api.get<{status: 'temporal' | 'changed' | 'none'; email: string; password: string | null}>(`/usuarios/${id}/temporal-password${sedeId ? `?sede_id=${sedeId}` : ''}`),
-    enabled: id !== null,
-    refetchOnWindowFocus: false,
   })
 }
 

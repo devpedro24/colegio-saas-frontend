@@ -10,16 +10,15 @@ import {useExitColegio} from './impersonation.api'
 const ImpersonationBanner = () => {
   const intl = useIntl()
   const toast = useToast()
-  const {activeColegio, clear} = useImpersonation()
+  const {activeColegio, sessionId, clear} = useImpersonation()
   const exit = useExitColegio()
 
   if (!activeColegio) return null
 
   const handleExit = () => {
     const colegioId = activeColegio.id
-    // Optimista: volvemos a Plataforma ya; el backend marca ended_at / revoca el token sombra.
-    // Si falla la llamada, el token temporal igual queda descartado localmente (MVP).
-    exit.mutate(colegioId, {
+    exit.mutate({colegioId, sessionId}, {
+      onSuccess: () => clear(),
       onError: () =>
         toast.error(
           intl.formatMessage({
@@ -28,7 +27,6 @@ const ImpersonationBanner = () => {
           }),
         ),
     })
-    clear()
   }
 
   return (

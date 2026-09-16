@@ -8,36 +8,14 @@ const Footer = () => {
     updateDOM(config)
   }, [config])
   return (
-    <>
-      <div className='text-gray-900 order-2 order-md-1'>
-        <span className='text-gray-500 fw-semibold me-1'>
-          {new Date().getFullYear().toString()}&copy;
-        </span>
-        <span className='text-gray-500'>
-          <FormattedMessage id='footer.brand' defaultMessage='Colegio SaaS' />
-        </span>
-      </div>
-
-      <ul className='menu menu-gray-500 menu-hover-primary fw-semibold order-1'>
-        <li className='menu-item'>
-          <a href='#' className='menu-link px-2'>
-            <FormattedMessage id='footer.about' defaultMessage='Acerca de' />
-          </a>
-        </li>
-
-        <li className='menu-item'>
-          <a href='#' className='menu-link px-2'>
-            <FormattedMessage id='footer.support' defaultMessage='Soporte' />
-          </a>
-        </li>
-
-        <li className='menu-item'>
-          <a href='#' className='menu-link px-2'>
-            <FormattedMessage id='footer.contact' defaultMessage='Contacto' />
-          </a>
-        </li>
-      </ul>
-    </>
+    <div className='text-gray-900'>
+      <span className='text-gray-500 fw-semibold me-1'>
+        {new Date().getFullYear().toString()}&copy;
+      </span>
+      <span className='text-gray-500'>
+        <FormattedMessage id='footer.brand' defaultMessage='Colegio SaaS' />
+      </span>
+    </div>
   )
 }
 

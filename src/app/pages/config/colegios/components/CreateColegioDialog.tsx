@@ -7,6 +7,7 @@ import {useToast} from '@/lib/ui/toast'
 import {useCreateColegio} from '../colegios.api'
 import {CreateColegioResponse} from '../colegios.types'
 import {usePlanes} from '../../planes/planes.api'
+import {tenantDomainSuffix} from '@/lib/subdomain'
 
 // Los modales se montan en #root-modals (fallback a body). Portal => quedan fuera del
 // arbol del card y sobre el backdrop.
@@ -197,7 +198,7 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
                   value={form.slug}
                   readOnly
                 />
-                <span className='input-group-text'>.localhost</span>
+                <span className='input-group-text'>{tenantDomainSuffix()}</span>
               </div>
               {fe('slug') && <div className='text-danger fs-7 mt-1'>{fe('slug')}</div>}
               <div className='text-muted fs-8 mt-1'>{t('academico.estructura.sede.slugHelp')}</div>

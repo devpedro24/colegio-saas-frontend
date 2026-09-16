@@ -28,7 +28,7 @@ const SedeDetallePage: FC = () => {
   const {activeColegio} = useImpersonation()
   const {isPlatform} = useAuthz()
   const {data: sedeWrap, isLoading, isError} = useSede(id)
-  const sede = (sedeWrap as any)?.data
+  const sede = sedeWrap?.data
 
   // Mismo gating que el resto del modulo Academico.
   if (isPlatform && !activeColegio) {

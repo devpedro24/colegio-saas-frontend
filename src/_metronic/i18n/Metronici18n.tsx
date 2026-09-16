@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+
 import {FC, createContext, useContext} from 'react'
 import {WithChildren} from '../helpers'
 

@@ -1,8 +1,7 @@
 import {useEffect} from 'react'
 import {useIntl} from 'react-intl'
 import clsx from 'clsx'
-import {Link} from 'react-router-dom'
-import {Modal} from 'bootstrap'
+import {Link, useNavigate} from 'react-router-dom'
 import {KTIcon, reInitMenu} from '../../../helpers'
 import {LayoutSetup, useLayout} from '../../core'
 import {Header} from './Header'
@@ -11,42 +10,32 @@ import {Navbar} from './Navbar'
 export function HeaderWrapper() {
   const {config, classes} = useLayout()
   const intl = useIntl()
+  const navigate = useNavigate()
   if (config.app?.header?.default?.container === 'fluid') {
     LayoutSetup.classes.headerContainer.push('container-fluid')
   } else {
     LayoutSetup.classes.headerContainer.push('container-xxl')
   }
 
-  // El header se porta como HTML de demo46 (menu + navbar). Reinicializa KTMenu para que
-  // los mega-menus/dropdowns abran por hover, y cablea los modales (data-bs-toggle/dismiss)
-  // ya que este proyecto no carga el data-api completo de Bootstrap.
+  // El menu se genera como HTML por compatibilidad con KTMenu. Esta delegacion conserva
+  // la navegacion interna con React Router tanto en el header como en el drawer movil.
   useEffect(() => {
     reInitMenu()
 
     const onClick = (e: Event) => {
       const target = e.target as HTMLElement
-      const toggle = target.closest('[data-bs-toggle="modal"]')
-      if (toggle) {
-        const selector = toggle.getAttribute('data-bs-target')
-        const el = selector ? document.querySelector(selector) : null
-        if (el) {
-          e.preventDefault()
-          Modal.getOrCreateInstance(el as HTMLElement).show()
-        }
-        return
-      }
-      const dismiss = target.closest('[data-bs-dismiss="modal"]')
-      if (dismiss) {
-        const modalEl = dismiss.closest('.modal')
-        if (modalEl) {
-          Modal.getOrCreateInstance(modalEl as HTMLElement).hide()
-        }
+      const nav = target.closest<HTMLElement>('[data-kt-nav]')
+      const to = nav?.getAttribute('data-kt-nav')
+
+      if (to) {
+        e.preventDefault()
+        navigate(to)
       }
     }
 
-    document.addEventListener('click', onClick)
-    return () => document.removeEventListener('click', onClick)
-  }, [])
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [navigate])
 
   if (!config.app?.header?.display) {
     return null

@@ -5,6 +5,7 @@ import TopBarProgress from 'react-topbar-progress-indicator'
 import {DashboardWrapper} from '../pages/dashboard/DashboardWrapper'
 import {getCSSVariableValue} from '../../_metronic/assets/ts/_utils'
 import {WithChildren} from '../../_metronic/helpers'
+import {RequireAccess} from './RequireAccess'
 
 const PrivateRoutes = () => {
   const AccountPage = lazy(() => import('../modules/accounts/AccountPage'))
@@ -18,7 +19,7 @@ const PrivateRoutes = () => {
         {/* Redirect to Dashboard after success login/registartion */}
         <Route path='auth/*' element={<Navigate to='/dashboard' />} />
         {/* Pages */}
-        <Route path='dashboard' element={<DashboardWrapper />} />
+        <Route path='dashboard' element={<RequireAccess enforceMfa><DashboardWrapper /></RequireAccess>} />
         {/* Lazy Modules */}
         <Route
           path='account/*'
@@ -32,7 +33,7 @@ const PrivateRoutes = () => {
           path='configuracion/*'
           element={
             <SuspensedView>
-              <ConfigPage />
+              <RequireAccess platformOnly enforceMfa><ConfigPage /></RequireAccess>
             </SuspensedView>
           }
         />
@@ -40,7 +41,7 @@ const PrivateRoutes = () => {
           path='academico/*'
           element={
             <SuspensedView>
-              <AcademicoPage />
+              <RequireAccess tenantOnly enforceMfa><AcademicoPage /></RequireAccess>
             </SuspensedView>
           }
         />
@@ -48,7 +49,9 @@ const PrivateRoutes = () => {
           path='usuarios'
           element={
             <SuspensedView>
-              <UsuariosPage />
+              <RequireAccess tenantOnly permission='usuarios.gestionar' enforceMfa>
+                <UsuariosPage />
+              </RequireAccess>
             </SuspensedView>
           }
         />

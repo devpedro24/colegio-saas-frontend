@@ -4,8 +4,6 @@ import {ProfileDetails} from './cards/ProfileDetails'
 import {SignInMethod} from './cards/SignInMethod'
 import {TwoFactorAuth} from './cards/TwoFactorAuth'
 import {ConnectedAccounts} from './cards/ConnectedAccounts'
-import {EmailPreferences} from './cards/EmailPreferences'
-import {Notifications} from './cards/Notifications'
 import {DeactivateAccount} from './cards/DeactivateAccount'
 import {useAuth} from '../../../auth'
 import {getUserByToken} from '../../../auth/core/_requests'
@@ -47,8 +45,6 @@ export function Settings() {
       <SignInMethod />
       <TwoFactorAuth />
       <ConnectedAccounts />
-      <EmailPreferences />
-      <Notifications />
       <DeactivateAccount />
     </>
   )

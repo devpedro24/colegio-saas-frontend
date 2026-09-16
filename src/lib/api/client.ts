@@ -13,8 +13,12 @@
  */
 
 import {clearImpersonation, getActiveImpersonation} from '@/app/modules/impersonation/impersonation.store';
+import {notifyAuthSessionInvalidated} from './auth-session'
+import {isPlatformPath} from './request-scope'
+export {isPlatformPath} from './request-scope'
 
-const TOKEN_STORAGE_KEY = 'colegio-saas.auth-token';
+const TOKEN_STORAGE_KEY = 'colegio-saas.auth-token'
+const TOKEN_EXPIRES_KEY = 'colegio-saas.auth-token-expires-at'
 
 /**
  * Prefijos de rutas de PLATAFORMA: aunque haya un colegio activo, estas siguen con el token
@@ -22,24 +26,34 @@ const TOKEN_STORAGE_KEY = 'colegio-saas.auth-token';
  * '/me' es de plataforma: valida SIEMPRE la sesión del superadmin (si fuera tratada como ruta
  * de colegio, llevaría el token de impersonación + X-Tenant y el backend central respondería 401).
  */
-const PLATFORM_PATH_PREFIXES = ['/platform', '/colegios', '/planes', '/rbac', '/login', '/logout', '/me', '/account'];
-
-/** ¿El path corresponde a una ruta de plataforma (por prefijo, con límite de segmento)? */
-function isPlatformPath(path: string): boolean {
-  return PLATFORM_PATH_PREFIXES.some(
-    (p) => path === p || path.startsWith(`${p}/`) || path.startsWith(`${p}?`),
-  );
-}
-
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_STORAGE_KEY);
+  const token = sessionStorage.getItem(TOKEN_STORAGE_KEY)
+  const expiresAt = sessionStorage.getItem(TOKEN_EXPIRES_KEY)
+
+  if (token && expiresAt && Date.parse(expiresAt) <= Date.now()) {
+    setToken(null)
+    return null
+  }
+
+  return token
 }
 
-export function setToken(token: string | null): void {
+export function setToken(token: string | null, expiresAt?: string | null): void {
+  // Elimina el formato persistente legacy: los bearer tokens no deben sobrevivir
+  // al cierre completo del navegador.
+  localStorage.removeItem(TOKEN_STORAGE_KEY)
+  localStorage.removeItem(TOKEN_EXPIRES_KEY)
+
   if (token) {
-    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    sessionStorage.setItem(TOKEN_STORAGE_KEY, token)
+    if (expiresAt) {
+      sessionStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt)
+    } else {
+      sessionStorage.removeItem(TOKEN_EXPIRES_KEY)
+    }
   } else {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+    sessionStorage.removeItem(TOKEN_EXPIRES_KEY)
   }
 }
 
@@ -70,7 +84,7 @@ async function request<TResponse>(method: HttpMethod, path: string, body?: unkno
   const useImpersonation = impersonation !== null && !isPlatformPath(path);
 
   // Token: el de impersonación para rutas del colegio bajo suplantación; el normal en el resto.
-  const authToken = useImpersonation ? impersonation!.token : getToken();
+  const authToken = useImpersonation ? impersonation!.token : getToken()
 
   const response = await fetch(`/api${path}`, {
     method,
@@ -82,32 +96,33 @@ async function request<TResponse>(method: HttpMethod, path: string, body?: unkno
       ...(useImpersonation ? { 'X-Tenant': impersonation!.colegioId } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  })
 
-  const isJson = response.headers.get('content-type')?.includes('application/json');
-  const data = isJson ? await response.json() : null;
+  const isJson = response.headers.get('content-type')?.includes('application/json')
+  const data = isJson ? await response.json() : null
 
   if (!response.ok) {
-    const message = (data?.message as string | undefined) ?? `Error ${response.status}`;
+    const message = (data?.message as string | undefined) ?? `Error ${response.status}`
 
     // 401 = token inválido o sesión caducada. Se limpia el estado que lo causó para que
     // la app pueda volver a autenticarse SIN quedar atascada con tokens muertos:
     //   - bajo suplantación (ruta de colegio): se sale del colegio pero se conserva la
     //     sesión de plataforma (el token del superadmin sigue siendo válido);
     //   - sin suplantación: se invalida el token de autenticación local.
-    // Se excluyen /login y /register porque allí un 401/422 es parte del flujo normal (MFA).
-    if (response.status === 401 && path !== '/login' && path !== '/register') {
+    // Se excluye /login porque allí un 401 es parte del flujo normal.
+    if (response.status === 401 && path !== '/login') {
       if (useImpersonation) {
         clearImpersonation()
       } else {
         setToken(null)
+        notifyAuthSessionInvalidated()
       }
     }
 
-    throw new ApiError(response.status, message, data?.errors, data);
+    throw new ApiError(response.status, message, data?.errors, data)
   }
 
-  return data as TResponse;
+  return data as TResponse
 }
 
 export const api = {

@@ -74,9 +74,9 @@ const ConnectedAccounts: FC = () => {
                 />
 
                 <div className='d-flex flex-column'>
-                  <a href='#' className='fs-5 text-gray-900 text-hover-primary fw-bolder'>
+                  <span className='fs-5 text-gray-900 fw-bolder'>
                     Google
-                  </a>
+                  </span>
                   <div className='fs-6 fw-bold text-gray-500'>
                     {linked ? (
                       <FormattedMessage
@@ -87,7 +87,7 @@ const ConnectedAccounts: FC = () => {
                     ) : (
                       <FormattedMessage
                         id='account.connected.googleDesc'
-                        defaultMessage='Vincula tu cuenta de Google para iniciar sesión con un solo clic'
+                        defaultMessage='Asocia una identidad institucional de Google a este perfil'
                       />
                     )}
                   </div>

@@ -1,7 +1,4 @@
 import {createRoot} from 'react-dom/client'
-// Axios
-import axios from 'axios'
-import {Chart, registerables} from 'chart.js'
 import {QueryClientProvider} from '@tanstack/react-query'
 import {ReactQueryDevtools} from '@tanstack/react-query-devtools'
 // Apps
@@ -20,20 +17,7 @@ import './_metronic/assets/keenicons/solid/style.css'
  **/
 import './_metronic/assets/sass/style.scss'
 import {AppRoutes} from './app/routing/AppRoutes'
-import {AuthProvider, setupAxios} from './app/modules/auth'
-/**
- * Creates `axios-mock-adapter` instance for provided `axios` instance, add
- * basic Metronic mocks and returns it.
- *
- * @see https://github.com/ctimmerm/axios-mock-adapter
- */
-/**
- * Inject Metronic interceptors for axios.
- *
- * @see https://github.com/axios/axios#interceptors
- */
-setupAxios(axios)
-Chart.register(...registerables)
+import {AuthProvider} from './app/modules/auth'
 
 const container = document.getElementById('root')
 if (container) {
@@ -46,7 +30,7 @@ if (container) {
           </AuthProvider>
         </ToastProvider>
       </MetronicI18nProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   )
 }

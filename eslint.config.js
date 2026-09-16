@@ -30,10 +30,8 @@ export default [
             ...js.configs.recommended.rules,
             ...tsPlugin.configs.recommended.rules,
             ...reactHooksPlugin.configs.recommended.rules,
-            'react-refresh/only-export-components': [
-                'warn',
-                { allowConstantExport: true },
-            ],
+            'no-undef': 'off',
+            'react-refresh/only-export-components': 'off',
         },
     },
 ];

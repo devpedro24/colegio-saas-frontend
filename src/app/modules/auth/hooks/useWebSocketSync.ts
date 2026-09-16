@@ -1,25 +1,28 @@
-import { useEffect, useRef } from 'react'
+import {useEffect} from 'react'
 import { useAuth } from '../core/Auth'
 import { initializeEcho, disconnectEcho } from '@/lib/echo'
+import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 
 export function useWebSocketSync() {
-  const { auth } = useAuth()
-  const initialized = useRef(false)
+  const {auth, currentUser} = useAuth()
+  const {activeColegio, token: impersonationToken} = useImpersonation()
+  const effectiveToken = impersonationToken ?? auth?.api_token
+  const tenantId = activeColegio?.id ?? currentUser?.tenant_id
 
   useEffect(() => {
-    if (!auth?.api_token) return
-    if (initialized.current) return
+    if (!effectiveToken) return
 
     try {
-      initializeEcho(auth.api_token)
-      initialized.current = true
+      initializeEcho(effectiveToken, {
+        tenantId,
+        impersonating: Boolean(impersonationToken && activeColegio),
+      })
     } catch (error) {
       console.error('[WS] Failed to initialize Echo:', error)
     }
 
     return () => {
       disconnectEcho()
-      initialized.current = false
     }
-  }, [auth?.api_token])
+  }, [effectiveToken, tenantId, impersonationToken, activeColegio])
 }

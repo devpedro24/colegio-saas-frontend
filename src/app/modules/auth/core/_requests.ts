@@ -12,12 +12,13 @@ import { AuthModel, UserModel } from './_models'
  * Si el usuario tiene MFA activo, POST /login sin `code` responde 422 con
  * { mfa_required: true }; el frontend entonces pide el codigo y reintenta con `code`.
  *
- * El token se guarda con el api client (localStorage key 'colegio-saas.auth-token')
+ * El token se guarda con el api client (sessionStorage key 'colegio-saas.auth-token')
  * y se inyecta como `Authorization: Bearer <token>` en cada peticion.
  */
 
 interface LoginResponse {
   token: string
+  expires_at: string | null
   user: UserModel
 }
 
@@ -30,13 +31,13 @@ export async function login(
   password: string,
   code?: string,
 ): Promise<{ data: AuthModel }> {
-  const { token } = await api.post<LoginResponse>('/login', {
+  const {token, expires_at} = await api.post<LoginResponse>('/login', {
     email,
     password,
     ...(code ? { code } : {}),
   })
-  setToken(token)
-  return { data: { api_token: token } }
+  setToken(token, expires_at)
+  return {data: {api_token: token, expires_at}}
 }
 
 /**
@@ -57,11 +58,12 @@ export function isMfaRequiredError(error: unknown): boolean {
 
 /**
  * Recupera el usuario autenticado: GET /me.
- * El token se toma del almacenamiento local (via el api client), por eso el
+ * El token se toma del almacenamiento de sesión (vía el api client), por eso el
  * parametro `_token` se ignora; se mantiene para no cambiar la firma que espera
  * la plantilla (AuthInit / Login).
  */
 export async function getUserByToken(_token: string): Promise<{ data: UserModel }> {
+  void _token
   const { user } = await api.get<{ user: UserModel }>('/me')
   return { data: normalizeUser(user) }
 }
@@ -73,34 +75,6 @@ export async function logout(): Promise<void> {
   } finally {
     setToken(null)
   }
-}
-
-/**
- * Registro. El backend aun no expone este endpoint (fases siguientes); se deja
- * cableado contra el api client para que compile y quede listo.
- */
-export async function register(
-  email: string,
-  first_name: string,
-  last_name: string,
-  password: string,
-  password_confirmation: string,
-): Promise<{ data: AuthModel }> {
-  const { token } = await api.post<LoginResponse>('/register', {
-    email,
-    first_name,
-    last_name,
-    password,
-    password_confirmation,
-  })
-  setToken(token)
-  return { data: { api_token: token } }
-}
-
-/** Solicitud de restablecimiento de contrasena (endpoint pendiente en backend). */
-export async function requestPassword(email: string): Promise<{ result: boolean }> {
-  await api.post('/forgot-password', { email })
-  return { result: true }
 }
 
 /** Mapea el usuario del backend a los campos de presentacion de la plantilla. */

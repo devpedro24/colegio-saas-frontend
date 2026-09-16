@@ -11,6 +11,7 @@ import type {ActiveColegio} from './impersonation.store'
 /** Respuesta de POST /platform/impersonar. */
 export interface EnterColegioResponse {
   data: {
+    session_id: string
     colegio: ActiveColegio
     /** Token de impersonación (texto plano) del usuario sombra en el tenant. */
     token: string
@@ -33,8 +34,12 @@ export interface ExitColegioResponse {
  */
 export function useEnterColegio() {
   return useMutation({
-    mutationFn: (colegioId: string) =>
-      api.post<EnterColegioResponse>('/platform/impersonar', {colegio_id: colegioId}),
+    mutationFn: ({colegioId, motivo, ticket}: {colegioId: string; motivo: string; ticket?: string}) =>
+      api.post<EnterColegioResponse>('/platform/impersonar', {
+        colegio_id: colegioId,
+        motivo,
+        ...(ticket ? {ticket} : {}),
+      }),
   })
 }
 
@@ -44,7 +49,10 @@ export function useEnterColegio() {
  */
 export function useExitColegio() {
   return useMutation({
-    mutationFn: (colegioId: string) =>
-      api.post<ExitColegioResponse>('/platform/impersonar/salir', {colegio_id: colegioId}),
+    mutationFn: ({colegioId, sessionId}: {colegioId: string; sessionId?: string | null}) =>
+      api.post<ExitColegioResponse>('/platform/impersonar/salir', {
+        colegio_id: colegioId,
+        ...(sessionId ? {session_id: sessionId} : {}),
+      }),
   })
 }

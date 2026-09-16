@@ -6,21 +6,20 @@ import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useSedes} from '../../academico/estructura/estructura.api'
 import {useCreateUsuario, useUpdateUsuario} from '../usuarios.api'
-import type {Usuario, UsuarioCreateInput, UsuarioUpdateInput} from '../usuarios.types'
+import type {Usuario} from '../usuarios.types'
 import {ROLE_KEYS, STATUS_KEYS} from '../usuarios.types'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
 
-const STATUS_I18N: Record<string, string> = {active: 'activo', inactive: 'inactivo', suspended: 'suspendido'}
-
 type Props = {
   show: boolean
   usuario: Usuario | null
+  roles: string[]
   onClose: () => void
   onCreated: (email: string, password: string) => void
 }
 
-const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
+const UsuarioFormDialog: FC<Props> = ({show, usuario, roles, onClose, onCreated}) => {
   const intl = useIntl()
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
@@ -162,7 +161,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
               >
-                {ROLE_KEYS.map((r) => (
+                {(roles.length > 0 ? roles : [...ROLE_KEYS]).map((r) => (
                   <option key={r} value={r}>
                     {intl.formatMessage({id: `academico.usuarios.rol.${r}`, defaultMessage: r})}
                   </option>

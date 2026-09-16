@@ -4,15 +4,18 @@ import Echo from 'laravel-echo'
 declare global {
   interface Window {
     Pusher: typeof Pusher
-    Echo: Echo<any>
+    Echo: Echo<'reverb'>
   }
 }
 
 window.Pusher = Pusher
 
-let echoInstance: Echo<any> | null = null
+let echoInstance: Echo<'reverb'> | null = null
 
-export function initializeEcho(token: string): Echo<any> {
+export function initializeEcho(
+  token: string,
+  options?: {tenantId?: string | null; impersonating?: boolean},
+): Echo<'reverb'> {
   if (echoInstance) {
     echoInstance.disconnect()
   }
@@ -30,9 +33,12 @@ export function initializeEcho(token: string): Echo<any> {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
+        ...(options?.tenantId ? {'X-Tenant': options.tenantId} : {}),
       },
     },
-    authEndpoint: '/api/broadcasting/auth',
+    authEndpoint: options?.impersonating
+      ? '/api/tenant-broadcasting/auth'
+      : '/api/broadcasting/auth',
   })
 
   window.Echo = echoInstance
@@ -46,7 +52,7 @@ export function disconnectEcho(): void {
   }
 }
 
-export function getEcho(): Echo<any> | null {
+export function getEcho(): Echo<'reverb'> | null {
   return echoInstance
 }
 

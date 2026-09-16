@@ -2,11 +2,9 @@
 import {useMemo, useState} from 'react'
 import * as Yup from 'yup'
 import clsx from 'clsx'
-import {Link} from 'react-router-dom'
 import {useFormik} from 'formik'
 import {FormattedMessage, useIntl, IntlShape} from 'react-intl'
 import {getUserByToken, isMfaRequiredError, login} from '../core/_requests'
-import {toAbsoluteUrl} from '../../../../_metronic/helpers'
 import {useAuth} from '../core/Auth'
 
 const makeLoginSchema = (intl: IntlShape, mfaRequired: boolean) =>
@@ -106,59 +104,6 @@ export function Login() {
         </div>
       </div>
       {/* begin::Heading */}
-
-      {/* begin::Login options */}
-      <div className='row g-3 mb-9'>
-        {/* begin::Col */}
-        <div className='col-md-6'>
-          {/* begin::Google link */}
-          <a
-            href='#'
-            className='btn btn-flex btn-outline btn-text-gray-700 btn-active-color-primary bg-state-light flex-center text-nowrap w-100'
-          >
-            <img
-              alt='Logo'
-              src={toAbsoluteUrl('media/svg/brand-logos/google-icon.svg')}
-              className='h-15px me-3'
-            />
-            <FormattedMessage id='auth.social.google' defaultMessage='Ingresar con Google' />
-          </a>
-          {/* end::Google link */}
-        </div>
-        {/* end::Col */}
-
-        {/* begin::Col */}
-        <div className='col-md-6'>
-          {/* begin::Google link */}
-          <a
-            href='#'
-            className='btn btn-flex btn-outline btn-text-gray-700 btn-active-color-primary bg-state-light flex-center text-nowrap w-100'
-          >
-            <img
-              alt='Logo'
-              src={toAbsoluteUrl('media/svg/brand-logos/apple-black.svg')}
-              className='theme-light-show h-15px me-3'
-            />
-            <img
-              alt='Logo'
-              src={toAbsoluteUrl('media/svg/brand-logos/apple-black-dark.svg')}
-              className='theme-dark-show h-15px me-3'
-            />
-            <FormattedMessage id='auth.social.apple' defaultMessage='Ingresar con Apple' />
-          </a>
-          {/* end::Google link */}
-        </div>
-        {/* end::Col */}
-      </div>
-      {/* end::Login options */}
-
-      {/* begin::Separator */}
-      <div className='separator separator-content my-14'>
-        <span className='w-125px text-gray-500 fw-semibold fs-7'>
-          <FormattedMessage id='auth.common.orWithEmail' defaultMessage='O con correo electrónico' />
-        </span>
-      </div>
-      {/* end::Separator */}
 
       {formik.status ? (
         <div className='mb-lg-15 alert alert-danger'>
@@ -263,17 +208,12 @@ export function Login() {
       )}
       {/* end::MFA code */}
 
-      {/* begin::Wrapper */}
-      <div className='d-flex flex-stack flex-wrap gap-3 fs-base fw-semibold mb-8'>
-        <div />
-
-        {/* begin::Link */}
-        <Link to='/auth/forgot-password' className='link-primary'>
-          <FormattedMessage id='auth.login.forgotPassword' defaultMessage='¿Olvidaste tu contraseña?' />
-        </Link>
-        {/* end::Link */}
+      <div className='text-muted fs-7 mb-8'>
+        <FormattedMessage
+          id='auth.login.managedAccess'
+          defaultMessage='El acceso y el restablecimiento de contraseña son gestionados por tu colegio.'
+        />
       </div>
-      {/* end::Wrapper */}
 
       {/* begin::Action */}
       <div className='d-grid mb-10'>
@@ -298,12 +238,6 @@ export function Login() {
       </div>
       {/* end::Action */}
 
-      <div className='text-gray-500 text-center fw-semibold fs-6'>
-        <FormattedMessage id='auth.login.noAccount' defaultMessage='¿Aún no tienes una cuenta?' />{' '}
-        <Link to='/auth/registration' className='link-primary'>
-          <FormattedMessage id='auth.login.signUp' defaultMessage='Regístrate' />
-        </Link>
-      </div>
     </form>
   )
 }

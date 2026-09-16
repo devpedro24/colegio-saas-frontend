@@ -64,41 +64,47 @@ export interface ResetPasswordResponse {
 }
 
 /**
- * Respuesta de GET /colegios/{id}/rector-password (NO invalida la clave):
- *  - 'temporal': el rector aun no la cambio -> rector_password es la vigente.
- *  - 'changed' : el rector ya cambio su clave -> la temporal ya no funciona.
- *  - 'none'    : no hay clave guardada/recuperable; hay que regenerar.
- */
-export interface RectorPasswordInfo {
-  status: 'temporal' | 'changed' | 'none'
-  rector_email: string | null
-  rector_password: string | null
-}
-
-/**
  * Sede de un colegio (vive en la BD del tenant; raiz de la jerarquia
  * Sede→Jornada→Nivel→Grado→Grupo). Endpoints del superadmin:
  * /colegios/{id}/sedes.
  */
 export interface ColegioSede {
   id: number
+  hashed_id: string
   nombre: string
   direccion: string | null
   telefono: string | null
-  responsable: string | null
-  es_principal: boolean
+  coordinador_name: string | null
+  coordinador_email: string | null
+  tenant_id: string | null
   estado: 'activa' | 'inactiva'
-  created_at: string | null
+  tenant_slug: string | null
+  tenant_domain: string | null
+  tenant_status: ColegioStatus | null
 }
 
-/** Body de POST/PUT /colegios/{id}/sedes. */
-export interface ColegioSedeInput {
+/** Body de POST /colegios/{id}/sedes: provisiona un tenant hijo. */
+export interface CreateColegioSedeInput {
+  nombre: string
+  slug: string
+  direccion: string
+  coordinador_name?: string | null
+  coordinador_email?: string | null
+  heredar?: boolean
+  estado?: 'activa' | 'inactiva'
+}
+
+/** Body de PUT /colegios/{id}/sedes/{sedeId}. */
+export interface UpdateColegioSedeInput {
   nombre: string
   direccion?: string | null
-  telefono?: string | null
-  responsable?: string | null
-  es_principal?: boolean
   estado?: 'activa' | 'inactiva'
+}
+
+/** La clave del coordinador solo existe en esta respuesta de creacion. */
+export interface CreateColegioSedeResponse {
+  data: ColegioSede
+  coordinador_password: string | null
 }
 
 // NOTA: los planes de los selects de Crear/Editar colegio se leen de la BD real

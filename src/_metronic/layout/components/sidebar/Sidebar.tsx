@@ -28,7 +28,7 @@ const PLATFORM_ID = '__platform__'
 function usePlatformTeams() {
   const intl = useIntl()
   const toast = useToast()
-  const {activeColegio, setActive, clear} = useImpersonation()
+  const {activeColegio, sessionId, setActive, clear} = useImpersonation()
   const {data: colegios} = useColegios()
   const enter = useEnterColegio()
   const exit = useExitColegio()
@@ -55,7 +55,11 @@ function usePlatformTeams() {
     if (item.isPlatform) {
       const current = activeColegio?.id
       if (current) {
-        exit.mutate(current, {
+        exit.mutate({colegioId: current, sessionId}, {
+          onSuccess: () => {
+            clear()
+            window.location.href = '/dashboard'
+          },
           onError: () =>
             toast.error(
               intl.formatMessage({
@@ -65,16 +69,31 @@ function usePlatformTeams() {
             ),
         })
       }
-      clear()
-      window.location.href = '/dashboard'
+      if (!current) window.location.href = '/dashboard'
       return
     }
     // Ya estoy administrando ese colegio: no hago nada.
     if (item.id === activeColegio?.id) return
     // Entrar a administrar el colegio (suplantación).
-    enter.mutate(item.id, {
+    const motivo = window.prompt(
+      intl.formatMessage({
+        id: 'impersonation.reason.prompt',
+        defaultMessage: 'Indica el motivo del acceso administrativo (mínimo 10 caracteres):',
+      }),
+    )?.trim()
+    if (!motivo) return
+    if (motivo.length < 10) {
+      toast.error(
+        intl.formatMessage({
+          id: 'impersonation.reason.min',
+          defaultMessage: 'El motivo debe tener al menos 10 caracteres.',
+        }),
+      )
+      return
+    }
+    enter.mutate({colegioId: item.id, motivo}, {
       onSuccess: (res) => {
-        setActive(res.data.colegio, res.data.token)
+        setActive(res.data.colegio, res.data.token, res.data.expires_at, res.data.session_id)
         toast.success(
           intl.formatMessage(
             {id: 'impersonation.enter.success', defaultMessage: 'Ahora administras {colegio}.'},
@@ -290,19 +309,6 @@ const Sidebar = () => {
       </div>
       {/* end::Sidebar navbar */}
 
-      {/* Upgrade al FONDO del drawer, solo en pantallas muy chicas (<sm): libera espacio en el
-          navbar del header para que el menú de usuario no se salga. Abre el modal vía la
-          delegación de HeaderWrapper (data-bs-toggle). Oculto en ≥sm (y en desktop). */}
-      <div className='d-sm-none p-4 pt-2'>
-        <a
-          href='#'
-          className='btn btn-primary w-100'
-          data-bs-toggle='modal'
-          data-bs-target='#kt_modal_upgrade_plan'
-        >
-          Upgrade Plan
-        </a>
-      </div>
     </div>
   )
 }

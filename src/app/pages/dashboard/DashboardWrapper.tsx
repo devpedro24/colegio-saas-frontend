@@ -1,74 +1,94 @@
-import {FC, useEffect} from 'react'
-import {Tab} from 'bootstrap'
-import {reInitMenu, withBase} from '../../../_metronic/helpers'
+import {FC} from 'react'
+import {Link} from 'react-router-dom'
+import {useIntl} from 'react-intl'
 import {PageLink, PageTitle} from '../../../_metronic/layout/core'
 import {ToolbarWrapper} from '../../../_metronic/layout/components/toolbar'
 import {Content} from '../../../_metronic/layout/components/content'
-import {DASHBOARD_HTML} from './_DashboardContent'
-import {initDashboardCharts} from './_dashboardCharts'
-import type ApexCharts from 'apexcharts'
+import {useAuth} from '@/app/modules/auth'
+import {useAuthz} from '@/app/modules/auth/core/authz'
+import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 
 const dashboardBreadcrumbs: Array<PageLink> = [
-  {title: 'Dashboards', path: '/dashboard', isSeparator: false, isActive: false},
+  {title: 'Inicio', path: '/dashboard', isSeparator: false, isActive: true},
 ]
 
-const DashboardPage: FC = () => {
-  useEffect(() => {
-    let charts: ApexCharts[] = []
-    let tabEls: Element[] = []
-    const onShown = () => window.dispatchEvent(new Event('resize'))
+const DashboardWrapper: FC = () => {
+  const intl = useIntl()
+  const {currentUser} = useAuth()
+  const authz = useAuthz()
+  const {activeColegio} = useImpersonation()
+  const tenantContext = !authz.isPlatform || activeColegio !== null
 
-    // Pequeño delay para que el layout (header fijo, contenedores) tenga anchos ya calculados.
-    const timer = window.setTimeout(() => {
-      charts = initDashboardCharts()
-
-      // Inicializa tabs y pills de Bootstrap presentes en el HTML inyectado.
-      tabEls = Array.from(
-        document.querySelectorAll('[data-bs-toggle="tab"], [data-bs-toggle="pill"]')
-      )
-      tabEls.forEach((el) => {
-        try {
-          Tab.getOrCreateInstance(el)
-        } catch (e) {
-          /* noop */
-        }
-        el.addEventListener('shown.bs.tab', onShown)
-      })
-
-      // Re-inicializa menús/dropdowns (data-kt-menu) del contenido inyectado.
-      reInitMenu()
-    }, 300)
-
-    return () => {
-      window.clearTimeout(timer)
-      charts.forEach((c) => {
-        try {
-          c.destroy()
-        } catch (e) {
-          /* noop */
-        }
-      })
-      tabEls.forEach((el) => el.removeEventListener('shown.bs.tab', onShown))
-    }
-  }, [])
+  const links = [
+    authz.isPlatform && !activeColegio
+      ? {to: '/configuracion/colegios', icon: 'ki-school', label: 'Colegios'}
+      : null,
+    authz.isPlatform && !activeColegio
+      ? {to: '/configuracion/planes', icon: 'ki-price-tag', label: 'Planes'}
+      : null,
+    tenantContext
+      ? {to: '/academico/configuracion', icon: 'ki-setting-2', label: 'Configuración académica'}
+      : null,
+    tenantContext
+      ? {to: '/academico/estructura', icon: 'ki-abstract-26', label: 'Estructura'}
+      : null,
+    tenantContext && authz.hasPermission('usuarios.gestionar')
+      ? {to: '/usuarios', icon: 'ki-people', label: 'Usuarios'}
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => item !== null)
 
   return (
     <>
+      <PageTitle breadcrumbs={dashboardBreadcrumbs}>
+        {intl.formatMessage({id: 'dashboard.title', defaultMessage: 'Inicio'})}
+      </PageTitle>
       <ToolbarWrapper />
       <Content>
-        <div dangerouslySetInnerHTML={{__html: withBase(DASHBOARD_HTML)}} />
-      </Content>
-    </>
-  )
-}
+        <div className='card mb-8'>
+          <div className='card-body py-10'>
+            <span className='badge badge-light-primary mb-4'>
+              {activeColegio
+                ? 'Administración temporal'
+                : authz.isPlatform
+                  ? 'Plataforma'
+                  : 'Colegio'}
+            </span>
+            <h1 className='text-gray-900 fw-bold mb-3'>
+              {intl.formatMessage(
+                {id: 'dashboard.welcome', defaultMessage: 'Hola, {name}'},
+                {name: currentUser?.name ?? ''},
+              )}
+            </h1>
+            <p className='text-gray-600 fs-5 mb-0'>
+              {activeColegio
+                ? 'Estás administrando ' + activeColegio.name + '. Todas las acciones quedan auditadas.'
+                : authz.isPlatform
+                  ? 'Gestiona colegios, planes y permisos desde la plataforma central.'
+                  : 'Gestiona la operación académica autorizada para tu rol.'}
+            </p>
+          </div>
+        </div>
 
-const DashboardWrapper: FC = () => {
-  // El toolbar lo renderiza ToolbarWrapper leyendo del contexto PageData. Fijamos aqui el
-  // titulo ("eCommerce Dashboard") y el breadcrumb (Home > Dashboards).
-  return (
-    <>
-      <PageTitle breadcrumbs={dashboardBreadcrumbs}>eCommerce Dashboard</PageTitle>
-      <DashboardPage />
+        <div className='row g-5 g-xl-8'>
+          {links.map((item) => (
+            <div className='col-sm-6 col-xl-4' key={item.to}>
+              <Link to={item.to} className='card card-flush h-100 hover-elevate-up text-decoration-none'>
+                <div className='card-body d-flex align-items-center gap-4 py-7'>
+                  <span className='symbol symbol-50px bg-light-primary'>
+                    <span className='symbol-label'>
+                      <i className={'ki-duotone ' + item.icon + ' fs-2x text-primary'}></i>
+                    </span>
+                  </span>
+                  <div>
+                    <div className='text-gray-900 fw-bold fs-5'>{item.label}</div>
+                    <div className='text-muted fs-7'>Abrir módulo</div>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          ))}
+        </div>
+      </Content>
     </>
   )
 }

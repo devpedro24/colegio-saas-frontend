@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable react-refresh/only-export-components */
+
 import {createContext, ReactNode, useContext, useEffect, useState} from 'react'
 import {ThemeModeComponent} from '../../../assets/ts/layout'
 import {toAbsoluteUrl} from '../../../helpers'

@@ -15,7 +15,6 @@ export interface Usuario {
   sede_id: string | null
   sede_nombre: string | null
   tenant_id: string | null
-  temporary_password: string | null
 }
 
 export interface UsuarioCreateInput {

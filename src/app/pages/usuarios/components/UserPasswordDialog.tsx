@@ -2,7 +2,7 @@
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
 import {ResetPasswordDialog, type ResetPasswordGenerated} from '@/app/shared/components/ResetPasswordDialog'
-import {useUserTemporalPassword, useResetUserPassword} from '../usuarios.api'
+import {useResetUserPassword} from '../usuarios.api'
 import type {Usuario} from '../usuarios.types'
 
 type Props = {
@@ -18,8 +18,6 @@ const UserPasswordDialog: FC<Props> = ({show, usuario, onClose}) => {
   const [generated, setGenerated] = useState<ResetPasswordGenerated | null>(null)
 
   const sedeId = usuario?.tenant_id ? usuario.sede_id : null
-  const {data: pwInfo, isLoading, isError} = useUserTemporalPassword(show ? usuario?.id ?? null : null, sedeId)
-
   useEffect(() => {
     if (!show) { setGenerated(null); reset.reset() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -44,9 +42,9 @@ const UserPasswordDialog: FC<Props> = ({show, usuario, onClose}) => {
       onClose={onClose}
       entityName={usuario?.name ?? ''}
       entityLabel={intl.formatMessage({id: 'header.menu.users'})}
-      pwInfo={pwInfo ?? null}
-      isLoading={isLoading}
-      isError={isError}
+      pwInfo={{status: 'none', email: usuario?.email ?? null, password: null}}
+      isLoading={false}
+      isError={false}
       onRegenerate={regenerate}
       isRegenerating={reset.isPending}
       generated={generated}

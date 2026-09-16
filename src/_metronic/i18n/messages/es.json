@@ -249,7 +249,7 @@
   "academico.usuarios.tempPasswordGenerated": "Contraseña generada correctamente.",
   "account.breadcrumb": "Cuenta",
   "account.connected.githubDesc": "Vigila tus repositorios",
-  "account.connected.googleDesc": "Planifica bien tu flujo de trabajo",
+  "account.connected.googleDesc": "Asocia una identidad institucional de Google a este perfil",
   "account.connected.notice": "La autenticación en dos pasos añade una capa extra de seguridad a tu cuenta. Para iniciar sesión, deberás proporcionar un código de 4 dígitos.",
   "account.connected.slackDesc": "Integra las discusiones de proyectos",
   "account.connected.title": "Cuentas conectadas",
@@ -850,5 +850,16 @@
   "rbac.tab.permissions": "Permisos",
   "rbac.tab.roles": "Roles",
   "rbac.title": "Roles y Permisos",
-  "shared.pagination.showing": "Mostrando {start}–{end} de {total}"
+  "shared.pagination.showing": "Mostrando {start}–{end} de {total}",
+  "academico.config.yearLabel": "Año lectivo",
+  "account.connected.googleLinked": "Asociada con {email}",
+  "account.menu.billing": "Facturación",
+  "account.menu.subscription": "Suscripción",
+  "account.signin.newPassword": "Nueva contraseña",
+  "account.unlink": "Desvincular",
+  "colegios.pwd.changedBody": "{name} ya cambió su contraseña temporal.",
+  "colegios.pwd.noneBody": "{name} no tiene una contraseña temporal recuperable. Puedes generar una nueva una sola vez.",
+  "auth.login.managedAccess": "El acceso y el restablecimiento de contraseña son gestionados por tu colegio.",
+  "impersonation.reason.prompt": "Indica el motivo del acceso administrativo (mínimo 10 caracteres):",
+  "impersonation.reason.min": "El motivo debe tener al menos 10 caracteres."
 }

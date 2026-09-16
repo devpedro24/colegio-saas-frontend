@@ -7,12 +7,13 @@ import {api} from '@/lib/api/client'
 import type {
   Colegio,
   ColegioSede,
-  ColegioSedeInput,
+  CreateColegioSedeInput,
+  CreateColegioSedeResponse,
   CreateColegioInput,
   CreateColegioResponse,
-  RectorPasswordInfo,
   ResetPasswordResponse,
   UpdateColegioInput,
+  UpdateColegioSedeInput,
 } from './colegios.types'
 
 /** Clave de cache de la lista de colegios. */
@@ -90,16 +91,6 @@ export function useResetRectorPassword() {
   })
 }
 
-/** GET /colegios/{id}/rector-password — consulta la clave temporal VIGENTE. */
-export function useRectorPassword(id: string | null) {
-  return useQuery({
-    queryKey: [...COLEGIOS_KEY, id, 'rector-password'],
-    queryFn: () => api.get<RectorPasswordInfo>(`/colegios/${id}/rector-password`),
-    enabled: id !== null,
-    refetchOnWindowFocus: false,
-  })
-}
-
 /** Clave de cache de las sedes de un colegio (por id del colegio). */
 const sedesKey = (id: string | null) => [...COLEGIOS_KEY, id, 'sedes'] as const
 
@@ -117,8 +108,8 @@ export function useColegioSedes(id: string | null) {
 export function useCreateColegioSede() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({id, input}: {id: string; input: ColegioSedeInput}) =>
-      api.post<{data: ColegioSede}>(`/colegios/${id}/sedes`, input),
+    mutationFn: ({id, input}: {id: string; input: CreateColegioSedeInput}) =>
+      api.post<CreateColegioSedeResponse>(`/colegios/${id}/sedes`, input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({queryKey: sedesKey(variables.id)})
     },
@@ -129,7 +120,7 @@ export function useCreateColegioSede() {
 export function useUpdateColegioSede() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({id, sedeId, input}: {id: string; sedeId: number; input: ColegioSedeInput}) =>
+    mutationFn: ({id, sedeId, input}: {id: string; sedeId: number; input: UpdateColegioSedeInput}) =>
       api.put<{data: ColegioSede}>(`/colegios/${id}/sedes/${sedeId}`, input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({queryKey: sedesKey(variables.id)})

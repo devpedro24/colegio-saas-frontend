@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+
 import {FC, useState, useEffect, createContext, useContext, Dispatch, SetStateAction} from 'react'
 import {LayoutSplashScreen} from '../../../../_metronic/layout/core'
 import {AuthModel, UserModel} from './_models'
@@ -6,6 +6,8 @@ import * as authHelper from './AuthHelpers'
 import {getUserByToken, logout as requestLogout} from './_requests'
 import {clearImpersonation} from '../../impersonation/impersonation.store'
 import {WithChildren} from '../../../../_metronic/helpers'
+import {AUTH_SESSION_INVALIDATED_EVENT} from '@/lib/api/auth-session'
+import {queryClient} from '@/lib/api/query-client'
 
 type AuthContextProps = {
   auth: AuthModel | undefined
@@ -48,7 +50,20 @@ const AuthProvider: FC<WithChildren> = ({children}) => {
     saveAuth(undefined)
     setCurrentUser(undefined)
     clearImpersonation()
+    queryClient.clear()
   }
+
+  useEffect(() => {
+    const handleInvalidatedSession = () => {
+      setAuth(undefined)
+      setCurrentUser(undefined)
+      clearImpersonation()
+      queryClient.clear()
+    }
+
+    window.addEventListener(AUTH_SESSION_INVALIDATED_EVENT, handleInvalidatedSession)
+    return () => window.removeEventListener(AUTH_SESSION_INVALIDATED_EVENT, handleInvalidatedSession)
+  }, [])
 
   return (
     <AuthContext.Provider value={{auth, saveAuth, currentUser, setCurrentUser, logout}}>

@@ -5,6 +5,7 @@ import { getEcho } from '@/lib/echo'
 import { COLEGIOS_KEY } from '@/app/pages/config/colegios/colegios.api'
 import { PLANES_KEY } from '@/app/pages/config/planes/planes.api'
 import { RBAC_KEY } from '@/app/pages/config/rbac/rbac.api'
+import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 
 const RESOURCE_KEYS: Record<string, readonly string[]> = {
   colegios: COLEGIOS_KEY,
@@ -14,10 +15,11 @@ const RESOURCE_KEYS: Record<string, readonly string[]> = {
 
 export function usePlatformSync() {
   const { currentUser } = useAuth()
+  const {activeColegio} = useImpersonation()
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!currentUser?.is_platform) return
+    if (!currentUser?.is_platform || activeColegio) return
 
     const echo = getEcho()
     if (!echo) return
@@ -36,5 +38,5 @@ export function usePlatformSync() {
       channel.stopListening('.changed', handler)
       echo.leaveChannel('platform')
     }
-  }, [currentUser?.is_platform, queryClient])
+  }, [currentUser?.is_platform, activeColegio, queryClient])
 }

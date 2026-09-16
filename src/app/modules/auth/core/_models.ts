@@ -1,5 +1,6 @@
 export interface AuthModel {
   api_token: string
+  expires_at?: string | null
   refreshToken?: string
 }
 
@@ -65,6 +66,10 @@ export interface UserModel {
   tenant_id?: string | null
   /** true si el usuario ya activó la verificación en dos pasos (MFA/TOTP). */
   mfa_enabled?: boolean
+  /** Política MFA efectiva calculada por el backend para este usuario. */
+  mfa_required?: boolean
+  /** true cuando debe completar la configuración MFA antes de usar módulos protegidos. */
+  mfa_setup_required?: boolean
   /** Correo de la cuenta de Google vinculada (si la hay). */
   google_email?: string | null
 

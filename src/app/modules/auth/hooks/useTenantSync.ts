@@ -5,6 +5,7 @@ import { getEcho } from '@/lib/echo'
 import { SEDES_KEY } from '@/app/pages/academico/estructura/estructura.api'
 import { ANOS_LECTIVOS_KEY } from '@/app/pages/academico/anos-lectivos/anos-lectivos.api'
 import { USUARIOS_KEY } from '@/app/pages/usuarios/usuarios.api'
+import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 
 type EntityQueryMap = Record<string, readonly string[]>
 
@@ -18,10 +19,11 @@ type EntityQueryMap = Record<string, readonly string[]>
  */
 export function useTenantSync(extraKeys: EntityQueryMap = {}) {
   const { currentUser } = useAuth()
+  const {activeColegio} = useImpersonation()
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    const tenantId = currentUser?.tenant_id
+    const tenantId = activeColegio?.id ?? currentUser?.tenant_id
     if (!tenantId) return
 
     const echo = getEcho()
@@ -71,5 +73,5 @@ export function useTenantSync(extraKeys: EntityQueryMap = {}) {
       channel.stopListening('.sede.creada', handleHeredada)
       echo.leaveChannel(`tenant.${tenantId}`)
     }
-  }, [currentUser?.tenant_id, queryClient]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeColegio?.id, currentUser?.tenant_id, queryClient]) // eslint-disable-line react-hooks/exhaustive-deps
 }

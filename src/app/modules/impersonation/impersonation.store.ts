@@ -1,7 +1,7 @@
 // Estado global de "colegio activo" (suplantación / cambio de contexto del superadmin).
 //
 // Cuando el superadmin entra a administrar un colegio, guardamos aquí { activeColegio, token }.
-// Se persiste en localStorage con las claves EXACTAS del contrato:
+// Se persiste solo durante la sesión del navegador:
 //   - 'colegio-saas.active-colegio'      -> JSON { id, name, slug }
 //   - 'colegio-saas.impersonation-token' -> token de impersonación (texto plano)
 //
@@ -12,9 +12,12 @@
 // como exige useSyncExternalStore.
 
 import {useSyncExternalStore} from 'react'
+import {isFutureExpiration} from './impersonation-session'
 
 export const ACTIVE_COLEGIO_KEY = 'colegio-saas.active-colegio'
 export const IMPERSONATION_TOKEN_KEY = 'colegio-saas.impersonation-token'
+export const IMPERSONATION_EXPIRES_KEY = 'colegio-saas.impersonation-expires-at'
+export const IMPERSONATION_SESSION_KEY = 'colegio-saas.impersonation-session-id'
 
 /** Colegio que el superadmin está administrando (subconjunto mínimo del colegio real). */
 export interface ActiveColegio {
@@ -26,19 +29,30 @@ export interface ActiveColegio {
 export interface ImpersonationState {
   activeColegio: ActiveColegio | null
   token: string | null
+  expiresAt: string | null
+  sessionId: string | null
 }
 
-const EMPTY: ImpersonationState = {activeColegio: null, token: null}
+const EMPTY: ImpersonationState = {
+  activeColegio: null,
+  token: null,
+  expiresAt: null,
+  sessionId: null,
+}
 
-/** Lee el estado desde localStorage. Sólo es válido si EXISTEN colegio Y token a la vez. */
+/** Lee el estado de sesión. Colegio, token, expiración y sesión deben ser válidos. */
 function readFromStorage(): ImpersonationState {
   try {
-    const raw = localStorage.getItem(ACTIVE_COLEGIO_KEY)
-    const token = localStorage.getItem(IMPERSONATION_TOKEN_KEY)
-    if (!raw || !token) return EMPTY
+    const raw = sessionStorage.getItem(ACTIVE_COLEGIO_KEY)
+    const token = sessionStorage.getItem(IMPERSONATION_TOKEN_KEY)
+    const expiresAt = sessionStorage.getItem(IMPERSONATION_EXPIRES_KEY)
+    const sessionId = sessionStorage.getItem(IMPERSONATION_SESSION_KEY)
+    if (!raw || !token || !sessionId || !isFutureExpiration(expiresAt)) {
+      return EMPTY
+    }
     const activeColegio = JSON.parse(raw) as ActiveColegio
     if (!activeColegio || !activeColegio.id) return EMPTY
-    return {activeColegio, token}
+    return {activeColegio, token, expiresAt, sessionId}
   } catch {
     return EMPTY
   }
@@ -64,17 +78,30 @@ export function getImpersonation(): ImpersonationState {
 }
 
 /** Entrar a administrar un colegio: persiste colegio + token y notifica. */
-export function setActiveColegio(colegio: ActiveColegio, token: string): void {
-  localStorage.setItem(ACTIVE_COLEGIO_KEY, JSON.stringify(colegio))
-  localStorage.setItem(IMPERSONATION_TOKEN_KEY, token)
-  state = {activeColegio: colegio, token}
+export function setActiveColegio(
+  colegio: ActiveColegio,
+  token: string,
+  expiresAt: string,
+  sessionId: string,
+): void {
+  sessionStorage.setItem(ACTIVE_COLEGIO_KEY, JSON.stringify(colegio))
+  sessionStorage.setItem(IMPERSONATION_TOKEN_KEY, token)
+  sessionStorage.setItem(IMPERSONATION_EXPIRES_KEY, expiresAt)
+  sessionStorage.setItem(IMPERSONATION_SESSION_KEY, sessionId)
+  state = {activeColegio: colegio, token, expiresAt, sessionId}
   emit()
 }
 
 /** Volver a Plataforma: descarta el token temporal y el colegio activo. */
 export function clearImpersonation(): void {
+  sessionStorage.removeItem(ACTIVE_COLEGIO_KEY)
+  sessionStorage.removeItem(IMPERSONATION_TOKEN_KEY)
+  sessionStorage.removeItem(IMPERSONATION_EXPIRES_KEY)
+  sessionStorage.removeItem(IMPERSONATION_SESSION_KEY)
   localStorage.removeItem(ACTIVE_COLEGIO_KEY)
   localStorage.removeItem(IMPERSONATION_TOKEN_KEY)
+  localStorage.removeItem(IMPERSONATION_EXPIRES_KEY)
+  localStorage.removeItem(IMPERSONATION_SESSION_KEY)
   state = EMPTY
   emit()
 }
@@ -83,21 +110,27 @@ export function clearImpersonation(): void {
  * Devuelve { colegioId, token } SÓLO si hay una suplantación activa (colegio + token).
  * Lo consume el api client para decidir si envía el token de impersonación + header X-Tenant.
  */
-export function getActiveImpersonation(): {colegioId: string; token: string} | null {
-  const {activeColegio, token} = state
-  if (activeColegio && token) return {colegioId: activeColegio.id, token}
+export function getActiveImpersonation(): {
+  colegioId: string
+  token: string
+  expiresAt: string
+  sessionId: string
+} | null {
+  const {activeColegio, token, expiresAt, sessionId} = state
+  if (activeColegio && token && expiresAt && sessionId && isFutureExpiration(expiresAt)) {
+    return {colegioId: activeColegio.id, token, expiresAt, sessionId}
+  }
+  if (activeColegio || token) clearImpersonation()
   return null
 }
 
-// Sincronización entre pestañas: si otra pestaña cambia el colegio activo o el token,
-// re-leemos y notificamos a los suscriptores de ESTA pestaña.
+// Elimina credenciales persistentes de versiones anteriores. Las sesiones de
+// pestañas distintas quedan deliberadamente aisladas.
 if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e) => {
-    if (e.key === ACTIVE_COLEGIO_KEY || e.key === IMPERSONATION_TOKEN_KEY) {
-      state = readFromStorage()
-      emit()
-    }
-  })
+  localStorage.removeItem(ACTIVE_COLEGIO_KEY)
+  localStorage.removeItem(IMPERSONATION_TOKEN_KEY)
+  localStorage.removeItem(IMPERSONATION_EXPIRES_KEY)
+  localStorage.removeItem(IMPERSONATION_SESSION_KEY)
 }
 
 /** Hook reactivo: { activeColegio, token, setActive, clear }. */
@@ -106,6 +139,8 @@ export function useImpersonation() {
   return {
     activeColegio: snapshot.activeColegio,
     token: snapshot.token,
+    expiresAt: snapshot.expiresAt,
+    sessionId: snapshot.sessionId,
     setActive: setActiveColegio,
     clear: clearImpersonation,
   }

@@ -26,17 +26,11 @@ const statusBadge = (status: string): {cls: string; label: string} => {
   }
 }
 
-const UsuariosPage: FC = () => {
+const UsuariosPageContent: FC = () => {
   const intl = useIntl()
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
   const authz = useAuthz()
-  const {activeColegio} = useImpersonation()
-
-  if (authz.isPlatform && !activeColegio) {
-    return <Navigate to='/dashboard' replace />
-  }
-
   const breadcrumbs: Array<PageLink> = [
     {title: t('header.menu.userManagement'), path: '/usuarios', isSeparator: false, isActive: false},
   ]
@@ -147,18 +141,16 @@ const UsuariosPage: FC = () => {
                             <td><span className={status.cls}>{t(status.label)}</span></td>
                             <td>
                               <div className='d-flex align-items-center justify-content-end flex-shrink-0 gap-2'>
-                                {u.must_change_password && (
-                                  <button
-                                    type='button'
-                                    className='btn btn-icon btn-light-warning btn-sm'
-                                    title={t('academico.usuarios.tempPassword')}
-                                    onClick={() => setPwdUser(u)}
-                                  >
-                                    <i className='ki-duotone ki-key fs-5'>
-                                      <span className='path1'></span><span className='path2'></span>
-                                    </i>
-                                  </button>
-                                )}
+                                <button
+                                  type='button'
+                                  className='btn btn-icon btn-light-warning btn-sm'
+                                  title={t('academico.usuarios.tempPassword')}
+                                  onClick={() => setPwdUser(u)}
+                                >
+                                  <i className='ki-duotone ki-key fs-5'>
+                                    <span className='path1'></span><span className='path2'></span>
+                                  </i>
+                                </button>
                                 <button
                                   type='button'
                                   className='btn btn-icon btn-light-primary btn-sm'
@@ -212,6 +204,7 @@ const UsuariosPage: FC = () => {
         <UsuarioFormDialog
           show={formOpen}
           usuario={userEdit}
+          roles={data?.roles ?? []}
           onClose={() => { setFormOpen(false); setUserEdit(null) }}
           onCreated={(email, password) => setCreds({email, password})}
         />
@@ -237,6 +230,15 @@ const UsuariosPage: FC = () => {
       </Content>
     </>
   )
+}
+
+const UsuariosPage: FC = () => {
+  const authz = useAuthz()
+  const {activeColegio} = useImpersonation()
+
+  return authz.isPlatform && !activeColegio
+    ? <Navigate to='/dashboard' replace />
+    : <UsuariosPageContent />
 }
 
 export default UsuariosPage

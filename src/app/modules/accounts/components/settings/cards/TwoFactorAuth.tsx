@@ -41,7 +41,15 @@ const TwoFactorAuth: FC = () => {
 
   // Refleja el nuevo estado de MFA en el usuario del contexto (para persistirlo en UI).
   const syncUser = (mfa_enabled: boolean) => {
-    setCurrentUser((prev) => (prev ? {...prev, mfa_enabled} : prev))
+    setCurrentUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            mfa_enabled,
+            mfa_setup_required: prev.mfa_required === true && !mfa_enabled,
+          }
+        : prev,
+    )
   }
 
   const startSetup = () => {

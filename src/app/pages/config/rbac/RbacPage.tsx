@@ -91,10 +91,10 @@ const RbacPage: FC = () => {
   const deleteRole = useDeleteRole()
   const deletePending = deletePermission.isPending || deleteRole.isPending
 
-  const roles = data?.roles ?? []
-  const permissions = data?.permissions ?? []
-  const features = data?.features ?? []
-  const levels = data?.levels ?? []
+  const roles = useMemo(() => data?.roles ?? [], [data?.roles])
+  const permissions = useMemo(() => data?.permissions ?? [], [data?.permissions])
+  const features = useMemo(() => data?.features ?? [], [data?.features])
+  const levels = useMemo(() => data?.levels ?? [], [data?.levels])
 
   // key de feature -> id i18n de su label (el backend manda el id en catalog.features).
   const featureLabelId = useMemo(() => {

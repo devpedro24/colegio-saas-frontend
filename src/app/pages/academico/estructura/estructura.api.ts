@@ -4,6 +4,7 @@
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
+import {tenantOrigin} from '@/lib/subdomain'
 import type {
   BloqueHorario,
   CreateBloqueHorarioInput,
@@ -37,10 +38,7 @@ export const ESPACIOS_KEY = ['estructura', 'espacios-fisicos'] as const
  * â†’ base = colegio-rbac.localhost.
  */
 export function sedeSubdomainUrl(tenantDomain: string): string {
-  const host = window.location.hostname
-  const parts = host.split('.')
-  const base = parts.length > 1 ? parts.slice(1).join('.') : host
-  return `${window.location.protocol}//${tenantDomain}.${base}`
+  return tenantOrigin(tenantDomain)
 }
 
 // ---- Sedes ----
