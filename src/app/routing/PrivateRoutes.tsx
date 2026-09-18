@@ -11,6 +11,7 @@ const PrivateRoutes = () => {
   const ConfigPage = lazy(() => import('../pages/config/ConfigPage'))
   const AcademicoPage = lazy(() => import('../pages/academico/AcademicoPage'))
   const UsuariosPage = lazy(() => import('../pages/usuarios/UsuariosPage'))
+  const ProximamentePage = lazy(() => import('../pages/proximamente/ProximamentePage'))
 
   return (
     <Routes>
@@ -49,6 +50,63 @@ const PrivateRoutes = () => {
           element={
             <SuspensedView>
               <UsuariosPage />
+            </SuspensedView>
+          }
+        />
+        {/* Módulos del roadmap aún sin pantallas reales (placeholder "próximamente") */}
+        <Route
+          path='admisiones'
+          element={
+            <SuspensedView>
+              <ProximamentePage titleId='admisiones.title' defaultTitle='Admisiones y matrícula' />
+            </SuspensedView>
+          }
+        />
+        <Route
+          path='evaluacion'
+          element={
+            <SuspensedView>
+              <ProximamentePage titleId='evaluacion.title' defaultTitle='Evaluación y convivencia' />
+            </SuspensedView>
+          }
+        />
+        <Route
+          path='comunicacion'
+          element={
+            <SuspensedView>
+              <ProximamentePage titleId='comunicacion.title' defaultTitle='Comunicación' />
+            </SuspensedView>
+          }
+        />
+        <Route
+          path='pagos'
+          element={
+            <SuspensedView>
+              <ProximamentePage titleId='pagos.title' defaultTitle='Pagos' />
+            </SuspensedView>
+          }
+        />
+        <Route
+          path='reportes'
+          element={
+            <SuspensedView>
+              <ProximamentePage titleId='reportes.title' defaultTitle='Reportes' />
+            </SuspensedView>
+          }
+        />
+        <Route
+          path='bienestar'
+          element={
+            <SuspensedView>
+              <ProximamentePage titleId='bienestar.title' defaultTitle='Bienestar y servicios' />
+            </SuspensedView>
+          }
+        />
+        <Route
+          path='talento-humano'
+          element={
+            <SuspensedView>
+              <ProximamentePage titleId='talentoHumano.title' defaultTitle='Talento humano' />
             </SuspensedView>
           }
         />

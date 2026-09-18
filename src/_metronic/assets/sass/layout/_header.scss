@@ -59,15 +59,33 @@
 				);
 				
 				> .menu-link {
-					padding: 7px 16px;				 
+					padding: 7px 16px;
 
 					.menu-title {
-						font-size: 1.15rem;
-						font-weight: $font-weight-semibold;							
+						// Mantiene el mismo tamaño en todos los enlaces del menú principal,
+						// incluidos los módulos que no tienen submenú.
+						font-size: 1.125rem;
+						font-weight: $font-weight-bold;
 					}
 				}
 
 				margin-right: 0.5rem; 
+			}
+
+			// Modulos "proximamente" (ver _HeaderMenuContent.ts) van anidados dentro de un
+			// wrapper extra (d-flex flex-wrap), por lo que no son hijos directos de .menu y
+			// no reciben el color del bloque de arriba; se fuerza aqui para que sean legibles
+			// sobre el fondo morado del header (antes salian en gris oscuro casi invisibles).
+			.menu-link-header-module {
+				.menu-title {
+					font-size: 1.125rem;
+					font-weight: $font-weight-bold;
+					color: rgba(255, 255, 255, 0.8) !important;
+				}
+
+				&:hover .menu-title {
+					color: var(--#{$prefix}white) !important;
+				}
 			}
 		}
     } 

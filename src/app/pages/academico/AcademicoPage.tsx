@@ -5,6 +5,7 @@ import {useImpersonation} from '../../modules/impersonation/impersonation.store'
 import AnosLectivosPage from './anos-lectivos/AnosLectivosPage'
 import ConfiguracionColegioPage from './configuracion/ConfiguracionColegioPage'
 import EstructuraPage from './estructura/EstructuraPage'
+import PlanEstudiosPage from './plan-estudios/PlanEstudiosPage'
 import SedeDetallePage from './sedes/SedeDetallePage'
 
 // Router anidado del modulo Academico. Cada pagina trae su propio <PageTitle> +
@@ -24,6 +25,7 @@ const AcademicoPage: FC = () => {
     <Routes>
       <Route path='anos-lectivos' element={<AnosLectivosPage />} />
       <Route path='estructura' element={<EstructuraPage />} />
+      <Route path='plan-estudios' element={<PlanEstudiosPage />} />
       <Route path='configuracion' element={<ConfiguracionColegioPage />} />
       <Route path='sedes/:id' element={<SedeDetallePage />} />
       <Route index element={<Navigate to='/academico/anos-lectivos' />} />

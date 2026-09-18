@@ -6,10 +6,13 @@
 /* eslint-disable */
 import type {IntlShape} from 'react-intl'
 
-export const getNavbarHtml = (intl: IntlShape) => {
+export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}) => {
   const t = (id: string, defaultMessage: string) => intl.formatMessage({id, defaultMessage})
   const tv = (id: string, defaultMessage: string, values: Record<string, any>) =>
     intl.formatMessage({id, defaultMessage}, values)
+  // Buscador, notificaciones y accesos rapidos son herramientas de la PLATAFORMA (superadmin
+  // sin colegio activo). Para usuarios de colegio (tenant) no aplican y se ocultan.
+  const showQuickIcons = opts?.showQuickIcons !== false
   return String.raw`
 								<!--begin::Invite-->
 								<div class="align-items-center ms-1 ms-lg-3 d-none d-sm-flex">
@@ -20,7 +23,7 @@ export const getNavbarHtml = (intl: IntlShape) => {
 									<span class="d-none d-sm-block ps-1">${t('header.navbar.planWord', 'plan')}</span></a>
 								</div>
 								<!--end::Invite-->
-								<!--begin::Search-->
+								${showQuickIcons ? String.raw`<!--begin::Search-->
 								<div class="app-navbar-item align-items-stretch ms-1 ms-lg-3">
 									<!--begin::Search-->
 									<div id="kt_header_search" class="header-search d-flex align-items-stretch" data-kt-search-keypress="true" data-kt-search-min-length="2" data-kt-search-enter="enter" data-kt-search-layout="menu" data-kt-menu-trigger="auto" data-kt-menu-overflow="false" data-kt-menu-permanent="true" data-kt-menu-placement="bottom-end">
@@ -1340,7 +1343,10 @@ export const getNavbarHtml = (intl: IntlShape) => {
 										<!--begin::Heading-->
 										<div class="d-flex flex-column flex-center bgi-no-repeat rounded-top px-9 py-10" style="background-image:url('/media/misc/menu-header-bg.jpg')">
 											<!--begin::Title-->
-											<h3 class="text-white fw-semibold mb-3">${t('header.quicklinks.title', 'Accesos rápidos')}</h3>
+											<h3 class="text-white fw-semibold mb-3">${t(
+                        'header.quicklinks.title',
+                        'Accesos rápidos'
+                      )}</h3>
 											<!--end::Title-->
 											<!--begin::Status-->
 											<span class="badge bg-primary text-inverse-primary py-2 px-3">${tv(
@@ -1420,7 +1426,7 @@ export const getNavbarHtml = (intl: IntlShape) => {
 									<!--end::Menu-->
 									<!--end::Menu wrapper-->
 								</div>
-								<!--end::Quick links-->
+								<!--end::Quick links-->` : ''}
 								<!--begin::User menu-->
 								<div class="app-navbar-item ms-5" id="kt_header_user_menu_toggle">
 									<!--begin::Menu wrapper-->

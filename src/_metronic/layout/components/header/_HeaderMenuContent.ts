@@ -65,6 +65,18 @@ export const getHeaderMenuHtml = (
 											<!--begin:Menu item-->
 											<div class="menu-item">
 												<!--begin:Menu link-->
+												<a class="menu-link" href="#" data-kt-nav="/academico/plan-estudios">
+													<span class="menu-bullet">
+														<span class="bullet bullet-dot"></span>
+													</span>
+													<span class="menu-title">${t('academico.planEstudios.title', 'Plan de estudios')}</span>
+												</a>
+												<!--end:Menu link-->
+											</div>
+											<!--end:Menu item-->
+											<!--begin:Menu item-->
+											<div class="menu-item">
+												<!--begin:Menu link-->
 												<a class="menu-link" href="#" data-kt-nav="/academico/configuracion">
 													<span class="menu-bullet">
 														<span class="bullet bullet-dot"></span>
@@ -78,6 +90,45 @@ export const getHeaderMenuHtml = (
 										<!--end:Menu sub-->
 									</div>
 									<!--end:Menu item-->`
+    : ''
+
+  // Módulos del roadmap aún sin pantallas reales: un enlace directo por módulo
+  // (sin submenú) que abre una página "próximamente". Compactos (px/fs reducidos)
+  // porque no traen ícono de flecha ni submenú que ocupe ese espacio visual.
+  // Se reemplazan uno a uno por menús reales conforme se construyen (ver academicoBlock).
+const proximamenteLink = (
+    titleKey: string,
+    defaultTitle: string,
+    path: string,
+    index: number,
+    total: number
+  ): string => {
+    const dividerStyle = index > 0 ? 'border-left: 1px solid rgba(13, 27, 42, 0.12); padding-left: 0.8rem; margin-left: 0.2rem;' : ''
+    const compactStyle = total > 1 && index < total - 1 ? 'margin-right: 0.2rem;' : ''
+
+    return String.raw`
+																												<!--begin:Menu item-->
+																												<div class="menu-item me-0 me-lg-1" style="${dividerStyle} ${compactStyle}">
+																													<a class="menu-link menu-link-header-module px-3 px-lg-2 py-3 fs-7" href="#" data-kt-nav="${path}" style="white-space: nowrap;">
+																														<span class="menu-title">${t(titleKey, defaultTitle)}</span>
+																													</a>
+																												</div>
+																												<!--end:Menu item-->`
+  }
+
+  const modulosBlock = colegioMode
+    ? (() => {
+        const items = [
+          proximamenteLink('admisiones.title', 'Admisiones y matrícula', '/admisiones', 0, 7),
+          proximamenteLink('evaluacion.title', 'Evaluación y convivencia', '/evaluacion', 1, 7),
+          proximamenteLink('comunicacion.title', 'Comunicación', '/comunicacion', 2, 7),
+          proximamenteLink('pagos.title', 'Pagos', '/pagos', 3, 7),
+          proximamenteLink('reportes.title', 'Reportes', '/reportes', 4, 7),
+          proximamenteLink('bienestar.title', 'Bienestar y servicios', '/bienestar', 5, 7),
+          proximamenteLink('talentoHumano.title', 'Talento humano', '/talento-humano', 6, 7),
+        ]
+        return String.raw`<div class="d-flex flex-wrap align-items-center">${items.join('')}</div>`
+      })()
     : ''
 
   // Bloque 'Gestion de usuarios' (usuarios del colegio / roles): visible en MODO COLEGIO
@@ -168,7 +219,7 @@ export const getHeaderMenuHtml = (
 									<!--end:Menu item-->`
     : ''
 
-  return String.raw`${academicoBlock}${usersBlock}${configBlock}
+  return String.raw`${academicoBlock}${modulosBlock}${usersBlock}${configBlock}
 									<!--begin:Menu item-->
 									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
 										<!--begin:Menu link-->

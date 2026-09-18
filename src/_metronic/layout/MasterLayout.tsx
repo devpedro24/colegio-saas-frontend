@@ -18,22 +18,22 @@ const MasterLayout = () => {
   return (
     <PageDataProvider>
       {/* begin::App */}
-      <div className='d-flex flex-column flex-root app-root' id='kt_app_root'>
+      <div className='d-flex flex-column flex-root app-root min-vh-100' id='kt_app_root'>
         {/* begin::Page */}
-        <div className='app-page flex-column flex-column-fluid' id='kt_app_page'>
+        <div className='app-page d-flex flex-column flex-column-fluid' id='kt_app_page'>
           <HeaderWrapper />
           {/* begin::Wrapper */}
-          <div className='app-wrapper d-flex' id='kt_app_wrapper'>
+          <div className='app-wrapper d-flex flex-grow-1' id='kt_app_wrapper'>
             {/* begin::Wrapper container */}
-            <div className='app-container container-fluid'>
+            <div className='app-container container-fluid d-flex flex-grow-1'>
               <Sidebar />
               {/* begin::Main */}
-              <div className='app-main flex-column flex-row-fluid' id='kt_app_main'>
+              <div className='app-main d-flex flex-column flex-row-fluid' id='kt_app_main'>
                 {/* Banner de suplantación: sólo visible cuando hay un colegio activo. Va ARRIBA
                     del contenido principal, dentro del área de contenido. */}
                 <ImpersonationBanner />
                 {/* begin::Content wrapper */}
-                <div className='d-flex flex-column flex-column-fluid'>
+                <div className='d-flex flex-column flex-column-fluid flex-grow-1'>
                   <Outlet />
                 </div>
                 {/* end::Content wrapper */}

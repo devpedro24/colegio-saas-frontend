@@ -31,9 +31,17 @@ interface PeriodoFormState {
   peso: string
 }
 
-const emptyPeriodoForm = (nextOrden: number): PeriodoFormState => ({
-  nombre: '',
-  orden: String(nextOrden),
+const PERIODOS_DISPONIBLES = [
+  {orden: 1, nombre: 'Primer período', labelId: 'academico.periodos.option.primero'},
+  {orden: 2, nombre: 'Segundo período', labelId: 'academico.periodos.option.segundo'},
+  {orden: 3, nombre: 'Tercer período', labelId: 'academico.periodos.option.tercero'},
+  {orden: 4, nombre: 'Cuarto período', labelId: 'academico.periodos.option.cuarto'},
+  {orden: 5, nombre: 'Quinto período', labelId: 'academico.periodos.option.quinto'},
+]
+
+const emptyPeriodoForm = (orden: number): PeriodoFormState => ({
+  nombre: PERIODOS_DISPONIBLES.find((p) => p.orden === orden)?.nombre ?? '',
+  orden: String(orden),
   fecha_inicio: '',
   fecha_fin: '',
   peso: '',
@@ -67,10 +75,13 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
   const del = useDeletePeriodo(ano.id)
 
   const periodos = data?.data ?? []
-  const nextOrden = periodos.length + 1
+  const maxPeriodos = ano.num_periodos + (ano.tiene_quinto_periodo ? 1 : 0)
+  const opcionesPeriodo = PERIODOS_DISPONIBLES.filter((p) => p.orden <= maxPeriodos)
+  const siguienteOrden = opcionesPeriodo.find((p) => !periodos.some((existente) => existente.orden === p.orden))?.orden ?? 1
+  const mostrarPeso = ano.tiene_quinto_periodo
 
   const [editing, setEditing] = useState<Periodo | null>(null)
-  const [form, setForm] = useState<PeriodoFormState>(emptyPeriodoForm(nextOrden))
+  const [form, setForm] = useState<PeriodoFormState>(emptyPeriodoForm(siguienteOrden))
   const [error, setError] = useState<ApiError | null>(null)
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
@@ -79,7 +90,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
 
   const startCreate = () => {
     setEditing(null)
-    setForm(emptyPeriodoForm(periodos.length + 1))
+    setForm(emptyPeriodoForm(siguienteOrden))
     setError(null)
   }
   const startEdit = (p: Periodo) => {
@@ -97,11 +108,11 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
     e.preventDefault()
     setError(null)
     const input: CreatePeriodoInput = {
-      nombre: form.nombre.trim(),
+      nombre: PERIODOS_DISPONIBLES.find((p) => p.orden === Number(form.orden))?.nombre ?? '',
       orden: Number(form.orden) || 0,
       fecha_inicio: form.fecha_inicio,
       fecha_fin: form.fecha_fin,
-      peso: form.peso.trim() === '' ? null : Number(form.peso),
+      peso: mostrarPeso && form.peso.trim() !== '' ? Number(form.peso) : null,
     }
 
     const onError = (err: unknown) => {
@@ -178,7 +189,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
                 <th className='w-40px'>{t('academico.periodos.col.orden')}</th>
                 <th className='min-w-150px'>{t('common.name')}</th>
                 <th className='min-w-175px'>{t('academico.periodos.col.fechas')}</th>
-                <th className='min-w-75px'>{t('academico.periodos.col.peso')}</th>
+                {mostrarPeso && <th className='min-w-75px'>{t('academico.periodos.col.peso')}</th>}
                 <th className='min-w-100px'>{t('common.status')}</th>
                 <th className='min-w-100px text-end'>{t('common.actions')}</th>
               </tr>
@@ -193,7 +204,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
                     <td>
                       {toDateInput(p.fecha_inicio)} &rarr; {toDateInput(p.fecha_fin)}
                     </td>
-                    <td>{p.peso === null ? '—' : `${p.peso}%`}</td>
+                    {mostrarPeso && <td>{p.peso === null ? '—' : `${p.peso}%`}</td>}
                     <td>
                       <span className={b.className}>{b.label}</span>
                     </td>
@@ -232,7 +243,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
               })}
               {periodos.length === 0 && (
                 <tr>
-                  <td colSpan={6} className='text-center text-muted py-8'>
+                <td colSpan={mostrarPeso ? 6 : 5} className='text-center text-muted py-8'>
                     {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.periodo'})})}
                   </td>
                 </tr>
@@ -249,33 +260,39 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
       </h4>
       <form onSubmit={handleSubmit}>
         <div className='row'>
-          <div className='col-md-6 fv-row mb-5'>
+          <div className={mostrarPeso ? 'col-md-6 fv-row mb-5' : 'col-md-12 fv-row mb-5'}>
             <label className='required fs-7 fw-semibold mb-2'>
               {t('academico.periodos.field.nombre')}
             </label>
-            <input
-              type='text'
-              className={`form-control form-control-solid ${fe('nombre') ? 'is-invalid' : ''}`}
-              placeholder={t('academico.periodos.field.nombrePh')}
-              value={form.nombre}
-              onChange={(e) => set({nombre: e.target.value})}
-            />
+            <select
+              className={`form-select form-select-solid ${fe('nombre') ? 'is-invalid' : ''}`}
+              style={{cursor: 'pointer'}}
+              value={form.orden}
+              onChange={(e) => {
+                const orden = Number(e.target.value)
+                set({orden: e.target.value, nombre: PERIODOS_DISPONIBLES.find((p) => p.orden === orden)?.nombre ?? ''})
+              }}
+            >
+              {opcionesPeriodo.map((opcion) => {
+                const ocupada = periodos.some((p) => p.orden === opcion.orden && p.id !== editing?.id)
+                return (
+                  <option
+                    key={opcion.orden}
+                    value={opcion.orden}
+                    disabled={ocupada}
+                    style={{cursor: ocupada ? 'not-allowed' : 'pointer'}}
+                  >
+                    {ocupada
+                      ? t('academico.periodos.option.created', {name: t(opcion.labelId)})
+                      : t(opcion.labelId)}
+                  </option>
+                )
+              })}
+            </select>
+            <div className='form-text'>{t('academico.periodos.option.help')}</div>
             {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
           </div>
-          <div className='col-md-3 fv-row mb-5'>
-            <label className='required fs-7 fw-semibold mb-2'>
-              {t('academico.periodos.field.orden')}
-            </label>
-            <input
-              type='number'
-              min={1}
-              className={`form-control form-control-solid ${fe('orden') ? 'is-invalid' : ''}`}
-              value={form.orden}
-              onChange={(e) => set({orden: e.target.value})}
-            />
-            {fe('orden') && <div className='invalid-feedback'>{fe('orden')}</div>}
-          </div>
-          <div className='col-md-3 fv-row mb-5'>
+          {mostrarPeso && <div className='col-md-6 fv-row mb-5'>
             <label className='fs-7 fw-semibold mb-2'>{t('academico.periodos.field.peso')}</label>
             <input
               type='number'
@@ -286,7 +303,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
               onChange={(e) => set({peso: e.target.value})}
             />
             {fe('peso') && <div className='invalid-feedback'>{fe('peso')}</div>}
-          </div>
+          </div>}
           <div className='col-md-6 fv-row mb-5'>
             <label className='required fs-7 fw-semibold mb-2'>
               {t('academico.periodos.field.fechaInicio')}
@@ -294,6 +311,8 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
             <input
               type='date'
               className={`form-control form-control-solid ${fe('fecha_inicio') ? 'is-invalid' : ''}`}
+              min={toDateInput(ano.fecha_inicio)}
+              max={toDateInput(ano.fecha_fin)}
               value={form.fecha_inicio}
               onChange={(e) => set({fecha_inicio: e.target.value})}
             />
@@ -306,6 +325,8 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
             <input
               type='date'
               className={`form-control form-control-solid ${fe('fecha_fin') ? 'is-invalid' : ''}`}
+              min={toDateInput(ano.fecha_inicio)}
+              max={toDateInput(ano.fecha_fin)}
               value={form.fecha_fin}
               onChange={(e) => set({fecha_fin: e.target.value})}
             />
@@ -325,7 +346,9 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
                 <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
               </span>
             ) : (
-              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.periodo'})})
+              editing
+                ? t('common.save', {name: t('entity.periodo')})
+                : t('academico.periodos.create')
             )}
           </button>
         </div>

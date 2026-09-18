@@ -28,11 +28,17 @@ interface FormState {
 /** Recorta un ISO datetime/date a 'YYYY-MM-DD' para <input type=date>. */
 const toDateInput = (value: string): string => (value ? value.slice(0, 10) : '')
 
+const calendarDefaults = (tipo: TipoCalendario): Pick<FormState, 'nombre' | 'fecha_inicio' | 'fecha_fin'> => {
+  const year = new Date().getFullYear()
+  if (tipo === 'A') {
+    return {nombre: String(year), fecha_inicio: `${year}-01-01`, fecha_fin: `${year}-12-31`}
+  }
+  return {nombre: `${year}-${year + 1}`, fecha_inicio: `${year}-08-01`, fecha_fin: `${year + 1}-07-31`}
+}
+
 const emptyForm = (): FormState => ({
-  nombre: '',
+  ...calendarDefaults('A'),
   tipo_calendario: 'A',
-  fecha_inicio: '',
-  fecha_fin: '',
   num_periodos: '4',
   tiene_quinto_periodo: false,
 })
@@ -56,6 +62,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
   const update = useUpdateAnoLectivo()
   const isEdit = ano !== null
   const pending = create.isPending || update.isPending
+  const currentYear = new Date().getFullYear()
 
   const [form, setForm] = useState<FormState>(ano ? fromAno(ano) : emptyForm())
   const [error, setError] = useState<ApiError | null>(null)
@@ -128,12 +135,17 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
           <select
             className={`form-select form-select-solid ${fe('tipo_calendario') ? 'is-invalid' : ''}`}
             value={form.tipo_calendario}
-            onChange={(e) => set({tipo_calendario: e.target.value as TipoCalendario})}
+            onChange={(e) => {
+              const tipo = e.target.value as TipoCalendario
+              set({tipo_calendario: tipo, ...calendarDefaults(tipo)})
+            }}
           >
             <option value='A'>{t('academico.anos.calendario.A')}</option>
             <option value='B'>{t('academico.anos.calendario.B')}</option>
           </select>
-          <div className='text-muted fs-7 mt-1'>{t('academico.anos.field.calendarioHelp')}</div>
+          <div className='text-muted fs-7 mt-1'>
+            {t('academico.anos.field.calendarioHelp', {year: currentYear, nextYear: currentYear + 1})}
+          </div>
           {fe('tipo_calendario') && <div className='invalid-feedback'>{fe('tipo_calendario')}</div>}
         </div>
 
@@ -167,7 +179,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
           <input
             type='number'
             min={1}
-            max={12}
+            max={4}
             className={`form-control form-control-solid ${fe('num_periodos') ? 'is-invalid' : ''}`}
             value={form.num_periodos}
             onChange={(e) => set({num_periodos: e.target.value})}
@@ -175,7 +187,6 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
           {fe('num_periodos') && <div className='invalid-feedback'>{fe('num_periodos')}</div>}
         </div>
 
-        {/* Quinto periodo */}
         <div className='fv-row'>
           <label className='form-check form-switch form-check-custom form-check-solid'>
             <input
@@ -189,6 +200,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
             </span>
           </label>
         </div>
+
       </div>
 
       <div className='modal-footer'>
@@ -202,7 +214,9 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})
+            isEdit
+              ? t('common.save', {name: intl.formatMessage({id: 'entity.anoLectivo'})})
+              : t('academico.anos.create')
           )}
         </button>
       </div>

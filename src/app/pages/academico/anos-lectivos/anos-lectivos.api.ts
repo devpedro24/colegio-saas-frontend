@@ -53,6 +53,18 @@ export function useUpdateAnoLectivo() {
   })
 }
 
+/** DELETE /anos-lectivos/{id} — solo disponible para el superadministrador. */
+export function useDeleteAnoLectivo() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => api.delete<{data: null}>(`/anos-lectivos/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
+    },
+  })
+}
+
 /** POST /anos-lectivos/{id}/iniciar — planificado -> en_curso (RN-PA-001). */
 export function useIniciarAnoLectivo() {
   const queryClient = useQueryClient()
@@ -71,6 +83,18 @@ export function useCerrarAnoLectivo() {
 
   return useMutation({
     mutationFn: (id: string) => api.post<{data: AnoLectivo}>(`/anos-lectivos/${id}/cerrar`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
+    },
+  })
+}
+
+/** POST /anos-lectivos/{id}/reabrir — cerrado -> en_curso, solo plataforma. */
+export function useReabrirAnoLectivo() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => api.post<{data: AnoLectivo}>(`/anos-lectivos/${id}/reabrir`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
     },

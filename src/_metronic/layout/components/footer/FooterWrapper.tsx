@@ -10,7 +10,7 @@ const FooterWrapper = () => {
   return (
     <div
       id='kt_app_footer'
-      className='app-footer d-flex flex-column flex-md-row align-items-center flex-center flex-md-stack'
+      className='app-footer d-flex flex-column flex-md-row align-items-center flex-center flex-md-stack mt-auto'
     >
       <Footer />
     </div>

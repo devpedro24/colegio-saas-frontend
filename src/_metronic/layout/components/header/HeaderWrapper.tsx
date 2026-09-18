@@ -84,9 +84,12 @@ export function HeaderWrapper() {
 
         {/* begin::Logo */}
         <div className='d-flex align-items-center flex-grow-1 flex-lg-grow-0 me-5 me-lg-0'>
-          <Link to='/dashboard' className='d-flex align-items-center text-white text-hover-white'>
-            <span className='fs-2 fw-bold d-none d-sm-inline'>Colegio SaaS</span>
-            <span className='fs-3 fw-bold d-inline d-sm-none'>Colegio</span>
+          <Link to='/dashboard' className='d-flex align-items-center' aria-label='Ir al inicio'>
+            <img
+              src='/media/logo-colegio-transparent.png'
+              alt='Logo del colegio'
+              className='h-55px w-auto'
+            />
           </Link>
         </div>
         {/* end::Logo */}

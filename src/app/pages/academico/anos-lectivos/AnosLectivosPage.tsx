@@ -1,15 +1,18 @@
 ﻿import {FC, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
+import {useAuthz} from '@/app/modules/auth/core/authz'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
-import {useAnosLectivos, useIniciarAnoLectivo} from './anos-lectivos.api'
+import {useAnosLectivos, useDeleteAnoLectivo, useIniciarAnoLectivo} from './anos-lectivos.api'
 import type {AnoLectivo} from './anos-lectivos.types'
 import {AnoLectivoFormDialog} from './components/AnoLectivoFormDialog'
 import {CerrarAnoLectivoDialog} from './components/CerrarAnoLectivoDialog'
+import {ReabrirAnoLectivoDialog} from './components/ReabrirAnoLectivoDialog'
 import {PeriodosDialog} from './components/PeriodosDialog'
+import {DeleteConfirmDialog} from '../estructura/components/DeleteConfirmDialog'
 
 // Estado del ano lectivo -> clase de badge (etiqueta por i18n).
 const STATUS_CLASS: Record<string, string> = {
@@ -39,11 +42,15 @@ const AnosLectivosPage: FC = () => {
   const [formAno, setFormAno] = useState<AnoLectivo | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [cerrando, setCerrando] = useState<AnoLectivo | null>(null)
+  const [reabriendo, setReabriendo] = useState<AnoLectivo | null>(null)
   const [periodosAno, setPeriodosAno] = useState<AnoLectivo | null>(null)
+  const [eliminando, setEliminando] = useState<AnoLectivo | null>(null)
 
   const toast = useToast()
   const {data, isLoading, isError} = useAnosLectivos()
   const iniciar = useIniciarAnoLectivo()
+  const eliminar = useDeleteAnoLectivo()
+  const {isPlatform} = useAuthz()
 
   const list = data?.data ?? []
 
@@ -74,6 +81,21 @@ const AnosLectivosPage: FC = () => {
   const closeForm = () => {
     setShowCreate(false)
     setFormAno(null)
+  }
+
+  const onEliminar = () => {
+    if (!eliminando) return
+
+    eliminar.mutate(eliminando.id, {
+      onSuccess: () => {
+        toast.success(t('common.toast.deleted'))
+        setEliminando(null)
+      },
+      onError: (err) => {
+        const message = err instanceof ApiError ? err.message : t('common.toast.deleteError')
+        toast.error(message)
+      },
+    })
   }
 
   return (
@@ -130,6 +152,8 @@ const AnosLectivosPage: FC = () => {
                     {list.map((a) => {
                       const status = statusBadge(a.estado)
                       const rowIniciando = iniciar.isPending && iniciar.variables === a.id
+                      const periodosRequeridos = a.num_periodos + (a.tiene_quinto_periodo ? 1 : 0)
+                      const periodosIncompletos = (a.periodos_configurados ?? 0) < periodosRequeridos
                       return (
                         <tr key={a.id}>
                           <td>
@@ -150,9 +174,7 @@ const AnosLectivosPage: FC = () => {
                               {t('academico.anos.periodosCount', {count: a.num_periodos})}
                             </span>
                             {a.tiene_quinto_periodo && (
-                              <span className='badge badge-light-info ms-2'>
-                                {t('academico.anos.quinto')}
-                              </span>
+                              <span className='badge badge-light-info ms-2'>{t('academico.anos.quinto')}</span>
                             )}
                           </td>
                           <td>
@@ -175,22 +197,41 @@ const AnosLectivosPage: FC = () => {
                                 </i>
                                 {t('academico.anos.periodosBtn')}
                               </button>
-                              <button
-                                type='button'
-                                className='btn btn-icon btn-light-primary btn-sm'
-                                title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})}
-                                onClick={() => openEdit(a)}
-                              >
-                                <i className='ki-duotone ki-pencil fs-5'>
-                                  <span className='path1'></span>
-                                  <span className='path2'></span>
-                                </i>
-                              </button>
+                              {!['cerrado', 'archivado'].includes(a.estado) && (
+                                <button
+                                  type='button'
+                                  className='btn btn-icon btn-light-primary btn-sm'
+                                  title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})}
+                                  onClick={() => openEdit(a)}
+                                >
+                                  <i className='ki-duotone ki-pencil fs-5'>
+                                    <span className='path1'></span>
+                                    <span className='path2'></span>
+                                  </i>
+                                </button>
+                              )}
+                              {isPlatform && (
+                                <button
+                                  type='button'
+                                  className='btn btn-icon btn-light-danger btn-sm'
+                                  title={t('common.delete', {name: t('entity.anoLectivo')})}
+                                  onClick={() => setEliminando(a)}
+                                >
+                                  <i className='ki-duotone ki-trash fs-5'>
+                                    <span className='path1'></span>
+                                    <span className='path2'></span>
+                                    <span className='path3'></span>
+                                    <span className='path4'></span>
+                                    <span className='path5'></span>
+                                  </i>
+                                </button>
+                              )}
                               {a.estado === 'planificado' && (
                                 <button
                                   type='button'
                                   className='btn btn-light-success btn-sm'
-                                  disabled={rowIniciando}
+                                  disabled={rowIniciando || periodosIncompletos}
+                                  title={periodosIncompletos ? t('academico.anos.iniciarRequiresPeriods') : undefined}
                                   onClick={() => onIniciar(a)}
                                 >
                                   {rowIniciando ? (
@@ -207,6 +248,19 @@ const AnosLectivosPage: FC = () => {
                                   onClick={() => setCerrando(a)}
                                 >
                                   {t('common.close')}
+                                </button>
+                              )}
+                              {isPlatform && a.estado === 'cerrado' && (
+                                <button
+                                  type='button'
+                                  className='btn btn-light-primary btn-sm'
+                                  onClick={() => setReabriendo(a)}
+                                >
+                                  <i className='ki-duotone ki-arrows-circle fs-5 me-1'>
+                                    <span className='path1'></span>
+                                    <span className='path2'></span>
+                                  </i>
+                                  {t('academico.anos.reabrir.confirm')}
                                 </button>
                               )}
                             </div>
@@ -239,6 +293,19 @@ const AnosLectivosPage: FC = () => {
         show={periodosAno !== null}
         ano={periodosAno}
         onClose={() => setPeriodosAno(null)}
+      />
+      <ReabrirAnoLectivoDialog
+        show={reabriendo !== null}
+        ano={reabriendo}
+        onClose={() => setReabriendo(null)}
+      />
+      <DeleteConfirmDialog
+        show={eliminando !== null}
+        title={t('common.delete', {name: t('entity.anoLectivo')})}
+        text={eliminando ? t('academico.anos.deleteConfirm', {name: eliminando.nombre}) : ''}
+        pending={eliminar.isPending}
+        onConfirm={onEliminar}
+        onClose={() => setEliminando(null)}
       />
     </>
   )

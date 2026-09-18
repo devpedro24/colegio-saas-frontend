@@ -6,6 +6,8 @@ import {getNavbarHtml} from './_NavbarContent'
 import {ThemeModeComponent} from '../../../assets/ts/layout'
 import {setLanguage, useLang} from '../../../i18n/Metronici18n'
 import {useAuth} from '../../../../app/modules/auth'
+import {useAuthz} from '../../../../app/modules/auth/core/authz'
+import {useImpersonation} from '../../../../app/modules/impersonation/impersonation.store'
 
 // Idiomas soportados (badge del trigger + estado activo). El submenu de demo46 se recorto a
 // English + Spanish, cada item con data-kt-lang. El nombre visible se traduce con i18n.
@@ -23,6 +25,12 @@ const Navbar = () => {
   const lang = useLang()
   const intl = useIntl()
   const {logout} = useAuth()
+  const {isPlatform} = useAuthz()
+  const {activeColegio} = useImpersonation()
+
+  // Buscador, notificaciones y accesos rapidos son herramientas de PLATAFORMA (superadmin sin
+  // colegio activo); para usuarios de colegio (o superadmin suplantando uno) se ocultan.
+  const showQuickIcons = isPlatform && !activeColegio
 
   useEffect(() => {
     // Modo de tema: init nativo (bindea clicks de [data-kt-element="mode"], aplica el modo
@@ -81,12 +89,12 @@ const Navbar = () => {
     // Fase de CAPTURA: KTMenu hace stopPropagation en algunos .menu-link, asi corremos antes.
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [navigate, lang, logout, intl])
+  }, [navigate, lang, logout, intl, showQuickIcons])
 
   return (
     <div
       className='app-navbar flex-shrink-0'
-      dangerouslySetInnerHTML={{__html: withBase(getNavbarHtml(intl))}}
+      dangerouslySetInnerHTML={{__html: withBase(getNavbarHtml(intl, {showQuickIcons}))}}
     />
   )
 }

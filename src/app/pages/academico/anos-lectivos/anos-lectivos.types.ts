@@ -23,8 +23,10 @@ export interface AnoLectivo {
   fecha_fin: string
   /** Numero de periodos academicos (tipicamente 4). */
   num_periodos: number
-  /** Si el colegio maneja un quinto periodo (RN-PA-008). */
+  /** Quinto período opcional, adicional a los cuatro períodos regulares. */
   tiene_quinto_periodo: boolean
+  /** Cantidad de períodos creados; permite saber si el año puede iniciarse. */
+  periodos_configurados?: number
   estado: AnoLectivoEstado
   created_at: string | null
 }
