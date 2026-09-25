@@ -40,7 +40,7 @@ const JornadaFormDialog: FC<{
 }> = ({show, jornada, onClose}) => {
   const intl = useIntl()
   useTenantSync()
-  const t = (id: string) => intl.formatMessage({id})
+  const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
   const {data: sedes} = useSedes()
   const create = useCreateJornada()
@@ -106,7 +106,7 @@ const JornadaFormDialog: FC<{
     >
       <div className='modal-header'>
         <h2 className='fw-bold'>
-          {isEdit ? t('academico.estructura.edit.title') : t('academico.estructura.create.title')}
+          {isEdit ? t('academico.estructura.jornada.edit') : t('academico.estructura.jornada.create')}
         </h2>
         <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={onClose}>
           <i className='ki-duotone ki-cross fs-1'>
@@ -183,7 +183,7 @@ const JornadaFormDialog: FC<{
             {pending ? (
               <span className='spinner-border spinner-border-sm align-middle'></span>
             ) : (
-              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.jornada'})})
+              isEdit ? t('common.save', {name: t('entity.jornada')}) : t('academico.estructura.jornada.create')
             )}
           </button>
         </div>
@@ -219,7 +219,7 @@ const JornadasTab: FC = () => {
           }}
         >
           <i className='ki-duotone ki-plus fs-2'></i>
-          {t('academico.estructura.new')}
+          {t('academico.estructura.jornada.new')}
         </button>
       </div>
 
