@@ -12,7 +12,7 @@ const area = (item: ApiArea): Area => ({...item, id: String(item.id)})
 const materia = (item: ApiMateria): Materia => ({
   ...item,
   id: String(item.id),
-  area_id: String(item.area_id),
+  area_id: item.area_id === null ? '' : String(item.area_id),
   nivel_id: item.nivel_id === null ? null : String(item.nivel_id),
 })
 
@@ -51,11 +51,11 @@ export function useDeletePlanArea() {
 }
 export function useCreatePlanMateria() {
   const client = useQueryClient()
-  return useMutation({mutationFn: (input: CreateMateriaInput) => api.post('/plan-estudios/materias', input), onSuccess: () => invalidate(client)})
+  return useMutation({mutationFn: (input: CreateMateriaInput) => api.post('/plan-estudios/materias', {...input, area_id: input.area_id || null}), onSuccess: () => invalidate(client)})
 }
 export function useUpdatePlanMateria() {
   const client = useQueryClient()
-  return useMutation({mutationFn: ({id, input}: {id: string; input: CreateMateriaInput}) => api.put(`/plan-estudios/materias/${id}`, input), onSuccess: () => invalidate(client)})
+  return useMutation({mutationFn: ({id, input}: {id: string; input: CreateMateriaInput}) => api.put(`/plan-estudios/materias/${id}`, {...input, area_id: input.area_id || null}), onSuccess: () => invalidate(client)})
 }
 export function useDeletePlanMateria() {
   const client = useQueryClient()

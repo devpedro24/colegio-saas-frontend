@@ -149,8 +149,8 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!form.area_id || !form.nombre.trim()) return
-    const input: CreateMateriaInput = {
+    if (!form.nombre.trim()) return
+      const input: CreateMateriaInput = {
       ...form,
       nombre: form.nombre.trim(),
       intensidad_horaria: Number(form.intensidad_horaria) || 0,

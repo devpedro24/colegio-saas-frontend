@@ -5,10 +5,8 @@ import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
 import {useImpersonation} from '../../../modules/impersonation/impersonation.store'
 import {useAuthz} from '../../../modules/auth/core/authz'
-import {ResumenTab} from './components/ResumenTab'
 import {AreasMateriasTab} from './components/AreasMateriasTab'
-import {AsignacionesTab} from './components/AsignacionesTab'
-import {HorariosTab} from './components/HorariosTab'
+import {SchedulingPanel} from './components/SchedulingPanel'
 
 type Tab = 'resumen' | 'areas' | 'asignaciones' | 'horarios'
 
@@ -78,10 +76,10 @@ const PlanEstudiosPage: FC = () => {
               ))}
             </ul>
 
-            {tab === 'resumen' && <ResumenTab />}
+            {tab === 'resumen' && <SchedulingPanel mode='resumen' />}
             {tab === 'areas' && <AreasMateriasTab />}
-            {tab === 'asignaciones' && <AsignacionesTab />}
-            {tab === 'horarios' && <HorariosTab />}
+            {tab === 'asignaciones' && <SchedulingPanel mode='asignaciones' />}
+            {tab === 'horarios' && <SchedulingPanel />}
           </div>
         </div>
       </Content>
