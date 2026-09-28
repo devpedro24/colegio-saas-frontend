@@ -1,0 +1,7 @@
+@media print {
+  body:has(.grade-report) * { visibility: hidden; }
+  body .grade-report, body .grade-report * { visibility: visible; }
+  body .grade-report { position: absolute; inset: 0 auto auto 0; width: 100%; box-shadow: none; }
+  .grade-report tr { break-inside: avoid; }
+  .grade-report .table-responsive { overflow: visible; }
+}
