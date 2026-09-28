@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "check:i18n": "node scripts/i18n-audit.mjs",
+    "test": "node --test scripts/*.test.mjs",
+    "test:ui": "node scripts/browser-smoke.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },

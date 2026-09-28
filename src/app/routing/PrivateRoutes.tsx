@@ -1,5 +1,5 @@
 import {lazy, FC, Suspense} from 'react'
-import {Route, Routes, Navigate} from 'react-router-dom'
+import {Route, Routes, Navigate, useLocation} from 'react-router-dom'
 import {MasterLayout} from '../../_metronic/layout/MasterLayout'
 import TopBarProgress from 'react-topbar-progress-indicator'
 import {DashboardWrapper} from '../pages/dashboard/DashboardWrapper'
@@ -12,6 +12,7 @@ const PrivateRoutes = () => {
   const AcademicoPage = lazy(() => import('../pages/academico/AcademicoPage'))
   const UsuariosPage = lazy(() => import('../pages/usuarios/UsuariosPage'))
   const ProximamentePage = lazy(() => import('../pages/proximamente/ProximamentePage'))
+  const EventosPage = lazy(() => import('../pages/comunicacion/EventosPage'))
 
   return (
     <Routes>
@@ -58,23 +59,39 @@ const PrivateRoutes = () => {
           path='admisiones'
           element={
             <SuspensedView>
-              <ProximamentePage titleId='admisiones.title' defaultTitle='Admisiones y matrícula' />
+              <ProximamentePage titleId='admisiones.title' />
             </SuspensedView>
           }
         />
         <Route
-          path='evaluacion'
+          path='evaluacion/*'
           element={
             <SuspensedView>
-              <ProximamentePage titleId='evaluacion.title' defaultTitle='Evaluación y convivencia' />
+              <AcademicAlias />
             </SuspensedView>
           }
         />
         <Route
-          path='comunicacion'
+          path='boletines/*'
           element={
             <SuspensedView>
-              <ProximamentePage titleId='comunicacion.title' defaultTitle='Comunicación' />
+              <AcademicAlias />
+            </SuspensedView>
+          }
+        />
+        <Route
+          path='siee/*'
+          element={
+            <SuspensedView>
+              <AcademicAlias />
+            </SuspensedView>
+          }
+        />
+        <Route
+          path='comunicacion/*'
+          element={
+            <SuspensedView>
+              <EventosPage />
             </SuspensedView>
           }
         />
@@ -82,7 +99,7 @@ const PrivateRoutes = () => {
           path='pagos'
           element={
             <SuspensedView>
-              <ProximamentePage titleId='pagos.title' defaultTitle='Pagos' />
+              <ProximamentePage titleId='pagos.title' />
             </SuspensedView>
           }
         />
@@ -90,7 +107,7 @@ const PrivateRoutes = () => {
           path='reportes'
           element={
             <SuspensedView>
-              <ProximamentePage titleId='reportes.title' defaultTitle='Reportes' />
+              <ProximamentePage titleId='reportes.title' />
             </SuspensedView>
           }
         />
@@ -98,7 +115,7 @@ const PrivateRoutes = () => {
           path='bienestar'
           element={
             <SuspensedView>
-              <ProximamentePage titleId='bienestar.title' defaultTitle='Bienestar y servicios' />
+              <ProximamentePage titleId='bienestar.title' />
             </SuspensedView>
           }
         />
@@ -106,7 +123,7 @@ const PrivateRoutes = () => {
           path='talento-humano'
           element={
             <SuspensedView>
-              <ProximamentePage titleId='talentoHumano.title' defaultTitle='Talento humano' />
+              <ProximamentePage titleId='talentoHumano.title' />
             </SuspensedView>
           }
         />
@@ -127,6 +144,11 @@ const SuspensedView: FC<WithChildren> = ({children}) => {
     shadowBlur: 5,
   })
   return <Suspense fallback={<TopBarProgress />}>{children}</Suspense>
+}
+
+const AcademicAlias = () => {
+  const {pathname, search} = useLocation()
+  return <Navigate to={`/academico${pathname}${search}`} replace />
 }
 
 export {PrivateRoutes}

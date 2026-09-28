@@ -13,6 +13,7 @@
  */
 
 import {clearImpersonation, getActiveImpersonation} from '@/app/modules/impersonation/impersonation.store';
+import {queryClient} from './query-client';
 
 const TOKEN_STORAGE_KEY = 'colegio-saas.auth-token';
 
@@ -22,7 +23,7 @@ const TOKEN_STORAGE_KEY = 'colegio-saas.auth-token';
  * '/me' es de plataforma: valida SIEMPRE la sesión del superadmin (si fuera tratada como ruta
  * de colegio, llevaría el token de impersonación + X-Tenant y el backend central respondería 401).
  */
-const PLATFORM_PATH_PREFIXES = ['/platform', '/colegios', '/planes', '/rbac', '/login', '/logout', '/me', '/account'];
+const PLATFORM_PATH_PREFIXES = ['/platform', '/colegios', '/plans', '/planes', '/rbac', '/login', '/logout', '/me', '/account', '/mfa', '/forgot-password', '/reset-password'];
 
 /** ¿El path corresponde a una ruta de plataforma (por prefijo, con límite de segmento)? */
 function isPlatformPath(path: string): boolean {
@@ -36,6 +37,7 @@ export function getToken(): string | null {
 }
 
 export function setToken(token: string | null): void {
+  if (token !== getToken()) queryClient.clear();
   if (token) {
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
   } else {
@@ -76,16 +78,24 @@ async function request<TResponse>(method: HttpMethod, path: string, body?: unkno
     method,
     headers: {
       Accept: 'application/json',
-      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(body !== undefined && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       // Header que resuelve el tenant por request data (ID/uuid del colegio) sin subdominio.
       ...(useImpersonation ? { 'X-Tenant': impersonation!.colegioId } : {}),
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   const isJson = response.headers.get('content-type')?.includes('application/json');
   const data = isJson ? await response.json() : null;
+
+  // Una respuesta del contexto anterior nunca debe actualizar el colegio nuevo.
+  const activeNow = getActiveImpersonation();
+  if (useImpersonation
+    ? activeNow?.colegioId !== impersonation?.colegioId || activeNow?.token !== authToken
+    : getToken() !== authToken) {
+    throw new DOMException('Authentication context changed', 'AbortError');
+  }
 
   if (!response.ok) {
     const message = (data?.message as string | undefined) ?? `Error ${response.status}`;

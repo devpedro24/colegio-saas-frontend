@@ -11,6 +11,7 @@ import {PrivateRoutes} from './PrivateRoutes'
 import {ErrorsPage} from '../modules/errors/ErrorsPage'
 import {Logout, AuthPage, useAuth} from '../modules/auth'
 import {App} from '../App'
+import {useImpersonation} from '../modules/impersonation/impersonation.store'
 
 /**
  * Base URL of the website.
@@ -21,6 +22,7 @@ const {BASE_URL} = import.meta.env
 
 const AppRoutes: FC = () => {
   const {currentUser} = useAuth()
+  const {activeColegio} = useImpersonation()
   return (
     <BrowserRouter basename={BASE_URL}>
       <Routes>
@@ -29,7 +31,7 @@ const AppRoutes: FC = () => {
           <Route path='logout' element={<Logout />} />
           {currentUser ? (
             <>
-              <Route path='/*' element={<PrivateRoutes />} />
+              <Route path='/*' element={<PrivateRoutes key={`${currentUser.id}:${activeColegio?.id ?? 'account'}`} />} />
               <Route index element={<Navigate to='/dashboard' />} />
             </>
           ) : (
