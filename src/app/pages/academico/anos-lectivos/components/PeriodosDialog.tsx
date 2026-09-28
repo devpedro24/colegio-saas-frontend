@@ -76,9 +76,9 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
 
   const periodos = data?.data ?? []
   const maxPeriodos = ano.num_periodos + (ano.tiene_quinto_periodo ? 1 : 0)
-  const opcionesPeriodo = PERIODOS_DISPONIBLES.filter((p) => p.orden <= maxPeriodos)
+  const opcionesPeriodo = Array.from({length: maxPeriodos}, (_, index) => ({orden: index + 1, nombre: `P${index + 1}`}))
   const siguienteOrden = opcionesPeriodo.find((p) => !periodos.some((existente) => existente.orden === p.orden))?.orden ?? 1
-  const mostrarPeso = ano.tiene_quinto_periodo
+  const mostrarPeso = true
 
   const [editing, setEditing] = useState<Periodo | null>(null)
   const [form, setForm] = useState<PeriodoFormState>(emptyPeriodoForm(siguienteOrden))
@@ -101,14 +101,14 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
 
   const badge = (estado: string) => ({
     className: PERIODO_STATUS_CLASS[estado] ?? 'badge badge-light-secondary',
-    label: intl.formatMessage({id: `academico.periodos.estado.${estado}`, defaultMessage: estado}),
+    label: intl.formatMessage({id: `academico.periodos.estado.${estado}`}),
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     const input: CreatePeriodoInput = {
-      nombre: PERIODOS_DISPONIBLES.find((p) => p.orden === Number(form.orden))?.nombre ?? '',
+      nombre: form.nombre.trim() || `P${form.orden}`,
       orden: Number(form.orden) || 0,
       fecha_inicio: form.fecha_inicio,
       fecha_fin: form.fecha_fin,
@@ -270,7 +270,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
               value={form.orden}
               onChange={(e) => {
                 const orden = Number(e.target.value)
-                set({orden: e.target.value, nombre: PERIODOS_DISPONIBLES.find((p) => p.orden === orden)?.nombre ?? ''})
+                set({orden: e.target.value, nombre: `P${orden}`})
               }}
             >
               {opcionesPeriodo.map((opcion) => {
@@ -283,12 +283,13 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
                     style={{cursor: ocupada ? 'not-allowed' : 'pointer'}}
                   >
                     {ocupada
-                      ? t('academico.periodos.option.created', {name: t(opcion.labelId)})
-                      : t(opcion.labelId)}
+                      ? t('academico.periodos.option.created', {name: opcion.nombre})
+                      : opcion.nombre}
                   </option>
                 )
               })}
             </select>
+            <input aria-label={t('academico.periodos.field.nombre')} className='form-control mt-3' maxLength={120} required value={form.nombre} onChange={e => set({nombre: e.target.value})} />
             <div className='form-text'>{t('academico.periodos.option.help')}</div>
             {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
           </div>
@@ -298,6 +299,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
               type='number'
               min={0}
               max={100}
+              step='0.01'
               className={`form-control form-control-solid ${fe('peso') ? 'is-invalid' : ''}`}
               value={form.peso}
               onChange={(e) => set({peso: e.target.value})}

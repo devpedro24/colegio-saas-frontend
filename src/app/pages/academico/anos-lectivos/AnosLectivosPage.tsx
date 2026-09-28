@@ -56,7 +56,7 @@ const AnosLectivosPage: FC = () => {
 
   const statusBadge = (estado: string) => ({
     className: STATUS_CLASS[estado] ?? 'badge badge-light-secondary',
-    label: intl.formatMessage({id: `academico.anos.estado.${estado}`, defaultMessage: estado}),
+    label: intl.formatMessage({id: `academico.anos.estado.${estado}`}),
   })
 
   const onIniciar = (ano: AnoLectivo) => {
@@ -152,8 +152,6 @@ const AnosLectivosPage: FC = () => {
                     {list.map((a) => {
                       const status = statusBadge(a.estado)
                       const rowIniciando = iniciar.isPending && iniciar.variables === a.id
-                      const periodosRequeridos = a.num_periodos + (a.tiene_quinto_periodo ? 1 : 0)
-                      const periodosIncompletos = (a.periodos_configurados ?? 0) < periodosRequeridos
                       return (
                         <tr key={a.id}>
                           <td>
@@ -230,8 +228,7 @@ const AnosLectivosPage: FC = () => {
                                 <button
                                   type='button'
                                   className='btn btn-light-success btn-sm'
-                                  disabled={rowIniciando || periodosIncompletos}
-                                  title={periodosIncompletos ? t('academico.anos.iniciarRequiresPeriods') : undefined}
+                                  disabled={rowIniciando}
                                   onClick={() => onIniciar(a)}
                                 >
                                   {rowIniciando ? (
