@@ -1,9 +1,19 @@
 // Menu #kt_app_header_menu (inner) portado literal de demo46/index.html.
 // i18n: el HTML se inyecta via dangerouslySetInnerHTML, asi que las etiquetas visibles
 // se resuelven con intl.formatMessage ANTES de inyectar (no se puede usar <FormattedMessage>
-// dentro de un string HTML). El defaultMessage va en ES (con tildes/ñ).
+// dentro de un string HTML). Los textos viven en los catálogos de idiomas.
 /* eslint-disable */
 import type {IntlShape} from 'react-intl'
+
+export const renderHeaderDropdown = (title: string, items: {label: string; path: string}[]) => {
+  const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  return `<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
+    <span class="menu-link"><span class="menu-title">${escape(title)}</span><span class="menu-arrow d-lg-none"></span></span>
+    <div class="menu-sub menu-sub-lg-down-accordion menu-sub-lg-dropdown px-lg-2 py-lg-4 w-lg-250px">
+      ${items.map(item => `<div class="menu-item"><a class="menu-link" href="#" data-kt-nav="${escape(item.path)}"><span class="menu-bullet"><span class="bullet bullet-dot"></span></span><span class="menu-title">${escape(item.label)}</span></a></div>`).join('')}
+    </div>
+  </div>`
+}
 
 export const getHeaderMenuHtml = (
   intl: IntlShape,
@@ -14,7 +24,7 @@ export const getHeaderMenuHtml = (
     canManageUsers?: boolean
   }
 ) => {
-  const t = (id: string, defaultMessage: string) => intl.formatMessage({id, defaultMessage})
+  const t = (id: string) => intl.formatMessage({id})
   const esc = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -25,111 +35,30 @@ export const getHeaderMenuHtml = (
   const colegioMode = opts?.isTenantUser === true || (opts?.isPlatform === true && opts?.activeColegio === true)
   const platformMode = opts?.isPlatform === true && opts?.activeColegio !== true
 
-  // Bloque 'Académico' (años lectivos / estructura / configuración del colegio / sedes): visible en MODO COLEGIO.
-  const academicoBlock = colegioMode
-    ? String.raw`
-									<!--begin:Menu item-->
-									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
-										<!--begin:Menu link-->
-										<span class="menu-link">
-											<span class="menu-title">${t('academico.title', 'Académico')}</span>
-											<span class="menu-arrow d-lg-none"></span>
-										</span>
-										<!--end:Menu link-->
-										<!--begin:Menu sub-->
-										<div class="menu-sub menu-sub-lg-down-accordion menu-sub-lg-dropdown px-lg-2 py-lg-4 w-lg-250px">
-											<!--begin:Menu item-->
-											<div class="menu-item">
-												<!--begin:Menu link-->
-												<a class="menu-link" href="#" data-kt-nav="/academico/anos-lectivos">
-													<span class="menu-bullet">
-														<span class="bullet bullet-dot"></span>
-													</span>
-													<span class="menu-title">${t('academico.anos.title', 'Años lectivos')}</span>
-												</a>
-												<!--end:Menu link-->
-											</div>
-											<!--end:Menu item-->
-											<!--begin:Menu item-->
-											<div class="menu-item">
-												<!--begin:Menu link-->
-												<a class="menu-link" href="#" data-kt-nav="/academico/estructura">
-													<span class="menu-bullet">
-														<span class="bullet bullet-dot"></span>
-													</span>
-													<span class="menu-title">${t('academico.estructura.title', 'Estructura organizacional')}</span>
-												</a>
-												<!--end:Menu link-->
-											</div>
-											<!--end:Menu item-->
-											<!--begin:Menu item-->
-											<div class="menu-item">
-												<!--begin:Menu link-->
-												<a class="menu-link" href="#" data-kt-nav="/academico/plan-estudios">
-													<span class="menu-bullet">
-														<span class="bullet bullet-dot"></span>
-													</span>
-													<span class="menu-title">${t('academico.planEstudios.title', 'Plan de estudios')}</span>
-												</a>
-												<!--end:Menu link-->
-											</div>
-											<!--end:Menu item-->
-											<!--begin:Menu item-->
-											<div class="menu-item">
-												<!--begin:Menu link-->
-												<a class="menu-link" href="#" data-kt-nav="/academico/configuracion">
-													<span class="menu-bullet">
-														<span class="bullet bullet-dot"></span>
-													</span>
-													<span class="menu-title">${t('academico.config.title', 'Configuración del colegio')}</span>
-												</a>
-												<!--end:Menu link-->
-											</div>
-											<!--end:Menu item-->
-										</div>
-										<!--end:Menu sub-->
-									</div>
-									<!--end:Menu item-->`
-    : ''
+  // Una misma estructura Metronic para todos los desplegables del colegio.
+  const dropdown = (titleId: string, items: [string, string][]) => renderHeaderDropdown(
+    t(titleId), items.map(([id, path]) => ({label: t(id), path})),
+  )
+  const academicoBlock = colegioMode ? dropdown('academico.title', [
+    ['academico.anos.title', '/academico/anos-lectivos'],
+    ['academico.estructura.title', '/academico/estructura'],
+    ['academico.planEstudios.title', '/academico/plan-estudios'],
+    ['academico.config.title', '/academico/configuracion'],
+    ['siee.title', '/academico/siee'],
+    ['evaluacion.title', '/academico/evaluacion/catalogo'],
+    ['boletines.title', '/academico/boletines'],
+  ]) : ''
 
-  // Módulos del roadmap aún sin pantallas reales: un enlace directo por módulo
-  // (sin submenú) que abre una página "próximamente". Compactos (px/fs reducidos)
-  // porque no traen ícono de flecha ni submenú que ocupe ese espacio visual.
-  // Se reemplazan uno a uno por menús reales conforme se construyen (ver academicoBlock).
-const proximamenteLink = (
-    titleKey: string,
-    defaultTitle: string,
-    path: string,
-    index: number,
-    total: number
-  ): string => {
-    const dividerStyle = index > 0 ? 'border-left: 1px solid rgba(13, 27, 42, 0.12); padding-left: 0.8rem; margin-left: 0.2rem;' : ''
-    const compactStyle = total > 1 && index < total - 1 ? 'margin-right: 0.2rem;' : ''
-
-    return String.raw`
-																												<!--begin:Menu item-->
-																												<div class="menu-item me-0 me-lg-1" style="${dividerStyle} ${compactStyle}">
-																													<a class="menu-link menu-link-header-module px-3 px-lg-2 py-3 fs-7" href="#" data-kt-nav="${path}" style="white-space: nowrap;">
-																														<span class="menu-title">${t(titleKey, defaultTitle)}</span>
-																													</a>
-																												</div>
-																												<!--end:Menu item-->`
-  }
-
-  const modulosBlock = colegioMode
-    ? (() => {
-        const items = [
-          proximamenteLink('admisiones.title', 'Admisiones y matrícula', '/admisiones', 0, 7),
-          proximamenteLink('evaluacion.title', 'Evaluación y convivencia', '/evaluacion', 1, 7),
-          proximamenteLink('comunicacion.title', 'Comunicación', '/comunicacion', 2, 7),
-          proximamenteLink('pagos.title', 'Pagos', '/pagos', 3, 7),
-          proximamenteLink('reportes.title', 'Reportes', '/reportes', 4, 7),
-          proximamenteLink('bienestar.title', 'Bienestar y servicios', '/bienestar', 5, 7),
-          proximamenteLink('talentoHumano.title', 'Talento humano', '/talento-humano', 6, 7),
-        ]
-        return String.raw`<div class="d-flex flex-wrap align-items-center">${items.join('')}</div>`
-      })()
-    : ''
+  const moduleLink = (id: string, path: string) => `<div class="menu-item me-0 me-lg-2"><a class="menu-link" href="#" data-kt-nav="${esc(path)}"><span class="menu-title">${esc(t(id))}</span></a></div>`
+  const modulosBlock = colegioMode ? [
+    moduleLink('admisiones.title', '/admisiones'),
+    moduleLink('evaluacion.title', '/academico/evaluacion/catalogo'),
+    dropdown('comunicacion.title', [['events.calendar', '/comunicacion/eventos']]),
+    moduleLink('pagos.title', '/pagos'),
+    moduleLink('reportes.title', '/reportes'),
+    moduleLink('bienestar.title', '/bienestar'),
+    moduleLink('talentoHumano.title', '/talento-humano'),
+  ].join('') : ''
 
   // Bloque 'Gestion de usuarios' (usuarios del colegio / roles): visible en MODO COLEGIO
   // SOLO si el rol tiene el permiso 'usuarios.gestionar'.
@@ -139,7 +68,7 @@ const proximamenteLink = (
 									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
 										<!--begin:Menu link-->
 										<span class="menu-link">
-											<span class="menu-title">${t('header.menu.userManagement', 'Gestión de usuarios')}</span>
+											<span class="menu-title">${t('header.menu.userManagement')}</span>
 											<span class="menu-arrow d-lg-none"></span>
 										</span>
 										<!--end:Menu link-->
@@ -152,7 +81,7 @@ const proximamenteLink = (
 													<span class="menu-bullet">
 														<span class="bullet bullet-dot"></span>
 													</span>
-													<span class="menu-title">${t('header.menu.users', 'Usuarios')}</span>
+													<span class="menu-title">${t('header.menu.users')}</span>
 												</a>
 												<!--end:Menu link-->
 											</div>
@@ -171,7 +100,7 @@ const proximamenteLink = (
 									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
 										<!--begin:Menu link-->
 										<span class="menu-link">
-											<span class="menu-title">${t('header.menu.config', 'Configuración')}</span>
+											<span class="menu-title">${t('header.menu.config')}</span>
 											<span class="menu-arrow d-lg-none"></span>
 										</span>
 										<!--end:Menu link-->
@@ -184,7 +113,7 @@ const proximamenteLink = (
 													<span class="menu-bullet">
 														<span class="bullet bullet-dot"></span>
 													</span>
-													<span class="menu-title">${t('colegios.title', 'Colegios')}</span>
+													<span class="menu-title">${t('colegios.title')}</span>
 												</a>
 												<!--end:Menu link-->
 											</div>
@@ -196,7 +125,7 @@ const proximamenteLink = (
 													<span class="menu-bullet">
 														<span class="bullet bullet-dot"></span>
 													</span>
-													<span class="menu-title">${t('common.plans', 'Planes')}</span>
+													<span class="menu-title">${t('common.plans')}</span>
 												</a>
 												<!--end:Menu link-->
 											</div>
@@ -208,7 +137,7 @@ const proximamenteLink = (
 													<span class="menu-bullet">
 														<span class="bullet bullet-dot"></span>
 													</span>
-													<span class="menu-title">${t('rbac.title', 'Roles y Permisos')}</span>
+													<span class="menu-title">${t('rbac.title')}</span>
 												</a>
 												<!--end:Menu link-->
 											</div>
@@ -219,12 +148,13 @@ const proximamenteLink = (
 									<!--end:Menu item-->`
     : ''
 
-  return String.raw`${academicoBlock}${modulosBlock}${usersBlock}${configBlock}
+  const auditBlock = platformMode ? `<div class="menu-item"><a class="menu-link" href="#" data-kt-nav="/configuracion/auditoria"><span class="menu-title">${t('audit.title')}</span></a></div>` : ''
+  return String.raw`${academicoBlock}${modulosBlock}${usersBlock}${configBlock}${auditBlock}
 									<!--begin:Menu item-->
 									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
 										<!--begin:Menu link-->
 										<span class="menu-link">
-											<span class="menu-title">${t('header.menu.apps', 'Aplicaciones')}</span>
+											<span class="menu-title">${t('header.menu.apps')}</span>
 											<span class="menu-arrow d-lg-none"></span>
 										</span>
 										<!--end:Menu link-->
@@ -240,7 +170,7 @@ const proximamenteLink = (
 															<span class="path2"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.projects', 'Proyectos')}</span>
+													<span class="menu-title">${t('header.menu.projects')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -253,7 +183,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.myProjects', 'Mis proyectos')}</span>
+															<span class="menu-title">${t('header.menu.myProjects')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -265,7 +195,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.viewProject', 'Ver proyecto')}</span>
+															<span class="menu-title">${t('header.menu.viewProject')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -277,7 +207,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.targets', 'Objetivos')}</span>
+															<span class="menu-title">${t('header.menu.targets')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -289,7 +219,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.budget', 'Presupuesto')}</span>
+															<span class="menu-title">${t('header.menu.budget')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -301,7 +231,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.users', 'Usuarios')}</span>
+															<span class="menu-title">${t('header.menu.users')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -313,7 +243,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.files', 'Archivos')}</span>
+															<span class="menu-title">${t('header.menu.files')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -325,7 +255,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.activity', 'Actividad')}</span>
+															<span class="menu-title">${t('header.menu.activity')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -337,7 +267,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.settings', 'Ajustes')}</span>
+															<span class="menu-title">${t('header.menu.settings')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -353,7 +283,7 @@ const proximamenteLink = (
 													<span class="menu-icon">
 														<i class="ki-duotone ki-handcart fs-2"></i>
 													</span>
-													<span class="menu-title">${t('header.menu.ecommerce', 'eCommerce')}</span>
+													<span class="menu-title">${t('header.menu.ecommerce')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -366,7 +296,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.catalog', 'Catálogo')}</span>
+															<span class="menu-title">${t('header.menu.catalog')}</span>
 															<span class="menu-arrow"></span>
 														</span>
 														<!--end:Menu link-->
@@ -379,7 +309,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.products', 'Productos')}</span>
+																	<span class="menu-title">${t('header.menu.products')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -391,7 +321,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.categories', 'Categorías')}</span>
+																	<span class="menu-title">${t('header.menu.categories')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -403,7 +333,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.addProduct', 'Agregar producto')}</span>
+																	<span class="menu-title">${t('header.menu.addProduct')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -415,7 +345,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.editProduct', 'Editar producto')}</span>
+																	<span class="menu-title">${t('header.menu.editProduct')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -427,7 +357,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.addCategory', 'Agregar categoría')}</span>
+																	<span class="menu-title">${t('header.menu.addCategory')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -439,72 +369,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.editCategory', 'Editar categoría')}</span>
-																</a>
-																<!--end:Menu link-->
-															</div>
-															<!--end:Menu item-->
-														</div>
-														<!--end:Menu sub-->
-													</div>
-													<!--end:Menu item-->
-													<!--begin:Menu item-->
-													<div data-kt-menu-trigger="click" class="menu-item menu-accordion menu-sub-indention">
-														<!--begin:Menu link-->
-														<span class="menu-link">
-															<span class="menu-bullet">
-																<span class="bullet bullet-dot"></span>
-															</span>
-															<span class="menu-title">${t('header.menu.sales', 'Ventas')}</span>
-															<span class="menu-arrow"></span>
-														</span>
-														<!--end:Menu link-->
-														<!--begin:Menu sub-->
-														<div class="menu-sub menu-sub-accordion">
-															<!--begin:Menu item-->
-															<div class="menu-item">
-																<!--begin:Menu link-->
-																<a class="menu-link" href="#">
-																	<span class="menu-bullet">
-																		<span class="bullet bullet-dot"></span>
-																	</span>
-																	<span class="menu-title">${t('header.menu.ordersListing', 'Listado de pedidos')}</span>
-																</a>
-																<!--end:Menu link-->
-															</div>
-															<!--end:Menu item-->
-															<!--begin:Menu item-->
-															<div class="menu-item">
-																<!--begin:Menu link-->
-																<a class="menu-link" href="#">
-																	<span class="menu-bullet">
-																		<span class="bullet bullet-dot"></span>
-																	</span>
-																	<span class="menu-title">${t('header.menu.orderDetails', 'Detalle del pedido')}</span>
-																</a>
-																<!--end:Menu link-->
-															</div>
-															<!--end:Menu item-->
-															<!--begin:Menu item-->
-															<div class="menu-item">
-																<!--begin:Menu link-->
-																<a class="menu-link" href="#">
-																	<span class="menu-bullet">
-																		<span class="bullet bullet-dot"></span>
-																	</span>
-																	<span class="menu-title">${t('header.menu.addOrder', 'Agregar pedido')}</span>
-																</a>
-																<!--end:Menu link-->
-															</div>
-															<!--end:Menu item-->
-															<!--begin:Menu item-->
-															<div class="menu-item">
-																<!--begin:Menu link-->
-																<a class="menu-link" href="#">
-																	<span class="menu-bullet">
-																		<span class="bullet bullet-dot"></span>
-																	</span>
-																	<span class="menu-title">${t('header.menu.editOrder', 'Editar pedido')}</span>
+																	<span class="menu-title">${t('header.menu.editCategory')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -520,7 +385,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.customers', 'Clientes')}</span>
+															<span class="menu-title">${t('header.menu.sales')}</span>
 															<span class="menu-arrow"></span>
 														</span>
 														<!--end:Menu link-->
@@ -533,7 +398,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.customersListing', 'Listado de clientes')}</span>
+																	<span class="menu-title">${t('header.menu.ordersListing')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -545,7 +410,31 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.customersDetails', 'Detalle de clientes')}</span>
+																	<span class="menu-title">${t('header.menu.orderDetails')}</span>
+																</a>
+																<!--end:Menu link-->
+															</div>
+															<!--end:Menu item-->
+															<!--begin:Menu item-->
+															<div class="menu-item">
+																<!--begin:Menu link-->
+																<a class="menu-link" href="#">
+																	<span class="menu-bullet">
+																		<span class="bullet bullet-dot"></span>
+																	</span>
+																	<span class="menu-title">${t('header.menu.addOrder')}</span>
+																</a>
+																<!--end:Menu link-->
+															</div>
+															<!--end:Menu item-->
+															<!--begin:Menu item-->
+															<div class="menu-item">
+																<!--begin:Menu link-->
+																<a class="menu-link" href="#">
+																	<span class="menu-bullet">
+																		<span class="bullet bullet-dot"></span>
+																	</span>
+																	<span class="menu-title">${t('header.menu.editOrder')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -561,7 +450,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.reports', 'Reportes')}</span>
+															<span class="menu-title">${t('header.menu.customers')}</span>
 															<span class="menu-arrow"></span>
 														</span>
 														<!--end:Menu link-->
@@ -574,7 +463,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.productsViewed', 'Productos vistos')}</span>
+																	<span class="menu-title">${t('header.menu.customersListing')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -586,7 +475,36 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.sales', 'Ventas')}</span>
+																	<span class="menu-title">${t('header.menu.customersDetails')}</span>
+																</a>
+																<!--end:Menu link-->
+															</div>
+															<!--end:Menu item-->
+														</div>
+														<!--end:Menu sub-->
+													</div>
+													<!--end:Menu item-->
+													<!--begin:Menu item-->
+													<div data-kt-menu-trigger="click" class="menu-item menu-accordion menu-sub-indention">
+														<!--begin:Menu link-->
+														<span class="menu-link">
+															<span class="menu-bullet">
+																<span class="bullet bullet-dot"></span>
+															</span>
+															<span class="menu-title">${t('header.menu.reports')}</span>
+															<span class="menu-arrow"></span>
+														</span>
+														<!--end:Menu link-->
+														<!--begin:Menu sub-->
+														<div class="menu-sub menu-sub-accordion">
+															<!--begin:Menu item-->
+															<div class="menu-item">
+																<!--begin:Menu link-->
+																<a class="menu-link" href="#">
+																	<span class="menu-bullet">
+																		<span class="bullet bullet-dot"></span>
+																	</span>
+																	<span class="menu-title">${t('header.menu.productsViewed')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -598,7 +516,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.returns', 'Devoluciones')}</span>
+																	<span class="menu-title">${t('header.menu.sales')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -610,7 +528,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.customerOrders', 'Pedidos de clientes')}</span>
+																	<span class="menu-title">${t('header.menu.returns')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -622,7 +540,19 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.shipping', 'Envíos')}</span>
+																	<span class="menu-title">${t('header.menu.customerOrders')}</span>
+																</a>
+																<!--end:Menu link-->
+															</div>
+															<!--end:Menu item-->
+															<!--begin:Menu item-->
+															<div class="menu-item">
+																<!--begin:Menu link-->
+																<a class="menu-link" href="#">
+																	<span class="menu-bullet">
+																		<span class="bullet bullet-dot"></span>
+																	</span>
+																	<span class="menu-title">${t('header.menu.shipping')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -638,7 +568,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.settings', 'Ajustes')}</span>
+															<span class="menu-title">${t('header.menu.settings')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -657,7 +587,7 @@ const proximamenteLink = (
 															<span class="path2"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.supportCenter', 'Centro de soporte')}</span>
+													<span class="menu-title">${t('header.menu.supportCenter')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -670,7 +600,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.overview', 'Resumen')}</span>
+															<span class="menu-title">${t('header.menu.overview')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -682,7 +612,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.tickets', 'Tickets')}</span>
+															<span class="menu-title">${t('header.menu.tickets')}</span>
 															<span class="menu-arrow"></span>
 														</span>
 														<!--end:Menu link-->
@@ -695,7 +625,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.ticketList', 'Lista de tickets')}</span>
+																	<span class="menu-title">${t('header.menu.ticketList')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -707,7 +637,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.ticketView', 'Ver ticket')}</span>
+																	<span class="menu-title">${t('header.menu.ticketView')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -723,7 +653,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.tutorials', 'Tutoriales')}</span>
+															<span class="menu-title">${t('header.menu.tutorials')}</span>
 															<span class="menu-arrow"></span>
 														</span>
 														<!--end:Menu link-->
@@ -736,7 +666,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.tutorialsList', 'Lista de tutoriales')}</span>
+																	<span class="menu-title">${t('header.menu.tutorialsList')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -748,7 +678,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.tutorialsPost', 'Entrada de tutorial')}</span>
+																	<span class="menu-title">${t('header.menu.tutorialsPost')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -764,7 +694,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.faq', 'Preguntas frecuentes')}</span>
+															<span class="menu-title">${t('header.menu.faq')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -776,7 +706,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.licenses', 'Licencias')}</span>
+															<span class="menu-title">${t('header.menu.licenses')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -788,7 +718,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.contactUs', 'Contáctanos')}</span>
+															<span class="menu-title">${t('header.menu.contactUs')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -807,7 +737,7 @@ const proximamenteLink = (
 															<span class="path2"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.userManagement', 'Gestión de usuarios')}</span>
+													<span class="menu-title">${t('header.menu.userManagement')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -820,7 +750,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.users', 'Usuarios')}</span>
+															<span class="menu-title">${t('header.menu.users')}</span>
 															<span class="menu-arrow"></span>
 														</span>
 														<!--end:Menu link-->
@@ -833,7 +763,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.usersList', 'Lista de usuarios')}</span>
+																	<span class="menu-title">${t('header.menu.usersList')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -845,7 +775,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.viewUser', 'Ver usuario')}</span>
+																	<span class="menu-title">${t('header.menu.viewUser')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -861,7 +791,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.roles', 'Roles')}</span>
+															<span class="menu-title">${t('header.menu.roles')}</span>
 															<span class="menu-arrow"></span>
 														</span>
 														<!--end:Menu link-->
@@ -874,7 +804,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.rolesList', 'Lista de roles')}</span>
+																	<span class="menu-title">${t('header.menu.rolesList')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -886,7 +816,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.viewRoles', 'Ver roles')}</span>
+																	<span class="menu-title">${t('header.menu.viewRoles')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -902,7 +832,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.permissions', 'Permisos')}</span>
+															<span class="menu-title">${t('header.menu.permissions')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -921,7 +851,7 @@ const proximamenteLink = (
 															<span class="path2"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.contacts', 'Contactos')}</span>
+													<span class="menu-title">${t('header.menu.contacts')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -934,7 +864,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.gettingStarted', 'Primeros pasos')}</span>
+															<span class="menu-title">${t('header.menu.gettingStarted')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -946,7 +876,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.addContact', 'Agregar contacto')}</span>
+															<span class="menu-title">${t('header.menu.addContact')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -958,7 +888,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.editContact', 'Editar contacto')}</span>
+															<span class="menu-title">${t('header.menu.editContact')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -970,7 +900,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.viewContact', 'Ver contacto')}</span>
+															<span class="menu-title">${t('header.menu.viewContact')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -991,7 +921,7 @@ const proximamenteLink = (
 															<span class="path4"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.subscriptions', 'Suscripciones')}</span>
+													<span class="menu-title">${t('header.menu.subscriptions')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -1004,7 +934,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.gettingStarted', 'Primeros pasos')}</span>
+															<span class="menu-title">${t('header.menu.gettingStarted')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1016,7 +946,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.subscriptionList', 'Lista de suscripciones')}</span>
+															<span class="menu-title">${t('header.menu.subscriptionList')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1028,7 +958,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.addSubscription', 'Agregar suscripción')}</span>
+															<span class="menu-title">${t('header.menu.addSubscription')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1040,7 +970,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.viewSubscription', 'Ver suscripción')}</span>
+															<span class="menu-title">${t('header.menu.viewSubscription')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1059,7 +989,7 @@ const proximamenteLink = (
 															<span class="path2"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.customers', 'Clientes')}</span>
+													<span class="menu-title">${t('header.menu.customers')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -1072,7 +1002,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.gettingStarted', 'Primeros pasos')}</span>
+															<span class="menu-title">${t('header.menu.gettingStarted')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1084,7 +1014,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.customerListing', 'Listado de clientes')}</span>
+															<span class="menu-title">${t('header.menu.customerListing')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1096,7 +1026,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.customerDetails', 'Detalle del cliente')}</span>
+															<span class="menu-title">${t('header.menu.customerDetails')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1115,7 +1045,7 @@ const proximamenteLink = (
 															<span class="path2"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.invoiceManagement', 'Gestión de facturas')}</span>
+													<span class="menu-title">${t('header.menu.invoiceManagement')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -1128,7 +1058,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.profile', 'Perfil')}</span>
+															<span class="menu-title">${t('header.menu.profile')}</span>
 															<span class="menu-arrow"></span>
 														</span>
 														<!--end:Menu link-->
@@ -1141,7 +1071,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.invoice1', 'Factura 1')}</span>
+																	<span class="menu-title">${t('header.menu.invoice1')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -1153,7 +1083,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.invoice2', 'Factura 2')}</span>
+																	<span class="menu-title">${t('header.menu.invoice2')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -1165,7 +1095,7 @@ const proximamenteLink = (
 																	<span class="menu-bullet">
 																		<span class="bullet bullet-dot"></span>
 																	</span>
-																	<span class="menu-title">${t('header.menu.invoice3', 'Factura 3')}</span>
+																	<span class="menu-title">${t('header.menu.invoice3')}</span>
 																</a>
 																<!--end:Menu link-->
 															</div>
@@ -1181,7 +1111,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.createInvoice', 'Crear factura')}</span>
+															<span class="menu-title">${t('header.menu.createInvoice')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1200,7 +1130,7 @@ const proximamenteLink = (
 															<span class="path2"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.fileManager', 'Gestor de archivos')}</span>
+													<span class="menu-title">${t('header.menu.fileManager')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -1213,7 +1143,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.folders', 'Carpetas')}</span>
+															<span class="menu-title">${t('header.menu.folders')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1225,7 +1155,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.files', 'Archivos')}</span>
+															<span class="menu-title">${t('header.menu.files')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1237,7 +1167,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.blankDirectory', 'Directorio vacío')}</span>
+															<span class="menu-title">${t('header.menu.blankDirectory')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1249,7 +1179,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.settings', 'Ajustes')}</span>
+															<span class="menu-title">${t('header.menu.settings')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1268,7 +1198,7 @@ const proximamenteLink = (
 															<span class="path2"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.inbox', 'Bandeja de entrada')}</span>
+													<span class="menu-title">${t('header.menu.inbox')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -1281,7 +1211,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.messages', 'Mensajes')}</span>
+															<span class="menu-title">${t('header.menu.messages')}</span>
 															<span class="menu-badge">
 																<span class="badge badge-light-success">3</span>
 															</span>
@@ -1296,7 +1226,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.compose', 'Redactar')}</span>
+															<span class="menu-title">${t('header.menu.compose')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1308,7 +1238,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.viewReply', 'Ver y responder')}</span>
+															<span class="menu-title">${t('header.menu.viewReply')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1328,7 +1258,7 @@ const proximamenteLink = (
 															<span class="path3"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.chat', 'Chat')}</span>
+													<span class="menu-title">${t('header.menu.chat')}</span>
 													<span class="menu-arrow"></span>
 												</span>
 												<!--end:Menu link-->
@@ -1341,7 +1271,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.privateChat', 'Chat privado')}</span>
+															<span class="menu-title">${t('header.menu.privateChat')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1353,7 +1283,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.groupChat', 'Chat grupal')}</span>
+															<span class="menu-title">${t('header.menu.groupChat')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1365,7 +1295,7 @@ const proximamenteLink = (
 															<span class="menu-bullet">
 																<span class="bullet bullet-dot"></span>
 															</span>
-															<span class="menu-title">${t('header.menu.drawerChat', 'Chat lateral')}</span>
+															<span class="menu-title">${t('header.menu.drawerChat')}</span>
 														</a>
 														<!--end:Menu link-->
 													</div>
@@ -1388,7 +1318,7 @@ const proximamenteLink = (
 															<span class="path6"></span>
 														</i>
 													</span>
-													<span class="menu-title">${t('header.menu.calendar', 'Calendario')}</span>
+													<span class="menu-title">${t('header.menu.calendar')}</span>
 												</a>
 												<!--end:Menu link-->
 											</div>

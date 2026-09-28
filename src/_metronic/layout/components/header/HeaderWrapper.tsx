@@ -69,7 +69,6 @@ export function HeaderWrapper() {
             className='d-flex align-items-center d-lg-none ms-n2 me-2'
             title={intl.formatMessage({
               id: 'header.toggle.sidebarMenu',
-              defaultMessage: 'Mostrar menú lateral',
             })}
           >
             <div

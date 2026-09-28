@@ -42,7 +42,7 @@ const Navbar = () => {
       el.classList.toggle('active', el.getAttribute('data-kt-lang') === lang)
     })
     const current = LANGS[lang] || LANGS.en
-    const currentName = intl.formatMessage({id: current.nameId, defaultMessage: current.nameDefault})
+    const currentName = intl.formatMessage({id: current.nameId})
     const display = document.querySelector<HTMLElement>('[data-kt-lang-display]')
     if (display) {
       display.innerHTML =

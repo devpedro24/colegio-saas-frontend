@@ -167,7 +167,7 @@ const DesktopTeamRail = ({items, activeId, onSelect, searchTitle, searchPlacehol
         type='button'
         title={
           searchTitle ??
-          intl.formatMessage({id: 'common.search', defaultMessage: 'Buscar colegio'})
+          intl.formatMessage({id: 'common.search'})
         }
         className={`btn btn-icon btn-color-gray-600 btn-active-color-primary w-40px h-40px mx-auto mb-4${
           searchOpen ? ' active' : ''
@@ -206,7 +206,6 @@ const DesktopTeamRail = ({items, activeId, onSelect, searchTitle, searchPlacehol
                   searchPlaceholder ??
                   intl.formatMessage({
                     id: 'impersonation.searchPlaceholder',
-                    defaultMessage: 'Buscar colegio...',
                   })
                 }
                 value={query}
@@ -241,7 +240,7 @@ const DesktopTeamRail = ({items, activeId, onSelect, searchTitle, searchPlacehol
 
               {list.length === 0 && (
                 <div className='text-muted px-3 py-4 text-center fs-7'>
-                  {intl.formatMessage({id: 'impersonation.noResults', defaultMessage: 'Sin resultados'})}
+                  {intl.formatMessage({id: 'impersonation.noResults'})}
                 </div>
               )}
             </div>

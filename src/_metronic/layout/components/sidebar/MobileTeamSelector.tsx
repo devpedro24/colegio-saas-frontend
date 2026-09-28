@@ -153,7 +153,7 @@ const MobileTeamSelector = ({items, activeId, onSelect, searchPlaceholder}: Prop
 
             {list.length === 0 && (
               <div className='text-muted px-4 py-2 fs-7'>
-                {intl.formatMessage({id: 'impersonation.noResults', defaultMessage: 'Sin resultados'})}
+                {intl.formatMessage({id: 'impersonation.noResults'})}
               </div>
             )}
           </div>
@@ -171,7 +171,6 @@ const MobileTeamSelector = ({items, activeId, onSelect, searchPlaceholder}: Prop
                   searchPlaceholder ??
                   intl.formatMessage({
                     id: 'impersonation.searchPlaceholder',
-                    defaultMessage: 'Buscar colegio...',
                   })
                 }
                 value={query}

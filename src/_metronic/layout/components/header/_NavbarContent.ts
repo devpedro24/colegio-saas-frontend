@@ -7,9 +7,9 @@
 import type {IntlShape} from 'react-intl'
 
 export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}) => {
-  const t = (id: string, defaultMessage: string) => intl.formatMessage({id, defaultMessage})
-  const tv = (id: string, defaultMessage: string, values: Record<string, any>) =>
-    intl.formatMessage({id, defaultMessage}, values)
+  const t = (id: string) => intl.formatMessage({id})
+  const tv = (id: string, values: Record<string, any>) =>
+    intl.formatMessage({id}, values)
   // Buscador, notificaciones y accesos rapidos son herramientas de la PLATAFORMA (superadmin
   // sin colegio activo). Para usuarios de colegio (tenant) no aplican y se ocultan.
   const showQuickIcons = opts?.showQuickIcons !== false
@@ -17,10 +17,9 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 								<!--begin::Invite-->
 								<div class="align-items-center ms-1 ms-lg-3 d-none d-sm-flex">
 									<a href="#" class="btn btn-flex flex-center btn-primary h-35px h-md-40px" data-bs-toggle="modal" data-bs-target="#kt_modal_upgrade_plan">${t(
-										'header.navbar.upgrade',
-										'Mejorar'
+										'header.navbar.upgrade'
 									)}
-									<span class="d-none d-sm-block ps-1">${t('header.navbar.planWord', 'plan')}</span></a>
+									<span class="d-none d-sm-block ps-1">${t('header.navbar.planWord')}</span></a>
 								</div>
 								<!--end::Invite-->
 								${showQuickIcons ? String.raw`<!--begin::Search-->
@@ -51,8 +50,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 													<!--end::Icon-->
 													<!--begin::Input-->
 													<input type="text" class="search-input form-control form-control-flush ps-10" name="search" value="" placeholder="${t(
-														'header.search.placeholder',
-														'Buscar...'
+														'header.search.placeholder'
 													)}" data-kt-search-element="input" />
 													<!--end::Input-->
 													<!--begin::Spinner-->
@@ -72,8 +70,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 													<div class="position-absolute top-50 end-0 translate-middle-y" data-kt-search-element="toolbar">
 														<!--begin::Preferences toggle-->
 														<div data-kt-search-element="preferences-show" class="btn btn-icon w-20px btn-sm btn-active-color-primary me-1" data-bs-toggle="tooltip" title="${t(
-															'header.search.preferencesTooltip',
-															'Mostrar preferencias de búsqueda'
+															'header.search.preferencesTooltip'
 														)}">
 															<i class="ki-duotone ki-setting-2 fs-2">
 																<span class="path1"></span>
@@ -83,8 +80,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<!--end::Preferences toggle-->
 														<!--begin::Advanced search toggle-->
 														<div data-kt-search-element="advanced-options-form-show" class="btn btn-icon w-20px btn-sm btn-active-color-primary" data-bs-toggle="tooltip" title="${t(
-															'header.search.moreOptionsTooltip',
-															'Mostrar más opciones de búsqueda'
+															'header.search.moreOptionsTooltip'
 														)}">
 															<i class="ki-duotone ki-down fs-2"></i>
 														</div>
@@ -102,8 +98,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 													<div class="scroll-y mh-100px mh-sm-200px mh-lg-350px">
 														<!--begin::Category title-->
 														<h3 class="fs-5 text-muted m-0 pb-5" data-kt-search-element="category-title">${t(
-															'header.menu.users',
-															'Usuarios'
+															'header.menu.users'
 														)}</h3>
 														<!--end::Category title-->
 														<!--begin::Item-->
@@ -183,8 +178,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<!--end::Item-->
 														<!--begin::Category title-->
 														<h3 class="fs-5 text-muted m-0 pt-5 pb-5" data-kt-search-element="category-title">${t(
-															'header.menu.customers',
-															'Clientes'
+															'header.menu.customers'
 														)}</h3>
 														<!--end::Category title-->
 														<!--begin::Item-->
@@ -274,8 +268,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<!--end::Item-->
 														<!--begin::Category title-->
 														<h3 class="fs-5 text-muted m-0 pt-5 pb-5" data-kt-search-element="category-title">${t(
-															'header.menu.projects',
-															'Proyectos'
+															'header.menu.projects'
 														)}</h3>
 														<!--end::Category title-->
 														<!--begin::Item-->
@@ -375,8 +368,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 													<div class="d-flex flex-stack fw-semibold mb-4">
 														<!--begin::Label-->
 														<span class="text-muted fs-6 me-2">${t(
-															'header.search.recentlySearched',
-															'Búsquedas recientes:'
+															'header.search.recentlySearched'
 														)}</span>
 														<!--end::Label-->
 													</div>
@@ -543,12 +535,10 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 													<!--begin::Message-->
 													<div class="pb-15 fw-semibold">
 														<h3 class="text-gray-600 fs-5 mb-2">${t(
-															'header.search.noResult',
-															'No se encontraron resultados'
+															'header.search.noResult'
 														)}</h3>
 														<div class="text-muted fs-7">${t(
-															'header.search.tryAgain',
-															'Intenta de nuevo con una consulta diferente'
+															'header.search.tryAgain'
 														)}</div>
 													</div>
 													<!--end::Message-->
@@ -560,15 +550,13 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 											<form data-kt-search-element="advanced-options-form" class="pt-1 d-none">
 												<!--begin::Heading-->
 												<h3 class="fw-semibold text-gray-900 mb-7">${t(
-													'header.search.advancedTitle',
-													'Búsqueda avanzada'
+													'header.search.advancedTitle'
 												)}</h3>
 												<!--end::Heading-->
 												<!--begin::Input group-->
 												<div class="mb-5">
 													<input type="text" class="form-control form-control-sm form-control-solid" placeholder="${t(
-														'header.search.containsWord',
-														'Contiene la palabra'
+														'header.search.containsWord'
 													)}" name="query" />
 												</div>
 												<!--end::Input group-->
@@ -580,8 +568,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<label>
 															<input type="radio" class="btn-check" name="type" value="has" checked="checked" />
 															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary">${t(
-																'header.search.all',
-																'Todos'
+																'header.search.all'
 															)}</span>
 														</label>
 														<!--end::Option-->
@@ -589,8 +576,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<label>
 															<input type="radio" class="btn-check" name="type" value="users" />
 															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">${t(
-																'header.menu.users',
-																'Usuarios'
+																'header.menu.users'
 															)}</span>
 														</label>
 														<!--end::Option-->
@@ -598,8 +584,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<label>
 															<input type="radio" class="btn-check" name="type" value="orders" />
 															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">${t(
-																'header.search.orders',
-																'Pedidos'
+																'header.search.orders'
 															)}</span>
 														</label>
 														<!--end::Option-->
@@ -607,8 +592,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<label>
 															<input type="radio" class="btn-check" name="type" value="projects" />
 															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">${t(
-																'header.menu.projects',
-																'Proyectos'
+																'header.menu.projects'
 															)}</span>
 														</label>
 														<!--end::Option-->
@@ -619,16 +603,14 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<!--begin::Input group-->
 												<div class="mb-5">
 													<input type="text" name="assignedto" class="form-control form-control-sm form-control-solid" placeholder="${t(
-														'header.search.assignedTo',
-														'Asignado a'
+														'header.search.assignedTo'
 													)}" value="" />
 												</div>
 												<!--end::Input group-->
 												<!--begin::Input group-->
 												<div class="mb-5">
 													<input type="text" name="collaborators" class="form-control form-control-sm form-control-solid" placeholder="${t(
-														'header.search.collaborators',
-														'Colaboradores'
+														'header.search.collaborators'
 													)}" value="" />
 												</div>
 												<!--end::Input group-->
@@ -640,8 +622,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<label>
 															<input type="radio" class="btn-check" name="attachment" value="has" checked="checked" />
 															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary">${t(
-																'header.search.hasAttachment',
-																'Con adjunto'
+																'header.search.hasAttachment'
 															)}</span>
 														</label>
 														<!--end::Option-->
@@ -649,8 +630,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<label>
 															<input type="radio" class="btn-check" name="attachment" value="any" />
 															<span class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4">${t(
-																'header.search.any',
-																'Cualquiera'
+																'header.search.any'
 															)}</span>
 														</label>
 														<!--end::Option-->
@@ -661,10 +641,10 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<!--begin::Input group-->
 												<div class="mb-5">
 													<select name="timezone" aria-label="Select a Timezone" data-control="select2" data-dropdown-parent="#kt_header_search" data-placeholder="date_period" class="form-select form-select-sm form-select-solid">
-														<option value="next">${t('header.search.withinNext', 'En los próximos')}</option>
-														<option value="last">${t('header.search.withinLast', 'En los últimos')}</option>
-														<option value="between">${t('header.search.between', 'Entre')}</option>
-														<option value="on">${t('header.search.on', 'El')}</option>
+														<option value="next">${t('header.search.withinNext')}</option>
+														<option value="last">${t('header.search.withinLast')}</option>
+														<option value="between">${t('header.search.between')}</option>
+														<option value="on">${t('header.search.on')}</option>
 													</select>
 												</div>
 												<!--end::Input group-->
@@ -673,18 +653,17 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 													<!--begin::Col-->
 													<div class="col-6">
 														<input type="number" name="date_number" class="form-control form-control-sm form-control-solid" placeholder="${t(
-															'header.search.length',
-															'Cantidad'
+															'header.search.length'
 														)}" value="" />
 													</div>
 													<!--end::Col-->
 													<!--begin::Col-->
 													<div class="col-6">
 														<select name="date_typer" aria-label="Select a Timezone" data-control="select2" data-dropdown-parent="#kt_header_search" data-placeholder="Period" class="form-select form-select-sm form-select-solid">
-															<option value="days">${t('header.search.days', 'Días')}</option>
-															<option value="weeks">${t('header.search.weeks', 'Semanas')}</option>
-															<option value="months">${t('header.search.months', 'Meses')}</option>
-															<option value="years">${t('header.search.years', 'Años')}</option>
+															<option value="days">${t('header.search.days')}</option>
+															<option value="weeks">${t('header.search.weeks')}</option>
+															<option value="months">${t('header.search.months')}</option>
+															<option value="years">${t('header.search.years')}</option>
 														</select>
 													</div>
 													<!--end::Col-->
@@ -693,12 +672,10 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<!--begin::Actions-->
 												<div class="d-flex justify-content-end">
 													<button type="reset" class="btn btn-sm btn-light fw-bold btn-active-light-primary me-2" data-kt-search-element="advanced-options-form-cancel">${t(
-														'common.cancel',
-														'Cancelar'
+														'common.cancel'
 													)}</button>
 													<a href="#" class="btn btn-sm fw-bold btn-primary" data-kt-search-element="advanced-options-form-search">${t(
-														'header.search.searchBtn',
-														'Buscar'
+														'header.search.searchBtn'
 													)}</a>
 												</div>
 												<!--end::Actions-->
@@ -708,16 +685,14 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 											<form data-kt-search-element="preferences" class="pt-1 d-none">
 												<!--begin::Heading-->
 												<h3 class="fw-semibold text-gray-900 mb-7">${t(
-													'header.search.preferencesTitle',
-													'Preferencias de búsqueda'
+													'header.search.preferencesTitle'
 												)}</h3>
 												<!--end::Heading-->
 												<!--begin::Input group-->
 												<div class="pb-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
 														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
-															'header.menu.projects',
-															'Proyectos'
+															'header.menu.projects'
 														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" checked="checked" />
 													</label>
@@ -727,8 +702,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<div class="py-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
 														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
-															'header.menu.targets',
-															'Objetivos'
+															'header.menu.targets'
 														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" checked="checked" />
 													</label>
@@ -738,8 +712,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<div class="py-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
 														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
-															'header.search.affiliatePrograms',
-															'Programas de afiliados'
+															'header.search.affiliatePrograms'
 														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" />
 													</label>
@@ -749,8 +722,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<div class="py-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
 														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
-															'header.user.referrals',
-															'Referidos'
+															'header.user.referrals'
 														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" checked="checked" />
 													</label>
@@ -760,8 +732,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<div class="py-4 border-bottom">
 													<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
 														<span class="form-check-label text-gray-700 fs-6 fw-semibold ms-0 me-2">${t(
-															'header.menu.users',
-															'Usuarios'
+															'header.menu.users'
 														)}</span>
 														<input class="form-check-input" type="checkbox" value="1" />
 													</label>
@@ -770,12 +741,10 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<!--begin::Actions-->
 												<div class="d-flex justify-content-end pt-7">
 													<button type="reset" class="btn btn-sm btn-light fw-bold btn-active-light-primary me-2" data-kt-search-element="preferences-dismiss">${t(
-														'common.cancel',
-														'Cancelar'
+														'common.cancel'
 													)}</button>
 													<button type="submit" class="btn btn-sm fw-bold btn-primary">${t(
-														'common.save',
-														'Guardar cambios'
+														'common.save'
 													)}</button>
 												</div>
 												<!--end::Actions-->
@@ -802,29 +771,25 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<div class="d-flex flex-column bgi-no-repeat rounded-top" style="background-image:url('/media/misc/menu-header-bg.jpg')">
 											<!--begin::Title-->
 											<h3 class="text-white fw-semibold px-9 mt-3 mt-sm-10 mb-3 mb-sm-6">${t(
-												'header.notifications.title',
-												'Notificaciones'
+												'header.notifications.title'
 											)}
-											<span class="fs-8 opacity-75 ps-3">${tv('header.notifications.reportsCount', '{count} reportes', {count: 24})}</span></h3>
+											<span class="fs-8 opacity-75 ps-3">${tv('header.notifications.reportsCount', {count: 24})}</span></h3>
 											<!--end::Title-->
 											<!--begin::Tabs-->
 											<ul class="nav nav-line-tabs nav-line-tabs-2x nav-stretch fw-semibold px-9">
 												<li class="nav-item">
 													<a class="nav-link text-white opacity-75 opacity-state-100 pb-4" data-bs-toggle="tab" href="#kt_topbar_notifications_1">${t(
-														'header.notifications.alerts',
-														'Alertas'
+														'header.notifications.alerts'
 													)}</a>
 												</li>
 												<li class="nav-item">
 													<a class="nav-link text-white opacity-75 opacity-state-100 pb-4 active" data-bs-toggle="tab" href="#kt_topbar_notifications_2">${t(
-														'header.notifications.updates',
-														'Novedades'
+														'header.notifications.updates'
 													)}</a>
 												</li>
 												<li class="nav-item">
 													<a class="nav-link text-white opacity-75 opacity-state-100 pb-4" data-bs-toggle="tab" href="#kt_topbar_notifications_3">${t(
-														'header.notifications.logs',
-														'Registros'
+														'header.notifications.logs'
 													)}</a>
 												</li>
 											</ul>
@@ -1050,8 +1015,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<!--begin::View more-->
 												<div class="py-3 text-center border-top">
 													<a href="#" class="btn btn-color-gray-600 btn-active-color-primary">${t(
-														'header.navbar.viewAll',
-														'Ver todo'
+														'header.navbar.viewAll'
 													)}
 													<i class="ki-duotone ki-arrow-right fs-5">
 														<span class="path1"></span>
@@ -1069,21 +1033,18 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 													<div class="pt-10 pb-0">
 														<!--begin::Title-->
 														<h3 class="text-gray-900 text-center fw-bold">${t(
-															'header.notifications.getProAccess',
-															'Obtén acceso Pro'
+															'header.notifications.getProAccess'
 														)}</h3>
 														<!--end::Title-->
 														<!--begin::Text-->
 														<div class="text-center text-gray-600 fw-semibold pt-1">${t(
-															'header.notifications.getProDesc',
-															'Un buen esquema te mantiene enfocado y evita que te desvíes del objetivo.'
+															'header.notifications.getProDesc'
 														)}</div>
 														<!--end::Text-->
 														<!--begin::Action-->
 														<div class="text-center mt-5 mb-9">
 															<a href="#" class="btn btn-sm btn-primary px-6" data-bs-toggle="modal" data-bs-target="#kt_modal_upgrade_plan">${t(
-																'header.navbar.upgrade',
-																'Mejorar'
+																'header.navbar.upgrade'
 															)}</a>
 														</div>
 														<!--end::Action-->
@@ -1311,8 +1272,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 												<!--begin::View more-->
 												<div class="py-3 text-center border-top">
 													<a href="#" class="btn btn-color-gray-600 btn-active-color-primary">${t(
-														'header.navbar.viewAll',
-														'Ver todo'
+														'header.navbar.viewAll'
 													)}
 													<i class="ki-duotone ki-arrow-right fs-5">
 														<span class="path1"></span>
@@ -1344,14 +1304,12 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<div class="d-flex flex-column flex-center bgi-no-repeat rounded-top px-9 py-10" style="background-image:url('/media/misc/menu-header-bg.jpg')">
 											<!--begin::Title-->
 											<h3 class="text-white fw-semibold mb-3">${t(
-                        'header.quicklinks.title',
-                        'Accesos rápidos'
+                        'header.quicklinks.title'
                       )}</h3>
 											<!--end::Title-->
 											<!--begin::Status-->
 											<span class="badge bg-primary text-inverse-primary py-2 px-3">${tv(
 												'header.quicklinks.pendingTasks',
-												'{count} tareas pendientes',
 												{count: 25}
 											)}</span>
 											<!--end::Status-->
@@ -1367,8 +1325,8 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<span class="path2"></span>
 														<span class="path3"></span>
 													</i>
-													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.quicklinks.accounting', 'Contabilidad')}</span>
-													<span class="fs-7 text-gray-500">${t('header.menu.ecommerce', 'eCommerce')}</span>
+													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.quicklinks.accounting')}</span>
+													<span class="fs-7 text-gray-500">${t('header.menu.ecommerce')}</span>
 												</a>
 											</div>
 											<!--end:Item-->
@@ -1379,8 +1337,8 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<span class="path1"></span>
 														<span class="path2"></span>
 													</i>
-													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.quicklinks.administration', 'Administración')}</span>
-													<span class="fs-7 text-gray-500">${t('header.quicklinks.console', 'Consola')}</span>
+													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.quicklinks.administration')}</span>
+													<span class="fs-7 text-gray-500">${t('header.quicklinks.console')}</span>
 												</a>
 											</div>
 											<!--end:Item-->
@@ -1391,8 +1349,8 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<span class="path1"></span>
 														<span class="path2"></span>
 													</i>
-													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.menu.projects', 'Proyectos')}</span>
-													<span class="fs-7 text-gray-500">${t('header.quicklinks.pendingTasksLabel', 'Tareas pendientes')}</span>
+													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.menu.projects')}</span>
+													<span class="fs-7 text-gray-500">${t('header.quicklinks.pendingTasksLabel')}</span>
 												</a>
 											</div>
 											<!--end:Item-->
@@ -1403,8 +1361,8 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<span class="path1"></span>
 														<span class="path2"></span>
 													</i>
-													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.menu.customers', 'Clientes')}</span>
-													<span class="fs-7 text-gray-500">${t('header.quicklinks.latestCases', 'Últimos casos')}</span>
+													<span class="fs-5 fw-semibold text-gray-800 mb-0">${t('header.menu.customers')}</span>
+													<span class="fs-7 text-gray-500">${t('header.quicklinks.latestCases')}</span>
 												</a>
 											</div>
 											<!--end:Item-->
@@ -1413,8 +1371,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<!--begin::View more-->
 										<div class="py-2 text-center border-top">
 											<a href="#" class="btn btn-color-gray-600 btn-active-color-primary">${t(
-												'header.navbar.viewAll',
-												'Ver todo'
+												'header.navbar.viewAll'
 											)}
 											<i class="ki-duotone ki-arrow-right fs-5">
 												<span class="path1"></span>
@@ -1459,15 +1416,14 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
 											<a href="#" data-kt-nav="/account/overview" class="menu-link px-5">${t(
-												'header.user.myProfile',
-												'Mi perfil'
+												'header.user.myProfile'
 											)}</a>
 										</div>
 										<!--end::Menu item-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
 											<a href="#" class="menu-link px-5">
-												<span class="menu-text">${t('header.menu.myProjects', 'Mis proyectos')}</span>
+												<span class="menu-text">${t('header.menu.myProjects')}</span>
 												<span class="menu-badge">
 													<span class="badge badge-light-danger badge-circle fw-bold fs-7">3</span>
 												</span>
@@ -1477,32 +1433,31 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<!--begin::Menu item-->
 										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
 											<a href="#" class="menu-link px-5">
-												<span class="menu-title">${t('header.user.mySubscription', 'Mi suscripción')}</span>
+												<span class="menu-title">${t('header.user.mySubscription')}</span>
 												<span class="menu-arrow"></span>
 											</a>
 											<!--begin::Menu sub-->
 											<div class="menu-sub menu-sub-dropdown w-175px py-4">
 												<!--begin::Menu item-->
 												<div class="menu-item px-3">
-													<a href="#" class="menu-link px-5">${t('header.user.referrals', 'Referidos')}</a>
+													<a href="#" class="menu-link px-5">${t('header.user.referrals')}</a>
 												</div>
 												<!--end::Menu item-->
 												<!--begin::Menu item-->
 												<div class="menu-item px-3">
-													<a href="#" class="menu-link px-5">${t('header.user.billing', 'Facturación')}</a>
+													<a href="#" class="menu-link px-5">${t('header.user.billing')}</a>
 												</div>
 												<!--end::Menu item-->
 												<!--begin::Menu item-->
 												<div class="menu-item px-3">
-													<a href="#" class="menu-link px-5">${t('header.user.payments', 'Pagos')}</a>
+													<a href="#" class="menu-link px-5">${t('header.user.payments')}</a>
 												</div>
 												<!--end::Menu item-->
 												<!--begin::Menu item-->
 												<div class="menu-item px-3">
-													<a href="#" class="menu-link d-flex flex-stack px-5">${t('header.user.statements', 'Estados de cuenta')}
+													<a href="#" class="menu-link d-flex flex-stack px-5">${t('header.user.statements')}
 													<span class="ms-2 lh-0" data-bs-toggle="tooltip" title="${t(
-														'header.user.statementsTooltip',
-														'Ver tus estados de cuenta'
+														'header.user.statementsTooltip'
 													)}">
 														<i class="ki-duotone ki-information-5 fs-5">
 															<span class="path1"></span>
@@ -1521,8 +1476,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 														<label class="form-check form-switch form-check-custom form-check-solid">
 															<input class="form-check-input w-30px h-20px" type="checkbox" value="1" checked="checked" name="notifications" />
 															<span class="form-check-label text-muted fs-7">${t(
-																'header.notifications.title',
-																'Notificaciones'
+																'header.notifications.title'
 															)}</span>
 														</label>
 													</div>
@@ -1534,7 +1488,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<!--end::Menu item-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
-											<a href="#" class="menu-link px-5">${t('header.user.myStatements', 'Mis estados de cuenta')}</a>
+											<a href="#" class="menu-link px-5">${t('header.user.myStatements')}</a>
 										</div>
 										<!--end::Menu item-->
 										<!--begin::Menu separator-->
@@ -1543,7 +1497,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<!--begin::Menu item-->
 										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
 											<a href="#" class="menu-link px-5">
-												<span class="menu-title position-relative">${t('header.user.mode', 'Modo')}
+												<span class="menu-title position-relative">${t('header.user.mode')}
 												<span class="ms-5 position-absolute translate-middle-y top-50 end-0">
 													<i class="ki-duotone ki-night-day theme-light-show fs-2">
 														<span class="path1"></span>
@@ -1582,7 +1536,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 																<span class="path10"></span>
 															</i>
 														</span>
-														<span class="menu-title">${t('header.mode.light', 'Claro')}</span>
+														<span class="menu-title">${t('header.mode.light')}</span>
 													</a>
 												</div>
 												<!--end::Menu item-->
@@ -1595,7 +1549,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 																<span class="path2"></span>
 															</i>
 														</span>
-														<span class="menu-title">${t('header.mode.dark', 'Oscuro')}</span>
+														<span class="menu-title">${t('header.mode.dark')}</span>
 													</a>
 												</div>
 												<!--end::Menu item-->
@@ -1610,7 +1564,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 																<span class="path4"></span>
 															</i>
 														</span>
-														<span class="menu-title">${t('header.mode.system', 'Sistema')}</span>
+														<span class="menu-title">${t('header.mode.system')}</span>
 													</a>
 												</div>
 												<!--end::Menu item-->
@@ -1621,10 +1575,9 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<!--begin::Menu item-->
 										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
 											<a href="#" class="menu-link px-5">
-												<span class="menu-title position-relative">${t('header.user.language', 'Idioma')}
+												<span class="menu-title position-relative">${t('header.user.language')}
 												<span data-kt-lang-display class="fs-8 rounded bg-light px-3 py-2 position-absolute translate-middle-y top-50 end-0">${t(
-													'header.lang.en',
-													'Inglés'
+													'header.lang.en'
 												)}
 												<img class="w-15px h-15px rounded-1 ms-2" src="/media/flags/united-states.svg" alt="" /></span></span>
 											</a>
@@ -1635,7 +1588,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 													<a href="#" data-kt-lang="en" class="menu-link d-flex px-5 active">
 													<span class="symbol symbol-20px me-4">
 														<img class="rounded-1" src="/media/flags/united-states.svg" alt="" />
-													</span>${t('header.lang.en', 'Inglés')}</a>
+													</span>${t('header.lang.en')}</a>
 												</div>
 												<!--end::Menu item-->
 												<!--begin::Menu item-->
@@ -1643,7 +1596,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 													<a href="#" data-kt-lang="es" class="menu-link d-flex px-5">
 													<span class="symbol symbol-20px me-4">
 														<img class="rounded-1" src="/media/flags/spain.svg" alt="" />
-													</span>${t('header.lang.es', 'Español')}</a>
+													</span>${t('header.lang.es')}</a>
 												</div>
 												<!--end::Menu item-->
 											</div>
@@ -1652,14 +1605,13 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<!--end::Menu item-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5 my-1">
-											<a href="#" class="menu-link px-5">${t('header.user.accountSettings', 'Ajustes de la cuenta')}</a>
+											<a href="#" class="menu-link px-5">${t('header.user.accountSettings')}</a>
 										</div>
 										<!--end::Menu item-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
 											<a href="#" data-kt-action="logout" class="menu-link px-5">${t(
-												'header.user.signOut',
-												'Cerrar sesión'
+												'header.user.signOut'
 											)}</a>
 										</div>
 										<!--end::Menu item-->
@@ -1670,8 +1622,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 								<!--end::User menu-->
 								<!--begin::Header menu toggle-->
 								<div class="app-navbar-item d-none" title="${t(
-									'header.toggle.headerMenu',
-									'Mostrar menú del encabezado'
+									'header.toggle.headerMenu'
 								)}">
 									<div class="btn btn-icon btn-color-white btn-active-color-primary w-30px h-30px w-md-35px h-md-35px" id="kt_app_header_menu_toggle">
 										<i class="ki-duotone ki-text-align-left fs-2 fs-md-1 fw-bold">

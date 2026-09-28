@@ -14,26 +14,26 @@ const Footer = () => {
           {new Date().getFullYear().toString()}&copy;
         </span>
         <span className='text-gray-500'>
-          <FormattedMessage id='footer.brand' defaultMessage='Colegio SaaS' />
+          <FormattedMessage id='footer.brand' />
         </span>
       </div>
 
       <ul className='menu menu-gray-500 menu-hover-primary fw-semibold order-1'>
         <li className='menu-item'>
           <a href='#' className='menu-link px-2'>
-            <FormattedMessage id='footer.about' defaultMessage='Acerca de' />
+            <FormattedMessage id='footer.about' />
           </a>
         </li>
 
         <li className='menu-item'>
           <a href='#' className='menu-link px-2'>
-            <FormattedMessage id='footer.support' defaultMessage='Soporte' />
+            <FormattedMessage id='footer.support' />
           </a>
         </li>
 
         <li className='menu-item'>
           <a href='#' className='menu-link px-2'>
-            <FormattedMessage id='footer.contact' defaultMessage='Contacto' />
+            <FormattedMessage id='footer.contact' />
           </a>
         </li>
       </ul>

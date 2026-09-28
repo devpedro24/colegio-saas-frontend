@@ -5,14 +5,13 @@ import {Content} from '../../../_metronic/layout/components/content'
 
 interface ProximamentePageProps {
   titleId: string
-  defaultTitle: string
 }
 
 // Placeholder genérico para módulos del roadmap que aún no tienen pantallas
 // reales (ver ANALISIS-DOCUMENTACION.md §11). Un componente, muchas rutas.
-const ProximamentePage: FC<ProximamentePageProps> = ({titleId, defaultTitle}) => {
+const ProximamentePage: FC<ProximamentePageProps> = ({titleId}) => {
   const intl = useIntl()
-  const title = intl.formatMessage({id: titleId, defaultMessage: defaultTitle})
+  const title = intl.formatMessage({id: titleId})
 
   const breadcrumbs: Array<PageLink> = [
     {title, path: '#', isSeparator: false, isActive: false},

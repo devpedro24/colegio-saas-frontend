@@ -36,7 +36,7 @@ function usePlatformTeams() {
   const items = useMemo<RailItem[]>(() => {
     const platform: RailItem = {
       id: PLATFORM_ID,
-      name: intl.formatMessage({id: 'impersonation.platform', defaultMessage: 'Plataforma'}),
+      name: intl.formatMessage({id: 'impersonation.platform'}),
       initial: 'P',
       isPlatform: true,
     }
@@ -60,7 +60,6 @@ function usePlatformTeams() {
             toast.error(
               intl.formatMessage({
                 id: 'impersonation.exit.error',
-                defaultMessage: 'No se pudo cerrar la sesión de administración en el servidor.',
               }),
             ),
         })
@@ -77,7 +76,7 @@ function usePlatformTeams() {
         setActive(res.data.colegio, res.data.token)
         toast.success(
           intl.formatMessage(
-            {id: 'impersonation.enter.success', defaultMessage: 'Ahora administras {colegio}.'},
+            {id: 'impersonation.enter.success'},
             {colegio: res.data.colegio.name},
           ),
         )
@@ -87,7 +86,6 @@ function usePlatformTeams() {
         toast.error(
           intl.formatMessage({
             id: 'impersonation.enter.error',
-            defaultMessage: 'No se pudo entrar al colegio.',
           }),
         ),
     })

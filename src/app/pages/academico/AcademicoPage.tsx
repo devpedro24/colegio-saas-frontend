@@ -7,6 +7,9 @@ import ConfiguracionColegioPage from './configuracion/ConfiguracionColegioPage'
 import EstructuraPage from './estructura/EstructuraPage'
 import PlanEstudiosPage from './plan-estudios/PlanEstudiosPage'
 import SedeDetallePage from './sedes/SedeDetallePage'
+import EvaluacionPage from './evaluacion/EvaluacionPage'
+import SieePage from './siee/SieePage'
+import BoletinesPage from './boletines/BoletinesPage'
 
 // Router anidado del modulo Academico. Cada pagina trae su propio <PageTitle> +
 // <Content>, por eso aqui NO se envuelve con ToolbarWrapper/Content.
@@ -27,6 +30,9 @@ const AcademicoPage: FC = () => {
       <Route path='estructura' element={<EstructuraPage />} />
       <Route path='plan-estudios' element={<PlanEstudiosPage />} />
       <Route path='configuracion' element={<ConfiguracionColegioPage />} />
+      <Route path='siee/*' element={<SieePage />} />
+      <Route path='evaluacion/*' element={<EvaluacionPage />} />
+      <Route path='boletines/*' element={<BoletinesPage />} />
       <Route path='sedes/:id' element={<SedeDetallePage />} />
       <Route index element={<Navigate to='/academico/anos-lectivos' />} />
     </Routes>
