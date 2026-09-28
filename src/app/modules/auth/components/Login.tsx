@@ -12,19 +12,19 @@ import {useAuth} from '../core/Auth'
 const makeLoginSchema = (intl: IntlShape, mfaRequired: boolean) =>
   Yup.object().shape({
     email: Yup.string()
-      .email(intl.formatMessage({id: 'auth.validation.emailInvalid', defaultMessage: 'Formato de correo electrónico inválido'}))
-      .min(3, intl.formatMessage({id: 'auth.validation.min', defaultMessage: 'Mínimo {min} caracteres'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max', defaultMessage: 'Máximo {max} caracteres'}, {max: 50}))
-      .required(intl.formatMessage({id: 'auth.validation.emailRequired', defaultMessage: 'El correo electrónico es obligatorio'})),
+      .email(intl.formatMessage({id: 'auth.validation.emailInvalid'}))
+      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
+      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .required(intl.formatMessage({id: 'auth.validation.emailRequired'})),
     password: Yup.string()
-      .min(3, intl.formatMessage({id: 'auth.validation.min', defaultMessage: 'Mínimo {min} caracteres'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max', defaultMessage: 'Máximo {max} caracteres'}, {max: 50}))
-      .required(intl.formatMessage({id: 'auth.validation.passwordRequired', defaultMessage: 'La contraseña es obligatoria'})),
+      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
+      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .required(intl.formatMessage({id: 'auth.validation.passwordRequired'})),
     // El codigo TOTP solo se valida cuando el backend ya exigio MFA.
     code: mfaRequired
       ? Yup.string()
-          .matches(/^\d{6}$/, intl.formatMessage({id: 'auth.mfa.codeInvalid', defaultMessage: 'El código debe tener 6 dígitos'}))
-          .required(intl.formatMessage({id: 'auth.mfa.codeRequired', defaultMessage: 'El código de verificación es obligatorio'}))
+          .matches(/^\d{6}$/, intl.formatMessage({id: 'auth.mfa.codeInvalid'}))
+          .required(intl.formatMessage({id: 'auth.mfa.codeRequired'}))
       : Yup.string(),
   })
 
@@ -70,7 +70,6 @@ export function Login() {
           setStatus(
             intl.formatMessage({
               id: 'auth.mfa.required',
-              defaultMessage: 'Ingresa el código de verificación de tu app autenticadora',
             })
           )
           setSubmitting(false)
@@ -80,7 +79,6 @@ export function Login() {
         setStatus(
           intl.formatMessage({
             id: 'auth.login.error',
-            defaultMessage: 'Los datos de acceso son incorrectos',
           })
         )
         setSubmitting(false)
@@ -99,10 +97,10 @@ export function Login() {
       {/* begin::Heading */}
       <div className='text-center mb-11'>
         <h1 className='text-gray-900 fw-bolder mb-3'>
-          <FormattedMessage id='auth.login.title' defaultMessage='Iniciar sesión' />
+          <FormattedMessage id='auth.login.title' />
         </h1>
         <div className='text-gray-500 fw-semibold fs-6'>
-          <FormattedMessage id='auth.login.subtitle' defaultMessage='Bienvenido de nuevo' />
+          <FormattedMessage id='auth.login.subtitle' />
         </div>
       </div>
       {/* begin::Heading */}
@@ -121,7 +119,7 @@ export function Login() {
               src={toAbsoluteUrl('media/svg/brand-logos/google-icon.svg')}
               className='h-15px me-3'
             />
-            <FormattedMessage id='auth.social.google' defaultMessage='Ingresar con Google' />
+            <FormattedMessage id='auth.social.google' />
           </a>
           {/* end::Google link */}
         </div>
@@ -144,7 +142,7 @@ export function Login() {
               src={toAbsoluteUrl('media/svg/brand-logos/apple-black-dark.svg')}
               className='theme-dark-show h-15px me-3'
             />
-            <FormattedMessage id='auth.social.apple' defaultMessage='Ingresar con Apple' />
+            <FormattedMessage id='auth.social.apple' />
           </a>
           {/* end::Google link */}
         </div>
@@ -155,7 +153,7 @@ export function Login() {
       {/* begin::Separator */}
       <div className='separator separator-content my-14'>
         <span className='w-125px text-gray-500 fw-semibold fs-7'>
-          <FormattedMessage id='auth.common.orWithEmail' defaultMessage='O con correo electrónico' />
+          <FormattedMessage id='auth.common.orWithEmail' />
         </span>
       </div>
       {/* end::Separator */}
@@ -169,10 +167,10 @@ export function Login() {
       {/* begin::Form group */}
       <div className='fv-row mb-8'>
         <label className='form-label fs-6 fw-bolder text-gray-900'>
-          <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
+          <FormattedMessage id='common.email' />
         </label>
         <input
-          placeholder={intl.formatMessage({id: 'common.email', defaultMessage: 'Correo electrónico'})}
+          placeholder={intl.formatMessage({id: 'common.email'})}
           {...formik.getFieldProps('email')}
           className={clsx(
             'form-control bg-transparent',
@@ -196,7 +194,7 @@ export function Login() {
       {/* begin::Form group */}
       <div className='fv-row mb-3'>
         <label className='form-label fw-bolder text-gray-900 fs-6 mb-0'>
-          <FormattedMessage id='common.password' defaultMessage='Contraseña' />
+          <FormattedMessage id='common.password' />
         </label>
         <input
           type='password'
@@ -226,7 +224,7 @@ export function Login() {
       {mfaRequired && (
         <div className='fv-row mb-8'>
           <label className='form-label fw-bolder text-gray-900 fs-6'>
-            <FormattedMessage id='auth.mfa.code' defaultMessage='Código de verificación' />
+            <FormattedMessage id='auth.mfa.code' />
           </label>
           <input
             type='text'
@@ -249,7 +247,6 @@ export function Login() {
           <div className='form-text'>
             <FormattedMessage
               id='auth.mfa.codeHint'
-              defaultMessage='Introduce el código de 6 dígitos de tu app autenticadora.'
             />
           </div>
           {formik.touched.code && formik.errors.code && (
@@ -269,7 +266,7 @@ export function Login() {
 
         {/* begin::Link */}
         <Link to='/auth/forgot-password' className='link-primary'>
-          <FormattedMessage id='auth.login.forgotPassword' defaultMessage='¿Olvidaste tu contraseña?' />
+          <FormattedMessage id='auth.login.forgotPassword' />
         </Link>
         {/* end::Link */}
       </div>
@@ -285,12 +282,12 @@ export function Login() {
         >
           {!loading && (
             <span className='indicator-label'>
-              <FormattedMessage id='auth.login.submit' defaultMessage='Continuar' />
+              <FormattedMessage id='auth.login.submit' />
             </span>
           )}
           {loading && (
             <span className='indicator-progress' style={{display: 'block'}}>
-              <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
+              <FormattedMessage id='common.pleaseWait' />
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           )}
@@ -299,9 +296,9 @@ export function Login() {
       {/* end::Action */}
 
       <div className='text-gray-500 text-center fw-semibold fs-6'>
-        <FormattedMessage id='auth.login.noAccount' defaultMessage='¿Aún no tienes una cuenta?' />{' '}
+        <FormattedMessage id='auth.login.noAccount' />{' '}
         <Link to='/auth/registration' className='link-primary'>
-          <FormattedMessage id='auth.login.signUp' defaultMessage='Regístrate' />
+          <FormattedMessage id='auth.login.signUp' />
         </Link>
       </div>
     </form>

@@ -31,7 +31,7 @@ const Notifications: React.FC = () => {
       >
         <div className='card-title m-0'>
           <h3 className='fw-bold m-0'>
-            <FormattedMessage id='common.notifications' defaultMessage='Notificaciones' />
+            <FormattedMessage id='common.notifications' />
           </h3>
         </div>
       </div>
@@ -46,7 +46,6 @@ const Notifications: React.FC = () => {
                     <td className='min-w-250px fs-4 fw-bolder'>
                       <FormattedMessage
                         id='common.notifications'
-                        defaultMessage='Notificaciones'
                       />
                     </td>
                     <td className='w-125px'>
@@ -70,7 +69,7 @@ const Notifications: React.FC = () => {
                           className='form-check-label ps-2'
                           htmlFor='kt_settings_notification_email'
                         >
-                          <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
+                          <FormattedMessage id='common.email' />
                         </label>
                       </div>
                     </td>
@@ -95,7 +94,7 @@ const Notifications: React.FC = () => {
                           className='form-check-label ps-2'
                           htmlFor='kt_settings_notification_phone'
                         >
-                          <FormattedMessage id='common.phone' defaultMessage='Teléfono' />
+                          <FormattedMessage id='common.phone' />
                         </label>
                       </div>
                     </td>
@@ -105,7 +104,6 @@ const Notifications: React.FC = () => {
                     <td>
                       <FormattedMessage
                         id='account.notifications.billingUpdates'
-                        defaultMessage='Actualizaciones de facturación'
                       />
                     </td>
                     <td>
@@ -154,7 +152,6 @@ const Notifications: React.FC = () => {
                     <td>
                       <FormattedMessage
                         id='account.notifications.newTeamMembers'
-                        defaultMessage='Nuevos miembros del equipo'
                       />
                     </td>
                     <td>
@@ -203,7 +200,6 @@ const Notifications: React.FC = () => {
                     <td>
                       <FormattedMessage
                         id='account.notifications.completedProjects'
-                        defaultMessage='Proyectos completados'
                       />
                     </td>
                     <td>
@@ -252,7 +248,6 @@ const Notifications: React.FC = () => {
                     <td className='border-bottom-0'>
                       <FormattedMessage
                         id='account.notifications.newsletters'
-                        defaultMessage='Boletines'
                       />
                     </td>
                     <td className='border-bottom-0'>
@@ -303,13 +298,13 @@ const Notifications: React.FC = () => {
 
           <div className='card-footer d-flex justify-content-end py-6 px-9'>
             <button className='btn btn-light btn-active-light-primary me-2'>
-              <FormattedMessage id='account.discard' defaultMessage='Descartar' />
+              <FormattedMessage id='account.discard' />
             </button>
             <button type='button' onClick={click} className='btn btn-primary'>
-              {!loading && <FormattedMessage id='common.save' defaultMessage='Guardar cambios' />}
+              {!loading && <FormattedMessage id='common.save' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
-                  <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                  <FormattedMessage id='common.pleaseWait' />{' '}
                   <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                 </span>
               )}

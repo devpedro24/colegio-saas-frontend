@@ -47,8 +47,8 @@ const ResetPasswordDialog: FC<Props> = ({
   i18nPrefix = 'common.pwd',
 }) => {
   const intl = useIntl()
-  const t = (id: string, d?: string) => intl.formatMessage({id, defaultMessage: d})
-  const tk = (key: string) => t(`${i18nPrefix}.${key}`, t(`common.pwd.${key}`))
+  const t = (id: string) => intl.formatMessage({id})
+  const tk = (key: string) => t(`${i18nPrefix}.${key}`)
 
   const copy = (value: string) => {
     navigator.clipboard?.writeText(value)
@@ -152,7 +152,6 @@ const ResetPasswordDialog: FC<Props> = ({
           <span>
             <FormattedMessage
               id={`${i18nPrefix}.changedBody`}
-              defaultMessage={intl.formatMessage({id: 'common.pwd.changedBody'})}
               values={{name: <span className='fw-bold text-gray-900'>{entityName}</span>}}
             />
           </span>
@@ -165,7 +164,6 @@ const ResetPasswordDialog: FC<Props> = ({
       <div className='text-gray-700 fs-6'>
         <FormattedMessage
           id={`${i18nPrefix}.noneBody`}
-          defaultMessage={intl.formatMessage({id: 'common.pwd.noneBody'})}
           values={{name: <span className='fw-bold text-gray-900'>{entityName}</span>}}
         />
       </div>
@@ -176,7 +174,7 @@ const ResetPasswordDialog: FC<Props> = ({
     if (generated) {
       return (
         <button type='button' className='btn btn-primary' onClick={onClose}>
-          {t('common.close', 'Cerrar')}
+          {t('common.close')}
         </button>
       )
     }
@@ -187,7 +185,7 @@ const ResetPasswordDialog: FC<Props> = ({
     return (
       <>
         <button type='button' className='btn btn-light' onClick={onClose}>
-          {t('common.cancel', 'Cancelar')}
+          {t('common.cancel')}
         </button>
         {showReset && (
           <button type='button' className='btn btn-primary' onClick={onRegenerate} disabled={isRegenerating}>

@@ -29,13 +29,11 @@ const DeactivateAccount: FC = () => {
       [true],
       intl.formatMessage({
         id: 'account.deactivate.confirmError',
-        defaultMessage: 'Confirma que deseas desactivar tu cuenta',
       }),
     ),
     password: Yup.string().required(
       intl.formatMessage({
         id: 'account.deactivate.passwordRequired',
-        defaultMessage: 'Ingresa tu contraseña para confirmar',
       }),
     ),
   })
@@ -86,7 +84,7 @@ const DeactivateAccount: FC = () => {
       >
         <div className='card-title m-0'>
           <h3 className='fw-bold m-0'>
-            <FormattedMessage id='account.deactivate.title' defaultMessage='Desactivar cuenta' />
+            <FormattedMessage id='account.deactivate.title' />
           </h3>
         </div>
       </div>
@@ -102,13 +100,11 @@ const DeactivateAccount: FC = () => {
                   <h4 className='text-gray-800 fw-bolder'>
                     <FormattedMessage
                       id='account.deactivate.noticeTitle'
-                      defaultMessage='Estás desactivando tu cuenta'
                     />
                   </h4>
                   <div className='fs-6 text-gray-600'>
                     <FormattedMessage
                       id='account.deactivate.noticeBody'
-                      defaultMessage='Perderás el acceso hasta que un administrador la reactive. Esta acción no borra tus datos.'
                     />
                   </div>
                 </div>
@@ -117,7 +113,7 @@ const DeactivateAccount: FC = () => {
 
             <div className='fv-row mb-6'>
               <label htmlFor='deactivate-password' className='form-label fs-6 fw-bolder mb-3'>
-                <FormattedMessage id='account.field.password' defaultMessage='Contraseña' />
+                <FormattedMessage id='account.field.password' />
               </label>
               <input
                 type='password'
@@ -125,7 +121,6 @@ const DeactivateAccount: FC = () => {
                 className='form-control form-control-lg form-control-solid'
                 placeholder={intl.formatMessage({
                   id: 'account.deactivate.passwordPh',
-                  defaultMessage: 'Ingresa tu contraseña',
                 })}
                 {...formik.getFieldProps('password')}
               />
@@ -145,7 +140,6 @@ const DeactivateAccount: FC = () => {
               <label className='form-check-label fw-bold ps-2 fs-6'>
                 <FormattedMessage
                   id='account.deactivate.confirm'
-                  defaultMessage='Confirmo la desactivación de mi cuenta'
                 />
               </label>
               {formik.touched.confirm && formik.errors.confirm && (
@@ -164,11 +158,11 @@ const DeactivateAccount: FC = () => {
               disabled={loading}
             >
               {!loading && (
-                <FormattedMessage id='account.deactivate.title' defaultMessage='Desactivar cuenta' />
+                <FormattedMessage id='account.deactivate.title' />
               )}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
-                  <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                  <FormattedMessage id='common.pleaseWait' />{' '}
                   <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                 </span>
               )}

@@ -23,32 +23,32 @@ const initialValues = {
 const makeRegistrationSchema = (intl: IntlShape) =>
   Yup.object().shape({
     firstname: Yup.string()
-      .min(3, intl.formatMessage({id: 'auth.validation.min', defaultMessage: 'Mínimo {min} caracteres'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max', defaultMessage: 'Máximo {max} caracteres'}, {max: 50}))
-      .required(intl.formatMessage({id: 'auth.validation.firstnameRequired', defaultMessage: 'El nombre es obligatorio'})),
+      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
+      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .required(intl.formatMessage({id: 'auth.validation.firstnameRequired'})),
     email: Yup.string()
-      .email(intl.formatMessage({id: 'auth.validation.emailInvalid', defaultMessage: 'Formato de correo electrónico inválido'}))
-      .min(3, intl.formatMessage({id: 'auth.validation.min', defaultMessage: 'Mínimo {min} caracteres'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max', defaultMessage: 'Máximo {max} caracteres'}, {max: 50}))
-      .required(intl.formatMessage({id: 'auth.validation.emailRequired', defaultMessage: 'El correo electrónico es obligatorio'})),
+      .email(intl.formatMessage({id: 'auth.validation.emailInvalid'}))
+      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
+      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .required(intl.formatMessage({id: 'auth.validation.emailRequired'})),
     lastname: Yup.string()
-      .min(3, intl.formatMessage({id: 'auth.validation.min', defaultMessage: 'Mínimo {min} caracteres'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max', defaultMessage: 'Máximo {max} caracteres'}, {max: 50}))
-      .required(intl.formatMessage({id: 'auth.validation.lastnameRequired', defaultMessage: 'El apellido es obligatorio'})),
+      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
+      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .required(intl.formatMessage({id: 'auth.validation.lastnameRequired'})),
     password: Yup.string()
-      .min(3, intl.formatMessage({id: 'auth.validation.min', defaultMessage: 'Mínimo {min} caracteres'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max', defaultMessage: 'Máximo {max} caracteres'}, {max: 50}))
-      .required(intl.formatMessage({id: 'auth.validation.passwordRequired', defaultMessage: 'La contraseña es obligatoria'})),
+      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
+      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .required(intl.formatMessage({id: 'auth.validation.passwordRequired'})),
     changepassword: Yup.string()
-      .min(3, intl.formatMessage({id: 'auth.validation.min', defaultMessage: 'Mínimo {min} caracteres'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max', defaultMessage: 'Máximo {max} caracteres'}, {max: 50}))
-      .required(intl.formatMessage({id: 'auth.validation.confirmPasswordRequired', defaultMessage: 'La confirmación de contraseña es obligatoria'}))
+      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
+      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .required(intl.formatMessage({id: 'auth.validation.confirmPasswordRequired'}))
       .oneOf(
         [Yup.ref('password')],
-        intl.formatMessage({id: 'auth.validation.passwordMismatch', defaultMessage: 'Las contraseñas no coinciden'})
+        intl.formatMessage({id: 'auth.validation.passwordMismatch'})
       ),
     acceptTerms: Yup.bool().required(
-      intl.formatMessage({id: 'auth.validation.acceptTermsRequired', defaultMessage: 'Debes aceptar los términos y condiciones'})
+      intl.formatMessage({id: 'auth.validation.acceptTermsRequired'})
     ),
   })
 
@@ -80,7 +80,6 @@ export function Registration() {
         setStatus(
           intl.formatMessage({
             id: 'auth.registration.error',
-            defaultMessage: 'Los datos de registro son incorrectos',
           })
         )
         setSubmitting(false)
@@ -104,12 +103,12 @@ export function Registration() {
       <div className='text-center mb-11'>
         {/* begin::Title */}
         <h1 className='text-gray-900 fw-bolder mb-3'>
-          <FormattedMessage id='auth.registration.title' defaultMessage='Crear cuenta' />
+          <FormattedMessage id='auth.registration.title' />
         </h1>
         {/* end::Title */}
 
         <div className='text-gray-500 fw-semibold fs-6'>
-          <FormattedMessage id='auth.registration.subtitle' defaultMessage='Crea tu cuenta para comenzar' />
+          <FormattedMessage id='auth.registration.subtitle' />
         </div>
       </div>
       {/* end::Heading */}
@@ -128,7 +127,7 @@ export function Registration() {
               src={toAbsoluteUrl('media/svg/brand-logos/google-icon.svg')}
               className='h-15px me-3'
             />
-            <FormattedMessage id='auth.social.google' defaultMessage='Ingresar con Google' />
+            <FormattedMessage id='auth.social.google' />
           </a>
           {/* end::Google link */}
         </div>
@@ -151,7 +150,7 @@ export function Registration() {
               src={toAbsoluteUrl('media/svg/brand-logos/apple-black-dark.svg')}
               className='theme-dark-show h-15px me-3'
             />
-            <FormattedMessage id='auth.social.apple' defaultMessage='Ingresar con Apple' />
+            <FormattedMessage id='auth.social.apple' />
           </a>
           {/* end::Google link */}
         </div>
@@ -161,7 +160,7 @@ export function Registration() {
 
       <div className='separator separator-content my-14'>
         <span className='w-125px text-gray-500 fw-semibold fs-7'>
-          <FormattedMessage id='auth.common.orWithEmail' defaultMessage='O con correo electrónico' />
+          <FormattedMessage id='auth.common.orWithEmail' />
         </span>
       </div>
 
@@ -174,10 +173,10 @@ export function Registration() {
       {/* begin::Form group Firstname */}
       <div className='fv-row mb-8'>
         <label className='form-label fw-bolder text-gray-900 fs-6'>
-          <FormattedMessage id='auth.field.firstname' defaultMessage='Nombres' />
+          <FormattedMessage id='auth.field.firstname' />
         </label>
         <input
-          placeholder={intl.formatMessage({id: 'auth.field.firstname', defaultMessage: 'Nombres'})}
+          placeholder={intl.formatMessage({id: 'auth.field.firstname'})}
           type='text'
           autoComplete='off'
           {...formik.getFieldProps('firstname')}
@@ -203,10 +202,10 @@ export function Registration() {
       <div className='fv-row mb-8'>
         {/* begin::Form group Lastname */}
         <label className='form-label fw-bolder text-gray-900 fs-6'>
-          <FormattedMessage id='auth.field.lastname' defaultMessage='Apellidos' />
+          <FormattedMessage id='auth.field.lastname' />
         </label>
         <input
-          placeholder={intl.formatMessage({id: 'auth.field.lastname', defaultMessage: 'Apellidos'})}
+          placeholder={intl.formatMessage({id: 'auth.field.lastname'})}
           type='text'
           autoComplete='off'
           {...formik.getFieldProps('lastname')}
@@ -233,10 +232,10 @@ export function Registration() {
       {/* begin::Form group Email */}
       <div className='fv-row mb-8'>
         <label className='form-label fw-bolder text-gray-900 fs-6'>
-          <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
+          <FormattedMessage id='common.email' />
         </label>
         <input
-          placeholder={intl.formatMessage({id: 'common.email', defaultMessage: 'Correo electrónico'})}
+          placeholder={intl.formatMessage({id: 'common.email'})}
           type='email'
           autoComplete='off'
           {...formik.getFieldProps('email')}
@@ -262,12 +261,12 @@ export function Registration() {
       <div className='fv-row mb-8' data-kt-password-meter='true'>
         <div className='mb-1'>
           <label className='form-label fw-bolder text-gray-900 fs-6'>
-            <FormattedMessage id='common.password' defaultMessage='Contraseña' />
+            <FormattedMessage id='common.password' />
           </label>
           <div className='position-relative mb-3'>
             <input
               type='password'
-              placeholder={intl.formatMessage({id: 'common.password', defaultMessage: 'Contraseña'})}
+              placeholder={intl.formatMessage({id: 'common.password'})}
               autoComplete='off'
               {...formik.getFieldProps('password')}
               className={clsx(
@@ -303,7 +302,6 @@ export function Registration() {
         <div className='text-muted'>
           <FormattedMessage
             id='auth.registration.passwordHint'
-            defaultMessage='Usa 8 o más caracteres con una combinación de letras, números y símbolos.'
           />
         </div>
       </div>
@@ -312,11 +310,11 @@ export function Registration() {
       {/* begin::Form group Confirm password */}
       <div className='fv-row mb-5'>
         <label className='form-label fw-bolder text-gray-900 fs-6'>
-          <FormattedMessage id='auth.field.confirmPassword' defaultMessage='Confirmar contraseña' />
+          <FormattedMessage id='auth.field.confirmPassword' />
         </label>
         <input
           type='password'
-          placeholder={intl.formatMessage({id: 'auth.field.confirmPassword', defaultMessage: 'Confirmar contraseña'})}
+          placeholder={intl.formatMessage({id: 'auth.field.confirmPassword'})}
           autoComplete='off'
           {...formik.getFieldProps('changepassword')}
           className={clsx(
@@ -351,7 +349,6 @@ export function Registration() {
           <span>
             <FormattedMessage
               id='auth.registration.acceptTerms'
-              defaultMessage='Acepto los <a>términos y condiciones</a>.'
               values={{
                 a: (chunks) => (
                   <a href='#' target='_blank' className='ms-1 link-primary'>
@@ -382,12 +379,12 @@ export function Registration() {
         >
           {!loading && (
             <span className='indicator-label'>
-              <FormattedMessage id='auth.common.submit' defaultMessage='Crear cuenta' />
+              <FormattedMessage id='auth.common.submit' />
             </span>
           )}
           {loading && (
             <span className='indicator-progress' style={{display: 'block'}}>
-              <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+              <FormattedMessage id='common.pleaseWait' />{' '}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           )}
@@ -398,7 +395,7 @@ export function Registration() {
             id='kt_login_signup_form_cancel_button'
             className='btn btn-lg btn-light-primary w-100 mb-5'
           >
-            <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
+            <FormattedMessage id='common.cancel' />
           </button>
         </Link>
       </div>

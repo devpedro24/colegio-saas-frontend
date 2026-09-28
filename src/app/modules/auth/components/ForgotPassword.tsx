@@ -7,16 +7,16 @@ import {FormattedMessage, useIntl, IntlShape} from 'react-intl'
 import {requestPassword} from '../core/_requests'
 
 const initialValues = {
-  email: 'admin@demo.com',
+  email: '',
 }
 
 const makeForgotPasswordSchema = (intl: IntlShape) =>
   Yup.object().shape({
     email: Yup.string()
-      .email(intl.formatMessage({id: 'auth.validation.emailInvalid', defaultMessage: 'Formato de correo electrónico inválido'}))
-      .min(3, intl.formatMessage({id: 'auth.validation.min', defaultMessage: 'Mínimo {min} caracteres'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max', defaultMessage: 'Máximo {max} caracteres'}, {max: 50}))
-      .required(intl.formatMessage({id: 'auth.validation.emailRequired', defaultMessage: 'El correo electrónico es obligatorio'})),
+      .email(intl.formatMessage({id: 'auth.validation.emailInvalid'}))
+      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
+      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .required(intl.formatMessage({id: 'auth.validation.emailRequired'})),
   })
 
 export function ForgotPassword() {
@@ -43,7 +43,6 @@ export function ForgotPassword() {
             setStatus(
               intl.formatMessage({
                 id: 'auth.login.error',
-                defaultMessage: 'Los datos de acceso son incorrectos',
               })
             )
           })
@@ -61,7 +60,7 @@ export function ForgotPassword() {
       <div className='text-center mb-10'>
         {/* begin::Title */}
         <h1 className='text-gray-900 fw-bolder mb-3'>
-          <FormattedMessage id='auth.forgotPassword.title' defaultMessage='¿Olvidaste tu contraseña?' />
+          <FormattedMessage id='auth.forgotPassword.title' />
         </h1>
         {/* end::Title */}
 
@@ -69,7 +68,6 @@ export function ForgotPassword() {
         <div className='text-gray-500 fw-semibold fs-6'>
           <FormattedMessage
             id='auth.forgotPassword.subtitle'
-            defaultMessage='Ingresa tu correo electrónico para restablecer tu contraseña.'
           />
         </div>
         {/* end::Link */}
@@ -81,7 +79,6 @@ export function ForgotPassword() {
           <div className='alert-text font-weight-bold'>
             <FormattedMessage
               id='auth.forgotPassword.error'
-              defaultMessage='Lo sentimos, se detectaron algunos errores. Por favor, inténtalo de nuevo.'
             />
           </div>
         </div>
@@ -92,7 +89,6 @@ export function ForgotPassword() {
           <div className='text-info'>
             <FormattedMessage
               id='auth.forgotPassword.success'
-              defaultMessage='Hemos enviado el restablecimiento de contraseña. Por favor, revisa tu correo electrónico.'
             />
           </div>
         </div>
@@ -102,7 +98,7 @@ export function ForgotPassword() {
       {/* begin::Form group */}
       <div className='fv-row mb-8'>
         <label className='form-label fw-bolder text-gray-900 fs-6'>
-          <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
+          <FormattedMessage id='common.email' />
         </label>
         <input
           type='email'
@@ -129,13 +125,13 @@ export function ForgotPassword() {
 
       {/* begin::Form group */}
       <div className='d-flex flex-wrap justify-content-center pb-lg-0'>
-        <button type='submit' id='kt_password_reset_submit' className='btn btn-primary me-4'>
+        <button type='submit' disabled={loading} id='kt_password_reset_submit' className='btn btn-primary me-4'>
           <span className='indicator-label'>
-            <FormattedMessage id='auth.common.submit' defaultMessage='Enviar' />
+            <FormattedMessage id='auth.common.submit' />
           </span>
           {loading && (
             <span className='indicator-progress'>
-              <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
+              <FormattedMessage id='common.pleaseWait' />
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           )}
@@ -147,7 +143,7 @@ export function ForgotPassword() {
             className='btn btn-light'
             disabled={formik.isSubmitting || !formik.isValid}
           >
-            <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
+            <FormattedMessage id='common.cancel' />
           </button>
         </Link>{' '}
       </div>

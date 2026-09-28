@@ -57,7 +57,7 @@ const ConnectedAccounts: FC = () => {
       >
         <div className='card-title m-0'>
           <h3 className='fw-bold m-0'>
-            <FormattedMessage id='account.connected.title' defaultMessage='Cuentas conectadas' />
+            <FormattedMessage id='account.connected.title' />
           </h3>
         </div>
       </div>
@@ -81,13 +81,11 @@ const ConnectedAccounts: FC = () => {
                     {linked ? (
                       <FormattedMessage
                         id='account.connected.googleLinked'
-                        defaultMessage='Vinculada con {email}'
                         values={{email: currentUser?.google_email ?? ''}}
                       />
                     ) : (
                       <FormattedMessage
                         id='account.connected.googleDesc'
-                        defaultMessage='Vincula tu cuenta de Google para iniciar sesión con un solo clic'
                       />
                     )}
                   </div>
@@ -104,11 +102,11 @@ const ConnectedAccounts: FC = () => {
                   >
                     {unlinkMutation.isPending ? (
                       <span className='indicator-progress d-block'>
-                        <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
+                        <FormattedMessage id='common.pleaseWait' />
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     ) : (
-                      <FormattedMessage id='account.unlink' defaultMessage='Desvincular' />
+                      <FormattedMessage id='account.unlink' />
                     )}
                   </button>
                 ) : (
@@ -120,11 +118,11 @@ const ConnectedAccounts: FC = () => {
                   >
                     {connectMutation.isPending ? (
                       <span className='indicator-progress d-block'>
-                        <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
+                        <FormattedMessage id='common.pleaseWait' />
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     ) : (
-                      <FormattedMessage id='account.linkGoogle' defaultMessage='Vincular cuenta de Google' />
+                      <FormattedMessage id='account.linkGoogle' />
                     )}
                   </button>
                 )}

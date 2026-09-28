@@ -12,6 +12,7 @@
 // como exige useSyncExternalStore.
 
 import {useSyncExternalStore} from 'react'
+import {queryClient} from '@/lib/api/query-client'
 
 export const ACTIVE_COLEGIO_KEY = 'colegio-saas.active-colegio'
 export const IMPERSONATION_TOKEN_KEY = 'colegio-saas.impersonation-token'
@@ -65,6 +66,7 @@ export function getImpersonation(): ImpersonationState {
 
 /** Entrar a administrar un colegio: persiste colegio + token y notifica. */
 export function setActiveColegio(colegio: ActiveColegio, token: string): void {
+  queryClient.clear()
   localStorage.setItem(ACTIVE_COLEGIO_KEY, JSON.stringify(colegio))
   localStorage.setItem(IMPERSONATION_TOKEN_KEY, token)
   state = {activeColegio: colegio, token}
@@ -73,6 +75,7 @@ export function setActiveColegio(colegio: ActiveColegio, token: string): void {
 
 /** Volver a Plataforma: descarta el token temporal y el colegio activo. */
 export function clearImpersonation(): void {
+  queryClient.clear()
   localStorage.removeItem(ACTIVE_COLEGIO_KEY)
   localStorage.removeItem(IMPERSONATION_TOKEN_KEY)
   state = EMPTY
@@ -94,6 +97,7 @@ export function getActiveImpersonation(): {colegioId: string; token: string} | n
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === ACTIVE_COLEGIO_KEY || e.key === IMPERSONATION_TOKEN_KEY) {
+      queryClient.clear()
       state = readFromStorage()
       emit()
     }

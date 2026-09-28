@@ -12,7 +12,7 @@ type AuthContextProps = {
   saveAuth: (auth: AuthModel | undefined) => void
   currentUser: UserModel | undefined
   setCurrentUser: Dispatch<SetStateAction<UserModel | undefined>>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const initAuthContextPropsState = {
@@ -20,7 +20,7 @@ const initAuthContextPropsState = {
   saveAuth: () => {},
   currentUser: undefined,
   setCurrentUser: () => {},
-  logout: () => {},
+  logout: async () => {},
 }
 
 const AuthContext = createContext<AuthContextProps>(initAuthContextPropsState)
@@ -41,10 +41,10 @@ const AuthProvider: FC<WithChildren> = ({children}) => {
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
     // Invalida el token en el backend (best-effort) y luego limpia el estado local,
     // incluyendo la suplantación de colegio (colegio activo + token de impersonación).
-    requestLogout().catch(() => {})
+    await requestLogout().catch(() => {})
     saveAuth(undefined)
     setCurrentUser(undefined)
     clearImpersonation()

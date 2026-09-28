@@ -24,7 +24,6 @@ const ImpersonationBanner = () => {
         toast.error(
           intl.formatMessage({
             id: 'impersonation.exit.error',
-            defaultMessage: 'No se pudo cerrar la sesión de administración en el servidor.',
           }),
         ),
     })
@@ -41,7 +40,6 @@ const ImpersonationBanner = () => {
         <span className='fw-semibold text-gray-800 flex-grow-1'>
           <FormattedMessage
             id='impersonation.banner.text'
-            defaultMessage='Estás administrando {colegio} como superadministrador'
             values={{colegio: <strong key='c'>{activeColegio.name}</strong>}}
           />
         </span>
@@ -54,7 +52,6 @@ const ImpersonationBanner = () => {
           <i className='ki-outline ki-exit-left fs-4 me-1'></i>
           {intl.formatMessage({
             id: 'impersonation.banner.exit',
-            defaultMessage: 'Volver a Plataforma',
           })}
         </button>
       </div>

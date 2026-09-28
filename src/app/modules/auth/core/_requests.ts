@@ -1,5 +1,6 @@
 ﻿import { api, ApiError, setToken } from '@/lib/api/client'
 import { AuthModel, UserModel } from './_models'
+import {getActiveImpersonation} from '../../impersonation/impersonation.store'
 
 /**
  * Autenticacion REAL contra el backend Laravel (Sanctum).
@@ -69,6 +70,8 @@ export async function getUserByToken(_token: string): Promise<{ data: UserModel 
 /** Cierra sesion en el backend (invalida el token) y limpia el token local. */
 export async function logout(): Promise<void> {
   try {
+    const active = getActiveImpersonation()
+    if (active) await api.post('/platform/impersonar/salir', {colegio_id: active.colegioId}).catch(() => {})
     await api.post('/logout')
   } finally {
     setToken(null)
@@ -97,7 +100,7 @@ export async function register(
   return { data: { api_token: token } }
 }
 
-/** Solicitud de restablecimiento de contrasena (endpoint pendiente en backend). */
+/** Solicitud genérica de restablecimiento de contraseña por correo. */
 export async function requestPassword(email: string): Promise<{ result: boolean }> {
   await api.post('/forgot-password', { email })
   return { result: true }

@@ -136,7 +136,7 @@ const UsuariosPage: FC = () => {
                             <td><span className='text-gray-700'>{u.email}</span></td>
                             <td>
                               <span className='text-gray-700'>
-                                {intl.formatMessage({id: `academico.usuarios.rol.${u.role}`, defaultMessage: u.role})}
+                                {intl.formatMessage({id: `academico.usuarios.rol.${u.role}`})}
                               </span>
                             </td>
                             <td>

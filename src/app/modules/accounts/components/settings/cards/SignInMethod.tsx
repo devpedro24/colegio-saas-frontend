@@ -133,7 +133,7 @@ const SignInMethod: FC = () => {
       >
         <div className='card-title m-0'>
           <h3 className='fw-bold m-0'>
-            <FormattedMessage id='account.signin.title' defaultMessage='Método de inicio de sesión' />
+            <FormattedMessage id='account.signin.title' />
           </h3>
         </div>
       </div>
@@ -143,7 +143,7 @@ const SignInMethod: FC = () => {
           <div className='d-flex flex-wrap align-items-center'>
             <div id='kt_signin_email' className={' ' + (showEmailForm && 'd-none')}>
               <div className='fs-6 fw-bolder mb-1'>
-                <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
+                <FormattedMessage id='common.email' />
               </div>
               <div className='fw-bold text-gray-600'>{currentUser?.email ?? '—'}</div>
             </div>
@@ -164,7 +164,6 @@ const SignInMethod: FC = () => {
                       <label htmlFor='emailaddress' className='form-label fs-6 fw-bolder mb-3'>
                         <FormattedMessage
                           id='account.signin.enterNewEmail'
-                          defaultMessage='Ingresa el nuevo correo electrónico'
                         />
                       </label>
                       <input
@@ -173,7 +172,6 @@ const SignInMethod: FC = () => {
                         id='emailaddress'
                         placeholder={intl.formatMessage({
                           id: 'common.email',
-                          defaultMessage: 'Correo electrónico',
                         })}
                         {...formik1.getFieldProps('newEmail')}
                       />
@@ -192,7 +190,6 @@ const SignInMethod: FC = () => {
                       >
                         <FormattedMessage
                           id='account.signin.confirmPassword'
-                          defaultMessage='Confirma la contraseña'
                         />
                       </label>
                       <input
@@ -217,11 +214,11 @@ const SignInMethod: FC = () => {
                     disabled={loading1}
                   >
                     {!loading1 && (
-                      <FormattedMessage id='account.signin.updateEmail' defaultMessage='Actualizar correo' />
+                      <FormattedMessage id='account.signin.updateEmail' />
                     )}
                     {loading1 && (
                       <span className='indicator-progress' style={{display: 'block'}}>
-                        <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                        <FormattedMessage id='common.pleaseWait' />{' '}
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     )}
@@ -234,7 +231,7 @@ const SignInMethod: FC = () => {
                     }}
                     className='btn btn-color-gray-500 btn-active-light-primary px-6'
                   >
-                    <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
+                    <FormattedMessage id='common.cancel' />
                   </button>
                 </div>
               </form>
@@ -247,7 +244,7 @@ const SignInMethod: FC = () => {
                 }}
                 className='btn btn-light btn-active-light-primary'
               >
-                <FormattedMessage id='account.signin.changeEmail' defaultMessage='Cambiar correo' />
+                <FormattedMessage id='account.signin.changeEmail' />
               </button>
             </div>
           </div>
@@ -257,7 +254,7 @@ const SignInMethod: FC = () => {
           <div className='d-flex flex-wrap align-items-center mb-10'>
             <div id='kt_signin_password' className={' ' + (showPasswordForm && 'd-none')}>
               <div className='fs-6 fw-bolder mb-1'>
-                <FormattedMessage id='common.password' defaultMessage='Contraseña' />
+                <FormattedMessage id='common.password' />
               </div>
               <div className='fw-bold text-gray-600'>************</div>
             </div>
@@ -278,7 +275,6 @@ const SignInMethod: FC = () => {
                       <label htmlFor='currentpassword' className='form-label fs-6 fw-bolder mb-3'>
                         <FormattedMessage
                           id='account.signin.currentPassword'
-                          defaultMessage='Contraseña actual'
                         />
                       </label>
                       <input
@@ -300,7 +296,6 @@ const SignInMethod: FC = () => {
                       <label htmlFor='newpassword' className='form-label fs-6 fw-bolder mb-3'>
                         <FormattedMessage
                           id='account.signin.newPassword'
-                          defaultMessage='Nueva contraseña'
                         />
                       </label>
                       <input
@@ -322,7 +317,6 @@ const SignInMethod: FC = () => {
                       <label htmlFor='confirmpassword' className='form-label fs-6 fw-bolder mb-3'>
                         <FormattedMessage
                           id='account.signin.confirmNewPassword'
-                          defaultMessage='Confirma la nueva contraseña'
                         />
                       </label>
                       <input
@@ -343,7 +337,6 @@ const SignInMethod: FC = () => {
                 <div className='form-text mb-5'>
                   <FormattedMessage
                     id='account.signin.passwordHint'
-                    defaultMessage='La contraseña debe tener al menos 8 caracteres y contener letras, números y símbolos'
                   />
                 </div>
 
@@ -357,12 +350,11 @@ const SignInMethod: FC = () => {
                     {!loading2 && (
                       <FormattedMessage
                         id='account.signin.updatePassword'
-                        defaultMessage='Actualizar contraseña'
                       />
                     )}
                     {loading2 && (
                       <span className='indicator-progress' style={{display: 'block'}}>
-                        <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                        <FormattedMessage id='common.pleaseWait' />{' '}
                         <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                       </span>
                     )}
@@ -375,7 +367,7 @@ const SignInMethod: FC = () => {
                     type='button'
                     className='btn btn-color-gray-500 btn-active-light-primary px-6'
                   >
-                    <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
+                    <FormattedMessage id='common.cancel' />
                   </button>
                 </div>
               </form>
@@ -391,7 +383,7 @@ const SignInMethod: FC = () => {
                 }}
                 className='btn btn-light btn-active-light-primary'
               >
-                <FormattedMessage id='account.signin.resetPassword' defaultMessage='Restablecer contraseña' />
+                <FormattedMessage id='account.signin.resetPassword' />
               </button>
             </div>
           </div>
@@ -404,13 +396,11 @@ const SignInMethod: FC = () => {
                   <h4 className='text-gray-800 fw-bolder'>
                     <FormattedMessage
                       id='account.signin.secureTitle'
-                      defaultMessage='Protege tu cuenta'
                     />
                   </h4>
                   <div className='fs-6 text-gray-600 pe-7'>
                     <FormattedMessage
                       id='account.signin.secureBody'
-                      defaultMessage='La autenticación en dos pasos añade una capa extra de seguridad a tu cuenta. Para iniciar sesión, además deberás proporcionar un código de 6 dígitos.'
                     />
                   </div>
                 </div>
@@ -418,7 +408,7 @@ const SignInMethod: FC = () => {
                   href='#kt_account_two_factor'
                   className='btn btn-primary px-6 align-self-center text-nowrap'
                 >
-                  <FormattedMessage id='account.signin.enable' defaultMessage='Configurar' />
+                  <FormattedMessage id='account.signin.enable' />
                 </a>
               </div>
             </div>

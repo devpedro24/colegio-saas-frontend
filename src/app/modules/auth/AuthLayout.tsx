@@ -54,15 +54,15 @@ const AuthLayout = () => {
           {/* begin::Links */}
           <div className='d-flex fw-semibold text-primary fs-base'>
             <a href='#' className='px-5' target='_blank'>
-              <FormattedMessage id='auth.layout.terms' defaultMessage='Términos' />
+              <FormattedMessage id='auth.layout.terms' />
             </a>
 
             <a href='#' className='px-5' target='_blank'>
-              <FormattedMessage id='common.plans' defaultMessage='Planes' />
+              <FormattedMessage id='common.plans' />
             </a>
 
             <a href='#' className='px-5' target='_blank'>
-              <FormattedMessage id='auth.layout.contact' defaultMessage='Contáctanos' />
+              <FormattedMessage id='auth.layout.contact' />
             </a>
           </div>
           {/* end::Links */}
@@ -94,7 +94,7 @@ const AuthLayout = () => {
 
           {/* begin::Title */}
           <h1 className='text-white fs-2qx fw-bolder text-center mb-7'>
-            <FormattedMessage id='auth.layout.heroTitle' defaultMessage='Rápido, eficiente y productivo' />
+            <FormattedMessage id='auth.layout.heroTitle' />
           </h1>
           {/* end::Title */}
 
@@ -102,7 +102,6 @@ const AuthLayout = () => {
           <div className='text-white fs-base text-center'>
             <FormattedMessage
               id='auth.layout.heroText'
-              defaultMessage='Gestiona la vida académica y la convivencia escolar de tu colegio en una sola plataforma, simple y segura.'
             />
           </div>
           {/* end::Text */}

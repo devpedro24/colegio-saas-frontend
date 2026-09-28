@@ -12,7 +12,7 @@ const AccountPage: React.FC = () => {
   const intl = useIntl()
   const accountBreadCrumbs: Array<PageLink> = [
     {
-      title: intl.formatMessage({id: 'account.breadcrumb', defaultMessage: 'Cuenta'}),
+      title: intl.formatMessage({id: 'account.breadcrumb'}),
       path: '/account/overview',
       isSeparator: false,
       isActive: false,
@@ -38,7 +38,7 @@ const AccountPage: React.FC = () => {
           element={
             <>
               <PageTitle breadcrumbs={accountBreadCrumbs}>
-                {intl.formatMessage({id: 'account.tab.overview', defaultMessage: 'Resumen'})}
+                {intl.formatMessage({id: 'account.tab.overview'})}
               </PageTitle>
               <Overview />
             </>
@@ -49,7 +49,7 @@ const AccountPage: React.FC = () => {
           element={
             <>
               <PageTitle breadcrumbs={accountBreadCrumbs}>
-                {intl.formatMessage({id: 'account.tab.settings', defaultMessage: 'Configuración'})}
+                {intl.formatMessage({id: 'account.tab.settings'})}
               </PageTitle>
               <Settings />
             </>

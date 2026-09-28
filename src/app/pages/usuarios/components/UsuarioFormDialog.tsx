@@ -164,7 +164,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
               >
                 {ROLE_KEYS.map((r) => (
                   <option key={r} value={r}>
-                    {intl.formatMessage({id: `academico.usuarios.rol.${r}`, defaultMessage: r})}
+                    {intl.formatMessage({id: `academico.usuarios.rol.${r}`})}
                   </option>
                 ))}
               </select>

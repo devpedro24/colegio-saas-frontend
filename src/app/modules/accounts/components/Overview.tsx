@@ -20,12 +20,12 @@ export function Overview() {
       <div className='card-header cursor-pointer'>
         <div className='card-title m-0'>
           <h3 className='fw-bold m-0'>
-            <FormattedMessage id='account.profileDetails' defaultMessage='Detalles del perfil' />
+            <FormattedMessage id='account.profileDetails' />
           </h3>
         </div>
 
         <Link to='/account/settings' className='btn btn-sm btn-primary align-self-center'>
-          <FormattedMessage id='account.overview.editProfile' defaultMessage='Editar perfil' />
+          <FormattedMessage id='account.overview.editProfile' />
         </Link>
       </div>
       {/* end::Card header */}
@@ -34,7 +34,7 @@ export function Overview() {
       <div className='card-body p-9'>
         <div className='row mb-7'>
           <label className='col-lg-4 fw-semibold text-muted'>
-            <FormattedMessage id='common.name' defaultMessage='Nombre completo' />
+            <FormattedMessage id='common.name' />
           </label>
           <div className='col-lg-8'>
             <span className='fw-bold fs-6 text-gray-800'>{user?.name ?? '—'}</span>
@@ -43,7 +43,7 @@ export function Overview() {
 
         <div className='row mb-7'>
           <label className='col-lg-4 fw-semibold text-muted'>
-            <FormattedMessage id='common.field.rol' defaultMessage='Rol' />
+            <FormattedMessage id='common.field.rol' />
           </label>
           <div className='col-lg-8'>
             <span className='fw-semibold fs-6 text-gray-800'>{roleLabel || '—'}</span>
@@ -52,7 +52,7 @@ export function Overview() {
 
         <div className='row mb-7'>
           <label className='col-lg-4 fw-semibold text-muted'>
-            <FormattedMessage id='common.email' defaultMessage='Correo electrónico' />
+            <FormattedMessage id='common.email' />
           </label>
           <div className='col-lg-8'>
             <span className='fw-bold fs-6 text-gray-800'>{user?.email ?? '—'}</span>
@@ -61,7 +61,7 @@ export function Overview() {
 
         <div className='row mb-7'>
           <label className='col-lg-4 fw-semibold text-muted'>
-            <FormattedMessage id='account.field.contactPhone' defaultMessage='Teléfono de contacto' />
+            <FormattedMessage id='account.field.contactPhone' />
           </label>
           <div className='col-lg-8'>
             <span className='fw-bold fs-6 text-gray-800'>{user?.phone || '—'}</span>
@@ -70,7 +70,7 @@ export function Overview() {
 
         <div className='row mb-0'>
           <label className='col-lg-4 fw-semibold text-muted'>
-            <FormattedMessage id='account.overview.googleAccount' defaultMessage='Cuenta de Google' />
+            <FormattedMessage id='account.overview.googleAccount' />
           </label>
           <div className='col-lg-8'>
             <span className='fw-bold fs-6 text-gray-800'>

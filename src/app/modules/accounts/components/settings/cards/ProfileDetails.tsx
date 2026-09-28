@@ -29,13 +29,12 @@ const ProfileDetails: FC = () => {
       .required(
         intl.formatMessage({
           id: 'account.profile.nameRequired',
-          defaultMessage: 'El nombre es obligatorio',
         }),
       )
-      .max(160, intl.formatMessage({id: 'account.profile.nameMax', defaultMessage: 'Máximo 160 caracteres'})),
+      .max(160, intl.formatMessage({id: 'account.profile.nameMax'})),
     phone: Yup.string().max(
       32,
-      intl.formatMessage({id: 'account.profile.phoneMax', defaultMessage: 'Máximo 32 caracteres'}),
+      intl.formatMessage({id: 'account.profile.phoneMax'}),
     ),
   })
 
@@ -90,7 +89,7 @@ const ProfileDetails: FC = () => {
       >
         <div className='card-title m-0'>
           <h3 className='fw-bold m-0'>
-            <FormattedMessage id='account.profileDetails' defaultMessage='Detalles del perfil' />
+            <FormattedMessage id='account.profileDetails' />
           </h3>
         </div>
       </div>
@@ -100,7 +99,7 @@ const ProfileDetails: FC = () => {
           <div className='card-body border-top p-9'>
             <div className='row mb-6'>
               <label className='col-lg-4 col-form-label required fw-bold fs-6'>
-                <FormattedMessage id='common.name' defaultMessage='Nombre completo' />
+                <FormattedMessage id='common.name' />
               </label>
 
               <div className='col-lg-8 fv-row'>
@@ -109,7 +108,6 @@ const ProfileDetails: FC = () => {
                   className='form-control form-control-lg form-control-solid'
                   placeholder={intl.formatMessage({
                     id: 'account.profile.namePh',
-                    defaultMessage: 'Tu nombre completo',
                   })}
                   {...formik.getFieldProps('name')}
                 />
@@ -123,7 +121,7 @@ const ProfileDetails: FC = () => {
 
             <div className='row mb-0'>
               <label className='col-lg-4 col-form-label fw-bold fs-6'>
-                <FormattedMessage id='account.field.contactPhone' defaultMessage='Teléfono de contacto' />
+                <FormattedMessage id='account.field.contactPhone' />
               </label>
 
               <div className='col-lg-8 fv-row'>
@@ -132,7 +130,6 @@ const ProfileDetails: FC = () => {
                   className='form-control form-control-lg form-control-solid'
                   placeholder={intl.formatMessage({
                     id: 'account.profile.contactPhonePh',
-                    defaultMessage: 'Número de teléfono',
                   })}
                   {...formik.getFieldProps('phone')}
                 />
@@ -147,10 +144,10 @@ const ProfileDetails: FC = () => {
 
           <div className='card-footer d-flex justify-content-end py-6 px-9'>
             <button type='submit' className='btn btn-primary' disabled={loading}>
-              {!loading && <FormattedMessage id='common.save' defaultMessage='Guardar cambios' />}
+              {!loading && <FormattedMessage id='common.save' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
-                  <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />{' '}
+                  <FormattedMessage id='common.pleaseWait' />{' '}
                   <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                 </span>
               )}

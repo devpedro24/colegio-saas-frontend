@@ -125,7 +125,7 @@ const TwoFactorAuth: FC = () => {
       >
         <div className='card-title m-0'>
           <h3 className='fw-bold m-0'>
-            <FormattedMessage id='account.mfa.title' defaultMessage='Verificación en dos pasos' />
+            <FormattedMessage id='account.mfa.title' />
           </h3>
         </div>
       </div>
@@ -138,16 +138,15 @@ const TwoFactorAuth: FC = () => {
               <div className='d-flex flex-wrap align-items-center'>
                 <div>
                   <div className='fs-6 fw-bolder mb-1'>
-                    <FormattedMessage id='common.status' defaultMessage='Estado' />
+                    <FormattedMessage id='common.status' />
                   </div>
                   <div className='d-flex align-items-center'>
                     <span className='badge badge-light-success fw-bold me-2'>
-                      <FormattedMessage id='account.mfa.active' defaultMessage='Activada' />
+                      <FormattedMessage id='account.mfa.active' />
                     </span>
                     <span className='fw-bold text-gray-600'>
                       <FormattedMessage
                         id='account.mfa.activeHint'
-                        defaultMessage='Se te pedirá un código de 6 dígitos al iniciar sesión.'
                       />
                     </span>
                   </div>
@@ -164,7 +163,7 @@ const TwoFactorAuth: FC = () => {
                         setDisarming(true)
                       }}
                     >
-                      <FormattedMessage id='account.mfa.disable' defaultMessage='Desactivar' />
+                      <FormattedMessage id='account.mfa.disable' />
                     </button>
                   </div>
                 )}
@@ -176,7 +175,6 @@ const TwoFactorAuth: FC = () => {
                     <label htmlFor='kt_mfa_disable_code' className='form-label fs-6 fw-bolder mb-3'>
                       <FormattedMessage
                         id='account.mfa.enterCode'
-                        defaultMessage='Ingresa el código de 6 dígitos'
                       />
                     </label>
                     <input
@@ -208,11 +206,11 @@ const TwoFactorAuth: FC = () => {
                     >
                       {disableMutation.isPending ? (
                         <span className='indicator-progress d-block'>
-                          <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
+                          <FormattedMessage id='common.pleaseWait' />
                           <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                         </span>
                       ) : (
-                        <FormattedMessage id='account.mfa.disable' defaultMessage='Desactivar' />
+                        <FormattedMessage id='account.mfa.disable' />
                       )}
                     </button>
                     <button
@@ -225,7 +223,7 @@ const TwoFactorAuth: FC = () => {
                       }}
                       disabled={disableMutation.isPending}
                     >
-                      <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
+                      <FormattedMessage id='common.cancel' />
                     </button>
                   </div>
                 </div>
@@ -237,13 +235,12 @@ const TwoFactorAuth: FC = () => {
               <div className='fs-6 text-gray-700 mb-5'>
                 <FormattedMessage
                   id='account.mfa.setupHint'
-                  defaultMessage='Abre tu app autenticadora (por ejemplo Google Authenticator) y agrega una cuenta escribiendo manualmente este código secreto:'
                 />
               </div>
 
               {/* Secreto en grande, para teclear en la app */}
               <div className='mb-2 fw-bold fs-7 text-gray-600'>
-                <FormattedMessage id='account.mfa.secret' defaultMessage='Código secreto' />
+                <FormattedMessage id='account.mfa.secret' />
               </div>
               <div className='rounded bg-light-primary text-primary font-monospace fs-2 fw-bold px-4 py-4 text-center text-break mb-6'>
                 {setup.secret}
@@ -251,7 +248,7 @@ const TwoFactorAuth: FC = () => {
 
               {/* Enlace otpauth (manual, sin librería de QR) */}
               <div className='mb-2 fw-bold fs-7 text-gray-600'>
-                <FormattedMessage id='account.mfa.otpauthUrl' defaultMessage='Enlace de configuración' />
+                <FormattedMessage id='account.mfa.otpauthUrl' />
               </div>
               <div className='rounded bg-light font-monospace fs-8 text-gray-700 px-4 py-3 text-break mb-8'>
                 {setup.otpauth_url}
@@ -262,7 +259,6 @@ const TwoFactorAuth: FC = () => {
                 <label htmlFor='kt_mfa_code' className='form-label fs-6 fw-bolder mb-3'>
                   <FormattedMessage
                     id='account.mfa.enterCode'
-                    defaultMessage='Ingresa el código de 6 dígitos'
                   />
                 </label>
                 <input
@@ -295,11 +291,11 @@ const TwoFactorAuth: FC = () => {
                 >
                   {confirmMutation.isPending ? (
                     <span className='indicator-progress d-block'>
-                      <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
+                      <FormattedMessage id='common.pleaseWait' />
                       <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                     </span>
                   ) : (
-                    <FormattedMessage id='account.mfa.confirm' defaultMessage='Confirmar y activar' />
+                    <FormattedMessage id='account.mfa.confirm' />
                   )}
                 </button>
                 <button
@@ -308,7 +304,7 @@ const TwoFactorAuth: FC = () => {
                   onClick={cancelSetup}
                   disabled={confirmMutation.isPending}
                 >
-                  <FormattedMessage id='common.cancel' defaultMessage='Cancelar' />
+                  <FormattedMessage id='common.cancel' />
                 </button>
               </div>
             </div>
@@ -319,12 +315,11 @@ const TwoFactorAuth: FC = () => {
               <div className='d-flex flex-stack flex-grow-1 flex-wrap flex-md-nowrap'>
                 <div className='mb-3 mb-md-0 fw-bold'>
                   <h4 className='text-gray-800 fw-bolder'>
-                    <FormattedMessage id='account.mfa.secureTitle' defaultMessage='Protege tu cuenta' />
+                    <FormattedMessage id='account.mfa.secureTitle' />
                   </h4>
                   <div className='fs-6 text-gray-600 pe-7'>
                     <FormattedMessage
                       id='account.mfa.secureBody'
-                      defaultMessage='La verificación en dos pasos añade una capa extra de seguridad. Al iniciar sesión deberás proporcionar un código de 6 dígitos generado por tu app autenticadora.'
                     />
                   </div>
                 </div>
@@ -336,11 +331,11 @@ const TwoFactorAuth: FC = () => {
                 >
                   {setupMutation.isPending ? (
                     <span className='indicator-progress d-block'>
-                      <FormattedMessage id='common.pleaseWait' defaultMessage='Por favor espera...' />
+                      <FormattedMessage id='common.pleaseWait' />
                       <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                     </span>
                   ) : (
-                    <FormattedMessage id='account.mfa.enable' defaultMessage='Activar' />
+                    <FormattedMessage id='account.mfa.enable' />
                   )}
                 </button>
               </div>

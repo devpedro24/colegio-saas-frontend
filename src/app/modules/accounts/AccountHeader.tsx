@@ -92,14 +92,13 @@ const AccountHeader: FC = () => {
                       >
                         <div className='menu-item px-3'>
                           <div className='menu-content text-muted pb-2 px-3 fs-7 text-uppercase'>
-                            <FormattedMessage id='common.payments' defaultMessage='Pagos' />
+                            <FormattedMessage id='common.payments' />
                           </div>
                         </div>
                         <div className='menu-item px-3'>
                           <a href='#' className='menu-link px-3'>
                             <FormattedMessage
                               id='account.menu.createInvoice'
-                              defaultMessage='Crear factura'
                             />
                           </a>
                         </div>
@@ -107,15 +106,12 @@ const AccountHeader: FC = () => {
                           <a href='#' className='menu-link flex-stack px-3'>
                             <FormattedMessage
                               id='account.menu.createPayment'
-                              defaultMessage='Crear pago'
                             />
                             <span
                               className='ms-2'
                               data-bs-toggle='tooltip'
                               title={intl.formatMessage({
                                 id: 'account.menu.createPaymentTooltip',
-                                defaultMessage:
-                                  'Especifica un nombre de destino para uso y referencia futuros',
                               })}
                             >
                               <KTIcon iconName='information' className='fs-6' />
@@ -126,7 +122,6 @@ const AccountHeader: FC = () => {
                           <a href='#' className='menu-link px-3'>
                             <FormattedMessage
                               id='account.menu.generateBill'
-                              defaultMessage='Generar recibo'
                             />
                           </a>
                         </div>
@@ -139,7 +134,6 @@ const AccountHeader: FC = () => {
                             <span className='menu-title'>
                               <FormattedMessage
                                 id='account.menu.subscription'
-                                defaultMessage='Suscripción'
                               />
                             </span>
                             <span className='menu-arrow'></span>
@@ -147,14 +141,13 @@ const AccountHeader: FC = () => {
                           <div className='menu-sub menu-sub-dropdown w-175px py-4'>
                             <div className='menu-item px-3'>
                               <a href='#' className='menu-link px-3'>
-                                <FormattedMessage id='common.plans' defaultMessage='Planes' />
+                                <FormattedMessage id='common.plans' />
                               </a>
                             </div>
                             <div className='menu-item px-3'>
                               <a href='#' className='menu-link px-3'>
                                 <FormattedMessage
                                   id='account.menu.billing'
-                                  defaultMessage='Facturación'
                                 />
                               </a>
                             </div>
@@ -162,7 +155,6 @@ const AccountHeader: FC = () => {
                               <a href='#' className='menu-link px-3'>
                                 <FormattedMessage
                                   id='account.menu.statements'
-                                  defaultMessage='Estados de cuenta'
                                 />
                               </a>
                             </div>
@@ -179,7 +171,6 @@ const AccountHeader: FC = () => {
                                   <span className='form-check-label text-muted fs-6'>
                                     <FormattedMessage
                                       id='account.menu.recurring'
-                                      defaultMessage='Recurrente'
                                     />
                                   </span>
                                 </label>
@@ -189,7 +180,7 @@ const AccountHeader: FC = () => {
                         </div>
                         <div className='menu-item px-3 my-1'>
                           <a href='#' className='menu-link px-3'>
-                            <FormattedMessage id='account.tab.settings' defaultMessage='Configuración' />
+                            <FormattedMessage id='account.tab.settings' />
                           </a>
                         </div>
                       </div>
@@ -211,7 +202,6 @@ const AccountHeader: FC = () => {
                       <span className='fw-semibold fs-6 text-gray-500'>
                         <FormattedMessage
                           id='account.profileCompletion'
-                          defaultMessage='Perfil completado'
                         />
                       </span>
                       <span className='fw-bold fs-6'>50%</span>
@@ -245,7 +235,7 @@ const AccountHeader: FC = () => {
                   }
                   to='/account/overview'
                 >
-                  <FormattedMessage id='account.tab.overview' defaultMessage='Resumen' />
+                  <FormattedMessage id='account.tab.overview' />
                 </Link>
               </li>
               <li className='nav-item mt-2'>
@@ -256,7 +246,7 @@ const AccountHeader: FC = () => {
                   }
                   to='/account/settings'
                 >
-                  <FormattedMessage id='account.tab.settings' defaultMessage='Configuración' />
+                  <FormattedMessage id='account.tab.settings' />
                 </Link>
               </li>
             </ul>
