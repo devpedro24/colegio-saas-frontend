@@ -31,7 +31,7 @@ const CellBadge: FC<{state: CellState}> = ({state}) => {
   }
   if (state.type === 'structural') {
     const level = state.level
-      ? intl.formatMessage({id: `rbac.level.${state.level}`, defaultMessage: state.level})
+      ? intl.formatMessage({id: `rbac.level.${state.level}`})
       : ''
     return (
       <span

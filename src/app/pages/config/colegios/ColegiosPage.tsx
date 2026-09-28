@@ -53,11 +53,11 @@ const ColegiosPage: FC = () => {
 
   const statusBadge = (status: string) => ({
     className: STATUS_CLASS[status] ?? 'badge badge-light-secondary',
-    label: intl.formatMessage({id: `colegios.status.${status}`, defaultMessage: status}),
+    label: intl.formatMessage({id: `colegios.status.${status}`}),
   })
   const planBadge = (plan: string) => ({
     className: PLAN_CLASS[plan] ?? 'badge badge-light-secondary',
-    label: intl.formatMessage({id: `plan.${plan}`, defaultMessage: plan}),
+    label: intl.formatMessage({id: `plan.${plan}`}),
   })
 
   // Busqueda local por nombre.

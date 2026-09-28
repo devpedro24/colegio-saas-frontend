@@ -96,7 +96,7 @@ const CellForm: FC<{
             >
               {levels.map((lvl) => (
                 <option key={lvl} value={lvl}>
-                  {intl.formatMessage({id: `rbac.level.${lvl}`, defaultMessage: lvl})}
+                  {intl.formatMessage({id: `rbac.level.${lvl}`})}
                 </option>
               ))}
             </select>

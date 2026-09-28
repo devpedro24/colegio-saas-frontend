@@ -5,7 +5,7 @@
 import type {IntlShape} from 'react-intl'
 
 export const getUpgradeModalHtml = (intl: IntlShape) => {
-  const t = (id: string, defaultMessage: string) => intl.formatMessage({id, defaultMessage})
+  const t = (id: string) => intl.formatMessage({id})
   return String.raw`
 		<div class="modal fade" id="kt_modal_upgrade_plan" tabindex="-1" aria-hidden="true">
 			<!--begin::Modal dialog-->
@@ -28,14 +28,12 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 					<div class="modal-body pt-0 pb-15 px-5 px-xl-20">
 						<!--begin::Heading-->
 						<div class="mb-13 text-center">
-							<h1 class="mb-3">${t('header.upgrade.title', 'Mejora tu plan')}</h1>
+							<h1 class="mb-3">${t('header.upgrade.title')}</h1>
 							<div class="text-muted fw-semibold fs-5">${t(
-								'header.upgrade.moreInfo',
-								'Si necesitas más información, consulta'
+								'header.upgrade.moreInfo'
 							)}
 							<a href="#" class="link-primary fw-bold">${t(
-								'header.upgrade.pricingGuidelines',
-								'las pautas de precios'
+								'header.upgrade.pricingGuidelines'
 							)}</a>.</div>
 						</div>
 						<!--end::Heading-->
@@ -44,12 +42,10 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 							<!--begin::Nav group-->
 							<div class="nav-group nav-group-outline mx-auto" data-kt-buttons="true">
 								<button class="btn btn-color-gray-500 btn-active btn-active-secondary px-6 py-3 me-2 active" data-kt-plan="month">${t(
-									'header.upgrade.monthly',
-									'Mensual'
+									'header.upgrade.monthly'
 								)}</button>
 								<button class="btn btn-color-gray-500 btn-active btn-active-secondary px-6 py-3" data-kt-plan="annual">${t(
-									'header.upgrade.annual',
-									'Anual'
+									'header.upgrade.annual'
 								)}</button>
 							</div>
 							<!--end::Nav group-->
@@ -71,12 +67,10 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Info-->
 												<div class="flex-grow-1">
 													<div class="d-flex align-items-center fs-2 fw-bold flex-wrap">${t(
-														'header.upgrade.startup',
-														'Startup'
+														'header.upgrade.startup'
 													)}</div>
 													<div class="fw-semibold opacity-75">${t(
-														'header.upgrade.startupDesc',
-														'Ideal para startups'
+														'header.upgrade.startupDesc'
 													)}</div>
 												</div>
 												<!--end::Info-->
@@ -87,7 +81,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<span class="mb-2">$</span>
 												<span class="fs-3x fw-bold" data-kt-plan-price-month="39" data-kt-plan-price-annual="399">39</span>
 												<span class="fs-7 opacity-50">/
-												<span data-kt-element="period">${t('header.upgrade.periodMon', 'mes')}</span></span>
+												<span data-kt-element="period">${t('header.upgrade.periodMon')}</span></span>
 											</div>
 											<!--end::Price-->
 										</label>
@@ -104,12 +98,10 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Info-->
 												<div class="flex-grow-1">
 													<div class="d-flex align-items-center fs-2 fw-bold flex-wrap">${t(
-														'header.upgrade.advanced',
-														'Avanzado'
+														'header.upgrade.advanced'
 													)}</div>
 													<div class="fw-semibold opacity-75">${t(
-														'header.upgrade.advancedDesc',
-														'Ideal para equipos de 100+'
+														'header.upgrade.advancedDesc'
 													)}</div>
 												</div>
 												<!--end::Info-->
@@ -120,7 +112,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<span class="mb-2">$</span>
 												<span class="fs-3x fw-bold" data-kt-plan-price-month="339" data-kt-plan-price-annual="3399">339</span>
 												<span class="fs-7 opacity-50">/
-												<span data-kt-element="period">${t('header.upgrade.periodMon', 'mes')}</span></span>
+												<span data-kt-element="period">${t('header.upgrade.periodMon')}</span></span>
 											</div>
 											<!--end::Price-->
 										</label>
@@ -137,16 +129,13 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Info-->
 												<div class="flex-grow-1">
 													<div class="d-flex align-items-center fs-2 fw-bold flex-wrap">${t(
-														'header.upgrade.enterprise',
-														'Empresarial'
+														'header.upgrade.enterprise'
 													)}
 													<span class="badge badge-light-success ms-2 py-2 px-3 fs-7">${t(
-														'header.upgrade.popular',
-														'Popular'
+														'header.upgrade.popular'
 													)}</span></div>
 													<div class="fw-semibold opacity-75">${t(
-														'header.upgrade.enterpriseDesc',
-														'El mejor valor para equipos de 1000+'
+														'header.upgrade.enterpriseDesc'
 													)}</div>
 												</div>
 												<!--end::Info-->
@@ -157,7 +146,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<span class="mb-2">$</span>
 												<span class="fs-3x fw-bold" data-kt-plan-price-month="999" data-kt-plan-price-annual="9999">999</span>
 												<span class="fs-7 opacity-50">/
-												<span data-kt-element="period">${t('header.upgrade.periodMon', 'mes')}</span></span>
+												<span data-kt-element="period">${t('header.upgrade.periodMon')}</span></span>
 											</div>
 											<!--end::Price-->
 										</label>
@@ -174,12 +163,10 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Info-->
 												<div class="flex-grow-1">
 													<div class="d-flex align-items-center fs-2 fw-bold flex-wrap">${t(
-														'header.upgrade.custom',
-														'Personalizado'
+														'header.upgrade.custom'
 													)}</div>
 													<div class="fw-semibold opacity-75">${t(
-														'header.upgrade.customDesc',
-														'Solicita una licencia personalizada'
+														'header.upgrade.customDesc'
 													)}</div>
 												</div>
 												<!--end::Info-->
@@ -187,7 +174,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 											<!--end::Description-->
 											<!--begin::Price-->
 											<div class="ms-5">
-												<a href="#" class="btn btn-sm btn-success">${t('header.menu.contactUs', 'Contáctanos')}</a>
+												<a href="#" class="btn btn-sm btn-success">${t('header.menu.contactUs')}</a>
 											</div>
 											<!--end::Price-->
 										</label>
@@ -205,12 +192,10 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 											<!--begin::Heading-->
 											<div class="pb-5">
 												<h2 class="fw-bold text-gray-900">${t(
-													'header.upgrade.whatsIncluded',
-													'¿Qué incluye el plan?'
+													'header.upgrade.whatsIncluded'
 												)}</h2>
 												<div class="text-muted fw-semibold">${t(
-													'header.upgrade.startupOptimal',
-													'Óptimo para equipos de 10+ y startups nuevas'
+													'header.upgrade.startupOptimal'
 												)}</div>
 											</div>
 											<!--end::Heading-->
@@ -219,8 +204,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.activeUsers10',
-														'Hasta 10 usuarios activos'
+														'header.upgrade.feat.activeUsers10'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -231,8 +215,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.projectIntegrations30',
-														'Hasta 30 integraciones de proyecto'
+														'header.upgrade.feat.projectIntegrations30'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -243,8 +226,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.analytics',
-														'Módulo de analítica'
+														'header.upgrade.feat.analytics'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -255,8 +237,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-muted flex-grow-1">${t(
-														'header.upgrade.feat.finance',
-														'Módulo de finanzas'
+														'header.upgrade.feat.finance'
 													)}</span>
 													<i class="ki-duotone ki-cross-circle fs-1">
 														<span class="path1"></span>
@@ -267,8 +248,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-muted flex-grow-1">${t(
-														'header.upgrade.feat.accounting',
-														'Módulo de contabilidad'
+														'header.upgrade.feat.accounting'
 													)}</span>
 													<i class="ki-duotone ki-cross-circle fs-1">
 														<span class="path1"></span>
@@ -279,8 +259,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-muted flex-grow-1">${t(
-														'header.upgrade.feat.network',
-														'Plataforma de red'
+														'header.upgrade.feat.network'
 													)}</span>
 													<i class="ki-duotone ki-cross-circle fs-1">
 														<span class="path1"></span>
@@ -291,8 +270,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center">
 													<span class="fw-semibold fs-5 text-muted flex-grow-1">${t(
-														'header.upgrade.feat.cloud',
-														'Espacio en la nube ilimitado'
+														'header.upgrade.feat.cloud'
 													)}</span>
 													<i class="ki-duotone ki-cross-circle fs-1">
 														<span class="path1"></span>
@@ -309,12 +287,10 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 											<!--begin::Heading-->
 											<div class="pb-5">
 												<h2 class="fw-bold text-gray-900">${t(
-													'header.upgrade.whatsIncluded',
-													'¿Qué incluye el plan?'
+													'header.upgrade.whatsIncluded'
 												)}</h2>
 												<div class="text-muted fw-semibold">${t(
-													'header.upgrade.advancedOptimal',
-													'Óptimo para equipos de 100+ y empresas en crecimiento'
+													'header.upgrade.advancedOptimal'
 												)}</div>
 											</div>
 											<!--end::Heading-->
@@ -323,8 +299,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.activeUsers10',
-														'Hasta 10 usuarios activos'
+														'header.upgrade.feat.activeUsers10'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -335,8 +310,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.projectIntegrations30',
-														'Hasta 30 integraciones de proyecto'
+														'header.upgrade.feat.projectIntegrations30'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -347,8 +321,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.analytics',
-														'Módulo de analítica'
+														'header.upgrade.feat.analytics'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -359,8 +332,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.finance',
-														'Módulo de finanzas'
+														'header.upgrade.feat.finance'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -371,8 +343,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.accounting',
-														'Módulo de contabilidad'
+														'header.upgrade.feat.accounting'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -383,8 +354,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-muted flex-grow-1">${t(
-														'header.upgrade.feat.network',
-														'Plataforma de red'
+														'header.upgrade.feat.network'
 													)}</span>
 													<i class="ki-duotone ki-cross-circle fs-1">
 														<span class="path1"></span>
@@ -395,8 +365,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center">
 													<span class="fw-semibold fs-5 text-muted flex-grow-1">${t(
-														'header.upgrade.feat.cloud',
-														'Espacio en la nube ilimitado'
+														'header.upgrade.feat.cloud'
 													)}</span>
 													<i class="ki-duotone ki-cross-circle fs-1">
 														<span class="path1"></span>
@@ -413,12 +382,10 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 											<!--begin::Heading-->
 											<div class="pb-5">
 												<h2 class="fw-bold text-gray-900">${t(
-													'header.upgrade.whatsIncluded',
-													'¿Qué incluye el plan?'
+													'header.upgrade.whatsIncluded'
 												)}</h2>
 												<div class="text-muted fw-semibold">${t(
-													'header.upgrade.enterpriseOptimal',
-													'Óptimo para equipos de 1000+ y grandes empresas'
+													'header.upgrade.enterpriseOptimal'
 												)}</div>
 											</div>
 											<!--end::Heading-->
@@ -427,8 +394,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.activeUsers10',
-														'Hasta 10 usuarios activos'
+														'header.upgrade.feat.activeUsers10'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -439,8 +405,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.projectIntegrations30',
-														'Hasta 30 integraciones de proyecto'
+														'header.upgrade.feat.projectIntegrations30'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -451,8 +416,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.analytics',
-														'Módulo de analítica'
+														'header.upgrade.feat.analytics'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -463,8 +427,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.finance',
-														'Módulo de finanzas'
+														'header.upgrade.feat.finance'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -475,8 +438,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.accounting',
-														'Módulo de contabilidad'
+														'header.upgrade.feat.accounting'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -487,8 +449,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.network',
-														'Plataforma de red'
+														'header.upgrade.feat.network'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -499,8 +460,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.cloud',
-														'Espacio en la nube ilimitado'
+														'header.upgrade.feat.cloud'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -517,12 +477,10 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 											<!--begin::Heading-->
 											<div class="pb-5">
 												<h2 class="fw-bold text-gray-900">${t(
-													'header.upgrade.whatsIncluded',
-													'¿Qué incluye el plan?'
+													'header.upgrade.whatsIncluded'
 												)}</h2>
 												<div class="text-muted fw-semibold">${t(
-													'header.upgrade.customOptimal',
-													'Óptimo para corporaciones'
+													'header.upgrade.customOptimal'
 												)}</div>
 											</div>
 											<!--end::Heading-->
@@ -531,8 +489,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.unlimitedUsers',
-														'Usuarios ilimitados'
+														'header.upgrade.feat.unlimitedUsers'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -543,8 +500,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.unlimitedIntegrations',
-														'Integraciones de proyecto ilimitadas'
+														'header.upgrade.feat.unlimitedIntegrations'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -555,8 +511,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.analytics',
-														'Módulo de analítica'
+														'header.upgrade.feat.analytics'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -567,8 +522,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.finance',
-														'Módulo de finanzas'
+														'header.upgrade.feat.finance'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -579,8 +533,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.accounting',
-														'Módulo de contabilidad'
+														'header.upgrade.feat.accounting'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -591,8 +544,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center mb-7">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.network',
-														'Plataforma de red'
+														'header.upgrade.feat.network'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -603,8 +555,7 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 												<!--begin::Item-->
 												<div class="d-flex align-items-center">
 													<span class="fw-semibold fs-5 text-gray-700 flex-grow-1">${t(
-														'header.upgrade.feat.cloud',
-														'Espacio en la nube ilimitado'
+														'header.upgrade.feat.cloud'
 													)}</span>
 													<i class="ki-duotone ki-check-circle fs-1 text-success">
 														<span class="path1"></span>
@@ -627,15 +578,14 @@ export const getUpgradeModalHtml = (intl: IntlShape) => {
 						<!--begin::Actions-->
 						<div class="d-flex flex-center flex-row-fluid pt-12">
 							<button type="reset" class="btn btn-light me-3" data-bs-dismiss="modal">${t(
-								'common.cancel',
-								'Cancelar'
+								'common.cancel'
 							)}</button>
 							<button type="submit" class="btn btn-primary" id="kt_modal_upgrade_plan_btn">
 								<!--begin::Indicator label-->
-								<span class="indicator-label">${t('header.upgrade.cta', 'Mejorar plan')}</span>
+								<span class="indicator-label">${t('header.upgrade.cta')}</span>
 								<!--end::Indicator label-->
 								<!--begin::Indicator progress-->
-								<span class="indicator-progress">${t('common.pleaseWait', 'Espera un momento...')}
+								<span class="indicator-progress">${t('common.pleaseWait')}
 								<span class="spinner-border spinner-border-sm align-middle ms-2"></span></span>
 								<!--end::Indicator progress-->
 							</button>

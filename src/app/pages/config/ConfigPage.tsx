@@ -4,6 +4,7 @@ import {useAuthz} from '../../modules/auth/core/authz'
 import ColegiosPage from './colegios/ColegiosPage'
 import PlanesPage from './planes/PlanesPage'
 import RbacPage from './rbac/RbacPage'
+import AuditoriaPage from './auditoria/AuditoriaPage'
 
 // Router anidado del modulo Configuracion. Cada pagina ya trae su propio
 // <PageTitle> + <Content>, por eso aqui NO se envuelve con ToolbarWrapper/Content.
@@ -21,6 +22,7 @@ const ConfigPage: FC = () => {
       <Route path='colegios' element={<ColegiosPage />} />
       <Route path='planes' element={<PlanesPage />} />
       <Route path='roles-permisos' element={<RbacPage />} />
+      <Route path='auditoria' element={<AuditoriaPage />} />
       <Route index element={<Navigate to='/configuracion/colegios' />} />
     </Routes>
   )
