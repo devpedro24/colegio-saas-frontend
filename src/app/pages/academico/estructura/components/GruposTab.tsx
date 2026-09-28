@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
@@ -60,6 +61,12 @@ const GrupoFormDialog: FC<{show: boolean; grupo: Grupo | null; onClose: () => vo
 
   const [form, setForm] = useState<CreateGrupoInput>(grupo ? fromGrupo(grupo) : emptyForm())
   const [error, setError] = useState<ApiError | null>(null)
+
+  useEffect(() => {
+    if (!show) return
+    setForm(grupo ? fromGrupo(grupo) : emptyForm())
+    setError(null)
+  }, [show, grupo?.id])
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<CreateGrupoInput>) => setForm((prev) => ({...prev, ...patch}))

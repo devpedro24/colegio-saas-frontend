@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
@@ -15,7 +16,6 @@ const emptyForm = (): CreateGradoInput => ({
   nivel_id: '',
   nombre: '',
   codigo: '',
-  orden: 0,
   estado: 'activo',
 })
 
@@ -23,7 +23,6 @@ const fromGrado = (g: Grado): CreateGradoInput => ({
   nivel_id: g.nivel_id,
   nombre: g.nombre,
   codigo: g.codigo ?? '',
-  orden: g.orden,
   estado: g.estado,
 })
 
@@ -45,6 +44,12 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
   const [form, setForm] = useState<CreateGradoInput>(grado ? fromGrado(grado) : emptyForm())
   const [error, setError] = useState<ApiError | null>(null)
 
+  useEffect(() => {
+    if (!show) return
+    setForm(grado ? fromGrado(grado) : emptyForm())
+    setError(null)
+  }, [show, grado?.id])
+
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<CreateGradoInput>) => setForm((prev) => ({...prev, ...patch}))
 
@@ -55,7 +60,6 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
       ...form,
       nombre: form.nombre.trim(),
       codigo: form.codigo?.trim() || null,
-      orden: Number(form.orden) || 0,
     }
 
     const onError = (err: unknown) => {
@@ -144,29 +148,19 @@ const GradoFormDialog: FC<{show: boolean; grado: Grado | null; onClose: () => vo
             {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
           </div>
 
-          <div className='row'>
-            <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.grado.codigo')}</label>
-              <input
-                type='text'
-                className={`form-control form-control-solid ${fe('codigo') ? 'is-invalid' : ''}`}
-                placeholder={t('academico.estructura.grado.codigoPh')}
-                value={form.codigo ?? ''}
-                onChange={(e) => set({codigo: e.target.value})}
-              />
-              {fe('codigo') && <div className='invalid-feedback'>{fe('codigo')}</div>}
-            </div>
-            <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.grado.orden')}</label>
-              <input
-                type='number'
-                min={0}
-                className={`form-control form-control-solid ${fe('orden') ? 'is-invalid' : ''}`}
-                value={form.orden}
-                onChange={(e) => set({orden: Number(e.target.value)})}
-              />
-              {fe('orden') && <div className='invalid-feedback'>{fe('orden')}</div>}
-            </div>
+          <div className='fv-row mb-7'>
+            <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.grado.codigo')}</label>
+            <input
+              type='text'
+              className={`form-control form-control-solid ${fe('codigo') ? 'is-invalid' : ''}`}
+              placeholder={t('academico.estructura.grado.codigoPh')}
+              minLength={2}
+              maxLength={5}
+              value={form.codigo ?? ''}
+              onChange={(e) => set({codigo: e.target.value})}
+            />
+            {fe('codigo') && <div className='invalid-feedback'>{fe('codigo')}</div>}
+            <div className='form-text'>{t('academico.estructura.grado.codigoHelp')}</div>
           </div>
         </div>
         <div className='modal-footer'>
@@ -243,7 +237,6 @@ const GradosTab: FC = () => {
                 <th className='min-w-150px'>{t('academico.estructura.grado.nombre')}</th>
                 <th className='min-w-150px'>{t('academico.estructura.grado.codigo')}</th>
                 <th className='min-w-150px'>{t('common.field.nivel')}</th>
-                <th className='min-w-100px'>{t('academico.estructura.grado.orden')}</th>
                 <th className='min-w-100px'>{t('common.status')}</th>
                 <th className='min-w-150px text-end'>{t('common.actions')}</th>
               </tr>
@@ -259,9 +252,6 @@ const GradosTab: FC = () => {
                   </td>
                   <td>
                     <span className='text-gray-700'>{g.nivel?.nombre ?? '—'}</span>
-                  </td>
-                  <td>
-                    <span className='text-gray-700'>{g.orden}</span>
                   </td>
                   <td>
                     <span
@@ -314,7 +304,7 @@ const GradosTab: FC = () => {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={6} className='text-center text-muted py-10'>
+                  <td colSpan={5} className='text-center text-muted py-10'>
                     {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.grado'})})}
                   </td>
                 </tr>

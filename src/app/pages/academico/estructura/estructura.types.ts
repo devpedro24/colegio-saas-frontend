@@ -67,7 +67,6 @@ export interface Nivel {
   id: string
   nivel_educativo: string
   nombre: string
-  orden: number
   estado: string
   created_at: string | null
   grados_count?: number
@@ -76,7 +75,6 @@ export interface Nivel {
 export interface CreateNivelInput {
   nivel_educativo: string
   nombre: string
-  orden?: number
   estado?: string
 }
 
@@ -89,7 +87,6 @@ export interface Grado {
   nivel_id: string
   nombre: string
   codigo: string | null
-  orden: number
   estado: string
   created_at: string | null
   nivel?: {id: string; nombre: string; nivel_educativo: string}
@@ -99,7 +96,6 @@ export interface CreateGradoInput {
   nivel_id: string
   nombre: string
   codigo?: string | null
-  orden?: number
   estado?: string
 }
 
@@ -144,10 +140,9 @@ export interface BloqueHorario {
   hora_inicio: string
   hora_fin: string
   es_descanso: boolean
-  orden: number
   estado: string
   created_at: string | null
-  jornada?: {id: string; nombre: string; sede_id: string}
+  jornada?: {id: string; nombre: string; sede_id: string; sede?: {id: string; nombre: string}}
 }
 
 export interface CreateBloqueHorarioInput {
@@ -156,7 +151,6 @@ export interface CreateBloqueHorarioInput {
   hora_inicio: string
   hora_fin: string
   es_descanso?: boolean
-  orden?: number
   estado?: string
 }
 

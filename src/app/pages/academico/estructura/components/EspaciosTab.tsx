@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
@@ -61,6 +62,12 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
     espacio ? fromEspacio(espacio) : emptyForm()
   )
   const [error, setError] = useState<ApiError | null>(null)
+
+  useEffect(() => {
+    if (!show) return
+    setForm(espacio ? fromEspacio(espacio) : emptyForm())
+    setError(null)
+  }, [show, espacio?.id])
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<CreateEspacioFisicoInput>) => setForm((prev) => ({...prev, ...patch}))

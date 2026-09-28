@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
@@ -14,14 +15,12 @@ const modalsRoot = document.getElementById('root-modals') || document.body
 const emptyForm = (): CreateNivelInput => ({
   nivel_educativo: '',
   nombre: '',
-  orden: 0,
   estado: 'activo',
 })
 
 const fromNivel = (n: Nivel): CreateNivelInput => ({
   nivel_educativo: n.nivel_educativo,
   nombre: n.nombre,
-  orden: n.orden,
   estado: n.estado,
 })
 
@@ -42,6 +41,12 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
   const [form, setForm] = useState<CreateNivelInput>(nivel ? fromNivel(nivel) : emptyForm())
   const [error, setError] = useState<ApiError | null>(null)
 
+  useEffect(() => {
+    if (!show) return
+    setForm(nivel ? fromNivel(nivel) : emptyForm())
+    setError(null)
+  }, [show, nivel?.id])
+
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<CreateNivelInput>) => setForm((prev) => ({...prev, ...patch}))
 
@@ -52,7 +57,6 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
       ...form,
       nivel_educativo: form.nivel_educativo.trim(),
       nombre: form.nombre.trim(),
-      orden: Number(form.orden) || 0,
     }
 
     const onError = (err: unknown) => {
@@ -137,17 +141,6 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
             {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
           </div>
 
-          <div className='fv-row'>
-            <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.nivel.orden')}</label>
-            <input
-              type='number'
-              min={0}
-              className={`form-control form-control-solid ${fe('orden') ? 'is-invalid' : ''}`}
-              value={form.orden}
-              onChange={(e) => set({orden: Number(e.target.value)})}
-            />
-            {fe('orden') && <div className='invalid-feedback'>{fe('orden')}</div>}
-          </div>
         </div>
         <div className='modal-footer'>
           <button type='button' className='btn btn-light' onClick={onClose}>
@@ -223,7 +216,6 @@ const NivelesTab: FC = () => {
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='min-w-150px'>{t('academico.estructura.nivel.nombre')}</th>
                 <th className='min-w-150px'>{t('academico.estructura.nivel.nivelEducativo')}</th>
-                <th className='min-w-100px'>{t('academico.estructura.nivel.orden')}</th>
                 <th className='min-w-120px'>{t('academico.estructura.grado.nombre')}</th>
                 <th className='min-w-100px'>{t('common.status')}</th>
                 <th className='min-w-150px text-end'>{t('common.actions')}</th>
@@ -237,9 +229,6 @@ const NivelesTab: FC = () => {
                   </td>
                   <td>
                     <span className='badge badge-light-info'>{n.nivel_educativo}</span>
-                  </td>
-                  <td>
-                    <span className='text-gray-700'>{n.orden}</span>
                   </td>
                   <td>
                     <span className='text-gray-700'>
@@ -297,7 +286,7 @@ const NivelesTab: FC = () => {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={6} className='text-center text-muted py-10'>
+                  <td colSpan={5} className='text-center text-muted py-10'>
                     {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.nivel'})})}
                   </td>
                 </tr>

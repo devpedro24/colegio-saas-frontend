@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
@@ -23,7 +24,6 @@ const emptyForm = (): CreateBloqueHorarioInput => ({
   hora_inicio: '',
   hora_fin: '',
   es_descanso: false,
-  orden: 0,
   estado: 'activo',
 })
 
@@ -33,7 +33,6 @@ const fromBloque = (b: BloqueHorario): CreateBloqueHorarioInput => ({
   hora_inicio: b.hora_inicio,
   hora_fin: b.hora_fin,
   es_descanso: b.es_descanso,
-  orden: b.orden,
   estado: b.estado,
 })
 
@@ -55,6 +54,12 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
   const [form, setForm] = useState<CreateBloqueHorarioInput>(bloque ? fromBloque(bloque) : emptyForm())
   const [error, setError] = useState<ApiError | null>(null)
 
+  useEffect(() => {
+    if (!show) return
+    setForm(bloque ? fromBloque(bloque) : emptyForm())
+    setError(null)
+  }, [show, bloque?.id])
+
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<CreateBloqueHorarioInput>) => setForm((prev) => ({...prev, ...patch}))
 
@@ -64,7 +69,6 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
     const input: CreateBloqueHorarioInput = {
       ...form,
       nombre: form.nombre.trim(),
-      orden: Number(form.orden) || 0,
     }
 
     const onError = (err: unknown) => {
@@ -132,7 +136,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
               <option value=''>{t('common.select')}</option>
               {(jornadas?.data ?? []).map((j) => (
                 <option key={j.id} value={j.id}>
-                  {j.nombre}
+                  {j.nombre}{j.sede?.nombre ? ` — ${j.sede.nombre}` : ''}
                 </option>
               ))}
             </select>
@@ -182,19 +186,8 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
             </div>
           </div>
 
-          <div className='row'>
-            <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.bloque.orden')}</label>
-              <input
-                type='number'
-                min={0}
-                className={`form-control form-control-solid ${fe('orden') ? 'is-invalid' : ''}`}
-                value={form.orden}
-                onChange={(e) => set({orden: Number(e.target.value)})}
-              />
-              {fe('orden') && <div className='invalid-feedback'>{fe('orden')}</div>}
-            </div>
-            <div className='col-md-6 d-flex align-items-end fv-row mb-7'>
+          <div className='fv-row mb-7'>
+            <div className='d-flex align-items-center h-100'>
               <label className='form-check form-switch form-check-custom form-check-solid'>
                 <input
                   className='form-check-input'
@@ -284,7 +277,6 @@ const BloquesTab: FC = () => {
                 <th className='min-w-150px'>{t('common.field.jornada')}</th>
                 <th className='min-w-160px'>{t('academico.estructura.bloque.horaInicio')}</th>
                 <th className='min-w-160px'>{t('academico.estructura.bloque.horaFin')}</th>
-                <th className='min-w-100px'>{t('academico.estructura.bloque.orden')}</th>
                 <th className='min-w-100px'>{t('academico.estructura.bloque.descanso')}</th>
                 <th className='min-w-100px'>{t('common.status')}</th>
                 <th className='min-w-150px text-end'>{t('common.actions')}</th>
@@ -297,16 +289,15 @@ const BloquesTab: FC = () => {
                     <span className='text-gray-800 fw-bold'>{b.nombre}</span>
                   </td>
                   <td>
-                    <span className='text-gray-700'>{b.jornada?.nombre ?? '—'}</span>
+                    <span className='text-gray-700'>
+                      {b.jornada?.nombre ?? '—'}{b.jornada?.sede?.nombre ? ` — ${b.jornada.sede.nombre}` : ''}
+                    </span>
                   </td>
                   <td>
                     <span className='text-gray-700'>{b.hora_inicio}</span>
                   </td>
                   <td>
                     <span className='text-gray-700'>{b.hora_fin}</span>
-                  </td>
-                  <td>
-                    <span className='text-gray-700'>{b.orden}</span>
                   </td>
                   <td>
                     {b.es_descanso ? (
@@ -368,7 +359,7 @@ const BloquesTab: FC = () => {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={8} className='text-center text-muted py-10'>
+                  <td colSpan={7} className='text-center text-muted py-10'>
                     {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.bloqueHorario'})})}
                   </td>
                 </tr>
@@ -398,8 +389,8 @@ const BloquesTab: FC = () => {
               toast.success(t('common.toast.deleted'))
               setDeleteId(null)
             },
-            onError: () => {
-              toast.error(t('common.toast.deleteError'))
+            onError: (error) => {
+              toast.error(error instanceof ApiError ? error.message : t('common.toast.deleteError'))
               setDeleteId(null)
             },
           })

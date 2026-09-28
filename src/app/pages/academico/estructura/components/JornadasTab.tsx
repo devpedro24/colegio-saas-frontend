@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
@@ -50,6 +51,12 @@ const JornadaFormDialog: FC<{
 
   const [form, setForm] = useState<CreateJornadaInput>(jornada ? fromJornada(jornada) : emptyForm())
   const [error, setError] = useState<ApiError | null>(null)
+
+  useEffect(() => {
+    if (!show) return
+    setForm(jornada ? fromJornada(jornada) : emptyForm())
+    setError(null)
+  }, [show, jornada?.id])
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<CreateJornadaInput>) => setForm((prev) => ({...prev, ...patch}))

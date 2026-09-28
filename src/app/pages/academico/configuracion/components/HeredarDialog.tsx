@@ -60,7 +60,7 @@ const HeredarDialog: FC<Props> = ({show, sedeNombre, pending, onConfirm, onClose
       <div className='modal-body py-lg-10 px-lg-10'>
         <p className='text-gray-700 fs-6 mb-6'>
           {intl.formatMessage(
-            {id: 'academico.estructura.sede.heredarText', defaultMessage: 'Selecciona qué categorías copiar a {sede}:'},
+            {id: 'academico.estructura.sede.heredarText'},
             {sede: <span className='fw-bold text-gray-900'>{sedeNombre}</span>},
           )}
         </p>
