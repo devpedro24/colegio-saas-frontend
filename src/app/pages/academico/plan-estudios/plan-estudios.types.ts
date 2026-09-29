@@ -1,13 +1,12 @@
 // Tipos del feature Plan de estudios (Bloque C / Fase 1): áreas, materias,
 // asignación docente y horarios. Dominio en ESPAÑOL, alineado con Bloques A/B.
-// Datos ficticios e interactivos (aún sin backend); ver plan-estudios.store.ts.
-// Niveles, grados, grupos, jornadas, bloques horarios, espacios físicos y
-// docentes SÍ vienen del backend real (estructura.api.ts / usuarios.api.ts).
+// Los datos académicos provienen del backend del tenant y se filtran por año lectivo.
 
 export type EstadoRegistro = 'activo' | 'inactivo'
 
 export interface Area {
   id: string
+  ano_lectivo_id: string
   nombre: string
   descripcion: string | null
   estado: EstadoRegistro
@@ -21,6 +20,7 @@ export interface CreateAreaInput {
 
 export interface Materia {
   id: string
+  ano_lectivo_id: string
   area_id: string
   nombre: string
   /** Horas semanales de intensidad. */

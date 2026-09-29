@@ -5,6 +5,7 @@ import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {useToast} from '@/lib/ui/toast'
 import {ApiError} from '@/lib/api/client'
+import {AcademicYearCell} from '../../academic-year-context'
 import {useNiveles} from '../../estructura/estructura.api'
 import {DeleteConfirmDialog} from '../../estructura/components/DeleteConfirmDialog'
 import {
@@ -83,6 +84,7 @@ const AreaFormDialog: FC<{show: boolean; area: Area | null; onClose: () => void}
             <label className='required fs-6 fw-semibold mb-2'>{t('academico.planEstudios.area.nombre')}</label>
             <input
               type='text'
+              required
               className='form-control form-control-solid'
               placeholder={t('academico.planEstudios.area.nombrePh')}
               value={form.nombre}
@@ -90,7 +92,7 @@ const AreaFormDialog: FC<{show: boolean; area: Area | null; onClose: () => void}
             />
           </div>
           <div className='fv-row'>
-            <label className='fs-6 fw-semibold mb-2'>{t('academico.planEstudios.area.descripcion')}</label>
+            <label className='fs-6 fw-semibold mb-2'>{t('academico.planEstudios.area.descripcion')} {t('common.field.optional')}</label>
             <input
               type='text'
               className='form-control form-control-solid'
@@ -195,6 +197,7 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area
           <div className='fv-row mb-7'>
             <label className='required fs-6 fw-semibold mb-2'>{t('academico.planEstudios.materia.area')}</label>
             <select
+              required
               className='form-select form-select-solid'
               value={form.area_id}
               onChange={(e) => set({area_id: e.target.value})}
@@ -212,6 +215,7 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area
             <label className='required fs-6 fw-semibold mb-2'>{t('academico.planEstudios.materia.nombre')}</label>
             <input
               type='text'
+              required
               className='form-control form-control-solid'
               placeholder={t('academico.planEstudios.materia.nombrePh')}
               value={form.nombre}
@@ -226,6 +230,7 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area
               </label>
               <input
                 type='number'
+                required
                 min={1}
                 max={40}
                 className='form-control form-control-solid'
@@ -234,7 +239,7 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area
               />
             </div>
             <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('academico.planEstudios.materia.nivel')}</label>
+              <label className='fs-6 fw-semibold mb-2'>{t('academico.planEstudios.materia.nivel')} {t('common.field.optional')}</label>
               <select
                 className='form-select form-select-solid'
                 value={form.nivel_id ?? ''}
@@ -287,7 +292,7 @@ const AreasMateriasTab: FC = () => {
 
   const nivelNombre = (nivelId: string | null) => {
     if (!nivelId) return t('academico.nivel.todos')
-    return (niveles?.data ?? []).find((n) => n.id === nivelId)?.nombre ?? '—'
+    return (niveles?.data ?? []).find((n) => String(n.id) === String(nivelId))?.nombre ?? '—'
   }
 
   return (
@@ -311,6 +316,7 @@ const AreasMateriasTab: FC = () => {
           <thead>
             <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
               <th className='min-w-150px'>{t('academico.planEstudios.area.nombre')}</th>
+              <th className='min-w-120px'>{t('common.field.anoLectivo')}</th>
               <th className='min-w-200px'>{t('academico.planEstudios.area.descripcion')}</th>
               <th className='min-w-100px'>{t('common.status')}</th>
               <th className='min-w-120px text-end'>{t('common.actions')}</th>
@@ -320,6 +326,7 @@ const AreasMateriasTab: FC = () => {
             {areas.map((a) => (
               <tr key={a.id}>
                 <td className='text-gray-800 fw-bold'>{a.nombre}</td>
+                <AcademicYearCell yearId={a.ano_lectivo_id} />
                 <td>{a.descripcion ?? '—'}</td>
                 <td>
                   <span className={a.estado === 'activo' ? 'badge badge-light-success' : 'badge badge-light-secondary'}>
@@ -362,7 +369,7 @@ const AreasMateriasTab: FC = () => {
             ))}
             {areas.length === 0 && (
               <tr>
-                <td colSpan={4} className='text-center text-muted py-10'>
+                <td colSpan={5} className='text-center text-muted py-10'>
                   {t('common.empty', {name: intl.formatMessage({id: 'entity.area'})})}
                 </td>
               </tr>
@@ -391,6 +398,7 @@ const AreasMateriasTab: FC = () => {
           <thead>
             <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
               <th className='min-w-150px'>{t('academico.planEstudios.materia.nombre')}</th>
+              <th className='min-w-120px'>{t('common.field.anoLectivo')}</th>
               <th className='min-w-150px'>{t('academico.planEstudios.materia.area')}</th>
               <th className='min-w-120px'>{t('academico.planEstudios.materia.intensidad')}</th>
               <th className='min-w-150px'>{t('academico.planEstudios.materia.nivel')}</th>
@@ -402,6 +410,7 @@ const AreasMateriasTab: FC = () => {
             {materias.map((m) => (
               <tr key={m.id}>
                 <td className='text-gray-800 fw-bold'>{m.nombre}</td>
+                <AcademicYearCell yearId={m.ano_lectivo_id} />
                 <td>{areas.find((a) => a.id === m.area_id)?.nombre ?? '—'}</td>
                 <td>{m.intensidad_horaria}</td>
                 <td>{nivelNombre(m.nivel_id)}</td>
@@ -446,7 +455,7 @@ const AreasMateriasTab: FC = () => {
             ))}
             {materias.length === 0 && (
               <tr>
-                <td colSpan={6} className='text-center text-muted py-10'>
+                <td colSpan={7} className='text-center text-muted py-10'>
                   {t('common.empty', {name: intl.formatMessage({id: 'entity.materia'})})}
                 </td>
               </tr>
