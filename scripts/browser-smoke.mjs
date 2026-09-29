@@ -14,7 +14,7 @@ const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'colegio-ui-smoke-'))
 const artifacts = path.join(root, 'artifacts', 'ui-smoke')
 fs.mkdirSync(artifacts, {recursive: true})
 const today = new Date().toLocaleDateString('en-CA')
-const user = {id: 1, name: 'Rector de prueba', email: 'rector@example.test', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
+const user = {id: 1, name: 'Rector de prueba', email: 'rector@example.test', tenant_id: 'smoke', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
 const year = {id: 1, url_token: 'opaque-year-one', nombre: '2026', estado: 'en_curso', tipo_calendario: 'A', fecha_inicio: '2026-01-01', fecha_fin: '2026-12-31', num_periodos: 3, periodo_sumatorio: true}
 const nextYear = {...year, id: 2, url_token: 'opaque-year-two', nombre: '2027', estado: 'planificado'}
 const group = {id: 1, nombre: 'A', ano_lectivo_id: 1, jornada_id: 1, sede_id: 1, grado: {id: 1, nombre: 'Primero', nivel_id: 1}, sede: {id: 1, nombre: 'Sede Principal'}, jornada: {id: 1, nombre: 'Mañana', hora_inicio: '07:00:00', hora_fin: '12:30:00'}}
@@ -28,6 +28,8 @@ const config = {usar_areas: false, modo_area: 'SIMPLE_AVERAGE', modo_asignatura:
 const event = {id: 1, titulo: 'Feria de ciencias', descripcion: 'Compartimos nuestros experimentos.', fecha: today, hora_inicio: null, hora_fin: null, categoria: 'actividad', institucional: true, materia_id: null, grupos: [], created_by: 1, created_at: new Date().toISOString()}
 const fixtures = {
   '/api/me': {user},
+  '/api/onboarding/status': {required: false, password_required: false, institution_required: false, institution: null, logo_url: null},
+  '/api/broadcasting/auth': {auth: 'smoke'},
   '/api/tenant-status': {is_tenant: true, tenant: {id: 'smoke', name: 'Colegio de prueba', status: 'active'}},
   '/api/anos-lectivos': {data: [year, nextYear]},
   '/api/anos-lectivos/2/estado-copia': {data: {origen_id: 1, opciones: {jornadas: true, periodos: true}, reemplazable: false}},
@@ -63,7 +65,11 @@ try {
       if (req.method === 'GET') return respond()
       let body = ''
       req.on('data', chunk => {body += chunk})
-      req.on('end', () => {writes.push({method: req.method, path: url.pathname, body: JSON.parse(body || '{}')}); respond()})
+      req.on('end', () => {
+        const parsed = req.headers['content-type']?.includes('application/json') ? JSON.parse(body || '{}') : Object.fromEntries(new URLSearchParams(body))
+        writes.push({method: req.method, path: url.pathname, body: parsed})
+        respond()
+      })
     })
   }}]})
   await server.listen()
@@ -108,7 +114,69 @@ try {
   await command('Page.addScriptToEvaluateOnNewDocument', {source: `localStorage.setItem('colegio-saas.auth-token','smoke-token');localStorage.setItem('i18nConfig',JSON.stringify({selectedLang:'es'}));`})
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   const navigate = async (route, text) => { console.log('Checking', route); await command('Page.navigate', {url: `http://127.0.0.1:5197${route}`}); await until(`document.body.innerText.includes(${JSON.stringify(text)})`) }
-  const screenshot = async name => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: false}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
+  const screenshot = async (name, full = false) => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: full}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
+  if (process.env.ONBOARDING_PREVIEW === '1') {
+    const stages = [
+      {name: 'password', text: 'Cambia la contraseña temporal', status: {required: true, password_required: true, institution_required: true, institution: null, logo_url: null}},
+      {name: 'logo', text: 'Logo del colegio', status: {required: true, password_required: false, institution_required: true, institution: null, logo_url: null}},
+      {name: 'institution', text: 'Datos institucionales', status: {required: true, password_required: false, institution_required: true, institution: null, logo_url: '/media/logo-colegio-transparent.png'}},
+    ]
+    for (const stage of stages) {
+      fixtures['/api/onboarding/status'] = stage.status
+      await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
+      await navigate('/bienvenida', stage.text)
+      await screenshot(`onboarding-${stage.name}-desktop`, true)
+      if (stage.name === 'logo') {
+        await evaluate(`(() => { const canvas=document.createElement('canvas'); canvas.width=900; canvas.height=300; const ctx=canvas.getContext('2d'); for (const [index,color] of ['red','lime','blue'].entries()) {ctx.fillStyle=color;ctx.fillRect(index*300,0,300,300)} return new Promise(resolve => canvas.toBlob(blob => {const file=new File([blob],'school-logo.png',{type:'image/png'});const files=new DataTransfer();files.items.add(file);const input=document.querySelector('#school-logo-file');input.files=files.files;input.dispatchEvent(new Event('change',{bubbles:true}));resolve(true)},'image/png')) })()`)
+        await until(`document.querySelector('.logo-uploader-preview canvas')?.width === 900`)
+        assert.equal(await evaluate(`document.querySelectorAll('.logo-uploader-controls input[type="range"]').length`), 1)
+        assert.ok(await evaluate(`document.body.innerText.includes('Mantener proporción') && !document.body.innerText.includes('logo.squareHelp')`))
+        await screenshot('onboarding-logo-wide-desktop', true)
+        await evaluate(`document.querySelectorAll('.logo-uploader-modes button')[1].click()`)
+        await until(`document.querySelector('.logo-uploader-preview canvas')?.width === 300`)
+        assert.ok(await evaluate(`document.querySelector('.logo-uploader-preview canvas').getContext('2d').getImageData(150,150,1,1).data[1] > 200`))
+        await evaluate(`document.querySelector('.logo-uploader-preview').scrollIntoView({block:'center'})`)
+        const crop = await evaluate(`(() => {const box=document.querySelector('.logo-uploader-preview').getBoundingClientRect();return {fromX:box.left+30,toX:box.right-30,y:box.top+box.height/2}})()`)
+        await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: crop.fromX, y: crop.y})
+        await command('Input.dispatchMouseEvent', {type: 'mousePressed', x: crop.fromX, y: crop.y, button: 'left', clickCount: 1})
+        await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: crop.toX, y: crop.y, button: 'left', buttons: 1})
+        await command('Input.dispatchMouseEvent', {type: 'mouseReleased', x: crop.toX, y: crop.y, button: 'left', clickCount: 1})
+        await until(`document.querySelector('.logo-uploader-preview canvas').getContext('2d').getImageData(150,150,1,1).data[0] > 200`)
+        await screenshot('onboarding-logo-cropped-desktop', true)
+        await evaluate(`document.querySelectorAll('.logo-uploader-modes button')[0].click()`)
+        await until(`document.querySelector('.logo-uploader-preview canvas')?.width === 900`)
+      }
+      await command('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true})
+      await sleep(250)
+      assert.ok(await evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'), `${stage.name} overflows on mobile`)
+      await screenshot(`onboarding-${stage.name}-mobile`, true)
+      await command('Emulation.setDeviceMetricsOverride', {width: 320, height: 720, deviceScaleFactor: 1, mobile: true})
+      await sleep(150)
+      assert.ok(await evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'), `${stage.name} overflows at 320px`)
+      if (stage.name === 'password') {
+        fixtures['/api/onboarding/status'] = stages[1].status
+        for (const [index, value] of ['Temporal1!', 'NuevaClave123!', 'NuevaClave123!'].entries()) {
+          await evaluate(`document.querySelectorAll('input[type="password"]')[${index}].focus()`)
+          await command('Input.insertText', {text: value})
+        }
+        await evaluate(`document.querySelector('.onboarding-form button[type="submit"]').click()`)
+        await until(`location.pathname === '/bienvenida' && !!document.querySelector('.logo-uploader')`)
+      }
+    }
+    fixtures['/api/onboarding/status'] = {required: false, password_required: false, institution_required: false, institution: null, logo_url: null}
+    await command('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true})
+    await navigate('/academico/configuracion?tab=datos', 'Datos institucionales')
+    await until(`!!document.querySelector('.logo-uploader')`)
+    await sleep(300)
+    await evaluate(`window.scrollTo(0, document.querySelector('.logo-uploader').getBoundingClientRect().top + window.scrollY - 80)`)
+    await sleep(250)
+    const editorBox = await evaluate(`(() => {const box=document.querySelector('.logo-uploader').getBoundingClientRect();return {top:box.top,bottom:box.bottom,viewport:innerHeight,scrollY,scrollHeight:document.documentElement.scrollHeight}})()`)
+    assert.ok(editorBox.top < editorBox.viewport && editorBox.bottom > 0, `Configuration logo editor is outside the viewport: ${JSON.stringify(editorBox)}`)
+    assert.ok(await evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`), 'Configuration logo editor overflows on mobile')
+    await screenshot('configuration-logo-mobile')
+    assert.deepEqual(errors, [], 'Uncaught browser errors.')
+    console.log('PASS: onboarding and configuration logo layouts, translations, crop dragging and mobile sizes.')
+  } else {
   await navigate('/comunicacion/eventos', 'Feria de ciencias')
   const dropdowns = await evaluate(`['Académico','Comunicación'].map(label=>{const title=[...document.querySelectorAll('#kt_app_header_menu .menu-title')].find(el=>el.textContent===label);const item=title.closest('[data-kt-menu-trigger]');return [item.className,item.querySelector('.menu-sub').className,item.querySelector('.menu-link').className]})`)
   assert.deepEqual(dropdowns[0], dropdowns[1])
@@ -305,6 +373,7 @@ try {
   assert.deepEqual([writes[3].method, writes[3].path, writes[3].body.dia], ['POST', '/api/horarios', 'martes'])
   assert.deepEqual(errors, [], 'Uncaught browser errors.')
   console.log('PASS: navigation, events, reports, SIEE, schedule move/copy by drag and mobile tap, cancellation and responsive actions; screenshots in artifacts/ui-smoke.')
+  }
 } finally {
   socket?.close()
   browser?.kill()
