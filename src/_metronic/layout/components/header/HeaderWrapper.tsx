@@ -7,10 +7,14 @@ import {KTIcon, reInitMenu} from '../../../helpers'
 import {LayoutSetup, useLayout} from '../../core'
 import {Header} from './Header'
 import {Navbar} from './Navbar'
+import {useAuth} from '@/app/modules/auth'
+import {useOnboarding} from '@/app/modules/onboarding/onboarding.api'
 
 export function HeaderWrapper() {
   const {config, classes} = useLayout()
   const intl = useIntl()
+  const {currentUser} = useAuth()
+  const branding = useOnboarding(currentUser?.tenant_id, !currentUser?.is_platform)
   if (config.app?.header?.default?.container === 'fluid') {
     LayoutSetup.classes.headerContainer.push('container-fluid')
   } else {
@@ -85,9 +89,10 @@ export function HeaderWrapper() {
         <div className='d-flex align-items-center flex-grow-1 flex-lg-grow-0 me-5 me-lg-0'>
           <Link to='/dashboard' className='d-flex align-items-center' aria-label='Ir al inicio'>
             <img
-              src='/media/logo-colegio-transparent.png'
+              src={branding.data?.logo_url ?? '/media/logo-colegio-transparent.png'}
               alt='Logo del colegio'
               className='h-55px w-auto'
+              style={{minWidth: 55, maxWidth: 165, objectFit: 'contain'}}
             />
           </Link>
         </div>

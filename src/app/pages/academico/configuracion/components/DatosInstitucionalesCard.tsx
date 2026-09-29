@@ -1,6 +1,11 @@
-﻿import {FC, useState} from 'react'
+import {FC, useState} from 'react'
+import type {FormEvent} from 'react'
 import {useIntl} from 'react-intl'
+import {useQueryClient} from '@tanstack/react-query'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
+import {useAuth} from '@/app/modules/auth'
+import {onboardingKey, useOnboarding} from '@/app/modules/onboarding/onboarding.api'
+import {LogoUploader} from '@/app/modules/onboarding/LogoUploader'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useDatosInstitucionales, useUpdateDatosInstitucionales} from '../configuracion.api'
@@ -38,7 +43,7 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<FormState>) => setForm((prev) => ({...prev, ...patch}))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     update.mutate(
@@ -76,23 +81,25 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
             className={`form-control form-control-solid ${fe('nombre') ? 'is-invalid' : ''}`}
             placeholder={t('academico.config.datos.field.nombrePh')}
             value={form.nombre}
+            required
             onChange={(e) => set({nombre: e.target.value})}
           />
           {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='fs-6 fw-semibold mb-2'>{t('common.field.nit')}</label>
+          <label className='required fs-6 fw-semibold mb-2'>{t('common.field.nit')}</label>
           <input
             type='text'
             className={`form-control form-control-solid ${fe('nit') ? 'is-invalid' : ''}`}
             placeholder={t('common.ph.nit')}
             value={form.nit}
+            required
             onChange={(e) => set({nit: e.target.value})}
           />
           {fe('nit') && <div className='invalid-feedback'>{fe('nit')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='fs-6 fw-semibold mb-2'>
+          <label className='required fs-6 fw-semibold mb-2'>
             {t('academico.config.datos.field.resolucion')}
           </label>
           <input
@@ -100,12 +107,13 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
             className={`form-control form-control-solid ${fe('resolucion_men') ? 'is-invalid' : ''}`}
             placeholder={t('academico.config.datos.field.resolucionPh')}
             value={form.resolucion_men}
+            required
             onChange={(e) => set({resolucion_men: e.target.value})}
           />
           {fe('resolucion_men') && <div className='invalid-feedback'>{fe('resolucion_men')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='fs-6 fw-semibold mb-2'>
+          <label className='required fs-6 fw-semibold mb-2'>
             {t('common.phone')}
           </label>
           <input
@@ -113,12 +121,13 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
             className={`form-control form-control-solid ${fe('telefono') ? 'is-invalid' : ''}`}
             placeholder={t('academico.config.datos.field.telefonoPh')}
             value={form.telefono}
+            required
             onChange={(e) => set({telefono: e.target.value})}
           />
           {fe('telefono') && <div className='invalid-feedback'>{fe('telefono')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='fs-6 fw-semibold mb-2'>
+          <label className='required fs-6 fw-semibold mb-2'>
             {t('common.address')}
           </label>
           <input
@@ -126,12 +135,13 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
             className={`form-control form-control-solid ${fe('direccion') ? 'is-invalid' : ''}`}
             placeholder={t('academico.config.datos.field.direccionPh')}
             value={form.direccion}
+            required
             onChange={(e) => set({direccion: e.target.value})}
           />
           {fe('direccion') && <div className='invalid-feedback'>{fe('direccion')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='fs-6 fw-semibold mb-2'>
+          <label className='required fs-6 fw-semibold mb-2'>
             {t('academico.config.datos.field.correo')}
           </label>
           <input
@@ -139,6 +149,7 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
             className={`form-control form-control-solid ${fe('correo') ? 'is-invalid' : ''}`}
             placeholder={t('academico.config.datos.field.correoPh')}
             value={form.correo}
+            required
             onChange={(e) => set({correo: e.target.value})}
           />
           {fe('correo') && <div className='invalid-feedback'>{fe('correo')}</div>}
@@ -153,7 +164,7 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'config.breadcrumb'})})
+            t('academico.config.datos.save')
           )}
         </button>
       </div>
@@ -196,9 +207,33 @@ const DatosInstitucionalesCard: FC = () => {
         )}
 
         {!isLoading && !isError && <DatosForm key={data?.data?.nombre ?? 'empty'} datos={data?.data} />}
+        {!isLoading && !isError && <LogoEditor />}
       </div>
     </div>
   )
+}
+
+const LogoEditor: FC = () => {
+  const {currentUser} = useAuth()
+  const intl = useIntl()
+  const t = (id: string) => intl.formatMessage({id})
+  const queryClient = useQueryClient()
+  const branding = useOnboarding(currentUser?.tenant_id, !!currentUser?.roles?.includes('rector'))
+  const toast = useToast()
+  if (!currentUser?.roles?.includes('rector') || currentUser.is_platform) return null
+
+  return <div className='border-top pt-7 mt-7'>
+    <h4 className='fw-bold'>{t('onboarding.logo')}</h4>
+    <p className='text-muted fs-6 lh-lg'>{t('onboarding.logoHelp')}</p>
+    <LogoUploader
+      existingUrl={branding.data?.logo_url}
+      saveLabel={t('academico.config.datos.saveLogo')}
+      onSaved={async () => {
+        await queryClient.invalidateQueries({queryKey: onboardingKey(currentUser.tenant_id)})
+        toast.success(t('academico.config.datos.toast.logoSaved'))
+      }}
+    />
+  </div>
 }
 
 export {DatosInstitucionalesCard}

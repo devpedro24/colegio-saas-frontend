@@ -4,6 +4,8 @@ import {KTIcon, toAbsoluteUrl} from '../../../helpers'
 import {useLayout} from '../../core'
 import {MutableRefObject, useEffect, useRef} from 'react'
 import {ToggleComponent} from '../../../assets/ts/components'
+import {useAuth} from '@/app/modules/auth'
+import {useOnboarding} from '@/app/modules/onboarding/onboarding.api'
 
 type PropsType = {
   sidebarRef: MutableRefObject<HTMLDivElement | null>
@@ -11,6 +13,8 @@ type PropsType = {
 
 const SidebarLogo = (props: PropsType) => {
   const {config} = useLayout()
+  const {currentUser} = useAuth()
+  const branding = useOnboarding(currentUser?.tenant_id, !currentUser?.is_platform)
   const toggleRef = useRef<HTMLDivElement>(null)
 
   const appSidebarDefaultMinimizeDesktopEnabled =
@@ -50,7 +54,10 @@ const SidebarLogo = (props: PropsType) => {
   return (
     <div className='app-sidebar-logo px-6' id='kt_app_sidebar_logo'>
       <Link to='/dashboard'>
-        {config.layoutType === 'dark-sidebar' ? (
+        {branding.data?.logo_url ? <>
+          <img alt='Logo del colegio' src={branding.data.logo_url} className='h-40px mw-100 app-sidebar-logo-default' style={{objectFit: 'contain'}} />
+          <img alt='Logo del colegio' src={branding.data.logo_url} className='h-25px app-sidebar-logo-minimize' style={{objectFit: 'contain'}} />
+        </> : config.layoutType === 'dark-sidebar' ? (
           <img
             alt='Logo'
             src={toAbsoluteUrl('media/logos/default-dark.svg')}
@@ -71,11 +78,11 @@ const SidebarLogo = (props: PropsType) => {
           </>
         )}
 
-        <img
+        {!branding.data?.logo_url && <img
           alt='Logo'
           src={toAbsoluteUrl('media/logos/default-small.svg')}
           className='h-20px app-sidebar-logo-minimize'
-        />
+        />}
       </Link>
 
       {(appSidebarDefaultMinimizeDesktopEnabled || appSidebarDefaultCollapseDesktopEnabled) && (

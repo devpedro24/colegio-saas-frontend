@@ -12,6 +12,7 @@ import {ErrorsPage} from '../modules/errors/ErrorsPage'
 import {Logout, AuthPage, useAuth} from '../modules/auth'
 import {App} from '../App'
 import {useImpersonation} from '../modules/impersonation/impersonation.store'
+import {TenantOnboardingGate} from '../modules/onboarding/TenantOnboardingGate'
 
 /**
  * Base URL of the website.
@@ -31,7 +32,9 @@ const AppRoutes: FC = () => {
           <Route path='logout' element={<Logout />} />
           {currentUser ? (
             <>
-              <Route path='/*' element={<PrivateRoutes key={`${currentUser.id}:${activeColegio?.id ?? 'account'}`} />} />
+              <Route path='/*' element={currentUser.is_platform
+                ? <PrivateRoutes key={`${currentUser.id}:${activeColegio?.id ?? 'account'}`} />
+                : <TenantOnboardingGate />} />
               <Route index element={<Navigate to='/dashboard' />} />
             </>
           ) : (

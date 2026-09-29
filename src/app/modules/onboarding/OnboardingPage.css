@@ -1,0 +1,439 @@
+.onboarding-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: clamp(16px, 4vw, 64px);
+  background:
+    radial-gradient(circle at 9% 15%, rgba(25, 185, 107, 0.12), transparent 31%),
+    radial-gradient(circle at 92% 85%, rgba(20, 99, 124, 0.1), transparent 32%),
+    #f5f7f5;
+}
+
+.onboarding-shell {
+  width: min(1140px, 100%);
+  margin: auto;
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.35fr);
+  overflow: hidden;
+  border-radius: 30px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(13, 53, 52, 0.13);
+}
+
+.onboarding-intro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 50px;
+  padding: clamp(32px, 4vw, 58px);
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(155deg, #075144 0%, #073e3f 53%, #102f47 100%);
+  isolation: isolate;
+}
+
+.onboarding-intro::before,
+.onboarding-intro::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.onboarding-intro::before {
+  width: 390px;
+  height: 390px;
+  right: -230px;
+  top: -210px;
+  border: 70px solid rgba(255, 255, 255, 0.045);
+}
+
+.onboarding-intro::after {
+  width: 330px;
+  height: 330px;
+  left: -230px;
+  bottom: -220px;
+  background: rgba(34, 214, 121, 0.11);
+}
+
+.onboarding-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.onboarding-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.11);
+  color: #ecfff3;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.onboarding-badge i {
+  color: #aaf6c5;
+  font-size: 17px;
+}
+
+.onboarding-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.onboarding-logout:hover,
+.onboarding-logout:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.onboarding-headline {
+  max-width: 360px;
+}
+
+.onboarding-mark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 24px;
+  border-radius: 20px;
+  background: linear-gradient(140deg, #35d37c, #10a96e);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.17);
+}
+
+.onboarding-mark i {
+  color: #fff;
+  font-size: 31px;
+}
+
+.onboarding-headline h1 {
+  margin: 0 0 16px;
+  color: #fff;
+  font-size: clamp(2.25rem, 3.8vw, 3.35rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  font-weight: 800;
+}
+
+.onboarding-headline p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.83);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.onboarding-steps {
+  display: grid;
+  gap: 12px;
+  margin: auto 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 65px;
+  padding: 11px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.73);
+  font-size: 16px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.onboarding-step.is-active {
+  color: #103e3b;
+  background: #fff;
+  border-color: #fff;
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.09);
+}
+
+.onboarding-step.is-done {
+  color: #e6fff0;
+  border-color: rgba(118, 245, 171, 0.42);
+  background: rgba(45, 211, 121, 0.13);
+}
+
+.onboarding-step-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.13);
+  font-weight: 800;
+}
+
+.onboarding-step.is-active .onboarding-step-number {
+  color: #fff;
+  background: #12b969;
+}
+
+.onboarding-step.is-done .onboarding-step-number {
+  color: #083f39;
+  background: #a8f0bd;
+}
+
+.onboarding-content {
+  min-width: 0;
+  padding: clamp(32px, 4.6vw, 64px);
+  background: #fff;
+}
+
+.onboarding-content-top {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 46px;
+  color: #127c5b;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.onboarding-progress-track {
+  display: block;
+  width: 120px;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5eee9;
+}
+
+.onboarding-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #19bf70;
+  transition: width 0.25s ease;
+}
+
+.onboarding-form h2 {
+  margin: 0 0 12px;
+  color: #123143;
+  font-size: clamp(1.85rem, 2.6vw, 2.3rem);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+}
+
+.onboarding-form-help {
+  margin-bottom: 30px;
+  color: #5d7180;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.onboarding-form .form-label {
+  margin-bottom: 10px;
+  color: #17394a;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.onboarding-form .form-control {
+  min-height: 51px;
+  border-radius: 11px;
+  font-size: 16px;
+}
+
+.onboarding-form .form-control:focus {
+  border-color: #18bb6b;
+  box-shadow: 0 0 0 3px rgba(24, 187, 107, 0.13);
+}
+
+.onboarding-form .onboarding-file-input {
+  min-height: auto;
+  padding: 12px;
+}
+
+.onboarding-logo-preview {
+  display: grid;
+  place-items: center;
+  min-height: 205px;
+  margin-bottom: 26px;
+  padding: 22px;
+  border: 1.5px dashed #a7c7b7;
+  border-radius: 18px;
+  background: #f6fbf8;
+}
+
+.onboarding-logo-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+}
+
+.onboarding-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.onboarding-actions-between {
+  justify-content: space-between;
+}
+
+.onboarding-actions .btn {
+  min-height: 49px;
+  padding: 11px 21px;
+  border-radius: 11px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.onboarding-actions .btn-success {
+  background: #0fba66;
+  border-color: #0fba66;
+}
+
+.onboarding-actions .btn-success:hover {
+  background: #0a9e56;
+  border-color: #0a9e56;
+}
+
+.onboarding-content .alert {
+  border-radius: 11px;
+  font-size: 15px;
+}
+
+.onboarding-content .list-unstyled {
+  display: grid;
+  gap: 4px;
+  font-size: 15px !important;
+}
+
+.onboarding-content .list-unstyled li.text-muted {
+  color: #536977 !important;
+}
+
+@media (max-width: 900px) {
+  .onboarding-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-intro {
+    gap: 28px;
+  }
+
+  .onboarding-headline {
+    max-width: none;
+  }
+
+  .onboarding-mark {
+    width: 54px;
+    height: 54px;
+    margin-bottom: 15px;
+  }
+
+  .onboarding-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 0;
+  }
+
+  .onboarding-step {
+    align-items: flex-start;
+    min-height: 97px;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  .onboarding-content-top {
+    margin-bottom: 30px;
+  }
+}
+
+@media (max-width: 540px) {
+  .onboarding-page {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .onboarding-shell {
+    border-radius: 20px;
+  }
+
+  .onboarding-intro,
+  .onboarding-content {
+    padding: 26px 22px;
+  }
+
+  .onboarding-intro {
+    gap: 21px;
+  }
+
+  .onboarding-badge,
+  .onboarding-logout {
+    font-size: 13px;
+  }
+
+  .onboarding-topbar {
+    flex-wrap: wrap;
+  }
+
+  .onboarding-headline h1 {
+    font-size: 2rem;
+  }
+
+  .onboarding-headline p {
+    font-size: 15px;
+  }
+
+  .onboarding-steps {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .onboarding-step {
+    min-height: 52px;
+    align-items: center;
+    flex-direction: row;
+    padding: 10px;
+    font-size: 15px;
+  }
+
+  .onboarding-step-number {
+    flex-basis: 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .onboarding-form h2 {
+    font-size: 1.75rem;
+  }
+
+  .onboarding-actions,
+  .onboarding-actions-between {
+    flex-direction: column-reverse;
+  }
+
+  .onboarding-actions .btn {
+    width: 100%;
+  }
+}
