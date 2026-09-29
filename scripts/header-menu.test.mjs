@@ -13,8 +13,12 @@ for (const lang of ['es', 'en']) {
   test(`school navigation uses one dropdown structure and valid ${lang} keys`, () => {
     const html = getHeaderMenuHtml(intl(lang), {isTenantUser: true, canManageUsers: true})
     const dictionary = messages(lang)
-    const communication = renderHeaderDropdown(dictionary['comunicacion.title'], [{label: dictionary['events.calendar'], path: '/comunicacion/eventos'}])
+    const communication = renderHeaderDropdown(dictionary['comunicacion.title'], [{label: dictionary['events.calendar'], path: '/comunicacion/eventos', icon: 'calendar-8'}])
     assert.ok(html.includes(communication))
+    assert.ok(html.includes('href="/academico/siee" data-kt-nav="/academico/siee"'))
+    assert.ok(html.includes('href="/academico/evaluacion/catalogo" data-kt-nav="/academico/evaluacion/catalogo"'))
+    assert.ok(html.includes('ki-solid ki-calendar-8'))
+    assert.ok(!html.slice(0, html.indexOf(dictionary['header.menu.apps'])).includes('class="menu-bullet"'))
     assert.ok(html.includes('data-kt-nav="/academico/siee"'))
     assert.ok(html.includes('data-kt-nav="/academico/boletines"'))
     assert.ok(!html.includes('data-kt-nav="/configuracion/auditoria"'))
@@ -22,6 +26,7 @@ for (const lang of ['es', 'en']) {
   test(`platform navigation exposes audit but no school modules in ${lang}`, () => {
     const html = getHeaderMenuHtml(intl(lang), {isPlatform: true})
     assert.ok(html.includes('data-kt-nav="/configuracion/auditoria"'))
+    assert.ok(html.includes('href="/configuracion/roles-permisos"'))
     assert.ok(!html.includes('data-kt-nav="/comunicacion/eventos"'))
   })
 }
