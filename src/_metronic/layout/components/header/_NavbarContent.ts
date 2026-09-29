@@ -1415,7 +1415,7 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 										<!--end::Menu separator-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
-											<a href="#" data-kt-nav="/account/overview" class="menu-link px-5">${t(
+											<a href="/account/overview" data-kt-nav="/account/overview" class="menu-link px-5">${t(
 												'header.user.myProfile'
 											)}</a>
 										</div>

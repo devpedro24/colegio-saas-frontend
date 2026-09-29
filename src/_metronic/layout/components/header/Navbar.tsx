@@ -68,6 +68,8 @@ const Navbar = () => {
       if (nav) {
         const to = nav.getAttribute('data-kt-nav')
         if (to) {
+          const mouse = e as MouseEvent
+          if (mouse.button !== 0 || mouse.ctrlKey || mouse.metaKey || mouse.shiftKey || mouse.altKey) return
           e.preventDefault()
           navigate(to)
           return

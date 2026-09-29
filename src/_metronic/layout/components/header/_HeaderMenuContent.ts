@@ -2,15 +2,15 @@
 // i18n: el HTML se inyecta via dangerouslySetInnerHTML, asi que las etiquetas visibles
 // se resuelven con intl.formatMessage ANTES de inyectar (no se puede usar <FormattedMessage>
 // dentro de un string HTML). Los textos viven en los catálogos de idiomas.
-/* eslint-disable */
 import type {IntlShape} from 'react-intl'
 
-export const renderHeaderDropdown = (title: string, items: {label: string; path: string}[]) => {
+export const renderHeaderDropdown = (title: string, items: {label: string; path: string; icon?: string}[]) => {
   const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const icon = (name?: string) => `<span class="menu-icon"><i class="ki-solid ki-${/^[a-z0-9-]+$/.test(name ?? '') ? name : 'element-11'} fs-3"></i></span>`
   return `<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
     <span class="menu-link"><span class="menu-title">${escape(title)}</span><span class="menu-arrow d-lg-none"></span></span>
     <div class="menu-sub menu-sub-lg-down-accordion menu-sub-lg-dropdown px-lg-2 py-lg-4 w-lg-250px">
-      ${items.map(item => `<div class="menu-item"><a class="menu-link" href="#" data-kt-nav="${escape(item.path)}"><span class="menu-bullet"><span class="bullet bullet-dot"></span></span><span class="menu-title">${escape(item.label)}</span></a></div>`).join('')}
+      ${items.map(item => `<div class="menu-item"><a class="menu-link" href="${escape(item.path)}" data-kt-nav="${escape(item.path)}">${icon(item.icon)}<span class="menu-title">${escape(item.label)}</span></a></div>`).join('')}
     </div>
   </div>`
 }
@@ -36,24 +36,24 @@ export const getHeaderMenuHtml = (
   const platformMode = opts?.isPlatform === true && opts?.activeColegio !== true
 
   // Una misma estructura Metronic para todos los desplegables del colegio.
-  const dropdown = (titleId: string, items: [string, string][]) => renderHeaderDropdown(
-    t(titleId), items.map(([id, path]) => ({label: t(id), path})),
+  const dropdown = (titleId: string, items: [string, string, string][]) => renderHeaderDropdown(
+    t(titleId), items.map(([id, path, icon]) => ({label: t(id), path, icon})),
   )
   const academicoBlock = colegioMode ? dropdown('academico.title', [
-    ['academico.anos.title', '/academico/anos-lectivos'],
-    ['academico.estructura.title', '/academico/estructura'],
-    ['academico.planEstudios.title', '/academico/plan-estudios'],
-    ['academico.config.title', '/academico/configuracion'],
-    ['siee.title', '/academico/siee'],
-    ['evaluacion.title', '/academico/evaluacion/catalogo'],
-    ['boletines.title', '/academico/boletines'],
+    ['academico.anos.title', '/academico/anos-lectivos', 'calendar-8'],
+    ['academico.estructura.title', '/academico/estructura', 'abstract-26'],
+    ['academico.planEstudios.title', '/academico/plan-estudios', 'book-open'],
+    ['academico.config.title', '/academico/configuracion', 'setting-2'],
+    ['siee.title', '/academico/siee', 'notepad'],
+    ['evaluacion.title', '/academico/evaluacion/catalogo', 'chart-simple'],
+    ['boletines.title', '/academico/boletines', 'document'],
   ]) : ''
 
-  const moduleLink = (id: string, path: string) => `<div class="menu-item me-0 me-lg-2"><a class="menu-link" href="#" data-kt-nav="${esc(path)}"><span class="menu-title">${esc(t(id))}</span></a></div>`
+  const moduleLink = (id: string, path: string) => `<div class="menu-item me-0 me-lg-2"><a class="menu-link" href="${esc(path)}" data-kt-nav="${esc(path)}"><span class="menu-title">${esc(t(id))}</span></a></div>`
   const modulosBlock = colegioMode ? [
     moduleLink('admisiones.title', '/admisiones'),
     moduleLink('evaluacion.title', '/academico/evaluacion/catalogo'),
-    dropdown('comunicacion.title', [['events.calendar', '/comunicacion/eventos']]),
+    dropdown('comunicacion.title', [['events.calendar', '/comunicacion/eventos', 'calendar-8']]),
     moduleLink('pagos.title', '/pagos'),
     moduleLink('reportes.title', '/reportes'),
     moduleLink('bienestar.title', '/bienestar'),
@@ -63,92 +63,20 @@ export const getHeaderMenuHtml = (
   // Bloque 'Gestion de usuarios' (usuarios del colegio / roles): visible en MODO COLEGIO
   // SOLO si el rol tiene el permiso 'usuarios.gestionar'.
   const usersBlock = colegioMode && (opts?.canManageUsers === true)
-    ? String.raw`
-									<!--begin:Menu item-->
-									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
-										<!--begin:Menu link-->
-										<span class="menu-link">
-											<span class="menu-title">${t('header.menu.userManagement')}</span>
-											<span class="menu-arrow d-lg-none"></span>
-										</span>
-										<!--end:Menu link-->
-										<!--begin:Menu sub-->
-										<div class="menu-sub menu-sub-lg-down-accordion menu-sub-lg-dropdown px-lg-2 py-lg-4 w-lg-225px">
-											<!--begin:Menu item-->
-											<div class="menu-item">
-												<!--begin:Menu link-->
-												<a class="menu-link" href="#" data-kt-nav="/usuarios">
-													<span class="menu-bullet">
-														<span class="bullet bullet-dot"></span>
-													</span>
-													<span class="menu-title">${t('header.menu.users')}</span>
-												</a>
-												<!--end:Menu link-->
-											</div>
-											<!--end:Menu item-->
-										</div>
-										<!--end:Menu sub-->
-									</div>
-									<!--end:Menu item-->`
+    ? dropdown('header.menu.userManagement', [['header.menu.users', '/usuarios', 'people']])
     : ''
 
   // Bloque 'Configuración' (colegios / planes / roles-permisos): visible en MODO PLATAFORMA
   // (superadmin sin colegio activo). Al entrar a un colegio, se oculta y aparece 'Académico'.
   const configBlock = platformMode
-    ? String.raw`
-									<!--begin:Menu item-->
-									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
-										<!--begin:Menu link-->
-										<span class="menu-link">
-											<span class="menu-title">${t('header.menu.config')}</span>
-											<span class="menu-arrow d-lg-none"></span>
-										</span>
-										<!--end:Menu link-->
-										<!--begin:Menu sub-->
-										<div class="menu-sub menu-sub-lg-down-accordion menu-sub-lg-dropdown px-lg-2 py-lg-4 w-lg-225px">
-											<!--begin:Menu item-->
-											<div class="menu-item">
-												<!--begin:Menu link-->
-												<a class="menu-link" href="#" data-kt-nav="/configuracion/colegios">
-													<span class="menu-bullet">
-														<span class="bullet bullet-dot"></span>
-													</span>
-													<span class="menu-title">${t('colegios.title')}</span>
-												</a>
-												<!--end:Menu link-->
-											</div>
-											<!--end:Menu item-->
-											<!--begin:Menu item-->
-											<div class="menu-item">
-												<!--begin:Menu link-->
-												<a class="menu-link" href="#" data-kt-nav="/configuracion/planes">
-													<span class="menu-bullet">
-														<span class="bullet bullet-dot"></span>
-													</span>
-													<span class="menu-title">${t('common.plans')}</span>
-												</a>
-												<!--end:Menu link-->
-											</div>
-											<!--end:Menu item-->
-											<!--begin:Menu item-->
-											<div class="menu-item">
-												<!--begin:Menu link-->
-												<a class="menu-link" href="#" data-kt-nav="/configuracion/roles-permisos">
-													<span class="menu-bullet">
-														<span class="bullet bullet-dot"></span>
-													</span>
-													<span class="menu-title">${t('rbac.title')}</span>
-												</a>
-												<!--end:Menu link-->
-											</div>
-											<!--end:Menu item-->
-										</div>
-										<!--end:Menu sub-->
-									</div>
-									<!--end:Menu item-->`
+    ? dropdown('header.menu.config', [
+      ['colegios.title', '/configuracion/colegios', 'abstract-26'],
+      ['common.plans', '/configuracion/planes', 'credit-cart'],
+      ['rbac.title', '/configuracion/roles-permisos', 'security-user'],
+    ])
     : ''
 
-  const auditBlock = platformMode ? `<div class="menu-item"><a class="menu-link" href="#" data-kt-nav="/configuracion/auditoria"><span class="menu-title">${t('audit.title')}</span></a></div>` : ''
+  const auditBlock = platformMode ? `<div class="menu-item"><a class="menu-link" href="/configuracion/auditoria" data-kt-nav="/configuracion/auditoria"><span class="menu-icon"><i class="ki-solid ki-notepad fs-3"></i></span><span class="menu-title">${esc(t('audit.title'))}</span></a></div>` : ''
   return String.raw`${academicoBlock}${modulosBlock}${usersBlock}${configBlock}${auditBlock}
 									<!--begin:Menu item-->
 									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">
