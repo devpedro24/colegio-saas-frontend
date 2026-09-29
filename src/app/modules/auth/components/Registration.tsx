@@ -3,6 +3,9 @@
 import {useMemo, useState, useEffect} from 'react'
 import {useFormik} from 'formik'
 import * as Yup from 'yup'
+import {PasswordField} from '@/app/shared/components/PasswordField'
+import {PasswordRequirements} from '@/app/shared/components/PasswordRequirements'
+import {passwordMeetsPolicy} from '@/app/shared/passwordPolicy'
 import clsx from 'clsx'
 import {FormattedMessage, useIntl, IntlShape} from 'react-intl'
 import {getUserByToken, register} from '../core/_requests'
@@ -36,12 +39,9 @@ const makeRegistrationSchema = (intl: IntlShape) =>
       .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
       .required(intl.formatMessage({id: 'auth.validation.lastnameRequired'})),
     password: Yup.string()
-      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .test('policy', intl.formatMessage({id: 'password.invalid'}), value => passwordMeetsPolicy(value ?? ''))
       .required(intl.formatMessage({id: 'auth.validation.passwordRequired'})),
     changepassword: Yup.string()
-      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
       .required(intl.formatMessage({id: 'auth.validation.confirmPasswordRequired'}))
       .oneOf(
         [Yup.ref('password')],
@@ -264,8 +264,7 @@ export function Registration() {
             <FormattedMessage id='common.password' />
           </label>
           <div className='position-relative mb-3'>
-            <input
-              type='password'
+            <PasswordField
               placeholder={intl.formatMessage({id: 'common.password'})}
               autoComplete='off'
               {...formik.getFieldProps('password')}
@@ -299,11 +298,7 @@ export function Registration() {
           </div>
           {/* end::Meter */}
         </div>
-        <div className='text-muted'>
-          <FormattedMessage
-            id='auth.registration.passwordHint'
-          />
-        </div>
+          <PasswordRequirements password={formik.values.password} />
       </div>
       {/* end::Form group */}
 
@@ -312,8 +307,7 @@ export function Registration() {
         <label className='form-label fw-bolder text-gray-900 fs-6'>
           <FormattedMessage id='auth.field.confirmPassword' />
         </label>
-        <input
-          type='password'
+        <PasswordField
           placeholder={intl.formatMessage({id: 'auth.field.confirmPassword'})}
           autoComplete='off'
           {...formik.getFieldProps('changepassword')}

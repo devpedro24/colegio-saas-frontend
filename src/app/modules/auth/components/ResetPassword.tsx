@@ -2,6 +2,9 @@ import {useState, type FormEvent} from 'react'
 import {Link, useSearchParams} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 import {api} from '@/lib/api/client'
+import {PasswordField} from '@/app/shared/components/PasswordField'
+import {PasswordRequirements} from '@/app/shared/components/PasswordRequirements'
+import {passwordMeetsPolicy} from '@/app/shared/passwordPolicy'
 
 export function ResetPassword() {
   const intl = useIntl()
@@ -14,8 +17,10 @@ export function ResetPassword() {
   const t = (id: string) => intl.formatMessage({id}, {name: ''})
   async function submit(event: FormEvent) {
     event.preventDefault()
-    setBusy(true)
     setError('')
+    if (!passwordMeetsPolicy(password)) { setError(t('password.invalid')); return }
+    if (password !== confirmation) { setError(t('password.mismatch')); return }
+    setBusy(true)
     try {
       await api.post('/reset-password', {email: params.get('email'), token: params.get('token'), password, password_confirmation: confirmation})
       setDone(true)
@@ -29,9 +34,10 @@ export function ResetPassword() {
     {done ? <div className='alert alert-success'>{t('security.reset.done')}</div> : <>
       <p className='text-muted'>{t('security.reset.help')}</p>
       <label className='form-label' htmlFor='new-password'>{t('security.reset.password')}</label>
-      <input id='new-password' className='form-control mb-6' type='password' required minLength={12} autoComplete='new-password' value={password} onChange={e => setPassword(e.target.value)} />
+      <PasswordField id='new-password' className='form-control' wrapperClassName='mb-3' required minLength={8} maxLength={128} autoComplete='new-password' value={password} onChange={e => setPassword(e.target.value)} />
+      <PasswordRequirements password={password} />
       <label className='form-label' htmlFor='confirm-password'>{t('security.reset.confirm')}</label>
-      <input id='confirm-password' className='form-control mb-6' type='password' required minLength={12} autoComplete='new-password' value={confirmation} onChange={e => setConfirmation(e.target.value)} />
+      <PasswordField id='confirm-password' className='form-control' wrapperClassName='mb-6' required minLength={8} maxLength={128} autoComplete='new-password' value={confirmation} onChange={e => setConfirmation(e.target.value)} />
       <button className='btn btn-primary w-100 mb-6' disabled={busy || !params.get('token')}>{t('common.save')}</button>
     </>}
     <Link to='/auth/login'>{t('security.reset.login')}</Link>

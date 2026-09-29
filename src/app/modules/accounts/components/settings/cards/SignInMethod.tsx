@@ -7,6 +7,9 @@ import {useAuth} from '../../../../auth'
 import {useToast} from '@/lib/ui/toast'
 import {ApiError} from '@/lib/api/client'
 import {useChangeEmail, useChangePassword} from '@/app/pages/account/account.api'
+import {PasswordField} from '@/app/shared/components/PasswordField'
+import {PasswordRequirements} from '@/app/shared/components/PasswordRequirements'
+import {passwordMeetsPolicy} from '@/app/shared/passwordPolicy'
 
 interface EmailForm {
   newEmail: string
@@ -47,7 +50,7 @@ const SignInMethod: FC = () => {
   const passwordSchema = Yup.object().shape({
     currentPassword: Yup.string().required('La contraseña actual es obligatoria'),
     newPassword: Yup.string()
-      .min(8, 'Mínimo 8 caracteres')
+      .test('policy', intl.formatMessage({id: 'password.invalid'}), value => passwordMeetsPolicy(value ?? ''))
       .required('La nueva contraseña es obligatoria'),
     passwordConfirmation: Yup.string()
       .required('Confirma la nueva contraseña')
@@ -192,8 +195,7 @@ const SignInMethod: FC = () => {
                           id='account.signin.confirmPassword'
                         />
                       </label>
-                      <input
-                        type='password'
+                      <PasswordField
                         className='form-control form-control-lg form-control-solid'
                         id='confirmemailpassword'
                         {...formik1.getFieldProps('confirmPassword')}
@@ -277,8 +279,7 @@ const SignInMethod: FC = () => {
                           id='account.signin.currentPassword'
                         />
                       </label>
-                      <input
-                        type='password'
+                      <PasswordField
                         className='form-control form-control-lg form-control-solid '
                         id='currentpassword'
                         {...formik2.getFieldProps('currentPassword')}
@@ -298,8 +299,7 @@ const SignInMethod: FC = () => {
                           id='account.signin.newPassword'
                         />
                       </label>
-                      <input
-                        type='password'
+                      <PasswordField
                         className='form-control form-control-lg form-control-solid '
                         id='newpassword'
                         {...formik2.getFieldProps('newPassword')}
@@ -319,8 +319,7 @@ const SignInMethod: FC = () => {
                           id='account.signin.confirmNewPassword'
                         />
                       </label>
-                      <input
-                        type='password'
+                      <PasswordField
                         className='form-control form-control-lg form-control-solid '
                         id='confirmpassword'
                         {...formik2.getFieldProps('passwordConfirmation')}
@@ -334,11 +333,7 @@ const SignInMethod: FC = () => {
                   </div>
                 </div>
 
-                <div className='form-text mb-5'>
-                  <FormattedMessage
-                    id='account.signin.passwordHint'
-                  />
-                </div>
+                <PasswordRequirements password={formik2.values.newPassword} />
 
                 <div className='d-flex'>
                   <button

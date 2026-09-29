@@ -8,6 +8,7 @@ import {FormattedMessage, useIntl, IntlShape} from 'react-intl'
 import {getUserByToken, isMfaRequiredError, login} from '../core/_requests'
 import {toAbsoluteUrl} from '../../../../_metronic/helpers'
 import {useAuth} from '../core/Auth'
+import {PasswordField} from '@/app/shared/components/PasswordField'
 
 const makeLoginSchema = (intl: IntlShape, mfaRequired: boolean) =>
   Yup.object().shape({
@@ -16,10 +17,7 @@ const makeLoginSchema = (intl: IntlShape, mfaRequired: boolean) =>
       .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
       .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
       .required(intl.formatMessage({id: 'auth.validation.emailRequired'})),
-    password: Yup.string()
-      .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
-      .required(intl.formatMessage({id: 'auth.validation.passwordRequired'})),
+    password: Yup.string().required(intl.formatMessage({id: 'auth.validation.passwordRequired'})),
     // El codigo TOTP solo se valida cuando el backend ya exigio MFA.
     code: mfaRequired
       ? Yup.string()
@@ -196,9 +194,8 @@ export function Login() {
         <label className='form-label fw-bolder text-gray-900 fs-6 mb-0'>
           <FormattedMessage id='common.password' />
         </label>
-        <input
-          type='password'
-          autoComplete='off'
+        <PasswordField
+          autoComplete='current-password'
           {...formik.getFieldProps('password')}
           className={clsx(
             'form-control bg-transparent',

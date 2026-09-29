@@ -1,4 +1,5 @@
 import {useState, FC} from 'react'
+import {PasswordField} from '@/app/shared/components/PasswordField'
 import {FormattedMessage, useIntl} from 'react-intl'
 import {KTIcon} from '../../../../../../_metronic/helpers'
 import * as Yup from 'yup'
@@ -115,8 +116,7 @@ const DeactivateAccount: FC = () => {
               <label htmlFor='deactivate-password' className='form-label fs-6 fw-bolder mb-3'>
                 <FormattedMessage id='account.field.password' />
               </label>
-              <input
-                type='password'
+              <PasswordField
                 id='deactivate-password'
                 className='form-control form-control-lg form-control-solid'
                 placeholder={intl.formatMessage({

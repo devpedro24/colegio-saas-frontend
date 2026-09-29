@@ -4,14 +4,15 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {PasswordField} from '@/app/shared/components/PasswordField'
+import {PasswordRequirements} from '@/app/shared/components/PasswordRequirements'
+import {passwordMeetsPolicy} from '@/app/shared/passwordPolicy'
 import {useSedes} from '../../academico/estructura/estructura.api'
 import {useCreateUsuario, useUpdateUsuario} from '../usuarios.api'
-import type {Usuario, UsuarioCreateInput, UsuarioUpdateInput} from '../usuarios.types'
+import type {Usuario} from '../usuarios.types'
 import {ROLE_KEYS, STATUS_KEYS} from '../usuarios.types'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
-
-const STATUS_I18N: Record<string, string> = {active: 'activo', inactive: 'inactivo', suspended: 'suspendido'}
 
 type Props = {
   show: boolean
@@ -55,6 +56,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (password && !passwordMeetsPolicy(password)) { toast.error(t('password.invalid')); return }
 
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
@@ -74,7 +76,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
             role,
             sede_id: usuario.sede_id ?? null,
             status,
-            ...(password.trim() ? {password: password.trim()} : {}),
+            ...(password ? {password} : {}),
           },
         },
         {
@@ -89,7 +91,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
           email: email.trim(),
           role,
           sede_id: sedeId ? Number(sedeId) : null,
-          ...(password.trim() ? {password: password.trim()} : null),
+          ...(password ? {password} : null),
         },
         {
           onSuccess: (res) => {
@@ -204,26 +206,26 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
           {!isEdit ? (
             <div className='fv-row'>
               <label className='fs-6 fw-semibold mb-2'>{t('common.password.temporal')}</label>
-              <input
-                type='text'
+              <PasswordField
                 className={`form-control form-control-solid ${fe('password') ? 'is-invalid' : ''}`}
                 value={password}
                 placeholder={t('academico.usuarios.field.passwordPh')}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              {fe('password') && <div className='invalid-feedback'>{fe('password')}</div>}
+              {fe('password') && <div className='invalid-feedback d-block'>{fe('password')}</div>}
+              {password && <PasswordRequirements password={password} />}
             </div>
           ) : (
             <div className='row'>
               <div className='col-md-6 fv-row mb-7'>
                 <label className='fs-6 fw-semibold mb-2'>{t('common.password.temporal')}</label>
-                <input
-                  type='text'
+                <PasswordField
                   className='form-control form-control-solid'
                   value={password}
                   placeholder={t('academico.usuarios.field.passwordPh')}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                {password && <PasswordRequirements password={password} />}
               </div>
               <div className='col-md-6 fv-row mb-7'>
                 <label className='fs-6 fw-semibold mb-2'>{t('common.status')}</label>
