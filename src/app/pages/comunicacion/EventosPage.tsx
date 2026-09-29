@@ -4,6 +4,7 @@ import { useIntl } from "react-intl";
 import { Modal } from "react-bootstrap";
 import { Navigate } from "react-router-dom";
 import { api } from "@/lib/api/client";
+import { formatSchoolTime } from "@/lib/format/schoolTime";
 import { PageTitle } from "@/_metronic/layout/core";
 import { Content } from "@/_metronic/layout/components/content";
 import { useAuthz } from "@/app/modules/auth/core/authz";
@@ -73,6 +74,8 @@ function Calendar() {
   const [list, setList] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [form, setForm] = useState<Partial<EventItem> | null>(null);
+  const [eventStartTime, setEventStartTime] = useState("");
+  const [eventEndTime, setEventEndTime] = useState("");
   const [formGroups, setFormGroups] = useState<number[]>([]);
   const [institutional, setInstitutional] = useState(false);
   const [subject, setSubject] = useState("");
@@ -167,6 +170,8 @@ function Calendar() {
   );
   function openForm(event?: EventItem) {
     setError("");
+    setEventStartTime(event?.hora_inicio?.slice(0, 5) ?? "");
+    setEventEndTime(event?.hora_fin?.slice(0, 5) ?? "");
     setForm(
       event ?? { fecha: day || dateKey(new Date()), categoria: "actividad" },
     );
@@ -493,9 +498,9 @@ function Calendar() {
                 {intl.formatDate(`${detail.data.fecha}T12:00:00`, {
                   dateStyle: "full",
                 })}{" "}
-                {detail.data.hora_inicio?.slice(0, 5)}{" "}
+                {detail.data.hora_inicio && formatSchoolTime(detail.data.hora_inicio)}{" "}
                 {detail.data.hora_fin &&
-                  `– ${detail.data.hora_fin.slice(0, 5)}`}
+                  `– ${formatSchoolTime(detail.data.hora_fin)}`}
               </p>
               <p>
                 {detail.data.institucional
@@ -619,12 +624,13 @@ function Calendar() {
                 />
               </div>
               <div className="col-md-6">
-                <label htmlFor="event-category" className="form-label">
+                <label htmlFor="event-category" className="form-label required">
                   {t("events.category")}
                 </label>
                 <select
                   id="event-category"
                   name="categoria"
+                  required
                   className="form-select"
                   defaultValue={form?.categoria ?? "actividad"}
                 >
@@ -637,27 +643,32 @@ function Calendar() {
               </div>
               <div className="col-6">
                 <label htmlFor="event-start" className="form-label">
-                  {t("events.start")}
+                  {t("events.start")} {t("common.field.optional")}
                 </label>
                 <input
                   id="event-start"
                   type="time"
                   name="hora_inicio"
                   className="form-control"
-                  defaultValue={form?.hora_inicio?.slice(0, 5) ?? ""}
+                  value={eventStartTime}
+                  onChange={(e) => setEventStartTime(e.target.value)}
                 />
+                {eventStartTime && <div className="form-text">{formatSchoolTime(eventStartTime)}</div>}
               </div>
               <div className="col-6">
-                <label htmlFor="event-end" className="form-label">
-                  {t("events.end")}
+                <label htmlFor="event-end" className={eventStartTime ? "form-label required" : "form-label"}>
+                  {t("events.end")} {!eventStartTime && t("common.field.optional")}
                 </label>
                 <input
                   id="event-end"
                   type="time"
                   name="hora_fin"
+                  required={Boolean(eventStartTime)}
                   className="form-control"
-                  defaultValue={form?.hora_fin?.slice(0, 5) ?? ""}
+                  value={eventEndTime}
+                  onChange={(e) => setEventEndTime(e.target.value)}
                 />
+                {eventEndTime && <div className="form-text">{formatSchoolTime(eventEndTime)}</div>}
               </div>
             </div>
             {catalog.data?.es_rector && (
@@ -676,7 +687,7 @@ function Calendar() {
             {!institutional && (
               <>
                 <fieldset className="mb-5">
-                  <legend className="fs-6 fw-semibold">
+                  <legend className="fs-6 fw-semibold required">
                     {t("events.groups")}
                   </legend>
                   <div className="event-group-picker">
@@ -703,7 +714,7 @@ function Calendar() {
                   </div>
                 </fieldset>
                 <label htmlFor="event-subject" className="form-label">
-                  {t("schedule.subject")}
+                  {t("schedule.subject")} {t("common.field.optional")}
                 </label>
                 <select
                   id="event-subject"
