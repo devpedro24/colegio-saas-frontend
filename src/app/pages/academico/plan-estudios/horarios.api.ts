@@ -1,9 +1,10 @@
 import {useQuery} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
+import {useAcademicYear} from '../academic-year-context'
 
 export type Named = {id: number; nombre: string}
 export type ScheduleGroup = Named & {ano_lectivo_id: number; jornada_id: number | null; sede_id: number | null; grado: Named & {nivel_id: number; nivel?: Named}; sede: Named | null; jornada: (Named & {hora_inicio: string | null; hora_fin: string | null}) | null}
-export type Assignment = {id: number; ano_lectivo_id: number; docente_id: number; materia_id: number; grupo_id: number; docente: {id: number; name: string}; materia: Named; grupo: ScheduleGroup}
+export type Assignment = {id: number; ano_lectivo_id: number; docente_id: number | null; materia_id: number; grupo_id: number; docente: {id: number; name: string} | null; materia: Named; grupo: ScheduleGroup}
 export type Block = Named & {jornada_id: number; hora_inicio: string; hora_fin: string}
 type SessionBase = {id: number; asignacion_id: number | null; grupo_id: number; materia_id: number; docente_id: number | null; grupo: ScheduleGroup; materia: Named; docente: {id: number; name: string} | null; dia: string; espacio_fisico_id: number | null; espacio: Named | null}
 export type Session = SessionBase & (
@@ -24,7 +25,9 @@ export type ScheduleData = {
   sesiones: Session[]
 }
 export function useSchedule() {
-  return useQuery({queryKey: ['horarios'], queryFn: async () => (await api.get<{data: ScheduleData}>('/horarios')).data})
+  const {yearId} = useAcademicYear()
+  return useQuery({queryKey: ['horarios', yearId], enabled: !!yearId,
+    queryFn: async () => (await api.get<{data: ScheduleData}>(`/horarios?ano_lectivo_id=${yearId}`)).data})
 }
 import {useMutation, useQueryClient} from '@tanstack/react-query'
 
