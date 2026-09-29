@@ -32,8 +32,9 @@ export const BoletinView = () => {
   }
 
   const boletin = data as BoletinData
-  const mostrarFinal = boletin.configuracion?.mostrar_final !== false
-  const etiquetaFinal = boletin.configuracion.etiqueta_final
+  const mostrarFinal = !!boletin.periodo_sumatorio || boletin.configuracion?.mostrar_final !== false
+  const etiquetaFinal = boletin.periodo_sumatorio?.nombre ?? boletin.configuracion.etiqueta_final
+  const tituloFinal = boletin.periodo_sumatorio ? t('boletines.sumatorioHelp') : undefined
 
   return (
     <KTCard className='grade-report'>
@@ -91,7 +92,7 @@ export const BoletinView = () => {
                       </th>
                     ))}
                     {mostrarFinal && (
-                      <th className='min-w-100px text-center'>{etiquetaFinal}</th>
+                      <th className='min-w-100px text-center' title={tituloFinal}>{etiquetaFinal}</th>
                     )}
                   </tr>
                 </thead>
@@ -155,7 +156,7 @@ export const BoletinView = () => {
                     </th>
                   ))}
                   {mostrarFinal && (
-                    <th className='min-w-100px text-center'>{etiquetaFinal}</th>
+                    <th className='min-w-100px text-center' title={tituloFinal}>{etiquetaFinal}</th>
                   )}
                 </tr>
               </thead>

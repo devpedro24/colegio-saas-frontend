@@ -40,6 +40,42 @@ export function useCreateAnoLectivo() {
   })
 }
 
+export type DuplicarAnoInput = CreateAnoLectivoInput & {opciones: Record<string, boolean>}
+
+export function useDuplicarAnoLectivo() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({id, input}: {id: string; input: DuplicarAnoInput}) =>
+      api.post<{data: AnoLectivo}>(`/anos-lectivos/${id}/duplicar`, input),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY}),
+  })
+}
+
+export function useCopiarConfiguracionAno() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({id, origenId, opciones}: {id: string; origenId: string; opciones: Record<string, boolean>}) =>
+      api.post<{data: AnoLectivo}>(`/anos-lectivos/${id}/copiar-configuracion`, {
+        origen_id: origenId, opciones,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY}),
+  })
+}
+
+export interface EstadoCopiaAno {
+  origen_id: number | null
+  opciones: Record<string, boolean>
+  reemplazable: boolean
+}
+
+export function useEstadoCopiaAno(id: string) {
+  return useQuery({
+    queryKey: ['anos-lectivos', id, 'estado-copia'],
+    refetchOnMount: 'always',
+    queryFn: () => api.get<{data: EstadoCopiaAno}>(`/anos-lectivos/${id}/estado-copia`),
+  })
+}
+
 /** PUT /anos-lectivos/{id} — edita nombre, calendario, fechas y numero de periodos. */
 export function useUpdateAnoLectivo() {
   const queryClient = useQueryClient()

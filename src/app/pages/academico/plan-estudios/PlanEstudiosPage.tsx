@@ -7,6 +7,7 @@ import {useImpersonation} from '../../../modules/impersonation/impersonation.sto
 import {useAuthz} from '../../../modules/auth/core/authz'
 import {AreasMateriasTab} from './components/AreasMateriasTab'
 import {SchedulingPanel} from './components/SchedulingPanel'
+import {AcademicYearContent, AcademicYearPicker, AcademicYearProvider} from '../academic-year-context'
 
 type Tab = 'resumen' | 'areas' | 'asignaciones' | 'horarios'
 
@@ -50,12 +51,13 @@ const PlanEstudiosPage: FC = () => {
     <>
       <PageTitle breadcrumbs={breadcrumbs}>{t('academico.planEstudios.title')}</PageTitle>
       <Content>
-        <div className='card'>
+        <AcademicYearProvider><div className='card'>
           <div className='card-header border-0 pt-6'>
             <div className='card-title flex-column align-items-start'>
               <h3 className='fw-bold mb-1'>{t('academico.planEstudios.title')}</h3>
               <span className='text-muted fs-7'>{t('academico.planEstudios.subtitle')}</span>
             </div>
+            <div className='card-toolbar'><AcademicYearPicker /></div>
           </div>
           <div className='card-body py-4'>
             <ul className='nav nav-tabs nav-line-tabs nav-line-tabs-2x border-0 fs-6 fw-semibold mb-6'>
@@ -66,7 +68,7 @@ const PlanEstudiosPage: FC = () => {
                     onClick={(e) => {
                       e.preventDefault()
                       setTab(item.key)
-                      setSearchParams({tab: item.key})
+                      setSearchParams((current) => {const next = new URLSearchParams(current); next.set('tab', item.key); return next})
                     }}
                     href='#'
                   >
@@ -76,12 +78,14 @@ const PlanEstudiosPage: FC = () => {
               ))}
             </ul>
 
+            <AcademicYearContent disableActions={tab === 'areas'}>
             {tab === 'resumen' && <SchedulingPanel mode='resumen' />}
             {tab === 'areas' && <AreasMateriasTab />}
             {tab === 'asignaciones' && <SchedulingPanel mode='asignaciones' />}
             {tab === 'horarios' && <SchedulingPanel />}
+            </AcademicYearContent>
           </div>
-        </div>
+        </div></AcademicYearProvider>
       </Content>
     </>
   )

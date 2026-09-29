@@ -1,0 +1,28 @@
+.academic-year-dialog .modal-content {
+  max-height: calc(100dvh - 1rem);
+  overflow: hidden;
+}
+
+.academic-year-dialog form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.academic-year-dialog .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.academic-year-dialog .modal-footer {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 575.98px) {
+  .academic-year-dialog {
+    max-width: calc(100vw - 1rem);
+    margin: .5rem;
+  }
+}

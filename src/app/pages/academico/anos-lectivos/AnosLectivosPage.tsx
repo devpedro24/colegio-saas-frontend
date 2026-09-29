@@ -13,6 +13,8 @@ import {CerrarAnoLectivoDialog} from './components/CerrarAnoLectivoDialog'
 import {ReabrirAnoLectivoDialog} from './components/ReabrirAnoLectivoDialog'
 import {PeriodosDialog} from './components/PeriodosDialog'
 import {DeleteConfirmDialog} from '../estructura/components/DeleteConfirmDialog'
+import {DuplicarAnoLectivoDialog} from './components/DuplicarAnoLectivoDialog'
+import {CopiarConfiguracionDialog} from './components/CopiarConfiguracionDialog'
 
 // Estado del ano lectivo -> clase de badge (etiqueta por i18n).
 const STATUS_CLASS: Record<string, string> = {
@@ -45,6 +47,8 @@ const AnosLectivosPage: FC = () => {
   const [reabriendo, setReabriendo] = useState<AnoLectivo | null>(null)
   const [periodosAno, setPeriodosAno] = useState<AnoLectivo | null>(null)
   const [eliminando, setEliminando] = useState<AnoLectivo | null>(null)
+  const [duplicando, setDuplicando] = useState<AnoLectivo | null>(null)
+  const [copiando, setCopiando] = useState<AnoLectivo | null>(null)
 
   const toast = useToast()
   const {data, isLoading, isError} = useAnosLectivos()
@@ -171,8 +175,8 @@ const AnosLectivosPage: FC = () => {
                             <span className='text-gray-700'>
                               {t('academico.anos.periodosCount', {count: a.num_periodos})}
                             </span>
-                            {a.tiene_quinto_periodo && (
-                              <span className='badge badge-light-info ms-2'>{t('academico.anos.quinto')}</span>
+                            {a.periodo_sumatorio && (
+                              <span className='badge badge-light-info ms-2'>{t('academico.anos.sumatorio')}</span>
                             )}
                           </td>
                           <td>
@@ -180,6 +184,14 @@ const AnosLectivosPage: FC = () => {
                           </td>
                           <td>
                             <div className='d-flex align-items-center justify-content-end flex-shrink-0 gap-2'>
+                              <button type='button' className='btn btn-light-primary btn-sm' onClick={() => setDuplicando(a)}>
+                                {t('academico.anos.duplicate.action')}
+                              </button>
+                              {!['cerrado', 'archivado'].includes(a.estado) && list.length > 1 && (
+                                <button type='button' className='btn btn-light-info btn-sm' onClick={() => setCopiando(a)}>
+                                  {t('academico.anos.copyLater.action')}
+                                </button>
+                              )}
                               <button
                                 type='button'
                                 className='btn btn-light btn-sm'
@@ -281,6 +293,8 @@ const AnosLectivosPage: FC = () => {
       </Content>
 
       <AnoLectivoFormDialog show={showCreate} ano={formAno} onClose={closeForm} />
+      <DuplicarAnoLectivoDialog source={duplicando} onClose={() => setDuplicando(null)} />
+      <CopiarConfiguracionDialog target={copiando} years={list} onClose={() => setCopiando(null)} />
       <CerrarAnoLectivoDialog
         show={cerrando !== null}
         ano={cerrando}

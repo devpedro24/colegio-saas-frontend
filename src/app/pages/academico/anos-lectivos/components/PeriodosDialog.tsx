@@ -31,16 +31,8 @@ interface PeriodoFormState {
   peso: string
 }
 
-const PERIODOS_DISPONIBLES = [
-  {orden: 1, nombre: 'Primer período', labelId: 'academico.periodos.option.primero'},
-  {orden: 2, nombre: 'Segundo período', labelId: 'academico.periodos.option.segundo'},
-  {orden: 3, nombre: 'Tercer período', labelId: 'academico.periodos.option.tercero'},
-  {orden: 4, nombre: 'Cuarto período', labelId: 'academico.periodos.option.cuarto'},
-  {orden: 5, nombre: 'Quinto período', labelId: 'academico.periodos.option.quinto'},
-]
-
 const emptyPeriodoForm = (orden: number): PeriodoFormState => ({
-  nombre: PERIODOS_DISPONIBLES.find((p) => p.orden === orden)?.nombre ?? '',
+  nombre: `P${orden}`,
   orden: String(orden),
   fecha_inicio: '',
   fecha_fin: '',
@@ -75,7 +67,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
   const del = useDeletePeriodo(ano.id)
 
   const periodos = data?.data ?? []
-  const maxPeriodos = ano.num_periodos + (ano.tiene_quinto_periodo ? 1 : 0)
+  const maxPeriodos = ano.num_periodos
   const opcionesPeriodo = Array.from({length: maxPeriodos}, (_, index) => ({orden: index + 1, nombre: `P${index + 1}`}))
   const siguienteOrden = opcionesPeriodo.find((p) => !periodos.some((existente) => existente.orden === p.orden))?.orden ?? 1
   const mostrarPeso = true

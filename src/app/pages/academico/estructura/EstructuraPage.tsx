@@ -11,6 +11,7 @@ import {BloquesTab} from './components/BloquesTab'
 import {EspaciosTab} from './components/EspaciosTab'
 import {useImpersonation} from '../../../modules/impersonation/impersonation.store'
 import {useAuthz} from '../../../modules/auth/core/authz'
+import {AcademicYearContent, AcademicYearPicker, AcademicYearProvider} from '../academic-year-context'
 
 type Tab = 'jornadas' | 'niveles' | 'grados' | 'grupos' | 'bloques' | 'espacios'
 
@@ -58,12 +59,13 @@ const EstructuraPage: FC = () => {
     <>
       <PageTitle breadcrumbs={breadcrumbs}>{t('academico.estructura.title')}</PageTitle>
       <Content>
-        <div className='card'>
+        <AcademicYearProvider><div className='card'>
           <div className='card-header border-0 pt-6'>
             <div className='card-title flex-column align-items-start'>
               <h3 className='fw-bold mb-1'>{t('academico.estructura.title')}</h3>
               <span className='text-muted fs-7'>{t('academico.estructura.subtitle')}</span>
             </div>
+            <div className='card-toolbar'><AcademicYearPicker /></div>
           </div>
           <div className='card-body py-4'>
             <ul className='nav nav-tabs nav-line-tabs nav-line-tabs-2x border-0 fs-6 fw-semibold mb-6'>
@@ -74,7 +76,7 @@ const EstructuraPage: FC = () => {
                     onClick={(e) => {
                       e.preventDefault()
                       setTab(item.key)
-                      setSearchParams({tab: item.key})
+                      setSearchParams((current) => {const next = new URLSearchParams(current); next.set('tab', item.key); return next})
                     }}
                     href='#'
                   >
@@ -84,14 +86,16 @@ const EstructuraPage: FC = () => {
               ))}
             </ul>
 
+            <AcademicYearContent>
             {tab === 'jornadas' && <JornadasTab />}
             {tab === 'niveles' && <NivelesTab />}
             {tab === 'grados' && <GradosTab />}
             {tab === 'grupos' && <GruposTab />}
             {tab === 'bloques' && <BloquesTab />}
             {tab === 'espacios' && <EspaciosTab />}
+            </AcademicYearContent>
           </div>
-        </div>
+        </div></AcademicYearProvider>
       </Content>
     </>
   )

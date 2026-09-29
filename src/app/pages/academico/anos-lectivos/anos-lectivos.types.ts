@@ -14,6 +14,8 @@ export type AnoLectivoEstado = 'planificado' | 'en_curso' | 'cerrado' | 'archiva
 /** Un ano lectivo tal como lo devuelve el backend. */
 export interface AnoLectivo {
   id: string
+  /** Selector opaco para la URL; el ID solo se usa dentro de la aplicación. */
+  url_token: string
   /** Identificacion: "2026" (Calendario A) o "2025-2026" (Calendario B). */
   nombre: string
   tipo_calendario: TipoCalendario
@@ -23,8 +25,8 @@ export interface AnoLectivo {
   fecha_fin: string
   /** Numero de periodos academicos (tipicamente 4). */
   num_periodos: number
-  /** Quinto período opcional, adicional a los cuatro períodos regulares. */
-  tiene_quinto_periodo: boolean
+  /** Resultado anual calculado, visible como P(N+1), sin fechas ni notas propias. */
+  periodo_sumatorio: boolean
   /** Cantidad de períodos creados; permite saber si el año puede iniciarse. */
   periodos_configurados?: number
   estado: AnoLectivoEstado
@@ -38,7 +40,7 @@ export interface CreateAnoLectivoInput {
   fecha_inicio: string
   fecha_fin: string
   num_periodos: number
-  tiene_quinto_periodo: boolean
+  periodo_sumatorio: boolean
 }
 
 /** Body de PUT /anos-lectivos/{id} (editar). */

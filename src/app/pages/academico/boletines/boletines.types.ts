@@ -34,6 +34,7 @@ export interface BoletinData {
   ano: string
   configuracion: import('../siee/siee.types').SieeConfiguracion
   periodos: Array<{id: number; nombre: string; peso: number | null; estado: string}>
+  periodo_sumatorio: {orden: number; nombre: string; modo: string} | null
   asignaturas: BoletinAsignatura[]
   areas: BoletinArea[]
   advertencias: string[]

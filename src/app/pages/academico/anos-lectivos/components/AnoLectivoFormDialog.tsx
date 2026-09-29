@@ -22,7 +22,7 @@ interface FormState {
   fecha_inicio: string
   fecha_fin: string
   num_periodos: string
-  tiene_quinto_periodo: boolean
+  periodo_sumatorio: boolean
 }
 
 /** Recorta un ISO datetime/date a 'YYYY-MM-DD' para <input type=date>. */
@@ -40,7 +40,7 @@ const emptyForm = (): FormState => ({
   ...calendarDefaults('A'),
   tipo_calendario: 'A',
   num_periodos: '4',
-  tiene_quinto_periodo: false,
+  periodo_sumatorio: false,
 })
 
 const fromAno = (a: AnoLectivo): FormState => ({
@@ -49,7 +49,7 @@ const fromAno = (a: AnoLectivo): FormState => ({
   fecha_inicio: toDateInput(a.fecha_inicio),
   fecha_fin: toDateInput(a.fecha_fin),
   num_periodos: String(a.num_periodos),
-  tiene_quinto_periodo: a.tiene_quinto_periodo,
+  periodo_sumatorio: a.periodo_sumatorio,
 })
 
 // Formulario interno: se remonta (via key) por modo/ano para arrancar precargado.
@@ -79,7 +79,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
       fecha_inicio: form.fecha_inicio,
       fecha_fin: form.fecha_fin,
       num_periodos: Number(form.num_periodos) || 0,
-      tiene_quinto_periodo: form.tiene_quinto_periodo,
+      periodo_sumatorio: form.periodo_sumatorio,
     }
 
     const onError = (err: unknown) => {
@@ -179,12 +179,13 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
           <input
             type='number'
             min={1}
-            max={form.tiene_quinto_periodo ? 11 : 12}
+            max={12}
             className={`form-control form-control-solid ${fe('num_periodos') ? 'is-invalid' : ''}`}
             value={form.num_periodos}
             onChange={(e) => set({num_periodos: e.target.value})}
           />
           {fe('num_periodos') && <div className='invalid-feedback'>{fe('num_periodos')}</div>}
+          <div className='form-text'>{t('academico.anos.field.numPeriodosHelp')}</div>
         </div>
 
         <div className='fv-row mb-7'>
@@ -192,18 +193,16 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
             <input
               className='form-check-input'
               type='checkbox'
-              checked={form.tiene_quinto_periodo}
-              onChange={(e) => {
-                const enabled = e.target.checked
-                const count = Number(form.num_periodos)
-                set({tiene_quinto_periodo: enabled, ...(enabled && count > 11 ? {num_periodos: '11'} : {})})
-              }}
+              checked={form.periodo_sumatorio}
+              onChange={(e) => set({periodo_sumatorio: e.target.checked})}
             />
             <span className='form-check-label fw-semibold text-gray-700'>
-              {t('academico.anos.field.quinto')}
+              {t('academico.anos.field.sumatorio')}
             </span>
           </label>
-          <div className='text-muted fs-7 mt-2'>{t('academico.anos.field.quintoHelp')}</div>
+          {form.periodo_sumatorio && <div className='alert alert-light-info fs-7 mt-4 mb-0'>
+            {t('academico.anos.field.sumatorioHelp', {next: Number(form.num_periodos) + 1})}
+          </div>}
         </div>
 
       </div>
