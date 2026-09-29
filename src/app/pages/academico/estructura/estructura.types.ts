@@ -41,6 +41,7 @@ export type UpdateSedeInput = CreateSedeInput
 
 export interface Jornada {
   id: string
+  ano_lectivo_id: string
   sede_id: string
   nombre: string
   hora_inicio: string | null
@@ -65,6 +66,7 @@ export type UpdateJornadaInput = Partial<CreateJornadaInput>
 
 export interface Nivel {
   id: string
+  ano_lectivo_id: string
   nivel_educativo: string
   nombre: string
   estado: string
@@ -84,6 +86,7 @@ export type UpdateNivelInput = Partial<CreateNivelInput>
 
 export interface Grado {
   id: string
+  ano_lectivo_id: string
   nivel_id: string
   nombre: string
   codigo: string | null
@@ -135,6 +138,7 @@ export type UpdateGrupoInput = Partial<CreateGrupoInput>
 
 export interface BloqueHorario {
   id: string
+  ano_lectivo_id: string
   jornada_id: string
   nombre: string
   hora_inicio: string
@@ -160,6 +164,7 @@ export type UpdateBloqueHorarioInput = Partial<CreateBloqueHorarioInput>
 
 export interface EspacioFisico {
   id: string
+  ano_lectivo_id: string
   sede_id: string | null
   nombre: string
   tipo: string

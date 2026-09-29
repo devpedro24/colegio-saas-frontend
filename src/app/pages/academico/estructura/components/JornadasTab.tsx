@@ -1,11 +1,13 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
-import {useEffect} from 'react'
+import {useEffect, type FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {formatSchoolTime} from '@/lib/format/schoolTime'
+import {AcademicYearCell} from '../../academic-year-context'
 import {
   useCreateJornada,
   useDeleteJornada,
@@ -56,12 +58,12 @@ const JornadaFormDialog: FC<{
     if (!show) return
     setForm(jornada ? fromJornada(jornada) : emptyForm())
     setError(null)
-  }, [show, jornada?.id])
+  }, [show, jornada])
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<CreateJornadaInput>) => setForm((prev) => ({...prev, ...patch}))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     const input: CreateJornadaInput = {
@@ -129,6 +131,7 @@ const JornadaFormDialog: FC<{
               {t('common.field.sede')}
             </label>
             <select
+              required
               className={`form-select form-select-solid ${fe('sede_id') ? 'is-invalid' : ''}`}
               value={form.sede_id}
               onChange={(e) => set({sede_id: e.target.value})}
@@ -148,6 +151,7 @@ const JornadaFormDialog: FC<{
               {t('academico.estructura.jornada.nombre')}
             </label>
             <input
+              required
               type='text'
               className={`form-control form-control-solid ${fe('nombre') ? 'is-invalid' : ''}`}
               placeholder={t('academico.estructura.jornada.nombrePh')}
@@ -160,7 +164,7 @@ const JornadaFormDialog: FC<{
           <div className='row'>
             <div className='col-md-6 fv-row mb-7'>
               <label className='fs-6 fw-semibold mb-2'>
-                {t('academico.estructura.jornada.horaInicio')}
+                {t('academico.estructura.jornada.horaInicio')} {t('common.field.optional')}
               </label>
               <input
                 type='time'
@@ -168,16 +172,20 @@ const JornadaFormDialog: FC<{
                 value={form.hora_inicio ?? ''}
                 onChange={(e) => set({hora_inicio: e.target.value})}
               />
+              {form.hora_inicio && <div className='form-text'>{formatSchoolTime(form.hora_inicio)}</div>}
               {fe('hora_inicio') && <div className='invalid-feedback'>{fe('hora_inicio')}</div>}
             </div>
             <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.jornada.horaFin')}</label>
+              <label className='fs-6 fw-semibold mb-2'>
+                {t('academico.estructura.jornada.horaFin')} {t('common.field.optional')}
+              </label>
               <input
                 type='time'
                 className={`form-control form-control-solid ${fe('hora_fin') ? 'is-invalid' : ''}`}
                 value={form.hora_fin ?? ''}
                 onChange={(e) => set({hora_fin: e.target.value})}
               />
+              {form.hora_fin && <div className='form-text'>{formatSchoolTime(form.hora_fin)}</div>}
               {fe('hora_fin') && <div className='invalid-feedback'>{fe('hora_fin')}</div>}
             </div>
           </div>
@@ -254,6 +262,7 @@ const JornadasTab: FC = () => {
             <thead>
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='min-w-150px'>{t('academico.estructura.jornada.nombre')}</th>
+                <th className='min-w-120px'>{t('common.field.anoLectivo')}</th>
                 <th className='min-w-150px'>{t('common.field.sede')}</th>
                 <th className='min-w-150px'>{t('academico.estructura.jornada.horaInicio')}</th>
                 <th className='min-w-100px'>{t('common.status')}</th>
@@ -266,12 +275,13 @@ const JornadasTab: FC = () => {
                   <td>
                     <span className='text-gray-800 fw-bold'>{j.nombre}</span>
                   </td>
+                  <AcademicYearCell yearId={j.ano_lectivo_id} />
                   <td>
                     <span className='text-gray-700'>{j.sede?.nombre ?? '—'}</span>
                   </td>
                   <td>
                     <span className='text-gray-700'>
-                      {j.hora_inicio ? `${j.hora_inicio} â†’ ${j.hora_fin}` : '—'}
+                      {j.hora_inicio ? `${formatSchoolTime(j.hora_inicio)} – ${formatSchoolTime(j.hora_fin)}` : '—'}
                     </span>
                   </td>
                   <td>
@@ -325,7 +335,7 @@ const JornadasTab: FC = () => {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={5} className='text-center text-muted py-10'>
+                  <td colSpan={6} className='text-center text-muted py-10'>
                     {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.jornada'})})}
                   </td>
                 </tr>

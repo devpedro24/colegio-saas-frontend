@@ -6,6 +6,7 @@ import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicYearCell} from '../../academic-year-context'
 import {
   useCreateEspacioFisico,
   useDeleteEspacioFisico,
@@ -312,6 +313,7 @@ const EspaciosTab: FC = () => {
             <thead>
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='min-w-160px'>{t('academico.estructura.espacio.nombre')}</th>
+                <th className='min-w-120px'>{t('common.field.anoLectivo')}</th>
                 <th className='min-w-120px'>{t('academico.estructura.espacio.tipo')}</th>
                 <th className='min-w-100px'>{t('academico.estructura.espacio.capacidad')}</th>
                 <th className='min-w-140px'>{t('academico.estructura.espacio.ubicacion')}</th>
@@ -326,6 +328,7 @@ const EspaciosTab: FC = () => {
                   <td>
                     <span className='text-gray-800 fw-bold'>{e.nombre}</span>
                   </td>
+                  <AcademicYearCell yearId={e.ano_lectivo_id} />
                   <td>
                     <span className='badge badge-light'>{tipoLabel(t, e.tipo)}</span>
                   </td>
@@ -377,7 +380,7 @@ const EspaciosTab: FC = () => {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={7} className='text-center text-muted py-10'>
+                  <td colSpan={8} className='text-center text-muted py-10'>
                     {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})}
                   </td>
                 </tr>

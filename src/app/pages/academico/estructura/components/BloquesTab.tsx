@@ -1,11 +1,13 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
-import {useEffect} from 'react'
+import {useEffect, type FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {formatSchoolTime} from '@/lib/format/schoolTime'
+import {AcademicYearCell} from '../../academic-year-context'
 import {
   useBloquesHorarios,
   useCreateBloqueHorario,
@@ -58,12 +60,12 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
     if (!show) return
     setForm(bloque ? fromBloque(bloque) : emptyForm())
     setError(null)
-  }, [show, bloque?.id])
+  }, [show, bloque])
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<CreateBloqueHorarioInput>) => setForm((prev) => ({...prev, ...patch}))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     const input: CreateBloqueHorarioInput = {
@@ -129,6 +131,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
               {t('common.field.jornada')}
             </label>
             <select
+              required
               className={`form-select form-select-solid ${fe('jornada_id') ? 'is-invalid' : ''}`}
               value={form.jornada_id}
               onChange={(e) => set({jornada_id: e.target.value})}
@@ -148,6 +151,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
               {t('academico.estructura.bloque.nombre')}
             </label>
             <input
+              required
               type='text'
               className={`form-control form-control-solid ${fe('nombre') ? 'is-invalid' : ''}`}
               placeholder={t('academico.estructura.bloque.nombrePh')}
@@ -163,12 +167,14 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
                 {t('academico.estructura.bloque.horaInicio')}
               </label>
               <input
+                required
                 type='time'
                 step={60}
                 className={`form-control form-control-solid ${fe('hora_inicio') ? 'is-invalid' : ''}`}
                 value={form.hora_inicio}
                 onChange={(e) => set({hora_inicio: e.target.value})}
               />
+              {form.hora_inicio && <div className='form-text'>{formatSchoolTime(form.hora_inicio)}</div>}
               {fe('hora_inicio') && <div className='invalid-feedback'>{fe('hora_inicio')}</div>}
             </div>
             <div className='col-md-6 fv-row mb-7'>
@@ -176,12 +182,14 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
                 {t('academico.estructura.bloque.horaFin')}
               </label>
               <input
+                required
                 type='time'
                 step={60}
                 className={`form-control form-control-solid ${fe('hora_fin') ? 'is-invalid' : ''}`}
                 value={form.hora_fin}
                 onChange={(e) => set({hora_fin: e.target.value})}
               />
+              {form.hora_fin && <div className='form-text'>{formatSchoolTime(form.hora_fin)}</div>}
               {fe('hora_fin') && <div className='invalid-feedback'>{fe('hora_fin')}</div>}
             </div>
           </div>
@@ -274,6 +282,7 @@ const BloquesTab: FC = () => {
             <thead>
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='min-w-120px'>{t('academico.estructura.bloque.nombre')}</th>
+                <th className='min-w-120px'>{t('common.field.anoLectivo')}</th>
                 <th className='min-w-150px'>{t('common.field.jornada')}</th>
                 <th className='min-w-160px'>{t('academico.estructura.bloque.horaInicio')}</th>
                 <th className='min-w-160px'>{t('academico.estructura.bloque.horaFin')}</th>
@@ -288,16 +297,17 @@ const BloquesTab: FC = () => {
                   <td>
                     <span className='text-gray-800 fw-bold'>{b.nombre}</span>
                   </td>
+                  <AcademicYearCell yearId={b.ano_lectivo_id} />
                   <td>
                     <span className='text-gray-700'>
                       {b.jornada?.nombre ?? '—'}{b.jornada?.sede?.nombre ? ` — ${b.jornada.sede.nombre}` : ''}
                     </span>
                   </td>
                   <td>
-                    <span className='text-gray-700'>{b.hora_inicio}</span>
+                    <span className='text-gray-700'>{formatSchoolTime(b.hora_inicio)}</span>
                   </td>
                   <td>
-                    <span className='text-gray-700'>{b.hora_fin}</span>
+                    <span className='text-gray-700'>{formatSchoolTime(b.hora_fin)}</span>
                   </td>
                   <td>
                     {b.es_descanso ? (
@@ -359,7 +369,7 @@ const BloquesTab: FC = () => {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={7} className='text-center text-muted py-10'>
+                  <td colSpan={8} className='text-center text-muted py-10'>
                     {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.bloqueHorario'})})}
                   </td>
                 </tr>

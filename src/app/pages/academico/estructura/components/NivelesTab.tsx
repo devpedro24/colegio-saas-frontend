@@ -6,6 +6,7 @@ import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicYearCell} from '../../academic-year-context'
 import {useCreateNivel, useDeleteNivel, useNiveles, useUpdateNivel} from '../estructura.api'
 import type {CreateNivelInput, Nivel} from '../estructura.types'
 import {DeleteConfirmDialog} from './DeleteConfirmDialog'
@@ -215,6 +216,7 @@ const NivelesTab: FC = () => {
             <thead>
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='min-w-150px'>{t('academico.estructura.nivel.nombre')}</th>
+                <th className='min-w-120px'>{t('common.field.anoLectivo')}</th>
                 <th className='min-w-150px'>{t('academico.estructura.nivel.nivelEducativo')}</th>
                 <th className='min-w-120px'>{t('academico.estructura.grado.nombre')}</th>
                 <th className='min-w-100px'>{t('common.status')}</th>
@@ -227,6 +229,7 @@ const NivelesTab: FC = () => {
                   <td>
                     <span className='text-gray-800 fw-bold'>{n.nombre}</span>
                   </td>
+                  <AcademicYearCell yearId={n.ano_lectivo_id} />
                   <td>
                     <span className='badge badge-light-info'>{n.nivel_educativo}</span>
                   </td>
@@ -286,7 +289,7 @@ const NivelesTab: FC = () => {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={5} className='text-center text-muted py-10'>
+                  <td colSpan={6} className='text-center text-muted py-10'>
                     {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.nivel'})})}
                   </td>
                 </tr>

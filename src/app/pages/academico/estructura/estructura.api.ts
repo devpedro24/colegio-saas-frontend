@@ -4,6 +4,7 @@
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
+import {useAcademicYear} from '../academic-year-context'
 import type {
   BloqueHorario,
   CreateBloqueHorarioInput,
@@ -29,6 +30,11 @@ export const GRADOS_KEY = ['estructura', 'grados'] as const
 export const GRUPOS_KEY = ['estructura', 'grupos'] as const
 export const BLOQUES_KEY = ['estructura', 'bloques-horarios'] as const
 export const ESPACIOS_KEY = ['estructura', 'espacios-fisicos'] as const
+const annualUrl = (path: string, yearId: string, key?: string, value?: string | null) => {
+  const params = new URLSearchParams({ano_lectivo_id: yearId})
+  if (key && value) params.set(key, value)
+  return `${path}?${params}`
+}
 
 /**
  * URL de una sede adicional: su tenant vive en `https://{tenant_domain}.{base}` donde
@@ -94,37 +100,38 @@ export function useDeleteSede() {
 // ---- Jornadas ----
 
 export function useJornadas(sedeId?: string | null) {
+  const {yearId} = useAcademicYear()
   return useQuery({
-    queryKey: [...JORNADAS_KEY, sedeId ?? '_'],
-    enabled: sedeId === undefined || sedeId !== null, // sin filtro => lista completa
-    queryFn: () => {
-      const q = sedeId ? `?sede_id=${sedeId}` : ''
-      return api.get<{data: Jornada[]}>(`/estructura/jornadas${q}`)
-    },
+    queryKey: [...JORNADAS_KEY, yearId, sedeId ?? '_'],
+    enabled: !!yearId && (sedeId === undefined || sedeId !== null),
+    queryFn: () => api.get<{data: Jornada[]}>(annualUrl('/estructura/jornadas', yearId, 'sede_id', sedeId)),
   })
 }
 
 export function useCreateJornada() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
-    mutationFn: (input: CreateJornadaInput) => api.post<{data: Jornada}>('/estructura/jornadas', input),
+    mutationFn: (input: CreateJornadaInput) => api.post<{data: Jornada}>('/estructura/jornadas', {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: JORNADAS_KEY}),
   })
 }
 
 export function useUpdateJornada() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: Partial<CreateJornadaInput>}) =>
-      api.put<{data: Jornada}>(`/estructura/jornadas/${id}`, input),
+      api.put<{data: Jornada}>(`/estructura/jornadas/${id}`, {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: JORNADAS_KEY}),
   })
 }
 
 export function useDeleteJornada() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/estructura/jornadas/${id}`),
+    mutationFn: (id: string) => api.delete<{data: null}>(annualUrl(`/estructura/jornadas/${id}`, yearId)),
     onSuccess: () => queryClient.invalidateQueries({queryKey: JORNADAS_KEY}),
   })
 }
@@ -132,33 +139,37 @@ export function useDeleteJornada() {
 // ---- Niveles ----
 
 export function useNiveles() {
+  const {yearId} = useAcademicYear()
   return useQuery({
-    queryKey: NIVELES_KEY,
-    queryFn: () => api.get<{data: Nivel[]}>('/estructura/niveles'),
+    queryKey: [...NIVELES_KEY, yearId], enabled: !!yearId,
+    queryFn: () => api.get<{data: Nivel[]}>(annualUrl('/estructura/niveles', yearId)),
   })
 }
 
 export function useCreateNivel() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
-    mutationFn: (input: CreateNivelInput) => api.post<{data: Nivel}>('/estructura/niveles', input),
+    mutationFn: (input: CreateNivelInput) => api.post<{data: Nivel}>('/estructura/niveles', {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: NIVELES_KEY}),
   })
 }
 
 export function useUpdateNivel() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: CreateNivelInput}) =>
-      api.put<{data: Nivel}>(`/estructura/niveles/${id}`, input),
+      api.put<{data: Nivel}>(`/estructura/niveles/${id}`, {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: NIVELES_KEY}),
   })
 }
 
 export function useDeleteNivel() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/estructura/niveles/${id}`),
+    mutationFn: (id: string) => api.delete<{data: null}>(annualUrl(`/estructura/niveles/${id}`, yearId)),
     onSuccess: () => queryClient.invalidateQueries({queryKey: NIVELES_KEY}),
   })
 }
@@ -166,34 +177,38 @@ export function useDeleteNivel() {
 // ---- Grados ----
 
 export function useGrados(nivelId?: string) {
+  const {yearId} = useAcademicYear()
   return useQuery({
-    queryKey: GRADOS_KEY,
-    enabled: nivelId === undefined, // filtro por nivel se delibera en componente
-    queryFn: () => api.get<{data: Grado[]}>('/estructura/grados'),
+    queryKey: [...GRADOS_KEY, yearId],
+    enabled: !!yearId && nivelId === undefined,
+    queryFn: () => api.get<{data: Grado[]}>(annualUrl('/estructura/grados', yearId)),
   })
 }
 
 export function useCreateGrado() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
-    mutationFn: (input: CreateGradoInput) => api.post<{data: Grado}>('/estructura/grados', input),
+    mutationFn: (input: CreateGradoInput) => api.post<{data: Grado}>('/estructura/grados', {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: GRADOS_KEY}),
   })
 }
 
 export function useUpdateGrado() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: CreateGradoInput}) =>
-      api.put<{data: Grado}>(`/estructura/grados/${id}`, input),
+      api.put<{data: Grado}>(`/estructura/grados/${id}`, {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: GRADOS_KEY}),
   })
 }
 
 export function useDeleteGrado() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/estructura/grados/${id}`),
+    mutationFn: (id: string) => api.delete<{data: null}>(annualUrl(`/estructura/grados/${id}`, yearId)),
     onSuccess: () => queryClient.invalidateQueries({queryKey: GRADOS_KEY}),
   })
 }
@@ -201,13 +216,12 @@ export function useDeleteGrado() {
 // ---- Grupos ----
 
 export function useGrupos(anoLectivoId?: string) {
+  const {yearId} = useAcademicYear()
+  const selectedYear = anoLectivoId ?? yearId
   return useQuery({
-    queryKey: [...GRUPOS_KEY, anoLectivoId ?? '_all'],
-    enabled: anoLectivoId === undefined || anoLectivoId !== null,
-    queryFn: () => {
-      const params = anoLectivoId ? `?ano_lectivo_id=${anoLectivoId}` : ''
-      return api.get<{data: Grupo[]}>(`/estructura/grupos${params}`)
-    },
+    queryKey: [...GRUPOS_KEY, selectedYear],
+    enabled: !!selectedYear,
+    queryFn: () => api.get<{data: Grupo[]}>(annualUrl('/estructura/grupos', selectedYear)),
   })
 }
 
@@ -239,39 +253,39 @@ export function useDeleteGrupo() {
 // ---- Bloques horarios ----
 
 export function useBloquesHorarios(jornadaId?: string) {
+  const {yearId} = useAcademicYear()
   return useQuery({
-    queryKey: [...BLOQUES_KEY, jornadaId ?? '_all'],
-    enabled: jornadaId === undefined || jornadaId !== null,
-    queryFn: () => {
-      const params = jornadaId ? `?jornada_id=${jornadaId}` : ''
-      return api
-        .get<{data: BloqueHorario[]}>(`/estructura/bloques-horarios${params}`)
-    },
+    queryKey: [...BLOQUES_KEY, yearId, jornadaId ?? '_all'],
+    enabled: !!yearId && (jornadaId === undefined || jornadaId !== null),
+    queryFn: () => api.get<{data: BloqueHorario[]}>(annualUrl('/estructura/bloques-horarios', yearId, 'jornada_id', jornadaId)),
   })
 }
 
 export function useCreateBloqueHorario() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
     mutationFn: (input: CreateBloqueHorarioInput) =>
-      api.post<{data: BloqueHorario}>('/estructura/bloques-horarios', input),
+      api.post<{data: BloqueHorario}>('/estructura/bloques-horarios', {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: BLOQUES_KEY}),
   })
 }
 
 export function useUpdateBloqueHorario() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: CreateBloqueHorarioInput}) =>
-      api.put<{data: BloqueHorario}>(`/estructura/bloques-horarios/${id}`, input),
+      api.put<{data: BloqueHorario}>(`/estructura/bloques-horarios/${id}`, {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: BLOQUES_KEY}),
   })
 }
 
 export function useDeleteBloqueHorario() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/estructura/bloques-horarios/${id}`),
+    mutationFn: (id: string) => api.delete<{data: null}>(annualUrl(`/estructura/bloques-horarios/${id}`, yearId)),
     onSuccess: () => queryClient.invalidateQueries({queryKey: BLOQUES_KEY}),
   })
 }
@@ -279,40 +293,39 @@ export function useDeleteBloqueHorario() {
 // ---- Espacios físicos ----
 
 export function useEspaciosFisicos(sedeId?: string) {
+  const {yearId} = useAcademicYear()
   return useQuery({
-    queryKey: [...ESPACIOS_KEY, sedeId ?? '_all'],
-    enabled: sedeId === undefined || sedeId !== null,
-    queryFn: () => {
-      const params = sedeId ? `?sede_id=${sedeId}` : ''
-      return api
-        .get<{data: EspacioFisico[]}>(`/estructura/espacios-fisicos${params}`)
-        
-    },
+    queryKey: [...ESPACIOS_KEY, yearId, sedeId ?? '_all'],
+    enabled: !!yearId && (sedeId === undefined || sedeId !== null),
+    queryFn: () => api.get<{data: EspacioFisico[]}>(annualUrl('/estructura/espacios-fisicos', yearId, 'sede_id', sedeId)),
   })
 }
 
 export function useCreateEspacioFisico() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
     mutationFn: (input: CreateEspacioFisicoInput) =>
-      api.post<{data: EspacioFisico}>('/estructura/espacios-fisicos', input),
+      api.post<{data: EspacioFisico}>('/estructura/espacios-fisicos', {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: ESPACIOS_KEY}),
   })
 }
 
 export function useUpdateEspacioFisico() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: CreateEspacioFisicoInput}) =>
-      api.put<{data: EspacioFisico}>(`/estructura/espacios-fisicos/${id}`, input),
+      api.put<{data: EspacioFisico}>(`/estructura/espacios-fisicos/${id}`, {...input, ano_lectivo_id: yearId}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: ESPACIOS_KEY}),
   })
 }
 
 export function useDeleteEspacioFisico() {
   const queryClient = useQueryClient()
+  const {yearId} = useAcademicYear()
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/estructura/espacios-fisicos/${id}`),
+    mutationFn: (id: string) => api.delete<{data: null}>(annualUrl(`/estructura/espacios-fisicos/${id}`, yearId)),
     onSuccess: () => queryClient.invalidateQueries({queryKey: ESPACIOS_KEY}),
   })
 }

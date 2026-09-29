@@ -6,6 +6,7 @@ import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicYearCell} from '../../academic-year-context'
 import {useCreateGrado, useDeleteGrado, useGrados, useNiveles, useUpdateGrado} from '../estructura.api'
 import type {CreateGradoInput, Grado} from '../estructura.types'
 import {DeleteConfirmDialog} from './DeleteConfirmDialog'
@@ -235,6 +236,7 @@ const GradosTab: FC = () => {
             <thead>
               <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
                 <th className='min-w-150px'>{t('academico.estructura.grado.nombre')}</th>
+                <th className='min-w-120px'>{t('common.field.anoLectivo')}</th>
                 <th className='min-w-150px'>{t('academico.estructura.grado.codigo')}</th>
                 <th className='min-w-150px'>{t('common.field.nivel')}</th>
                 <th className='min-w-100px'>{t('common.status')}</th>
@@ -247,6 +249,7 @@ const GradosTab: FC = () => {
                   <td>
                     <span className='text-gray-800 fw-bold'>{g.nombre}</span>
                   </td>
+                  <AcademicYearCell yearId={g.ano_lectivo_id} />
                   <td>
                     <span className='text-gray-700'>{g.codigo ?? '—'}</span>
                   </td>
@@ -304,7 +307,7 @@ const GradosTab: FC = () => {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={5} className='text-center text-muted py-10'>
+                  <td colSpan={6} className='text-center text-muted py-10'>
                     {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.grado'})})}
                   </td>
                 </tr>

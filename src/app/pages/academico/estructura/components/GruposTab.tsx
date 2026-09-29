@@ -7,6 +7,7 @@ import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useAnosLectivos} from '../../anos-lectivos/anos-lectivos.api'
+import {useAcademicYear} from '../../academic-year-context'
 import {
   useCreateGrupo,
   useDeleteGrupo,
@@ -51,6 +52,7 @@ const GrupoFormDialog: FC<{show: boolean; grupo: Grupo | null; onClose: () => vo
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data: anos} = useAnosLectivos()
+  const {yearId, setYearId} = useAcademicYear()
   const {data: grados} = useGrados()
   const {data: jornadas} = useJornadas()
   const {data: sedes} = useSedes()
@@ -64,7 +66,7 @@ const GrupoFormDialog: FC<{show: boolean; grupo: Grupo | null; onClose: () => vo
 
   useEffect(() => {
     if (!show) return
-    setForm(grupo ? fromGrupo(grupo) : emptyForm())
+    setForm(grupo ? fromGrupo(grupo) : {...emptyForm(), ano_lectivo_id: yearId})
     setError(null)
   }, [show, grupo?.id])
 
@@ -140,7 +142,7 @@ const GrupoFormDialog: FC<{show: boolean; grupo: Grupo | null; onClose: () => vo
             <select
               className={`form-select form-select-solid ${fe('ano_lectivo_id') ? 'is-invalid' : ''}`}
               value={form.ano_lectivo_id}
-              onChange={(e) => set({ano_lectivo_id: e.target.value})}
+              onChange={(e) => {setYearId(e.target.value); set({ano_lectivo_id: e.target.value, grado_id: '', jornada_id: null})}}
             >
               <option value=''>{t('common.select')}</option>
               {(anos?.data ?? []).map((a) => (
