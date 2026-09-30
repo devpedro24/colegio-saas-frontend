@@ -1,9 +1,13 @@
 import {useState, useEffect, useRef} from 'react'
 import {KTCard, KTCardBody} from '@/_metronic/helpers'
-import {useSiee, useUpdateSiee, useUpdateCurriculo} from '../siee.api'
+import {useSiee, useCurriculo, useUpdateSiee, useUpdateCurriculo} from '../siee.api'
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
-import type {SieeConfiguracion} from '../siee.types'
+import type {CurriculoItem, SieeConfiguracion} from '../siee.types'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
+import {usePageSize} from '@/app/shared/hooks/usePageSize'
+import {AcademicOptionSelect} from '../../shared/AcademicOptionSelect'
+import {AcademicListFilters} from '../../estructura/components/AcademicListFilters'
 
 export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
   const intl = useIntl()
@@ -11,9 +15,43 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
   const t = (id: string) => intl.formatMessage({id})
 
   const {data, isLoading, isError, error} = useSiee(anoLectivoId)
+  const [currPage, setCurrPage] = useState(1)
+  const [currPerPage, setCurrPerPage] = usePageSize('siee-curriculo')
+  const [currSearch, setCurrSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [currGrado, setCurrGrado] = useState('')
+  const [currMateria, setCurrMateria] = useState('')
+  const [currArea, setCurrArea] = useState('')
+  const curriculo = useCurriculo(anoLectivoId, {
+    page: currPage, perPage: currPerPage, search: debouncedSearch.trim(),
+    gradoId: currGrado, materiaId: currMateria, areaId: currArea,
+  })
+  const [loadedCurriculo, setLoadedCurriculo] = useState<CurriculoItem[]>([])
   const mutation = useUpdateSiee(anoLectivoId)
   const curriculoMutation = useUpdateCurriculo(anoLectivoId)
   const editing = useRef(false)
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(currSearch), 300)
+    return () => window.clearTimeout(timeout)
+  }, [currSearch])
+
+  useEffect(() => {
+    if (!curriculo.data) return
+    const pageRows = curriculo.data.data
+    if (curriculo.data.meta.total > 20 || currPage === 1) {
+      setLoadedCurriculo(pageRows)
+      return
+    }
+    setLoadedCurriculo(previous => {
+      const merged = new Map(previous.map(row => [`${row.grado_id}:${row.materia_id}`, row]))
+      pageRows.forEach(row => merged.set(`${row.grado_id}:${row.materia_id}`, row))
+      return [...merged.values()]
+    })
+  }, [curriculo.data, currPage])
+
+  const curriculoRows = curriculo.data?.meta.total !== undefined && curriculo.data.meta.total <= 20 && currPage > 1
+    ? loadedCurriculo : curriculo.data?.data ?? []
 
   const [formData, setFormData] = useState<SieeConfiguracion>({
     usar_areas: false,
@@ -101,6 +139,16 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
         onError: (err) => toast.error(err.message),
       }
     )
+  }
+
+  const changeCurrFilter = (setter: (value: string) => void, value: string) => {
+    setter(value)
+    setCurrPage(1)
+  }
+
+  const changeCurrSize = (size: number) => {
+    setCurrPerPage(size)
+    setCurrPage(1)
   }
 
   return (
@@ -360,49 +408,19 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
         <KTCardBody>
           <div className='row g-3 mb-6 align-items-end'>
             <div className='col-md-3'>
-              <label className='form-label fs-7'>{t('siee.grado')}</label>
-              <select
-                className='form-select form-select-sm'
-                value={currForm.grado_id}
-                onChange={(e) => setCurrForm((p) => ({...p, grado_id: e.target.value}))}
-              >
-                <option value=''>—</option>
-                {data.grados?.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.nombre}
-                  </option>
-                ))}
-              </select>
+              <AcademicOptionSelect tipo='grados' yearId={anoLectivoId} label={t('siee.grado')}
+                value={currForm.grado_id} onChange={value => setCurrForm(previous => ({...previous, grado_id: value}))}
+                initialOptions={data.grados ?? []} emptyLabel='—' required selectOnly />
             </div>
             <div className='col-md-3'>
-              <label className='form-label fs-7'>{t('siee.materia')}</label>
-              <select
-                className='form-select form-select-sm'
-                value={currForm.materia_id}
-                onChange={(e) => setCurrForm((p) => ({...p, materia_id: e.target.value}))}
-              >
-                <option value=''>—</option>
-                {data.materias?.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nombre}
-                  </option>
-                ))}
-              </select>
+              <AcademicOptionSelect tipo='materias' yearId={anoLectivoId} label={t('siee.materia')}
+                value={currForm.materia_id} onChange={value => setCurrForm(previous => ({...previous, materia_id: value}))}
+                initialOptions={data.materias ?? []} emptyLabel='—' required selectOnly />
             </div>
             <div className='col-md-3'>
-              <label className='form-label fs-7'>{t('siee.area')}</label>
-              <select
-                className='form-select form-select-sm'
-                value={currForm.area_id}
-                onChange={(e) => setCurrForm((p) => ({...p, area_id: e.target.value}))}
-              >
-                <option value=''>—</option>
-                {data.areas?.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.nombre}
-                  </option>
-                ))}
-              </select>
+              <AcademicOptionSelect tipo='areas' yearId={anoLectivoId} label={t('siee.area')}
+                value={currForm.area_id} onChange={value => setCurrForm(previous => ({...previous, area_id: value}))}
+                initialOptions={data.areas ?? []} emptyLabel='—' selectOnly />
             </div>
             <div className='col-md-2'>
               <label className='form-label fs-7'>{t('siee.peso_area')}</label>
@@ -428,7 +446,19 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
             </div>
           </div>
 
-          <div className='table-responsive'>
+          <AcademicListFilters id='siee-curriculo-search' search={currSearch} onSearchChange={value => changeCurrFilter(setCurrSearch, value)}>
+            <AcademicOptionSelect tipo='grados' yearId={anoLectivoId} label={t('siee.grado')}
+              value={currGrado} onChange={value => changeCurrFilter(setCurrGrado, value)}
+              initialOptions={data.grados ?? []} emptyLabel={t('academic.filter.allGrades')} selectOnly hideLabel />
+            <AcademicOptionSelect tipo='materias' yearId={anoLectivoId} label={t('siee.materia')}
+              value={currMateria} onChange={value => changeCurrFilter(setCurrMateria, value)}
+              initialOptions={data.materias ?? []} emptyLabel={t('academic.filter.allSubjects')} selectOnly hideLabel />
+            <AcademicOptionSelect tipo='areas' yearId={anoLectivoId} label={t('siee.area')}
+              value={currArea} onChange={value => changeCurrFilter(setCurrArea, value)}
+              initialOptions={data.areas ?? []} emptyLabel={t('academic.filter.allAreas')} selectOnly hideLabel />
+          </AcademicListFilters>
+          {curriculo.error && <div className='alert alert-danger' role='alert'>{curriculo.error.message}</div>}
+          <div className='table-responsive' aria-busy={curriculo.isFetching}>
             <table className='table table-row-dashed table-row-gray-300 align-middle gs-0 gy-3'>
               <thead>
                 <tr className='fw-bold text-muted'>
@@ -439,20 +469,21 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
                 </tr>
               </thead>
               <tbody>
-                {data.curriculo?.map((c, idx: number) => {
+                {curriculoRows.map((c, idx: number) => {
                   const grado = data.grados?.find((g) => g.id === c.grado_id)
                   const materia = data.materias?.find((m) => m.id === c.materia_id)
                   const area = data.areas?.find((a) => a.id === c.area_id)
                   return (
                     <tr key={`${c.grado_id}-${c.materia_id}-${idx}`}>
-                      <td className='fw-semibold'>{grado?.nombre ?? c.grado_id}</td>
-                      <td>{materia?.nombre ?? c.materia_id}</td>
-                      <td>{area?.nombre ?? '—'}</td>
+                      <td className='fw-semibold'>{c.grado_nombre ?? grado?.nombre ?? c.grado_id}</td>
+                      <td>{c.materia_nombre ?? materia?.nombre ?? c.materia_id}</td>
+                      <td>{c.area_nombre ?? area?.nombre ?? '—'}</td>
                       <td className='text-end'>{c.peso_area != null ? `${c.peso_area}%` : '—'}</td>
                     </tr>
                   )
                 })}
-                {(!data.curriculo || data.curriculo.length === 0) && (
+                {curriculo.isPending && <tr><td colSpan={4} className='text-center text-muted py-6'>{t('common.loading')}</td></tr>}
+                {!curriculo.isPending && curriculoRows.length === 0 && (
                   <tr>
                     <td colSpan={4} className='text-center text-muted py-6'>
                       {t('siee.no_curriculo')}
@@ -462,6 +493,9 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
               </tbody>
             </table>
           </div>
+          <AcademicPagination meta={curriculo.data?.meta} visibleCount={curriculoRows.length}
+            loading={curriculo.isFetching} onPageChange={setCurrPage} onPerPageChange={changeCurrSize}
+            onLoadMore={() => setCurrPage(page => page + 1)} />
         </KTCardBody>
       </KTCard>
     </div>

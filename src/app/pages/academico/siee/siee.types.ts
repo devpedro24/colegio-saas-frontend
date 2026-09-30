@@ -12,12 +12,23 @@
   metodo_id: number | null
 }
 
+export interface CurriculoItem {
+  ano_lectivo_id: number
+  grado_id: number
+  materia_id: number
+  area_id: number | null
+  peso_area: number | null
+  grado_nombre?: string
+  materia_nombre?: string
+  area_nombre?: string | null
+}
+
 export interface SieeResponse {
   editable: boolean
   configuracion: SieeConfiguracion
   escalas: Array<{id: number; nombre: string; tipo: string; valor_min: number; valor_max: number; decimales: number}>
   metodos: Array<{id: number; calculo_nota: string; nota_minima: number; ambito: string}>
-  curriculo: Array<{ano_lectivo_id: number; grado_id: number; materia_id: number; area_id: number | null; peso_area: number | null}>
+  curriculo: CurriculoItem[]
   grados: Array<{id: number; nombre: string}>
   materias: Array<{id: number; nombre: string}>
   areas: Array<{id: number; nombre: string}>
