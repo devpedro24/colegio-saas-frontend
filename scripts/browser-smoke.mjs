@@ -9,6 +9,7 @@ import {createServer} from 'vite'
 
 const root = path.resolve(import.meta.dirname, '..')
 const realtimeMode = process.argv.includes('--realtime')
+const paginationMode = process.argv.includes('--pagination')
 const reverbProbe = input => {
   const result = spawnSync('php', [path.join(root, '../colegio-saas-backend/tests/Support/reverb-probe.php')], {
     input: JSON.stringify(input), encoding: 'utf8', windowsHide: true,
@@ -29,6 +30,7 @@ const nextYear = {...year, id: 2, url_token: urlTokens.nextYear, legacy_url_toke
 const group = {id: 1, url_token: urlTokens.group, nombre: 'A', ano_lectivo_id: 1, jornada_id: 1, sede_id: 1, grado: {id: 1, nombre: 'Primero', nivel_id: 1}, sede: {id: 1, nombre: 'Sede Principal'}, jornada: {id: 1, nombre: 'Mañana', hora_inicio: '07:00:00', hora_fin: '12:30:00'}}
 const groupB = {...group, id: 2, url_token: urlTokens.groupB, nombre: 'B'}
 const groupC = {...group, id: 3, url_token: urlTokens.groupC, nombre: 'C', jornada_id: 2, jornada: {id: 2, nombre: 'Tarde', hora_inicio: '13:00:00', hora_fin: '17:00:00'}}
+const extraGroups = Array.from({length: 49}, (_, index) => ({...group, id: index + 4, url_token: `${'n'.repeat(21)}${String(index + 4).padStart(3, '0')}`, nombre: `Grupo ${index + 4}`}))
 const enrollment = {id: 1, url_token: urlTokens.enrollment, estudiante_id: 2, ano_lectivo_id: 1, grupo_id: 1, estado: 'activa', estudiante: {id: 2, name: 'Estudiante de prueba'}, grupo: group}
 const assignment = {id: 1, url_token: urlTokens.assignment, ano_lectivo_id: 1, grupo_id: 1, materia_id: 1, docente_id: 3, grupo: group, materia: {id: 1, nombre: 'Matemáticas'}}
 const period = {id: 1, url_token: urlTokens.period, ano_lectivo_id: 1, nombre: 'Trimestre 1', orden: 1, fecha_inicio: '2026-09-01', fecha_fin: '2026-09-30', peso: 50, estado: 'abierto', es_actual: true, reapertura_manual: false, created_at: null}
@@ -62,8 +64,27 @@ const fixtures = {
   '/api/evaluacion/boletines/1': {data: {tipo: 'VISTA_PREVIA', generado_en: new Date().toISOString(), institucion: 'Colegio de prueba', estudiante: enrollment.estudiante, grupo: 'A', grado: 'Primero', ano: '2026', configuracion: config, periodos: [period], periodo_sumatorio: {orden: 4, nombre: 'P4', modo: 'SIMPLE_AVERAGE'}, asignaturas: [{materia_id: 1, nombre: 'Matemáticas', peso_area: null, periodos: [{periodo_id: 1, estado: 'pendiente'}], anual: {estado: 'pendiente'}}], areas: [], advertencias: []}},
   '/api/siee/1': {data: {editable: true, configuracion: config, escalas: [{id: 1, nombre: 'Numérica', tipo: 'numerica', valor_min: '0', valor_max: '5', decimales: 2}], metodos: [{id: 1, calculo_nota: 'promedio_simple', nota_minima: '3', ambito: 'materia'}], curriculo: [], grados: [group.grado], materias: [assignment.materia], areas: []}},
 }
+if (paginationMode) {
+  fixtures['/api/plan-estudios/areas'].data = Array.from({length: 25}, (_, index) => ({id: index + 1, ano_lectivo_id: 1, nombre: `Área ${String(index + 1).padStart(2, '0')}`, descripcion: null, estado: 'activo'}))
+  fixtures['/api/siee/1'].data.materias = Array.from({length: 12}, (_, index) => ({id: index + 1, nombre: `Materia ${String(index + 1).padStart(2, '0')}`}))
+  fixtures['/api/siee/1/curriculo'] = {data: fixtures['/api/siee/1'].data.materias.map(materia => ({ano_lectivo_id: 1, grado_id: 1, materia_id: materia.id, area_id: null, peso_area: null}))}
+  fixtures['/api/evaluacion/catalogo'].data.asignaciones = Array.from({length: 12}, (_, index) => ({
+    ...assignment, id: index + 1,
+    url_token: index === 0 ? urlTokens.assignment : `${'h'.repeat(22)}${String(index + 1).padStart(2, '0')}`,
+    materia_id: index + 1, materia: {id: index + 1, nombre: `Materia ${String(index + 1).padStart(2, '0')}`},
+  }))
+  fixtures['/api/evaluacion/catalogo'].data.matriculas = Array.from({length: 12}, (_, index) => ({
+    ...enrollment, id: index + 1, estudiante_id: index + 2,
+    url_token: index === 0 ? urlTokens.enrollment : `${'k'.repeat(22)}${String(index + 1).padStart(2, '0')}`,
+    estudiante: {id: index + 2, name: `Estudiante ${String(index + 1).padStart(2, '0')}`},
+  }))
+  fixtures['/api/evaluacion/catalogo'].data.estudiantes_disponibles = Array.from({length: 12}, (_, index) => ({id: index + 100, name: `Alumno ${String(index + 1).padStart(2, '0')}`}))
+  fixtures['/api/evaluacion/planillas/1/1'].data.matriculas = fixtures['/api/evaluacion/catalogo'].data.matriculas
+  fixtures['/api/evaluacion/planillas/1/1'].data.resultados = fixtures['/api/evaluacion/catalogo'].data.matriculas.map(matricula => ({matricula_id: matricula.id, estado: 'pendiente', motivo: 'Faltan notas'}))
+}
 const writes = []
 const scheduleReads = []
+const pagedReads = []
 let server, browser, socket
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 try {
@@ -75,13 +96,105 @@ try {
       const annualStructure = ['/api/estructura/jornadas', '/api/estructura/bloques-horarios', '/api/plan-estudios/areas', '/api/plan-estudios/materias']
       let fixture = annualStructure.includes(url.pathname) && url.searchParams.get('ano_lectivo_id') === '2'
         ? {data: []} : fixtures[url.pathname]
+      if (url.pathname === '/api/catalogos-academicos' && req.method === 'GET') {
+        const catalogs = {
+          grupos: [group, groupB, groupC, ...extraGroups],
+          docentes: fixtures['/api/horarios'].data.docentes,
+          espacios: fixtures['/api/horarios'].data.espacios,
+          materias: fixtures['/api/horarios'].data.materias,
+          grados: [group.grado],
+          areas: fixtures['/api/plan-estudios/areas'].data,
+          estudiantes: [],
+        }
+        const page = Math.max(1, Number(url.searchParams.get('page') || 1))
+        const perPage = Math.max(1, Number(url.searchParams.get('per_page') || 5))
+        const search = (url.searchParams.get('search') || '').toLocaleLowerCase()
+        const rows = (catalogs[url.searchParams.get('tipo')] || []).filter(item => (item.nombre || item.name || '').toLocaleLowerCase().includes(search))
+        const data = rows.slice((page - 1) * perPage, page * perPage)
+        const selectedId = Number(url.searchParams.get('selected_id'))
+        const selected = rows.find(item => item.id === selectedId)
+        if (selected && !data.some(item => item.id === selectedId)) data.push(selected)
+        fixture = {data, meta: {current_page: page, per_page: perPage,
+          last_page: Math.max(1, Math.ceil(rows.length / perPage)), total: rows.length}}
+      }
+      if (paginationMode && url.pathname === '/api/plan-estudios/areas' && req.method === 'GET') {
+        const page = Math.max(1, Number(url.searchParams.get('page') || 1))
+        const perPage = Number(url.searchParams.get('per_page') || 5)
+        const search = (url.searchParams.get('search') || '').toLocaleLowerCase()
+        const rows = fixtures[url.pathname].data.filter(item => item.nombre.toLocaleLowerCase().includes(search))
+        pagedReads.push({page, perPage, search})
+        fixture = {data: rows.slice((page - 1) * perPage, page * perPage), meta: {current_page: page, per_page: perPage, last_page: Math.max(1, Math.ceil(rows.length / perPage)), total: rows.length}}
+      }
+      if (paginationMode && url.pathname === '/api/siee/1/curriculo' && req.method === 'GET') {
+        const page = Math.max(1, Number(url.searchParams.get('page') || 1))
+        const perPage = Number(url.searchParams.get('per_page') || 5)
+        const search = (url.searchParams.get('search') || '').toLocaleLowerCase()
+        const rows = fixtures[url.pathname].data.filter(item => fixtures['/api/siee/1'].data.materias.find(materia => materia.id === item.materia_id)?.nombre.toLocaleLowerCase().includes(search))
+        pagedReads.push({path: url.pathname, page, perPage, search})
+        fixture = {data: rows.slice((page - 1) * perPage, page * perPage), meta: {current_page: page, per_page: perPage, last_page: Math.max(1, Math.ceil(rows.length / perPage)), total: rows.length}}
+      }
+      if (paginationMode && url.pathname === '/api/evaluacion/catalogo' && req.method === 'GET') {
+        const source = fixtures[url.pathname].data
+        const assignmentPage = Math.max(1, Number(url.searchParams.get('asignaciones_page') || 1))
+        const assignmentPerPage = Number(url.searchParams.get('asignaciones_per_page') || 5)
+        const enrollmentPage = Math.max(1, Number(url.searchParams.get('matriculas_page') || 1))
+        const enrollmentPerPage = Number(url.searchParams.get('matriculas_per_page') || 5)
+        const search = (url.searchParams.get('search') || '').toLocaleLowerCase()
+        const studentSearch = (url.searchParams.get('student_search') || '').toLocaleLowerCase()
+        const assignments = source.asignaciones.filter(item => item.materia.nombre.toLocaleLowerCase().includes(search))
+        const enrollments = source.matriculas
+        const students = source.estudiantes_disponibles.filter(item => item.name.toLocaleLowerCase().includes(studentSearch))
+        const meta = (page, perPage, total) => ({current_page: page, per_page: perPage, last_page: Math.max(1, Math.ceil(total / perPage)), total})
+        pagedReads.push({path: url.pathname, assignmentPage, assignmentPerPage, enrollmentPage, enrollmentPerPage, search, studentSearch})
+        fixture = {data: {...source,
+          asignaciones: assignments.slice((assignmentPage - 1) * assignmentPerPage, assignmentPage * assignmentPerPage),
+          matriculas: enrollments.slice((enrollmentPage - 1) * enrollmentPerPage, enrollmentPage * enrollmentPerPage),
+          selected_asignacion: source.asignaciones.find(item => item.url_token === url.searchParams.get('asignacion_token')) ?? null,
+          selected_matricula: source.matriculas.find(item => item.url_token === url.searchParams.get('matricula_token')) ?? null,
+          estudiantes_disponibles: students,
+          pagination: {asignaciones: meta(assignmentPage, assignmentPerPage, assignments.length), matriculas: meta(enrollmentPage, enrollmentPerPage, enrollments.length)},
+        }}
+      }
+      if (paginationMode && url.pathname === '/api/evaluacion/planillas/1/1' && req.method === 'GET') {
+        const source = fixtures[url.pathname].data
+        const page = Math.max(1, Number(url.searchParams.get('page') || 1))
+        const perPage = Number(url.searchParams.get('per_page') || 5)
+        const search = (url.searchParams.get('search') || '').toLocaleLowerCase()
+        const enrollments = source.matriculas.filter(item => item.estudiante.name.toLocaleLowerCase().includes(search))
+        const pageRows = enrollments.slice((page - 1) * perPage, page * perPage)
+        pagedReads.push({path: url.pathname, page, perPage, search})
+        fixture = {data: {...source, matriculas: pageRows,
+          resultados: source.resultados.filter(item => pageRows.some(row => row.id === item.matricula_id)),
+          pagination: {matriculas: {current_page: page, per_page: perPage, last_page: Math.max(1, Math.ceil(enrollments.length / perPage)), total: enrollments.length}},
+        }}
+      }
       if (url.pathname === '/api/horarios') {
-        scheduleReads.push({view: url.searchParams.get('vista'), group: url.searchParams.get('grupo_id')})
-        if (url.searchParams.get('vista') === 'horarios') {
-          const groupId = url.searchParams.get('grupo_id')
+        const groupId = url.searchParams.get('grupo_id')
+        const teacherId = url.searchParams.get('docente_id')
+        const subjectId = url.searchParams.get('materia_id')
+        scheduleReads.push({view: url.searchParams.get('vista'), group: groupId, teacher: teacherId})
+        const assignments = fixture.data.asignaciones.filter(item => (!groupId || String(item.grupo_id) === groupId)
+          && (!teacherId || String(item.docente_id) === teacherId) && (!subjectId || String(item.materia_id) === subjectId))
+        const sessions = fixture.data.sesiones.filter(item => (!groupId || String(item.grupo_id) === groupId)
+          && (!teacherId || String(item.docente_id) === teacherId) && (!subjectId || String(item.materia_id) === subjectId))
+        if (url.searchParams.has('page')) {
+          const page = Math.max(1, Number(url.searchParams.get('page') || 1))
+          const perPage = Number(url.searchParams.get('per_page') || 5)
           fixture = {data: {...fixture.data,
-            asignaciones: groupId ? fixture.data.asignaciones.filter(item => String(item.grupo_id) === groupId) : [],
-            sesiones: groupId ? fixture.data.sesiones.filter(item => String(item.grupo_id) === groupId) : [],
+            asignaciones: assignments.slice((page - 1) * perPage, page * perPage),
+            pagination: {asignaciones: {current_page: page, per_page: perPage, last_page: Math.max(1, Math.ceil(assignments.length / perPage)), total: assignments.length}},
+          }}
+        }
+        if (url.searchParams.get('vista') === 'horarios') {
+          fixture = {data: {...fixture.data,
+            asignaciones: groupId ? assignments : [],
+            sesiones: groupId ? sessions : [],
+          }}
+        } else if (!url.searchParams.has('page') && (groupId || teacherId)) {
+          const subjectIds = new Set([...assignments, ...sessions].map(item => item.materia_id))
+          fixture = {data: {...fixture.data, asignaciones: assignments, sesiones: sessions,
+            counts: {materias: subjectIds.size, sesiones: sessions.length},
+            pagination: {asignaciones: {current_page: 1, per_page: 5, last_page: 1, total: assignments.length}},
           }}
         }
       }
@@ -94,6 +207,9 @@ try {
       req.on('data', chunk => {body += chunk})
       req.on('end', () => {
         const parsed = req.headers['content-type']?.includes('application/json') ? JSON.parse(body || '{}') : Object.fromEntries(new URLSearchParams(body))
+        if (url.pathname === '/api/account/profile') { Object.assign(user, parsed); fixture = {message: 'Perfil actualizado.', user} }
+        if (url.pathname === '/api/mfa/setup') fixture = {secret: 'JBSWY3DPEHPK3PXP', otpauth_url: 'otpauth://totp/Colegio%20SaaS:rector%40example.test?secret=JBSWY3DPEHPK3PXP&issuer=Colegio%20SaaS&algorithm=SHA1&digits=6&period=30'}
+        if (url.pathname === '/api/mfa/confirm') {user.mfa_enabled = true; fixture = {mfa_enabled: true, recovery_codes: ['aaaaa-bbbbb-ccccc-ddddd','11111-22222-33333-44444']}}
         if (realtimeMode && url.pathname === '/api/broadcasting/auth') {
           fixture = reverbProbe({action: 'auth', ...parsed})
         }
@@ -150,12 +266,154 @@ try {
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   const navigate = async (route, text) => { console.log('Checking', route); await command('Page.navigate', {url: `http://127.0.0.1:5197${route}`}); await until(`document.body.innerText.includes(${JSON.stringify(text)})`) }
   const screenshot = async (name, full = false) => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: full}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
-  if (realtimeMode) {
+  if (process.argv.includes('--account')) {
+    user.institution = {name: 'Colegio real', plan: {key: 'premium', name: 'Premium'}}
+    user.profile_capabilities = {edit_name: true, edit_email: true, edit_phone: true, google_link: false}
+    await navigate('/account/overview', 'Rector de prueba')
+    assert.ok(await evaluate(`document.querySelector('.account-summary__tabs a[href="/account/overview"]').classList.contains('active') && !document.querySelector('.account-summary__tabs a[href="/account/settings"]').classList.contains('active')`))
+    assert.ok(await evaluate(`getComputedStyle(document.querySelector('.account-summary__tabs a.active')).borderBottomColor !== getComputedStyle(document.querySelector('.account-summary__tabs a:not(.active)')).borderBottomColor`), 'The active profile tab needs a visible underline.')
+    assert.ok(await evaluate(`Math.abs(document.querySelector('.account-summary').getBoundingClientRect().bottom - document.querySelector('.account-summary__tabs').getBoundingClientRect().bottom) < 2`), 'Profile tabs should meet the bottom of the header card.')
+    assert.ok(await evaluate(`!document.body.innerText.includes('Max Smith') && !document.body.innerText.includes('max@kt.com')`))
+    await evaluate(`window.accountSentinel = true; document.querySelector('[data-kt-nav="/account/settings"]').click()`)
+    await until(`location.pathname === '/account/settings' && !!document.querySelector('#profile-name')`)
+    assert.ok(await evaluate(`document.querySelector('.account-summary__tabs a[href="/account/settings"]').classList.contains('active') && !document.querySelector('.account-summary__tabs a[href="/account/overview"]').classList.contains('active')`))
+    assert.ok(await evaluate(`getComputedStyle(document.querySelector('.account-summary__tabs a.active')).borderBottomColor !== getComputedStyle(document.querySelector('.account-summary__tabs a:not(.active)')).borderBottomColor`))
+    await evaluate(`document.querySelector('#profile-name').focus(); document.querySelector('#profile-name').select()`)
+    await command('Input.insertText', {text: 'María Fernanda Rectora'})
+    await evaluate(`document.querySelector('#profile-name').closest('form').querySelector('button[type="submit"]').click()`)
+    await until(`document.querySelector('[data-testid="account-menu-name"]')?.textContent === 'María Fernanda Rectora'`)
+    assert.equal(await evaluate('window.accountSentinel'), true, 'Profile updates without reload.')
+    assert.equal(await evaluate(`document.querySelector('[data-testid="account-menu-plan"]').textContent`), 'Premium')
+    await screenshot('profile-settings-desktop', true)
+    await sleep(500)
+    await evaluate(`document.querySelector('#kt_header_user_menu_toggle [data-kt-menu-trigger]').click()`)
+    await until(`document.querySelector('.account-user-menu')?.classList.contains('show')`)
+    assert.ok(await evaluate(`['Mis proyectos', 'Mi suscripción', 'Mis estados de cuenta', 'Ajustes Institucionales'].every(label => document.querySelector('.account-user-menu').innerText.includes(label))`))
+    await until(`Number(getComputedStyle(document.querySelector('.account-user-menu')).opacity) >= 0.99`)
+    await sleep(250)
+    await screenshot('profile-menu-desktop')
+    await evaluate(`document.querySelector('#profile-name').click()`)
+    for (const width of [390, 320]) {
+      await command('Emulation.setDeviceMetricsOverride', {width, height: 844, deviceScaleFactor: 1, mobile: true})
+      await sleep(300)
+      assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'Profile settings must fit mobile.')
+      await screenshot('profile-settings-mobile-' + width, true)
+    }
+    await sleep(500)
+    await evaluate(`document.querySelector('#kt_header_user_menu_toggle [data-kt-menu-trigger]').click()`)
+    await until(`document.querySelector('.account-user-menu')?.classList.contains('show')`)
+    assert.ok(await evaluate(`document.querySelector('.account-user-menu').getBoundingClientRect().right <= innerWidth + 1`))
+    await until(`Number(getComputedStyle(document.querySelector('.account-user-menu')).opacity) >= 0.99`)
+    await sleep(250)
+    await screenshot('profile-menu-mobile')
+    user.mfa_required = false; user.mfa_enabled = false
+    await navigate('/dashboard', 'Académico')
+    assert.equal(await evaluate(`!!document.querySelector('#kt_header_user_menu_toggle')`), true)
+    await navigate('/account/settings', 'Verificación en dos pasos')
+    await evaluate(`document.querySelector('#mfa-password').focus()`)
+    await command('Input.insertText', {text: 'Synthetic1!'})
+    await evaluate(`document.querySelector('#mfa-password').closest('form').querySelector('button[type="submit"]').click()`)
+    await until(`!!document.querySelector('.account-mfa-qr svg')`)
+    assert.ok(await evaluate(`document.body.innerText.includes('no se introduce en Gmail')`))
+    await evaluate(`document.querySelector('#account-security button[aria-expanded="false"]').click()`)
+    assert.ok(await evaluate(`document.querySelector('[data-testid="mfa-secret"]').textContent === 'JBSWY3DPEHPK3PXP'`))
+    await evaluate(`document.querySelector('#mfa-code').focus()`)
+    await command('Input.insertText', {text: '123456'})
+    await evaluate(`document.querySelector('#mfa-code').closest('form').querySelector('button[type="submit"]').click()`)
+    await until(`!!document.querySelector('.account-recovery-codes')`)
+    assert.equal(await evaluate(`document.querySelector('#account-security button.btn-primary').disabled`), true)
+    await screenshot('mfa-recovery-mobile', true)
+    await evaluate(`document.querySelector('#account-security input[type="checkbox"]').click(); document.querySelector('#account-security button.btn-primary').click()`)
+    await until(`!!document.querySelector('#kt_header_user_menu_toggle')`)
+    user.profile_capabilities.edit_name = false; user.profile_capabilities.edit_email = false; user.roles = ['estudiante']
+    await navigate('/account/settings', 'El colegio administra')
+    assert.ok(await evaluate(`document.querySelector('#profile-name').disabled && document.querySelector('#kt_signin_email_button button').disabled`))
+    assert.deepEqual(errors, [], 'Profile and MFA browser errors.')
+    console.log('PASS: profile menu, unrestricted dashboard, optional MFA QR and recovery, student restrictions, responsive 320/390.')
+  } else if (paginationMode) {
+    const path = `/academico/plan-estudios?ano=${urlTokens.year}&tab=areas`
+    const areaRows = `document.querySelectorAll('table')[0]?.querySelectorAll('tbody tr')`
+    await navigate(path, 'Áreas y materias')
+    await until(`${areaRows}?.length === 5`)
+    await evaluate(`document.querySelector('section[aria-label="Materias"]').scrollIntoView({block:'start'})`)
+    await screenshot('materias-filters-desktop', true)
+    assert.ok(await evaluate(`(()=>{const section=document.querySelector('section[aria-label="Materias"]');return !!section.querySelector('select[aria-label="Área"]') && !!section.querySelector('select[aria-label="Nivel educativo"]') && !!section.querySelector('select[aria-label="Estado"]') && section.querySelectorAll('input[type="search"]').length===1})()`), 'The Materias section needs one name search and visibly identified area, level, and status selectors.')
+    await evaluate(`(()=>{const area=document.querySelector('section[aria-label="Materias"] select[aria-label="Área"]');area.focus();area.dispatchEvent(new PointerEvent('pointerover',{bubbles:true}))})()`)
+    await until(`document.querySelector('section[aria-label="Materias"] select[aria-label="Área"]').options.length === 26`)
+    assert.ok(pagedReads.some(read => read.page === 1 && read.perPage === 1000), 'Opening the area selector must load the remaining existing areas.')
+    assert.ok(pagedReads.some(read => read.page === 1 && read.perPage === 5), 'The first area request must fetch five rows.')
+    assert.ok(await evaluate(`!!document.querySelector('.pagination')`), 'More than 20 results require numbered pages.')
+    await evaluate(`Array.from(document.querySelectorAll('.pagination button')).find(button => button.textContent.trim() === '2').click()`)
+    await until(`${areaRows}?.[0]?.innerText.includes('Área 06')`)
+    assert.ok(pagedReads.some(read => read.page === 2 && read.perPage === 5), 'Page two must retain the selected size.')
+    await evaluate(`(() => {const select=document.querySelector('select[aria-label="Filas por página"]');select.value='50';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`${areaRows}?.length === 25`)
+    assert.ok(pagedReads.some(read => read.page === 1 && read.perPage === 50), 'Changing the size must change the backend request.')
+    await evaluate(`document.querySelector('input[aria-label="Buscar por nombre"]').focus()`)
+    await command('Input.insertText', {text: 'Área 25'})
+    await until(`${areaRows}?.length === 1 && ${areaRows}?.[0]?.innerText.includes('Área 25')`)
+    assert.ok(pagedReads.some(read => read.search === 'área 25'), 'Search must run on the backend.')
+    await evaluate(`(() => {const select=Array.from(document.querySelectorAll('select')).find(item => item.value==='50' && Array.from(item.options).some(option => option.value==='1000'));select.value='5';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    fixtures['/api/plan-estudios/areas'].data = fixtures['/api/plan-estudios/areas'].data.slice(0, 12)
+    await navigate(path, 'Áreas y materias')
+    await until(`${areaRows}?.length === 5`)
+    assert.equal(await evaluate(`!!document.querySelector('.pagination')`), false, 'No numbered pager for 20 or fewer rows.')
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(button => button.textContent.trim() === 'Mostrar más').click()`)
+    await until(`${areaRows}?.length === 10`)
+    assert.ok(pagedReads.some(read => read.page === 2 && read.perPage === 5), 'Show more must request the next five without changing size.')
+    await navigate('/academico/siee', 'Configuración SIEE')
+    const curriculoRows = `document.querySelector('#siee-curriculo-search')?.closest('.card')?.querySelectorAll('table tbody tr')`
+    await until(`${curriculoRows}?.length === 5`)
+    assert.ok(pagedReads.some(read => read.path === '/api/siee/1/curriculo' && read.page === 1 && read.perPage === 5))
+    await evaluate(`Array.from(document.querySelector('#siee-curriculo-search').closest('.card').querySelectorAll('button')).find(button => button.textContent.trim() === 'Mostrar más').click()`)
+    await until(`${curriculoRows}?.length === 10`)
+    assert.ok(pagedReads.some(read => read.path === '/api/siee/1/curriculo' && read.page === 2 && read.perPage === 5))
+    await evaluate(`document.querySelector('#siee-curriculo-search').focus()`)
+    await command('Input.insertText', {text: 'Materia 12'})
+    await until(`${curriculoRows}?.length === 1 && ${curriculoRows}?.[0]?.innerText.includes('Materia 12')`)
+    assert.ok(pagedReads.some(read => read.path === '/api/siee/1/curriculo' && read.search === 'materia 12'))
+    await navigate('/academico/evaluacion/catalogo', 'Evaluación')
+    const assignmentRows = `document.querySelectorAll('table')[0]?.querySelectorAll('tbody tr')`
+    const enrollmentRows = `document.querySelectorAll('table')[1]?.querySelectorAll('tbody tr')`
+    await until(`${assignmentRows}?.length === 5 && ${enrollmentRows}?.length === 5`)
+    assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.assignmentPage === 1 && read.assignmentPerPage === 5 && read.enrollmentPage === 1 && read.enrollmentPerPage === 5))
+    await evaluate(`Array.from(document.querySelectorAll('button')).filter(button => button.textContent.trim() === 'Mostrar más')[0].click()`)
+    await until(`${assignmentRows}?.length === 10`)
+    assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.assignmentPage === 2 && read.assignmentPerPage === 5))
+    await evaluate(`Array.from(document.querySelectorAll('button')).filter(button => button.textContent.trim() === 'Mostrar más')[1].click()`)
+    await until(`${enrollmentRows}?.length === 10`)
+    assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.enrollmentPage === 2 && read.enrollmentPerPage === 5))
+    assert.ok(await evaluate(`!document.querySelector('#evaluacion-search') && document.querySelectorAll('input[type="search"]').length === 1 && !document.querySelector('form select[aria-label="Estudiante"]')`), 'Evaluation needs only one student search, without duplicate filter searches or student select.')
+    assert.ok(await evaluate(`!!document.querySelector('select[aria-label="Grupo"] option[value=""]') && !!document.querySelector('select[aria-label="Materia"] option[value=""]') && !!document.querySelector('select[aria-label="Estado"] option[value=""]')`), 'Group, subject, and status filters must be clear selects.')
+    await evaluate(`document.querySelector('input[role="combobox"][aria-label="Estudiante"]').focus()`)
+    await command('Input.insertText', {text: 'Alumno 12'})
+    await until(`!!document.querySelector('#evaluacion-estudiantes-resultados button') && document.querySelector('#evaluacion-estudiantes-resultados').innerText.includes('Alumno 12')`)
+    for (let i = 0; i < 20 && !pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.studentSearch === 'alumno 12'); i++) await sleep(100)
+    assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.studentSearch === 'alumno 12'))
+    await evaluate(`document.querySelector('form select[aria-label="Grupo"]').value='1';document.querySelector('form select[aria-label="Grupo"]').dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#evaluacion-estudiantes-resultados button').click()`)
+    await until(`!document.querySelector('#evaluacion-estudiantes-resultados') && document.querySelector('form button.btn-primary')?.disabled === false`)
+    await navigate(`/academico/evaluacion/planillas/${urlTokens.assignment}/${urlTokens.period}`, 'Planilla')
+    const planillaRows = `Array.from(document.querySelectorAll('table')).at(-1)?.querySelectorAll('tbody tr')`
+    await until(`${planillaRows}?.length === 5`)
+    assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/planillas/1/1' && read.page === 1 && read.perPage === 5))
+    await evaluate(`document.querySelector('input[aria-label="Estudiante 01 · Taller 1"]').focus()`)
+    await command('Input.insertText', {text: '4.2'})
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(button => button.textContent.trim() === 'Mostrar más').click()`)
+    await until(`${planillaRows}?.length === 10`)
+    assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/planillas/1/1' && read.page === 2 && read.perPage === 5))
+    assert.equal(await evaluate(`document.querySelector('input[aria-label="Estudiante 01 · Taller 1"]').value`), '4.2', 'Loading more students must retain unsaved marks.')
+    assert.deepEqual(errors, [], 'Academic pagination browser errors.')
+    console.log('PASS: areas, SIEE, evaluation catalog and gradebook: 5 default, numbered pages above 20, backend search, fixed-size show-more and retained grade drafts.')
+  } else if (realtimeMode) {
+    user.institution = {name: 'Colegio de prueba', plan: {key: 'esencial', name: 'Esencial'}}
     const subscribed = `window.Echo?.connector.pusher.channels.channels['private-tenant.smoke']?.subscribed === true`
     await navigate(`/academico/plan-estudios?ano=${urlTokens.year}&tab=horarios&grupo=${urlTokens.group}&espacio=${urlTokens.space}`, 'Horarios')
     await until(subscribed)
     await until(`!!document.querySelector('.schedule-session')`)
     await evaluate(`window.realtimePageSentinel = 'unchanged'`)
+    user.institution.plan = {key: 'premium', name: 'Premium'}
+    reverbProbe({action: 'publish', resources: ['rbac']})
+    await until(`document.querySelector('[data-testid="account-menu-plan"]')?.textContent === 'Premium'`)
     fixtures['/api/anos-lectivos'].data.push({...year, id: 3, url_token: 'n'.repeat(24), nombre: '2028'})
     reverbProbe({action: 'publish', resources: ['academic']})
     await until(`Array.from(document.querySelectorAll('option')).some(option => option.textContent.includes('2028'))`)
@@ -313,6 +571,10 @@ try {
     await sleep(500)
     const avatar = await evaluate(`(() => {const box=document.querySelector('#kt_header_user_menu_toggle [data-kt-menu-trigger]').getBoundingClientRect();return {x:box.left+box.width/2,y:box.top+box.height/2}})()`)
     await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: avatar.x, y: avatar.y})
+    await sleep(350)
+    if (!await evaluate(`document.querySelector('#kt_header_user_menu_toggle > [data-kt-menu="true"]')?.classList.contains('show')`)) {
+      await evaluate(`document.querySelector('#kt_header_user_menu_toggle [data-kt-menu-trigger]').click()`)
+    }
     await until(`document.querySelector('#kt_header_user_menu_toggle > [data-kt-menu="true"]')?.classList.contains('show')`)
     const trigger = await evaluate(`(() => {const box=document.querySelector('[data-testid="institutional-settings-trigger"]').getBoundingClientRect();return {x:box.left+box.width/2,y:box.top+box.height/2}})()`)
     await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: trigger.x, y: trigger.y})
@@ -409,33 +671,47 @@ try {
   await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.year}' && document.querySelector('table tbody')?.innerText.includes('Matemáticas')`)
   await navigate(`/academico/plan-estudios?tab=areas&ano=${nextYear.legacy_url_token}`, 'Plan de estudios')
   await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.nextYear}' && !document.querySelector('table tbody')?.innerText.includes('Matemáticas')`)
+  await navigate('/academico/plan-estudios?tab=resumen', 'Plan de estudios')
+  await until(`document.querySelectorAll('.schedule-controls select').length === 2`)
+  assert.ok(await evaluate(`(()=>{const controls=document.querySelector('.schedule-controls');controls.querySelector('select').focus();return controls.querySelectorAll('input[type="search"]').length===0 && [...controls.querySelectorAll('select')].every(select=>select.classList.contains('form-select-solid'))})()`), 'Summary filters must be plain solid selects without search inputs.')
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='2';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await until(`[...document.querySelectorAll('.row.g-5 .fs-2x')].map(item=>item.textContent.trim()).join(',')==='1,0,1'`)
+  assert.ok(scheduleReads.some(read => read.view === null && read.group === '2'), 'Summary must request the selected group by internal ID.')
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Docente"]');select.value='3';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await until(`[...document.querySelectorAll('.row.g-5 .fs-2x')].map(item=>item.textContent.trim()).join(',')==='0,0,0'`)
+  assert.ok(scheduleReads.some(read => read.view === null && read.group === '2' && read.teacher === '3'), 'Summary must request the selected teacher by internal ID.')
   await navigate('/academico/plan-estudios?tab=asignaciones', 'Sin docente asignado')
+  assert.ok(await evaluate(`(()=>{const controls=document.querySelector('.schedule-controls');controls.querySelector('select').focus();return controls.querySelectorAll('select').length===3 && controls.querySelectorAll('input[type="search"]').length===0 && [...controls.querySelectorAll('select')].every(select=>select.classList.contains('form-select-solid'))})()`), 'Assignment filters must be three plain solid selects without search inputs.')
   assert.ok(await evaluate(`document.querySelector('table tbody')?.innerText.includes('Primero / (A)')`), 'The assignment table must show grade and group together.')
   await evaluate(`document.querySelector('table tbody .btn-light-primary').click()`)
   await until(`!!document.querySelector('.modal.show select[name="materia_id"]')`)
+  assert.ok(await evaluate(`(()=>{const modal=document.querySelector('.modal.show');return modal.querySelectorAll('input[type="search"]').length===0 && [...modal.querySelectorAll('select[name]')].every(select=>!!modal.querySelector('label[for="'+select.id+'"]'))})()`), 'Assignment form selectors need labels and no duplicate search inputs.')
   assert.ok(await evaluate(`!document.querySelector('.modal.show select[name="materia_id"]').disabled && !document.querySelector('.modal.show select[name="grupo_id"]').disabled`), 'Subject and group must be editable in assignments.')
   await evaluate(`document.querySelector('.modal.show .btn-close').click()`)
   await until(`!document.querySelector('.modal.show')`)
   await navigate('/academico/plan-estudios?tab=horarios&grupo=1&espacio=1&docente=3', 'Plan de estudios')
   await until(`(()=>{const params=new URLSearchParams(location.search);return params.get('grupo')==='${urlTokens.group}' && params.get('espacio')==='${urlTokens.space}' && params.get('docente')==='${urlTokens.teacher}'})()`)
   await navigate('/academico/plan-estudios?tab=horarios', 'Selecciona un grupo')
+  assert.ok(await evaluate(`(()=>{const controls=document.querySelector('.schedule-controls');controls.querySelector('select').focus();return controls.querySelectorAll('select').length===3 && controls.querySelectorAll('input[type="search"]').length===0 && [...controls.querySelectorAll('select')].every(select=>select.classList.contains('form-select-solid'))})()`), 'Timetable filters must be three plain solid selects without search inputs.')
+  await until(`!!document.querySelector('.schedule-controls select[aria-label="Grupo"] option[value="52"]')`)
+  assert.ok(await evaluate(`document.querySelector('.schedule-controls select[aria-label="Grupo"] option[value="52"]').textContent.includes('Grupo 52')`), 'A group beyond the first 50 catalog choices must be reachable in the selector without a search field.')
   assert.equal(await evaluate(`document.querySelectorAll('.schedule-session').length`), 0, 'The rector must choose a group before loading the timetable.')
   assert.ok(scheduleReads.some(read => read.view === 'horarios' && read.group === null), 'The first schedule request must ask only for catalogs.')
-  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='${urlTokens.group}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='1';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   await until(`new URLSearchParams(location.search).get('grupo') === '${urlTokens.group}' && document.querySelectorAll('.schedule-session').length === 1`)
   assert.ok(scheduleReads.some(read => read.view === 'horarios' && read.group === '1'), 'The timetable request must send the chosen group to the API.')
-  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Espacio físico"]');select.value='${urlTokens.space}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Espacio físico"]');select.value='1';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   await until(`new URLSearchParams(location.search).get('espacio') === '${urlTokens.space}' && document.querySelectorAll('.schedule-session').length === 1`)
   await command('Page.reload')
   await sleep(500)
-  await until(`document.querySelectorAll('.schedule-session').length === 1 && document.querySelector('.schedule-controls select[aria-label="Grupo"]')?.value === '${urlTokens.group}' && document.querySelector('.schedule-controls select[aria-label="Espacio físico"]')?.value === '${urlTokens.space}'`)
+  await until(`document.querySelectorAll('.schedule-session').length === 1 && document.querySelector('.schedule-controls select[aria-label="Grupo"]')?.value === '1' && document.querySelector('.schedule-controls select[aria-label="Espacio físico"]')?.value === '1'`)
   assert.ok(await evaluate(`(()=>{const url=new URL(location.href);return ['ano','grupo','espacio'].every(name => /^[A-Za-z0-9_-]{20,30}$/.test(url.searchParams.get(name) ?? ''))})()`), 'The selected year, group and room must have short opaque URL tokens.')
   assert.ok(await evaluate(`(()=>{const scroll=document.querySelector('.schedule-scroll');return scroll.scrollHeight <= scroll.clientHeight + 1 && scroll.scrollWidth > scroll.clientWidth})()`), 'Only horizontal scrolling should remain inside the timetable.')
-  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Docente"]');select.value='${urlTokens.teacher}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Docente"]');select.value='3';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   await until(`new URLSearchParams(location.search).get('docente') === '${urlTokens.teacher}' && document.querySelectorAll('.schedule-session').length === 0`)
   await command('Page.reload')
   await sleep(500)
-  await until(`document.querySelector('.schedule-controls select[aria-label="Docente"]')?.value === '${urlTokens.teacher}' && document.querySelectorAll('.schedule-session').length === 0`)
+  await until(`document.querySelector('.schedule-controls select[aria-label="Docente"]')?.value === '3' && document.querySelectorAll('.schedule-session').length === 0`)
   await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Docente"]');select.value='';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   await until(`!location.search.includes('docente=') && document.querySelectorAll('.schedule-session').length === 1`)
   await screenshot('schedule-actions-desktop')
@@ -453,7 +729,7 @@ try {
   await until(`!document.querySelector('.modal.show')`)
   await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Espacio físico"]');select.value='';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   await until(`!location.search.includes('espacio=') && document.querySelectorAll('.schedule-session').length === 1`)
-  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='${urlTokens.groupB}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='2';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   await until(`new URLSearchParams(location.search).get('grupo') === '${urlTokens.groupB}' && document.querySelectorAll('.schedule-session').length === 1`)
   await evaluate(`document.querySelector('.schedule-session').click()`)
   await until(`!!document.querySelector('.modal.show input[name="hora_inicio"]')`)
@@ -462,7 +738,7 @@ try {
   await screenshot('schedule-custom-modal')
   await evaluate(`document.querySelector('.modal.show .btn-close').click()`)
   await until(`!document.querySelector('.modal.show')`)
-  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='${urlTokens.group}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='1';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   await until(`new URLSearchParams(location.search).get('grupo') === '${urlTokens.group}' && document.querySelectorAll('.schedule-session').length === 1`)
   await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Agregar clase')).click()`)
   await until(`!!document.querySelector('.modal.show select[name="grupo_id"]')`)
@@ -557,6 +833,8 @@ try {
   assert.ok(await evaluate(`(()=>{const scroll=document.querySelector('.schedule-scroll');return scroll.scrollHeight <= scroll.clientHeight + 1 && scroll.scrollTop === 0})()`), 'The timetable must have no inner vertical scroll on mobile.')
   await evaluate(`(()=>{document.querySelector('.schedule-scroll').scrollLeft=0;document.querySelector('.schedule-session').scrollIntoView({block:'center',inline:'start'})})()`)
   await sleep(150)
+  await evaluate(`(()=>{const card=document.querySelector('.schedule-session'),top=card.getBoundingClientRect().top+window.scrollY;window.scrollTo(0,Math.max(0,top-window.innerHeight/2))})()`)
+  await until(`(()=>{const box=document.querySelector('.schedule-session').getBoundingClientRect();return box.top>=0 && box.bottom<window.innerHeight})()`)
   const touch = await evaluate(`(()=>{const card=document.querySelector('.schedule-session').getBoundingClientRect();return {x:card.left+25,y:card.top+12}})()`)
   const touchVisibility = await evaluate(`(()=>{const card=document.querySelector('.schedule-session'),box=card.getBoundingClientRect(),origin=document.elementFromPoint(box.left+25,box.top+12)?.closest('.schedule-session')===card,destination=document.elementFromPoint(box.left+25,box.top-44)?.closest('.schedule-day')!==null,bottom=box.bottom<window.innerHeight;return {visible:origin&&destination&&bottom,origin,destination,bottom,top:box.top,viewport:window.innerHeight,hit:document.elementFromPoint(box.left+25,box.top+12)?.className,scroll:window.scrollY,body:document.scrollingElement?.scrollHeight}})()`)
   assert.ok(touchVisibility.visible, `Touch origin and destination must be visible inside the calendar: ${JSON.stringify(touchVisibility)}`)

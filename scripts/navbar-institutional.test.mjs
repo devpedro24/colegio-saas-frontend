@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import ts from 'typescript'
 
-const source = fs.readFileSync(new URL('../src/_metronic/layout/components/header/_NavbarContent.ts', import.meta.url), 'utf8')
+const helper = fs.readFileSync(new URL('../src/app/modules/accounts/accountPresentation.ts', import.meta.url), 'utf8')
+const source = helper + '\n' + fs.readFileSync(new URL('../src/_metronic/layout/components/header/_NavbarContent.ts', import.meta.url), 'utf8').replace(/^import \{escapeUserHtml, userInitials\}.*$/m, '')
 const js = ts.transpileModule(source, {
   compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022},
 }).outputText
@@ -34,3 +35,18 @@ for (const lang of ['es', 'en']) {
     assert.ok(fullAccess.includes('data-kt-menu-placement="{default: \'bottom-end\', lg: \'left-start\'}"'))
   })
 }
+
+
+test('account identity is escaped and future menu sections remain available', () => {
+ const intl = {formatMessage: ({id}) => id}
+ const html = getNavbarHtml(intl, {showQuickIcons: false, userName: '<img src=x onerror=alert(1)>', userEmail: 'real@example.test', planLabel: '<Premium>'})
+ assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'))
+ assert.ok(html.includes('&lt;Premium&gt;'))
+ assert.ok(!html.includes('<img src=x'))
+ assert.ok(!html.includes('Max Smith') && !html.includes('max@kt.com'))
+ for (const id of ['header.menu.myProjects', 'header.user.mySubscription', 'header.user.myStatements', 'header.user.referrals', 'header.user.billing', 'header.user.payments', 'header.user.statements']) {
+   assert.ok(html.includes(id), `${id} must remain in the user menu`)
+ }
+ assert.ok(!html.includes('badge-circle fw-bold fs-7">3'), 'No invented project count')
+ assert.ok(html.includes('data-kt-nav="/account/settings"'))
+})
