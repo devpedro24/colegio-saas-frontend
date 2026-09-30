@@ -107,7 +107,7 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
         <div className='card-header border-0 pt-5'>
           <h3 className='card-title align-items-start flex-column'>
             <span className='card-label fw-bold fs-3 mb-1'>
-              {t('siee.title')} (v{data.version ?? 1})
+              {t('siee.title')}
             </span>
             <span className='text-muted mt-1 fw-semibold fs-7'>
               {t('siee.desc')}

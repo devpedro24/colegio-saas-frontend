@@ -15,7 +15,6 @@
 export interface SieeResponse {
   editable: boolean
   configuracion: SieeConfiguracion
-  version: number
   escalas: Array<{id: number; nombre: string; tipo: string; valor_min: number; valor_max: number; decimales: number}>
   metodos: Array<{id: number; calculo_nota: string; nota_minima: number; ambito: string}>
   curriculo: Array<{ano_lectivo_id: number; grado_id: number; materia_id: number; area_id: number | null; peso_area: number | null}>
