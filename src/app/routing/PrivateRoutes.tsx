@@ -6,13 +6,14 @@ import {DashboardWrapper} from '../pages/dashboard/DashboardWrapper'
 import {getCSSVariableValue} from '../../_metronic/assets/ts/_utils'
 import {WithChildren} from '../../_metronic/helpers'
 
+const AccountPage = lazy(() => import('../modules/accounts/AccountPage'))
+const ConfigPage = lazy(() => import('../pages/config/ConfigPage'))
+const AcademicoPage = lazy(() => import('../pages/academico/AcademicoPage'))
+const UsuariosPage = lazy(() => import('../pages/usuarios/UsuariosPage'))
+const ProximamentePage = lazy(() => import('../pages/proximamente/ProximamentePage'))
+const EventosPage = lazy(() => import('../pages/comunicacion/EventosPage'))
+
 const PrivateRoutes = () => {
-  const AccountPage = lazy(() => import('../modules/accounts/AccountPage'))
-  const ConfigPage = lazy(() => import('../pages/config/ConfigPage'))
-  const AcademicoPage = lazy(() => import('../pages/academico/AcademicoPage'))
-  const UsuariosPage = lazy(() => import('../pages/usuarios/UsuariosPage'))
-  const ProximamentePage = lazy(() => import('../pages/proximamente/ProximamentePage'))
-  const EventosPage = lazy(() => import('../pages/comunicacion/EventosPage'))
 
   return (
     <Routes>
