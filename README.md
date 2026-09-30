@@ -1,5 +1,7 @@
 # React + TypeScript + Vite
 
+Resumen de los módulos entregados y sus límites: [docs/ENTREGAS_2026-09.md](docs/ENTREGAS_2026-09.md).
+
 ## Actualizaciones con Reverb
 
 `WebSocketManager` mantiene una conexión durante toda la sesión, con canales
