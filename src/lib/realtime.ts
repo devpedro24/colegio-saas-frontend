@@ -10,11 +10,11 @@ const dependencies: Record<string, string[]> = {
   evaluation: ['evaluacion', 'boletines', 'horarios', 'estructura', 'eventos-catalogo'],
   'academic-config': ['config', 'siee', 'evaluacion', 'boletines', 'onboarding'],
   events: ['eventos', 'evento', 'eventos-catalogo', 'horarios'],
-  institution: ['config', 'onboarding', 'boletines'],
+  institution: ['institution-context', 'config', 'onboarding', 'boletines'],
   users: ['usuarios', 'horarios', 'evaluacion', 'boletines', 'eventos-catalogo', 'onboarding', 'account'],
   rbac: ['rbac-catalog', 'roles'],
-  schools: ['colegios', 'audit-tenants'],
-  plans: ['plans', 'colegios', 'rbac-catalog'],
+  schools: ['institution-context', 'colegios', 'audit-tenants'],
+  plans: ['institution-context', 'plans', 'colegios', 'rbac-catalog'],
   account: ['account', 'onboarding'],
   storage: ['storage', 'eventos', 'evento'],
   audit: ['audit'],
@@ -23,14 +23,14 @@ const dependencies: Record<string, string[]> = {
 export function shouldRefreshQuery(key: readonly unknown[], resources: readonly string[], scope: RealtimeScope): boolean {
   const root = String(key[0])
   if (scope === 'tenant' && platformRoots.has(root)) return false
-  if (scope === 'platform' && !platformRoots.has(root) && root !== 'account') return false
+  if (scope === 'platform' && !platformRoots.has(root) && root !== 'account' && root !== 'institution-context') return false
   if (scope === 'tenant' && resources.includes('rbac')) return true
   if (resources.some(resource => resource === 'all' || resource === 'access' || !dependencies[resource])) return true
   return resources.some(resource => dependencies[resource].includes(root))
 }
 
 export function refreshesIdentity(resources: readonly string[]): boolean {
-  return resources.some(resource => ['all', 'access', 'rbac', 'users', 'account'].includes(resource))
+  return resources.some(resource => ['all', 'access', 'rbac', 'users', 'account', 'plans', 'schools', 'institution'].includes(resource))
 }
 
 export function resourceForPath(path: string): string {

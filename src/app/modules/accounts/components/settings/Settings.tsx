@@ -4,9 +4,6 @@ import {ProfileDetails} from './cards/ProfileDetails'
 import {SignInMethod} from './cards/SignInMethod'
 import {TwoFactorAuth} from './cards/TwoFactorAuth'
 import {ConnectedAccounts} from './cards/ConnectedAccounts'
-import {EmailPreferences} from './cards/EmailPreferences'
-import {Notifications} from './cards/Notifications'
-import {DeactivateAccount} from './cards/DeactivateAccount'
 import {useAuth} from '../../../auth'
 import {getUserByToken} from '../../../auth/core/_requests'
 import {useToast} from '@/lib/ui/toast'
@@ -17,7 +14,7 @@ import {useToast} from '@/lib/ui/toast'
 // para mostrar el correo vinculado y se avisa con un toast.
 export function Settings() {
   const toast = useToast()
-  const {setCurrentUser} = useAuth()
+  const {setCurrentUser, currentUser} = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
@@ -46,10 +43,7 @@ export function Settings() {
       <ProfileDetails />
       <SignInMethod />
       <TwoFactorAuth />
-      <ConnectedAccounts />
-      <EmailPreferences />
-      <Notifications />
-      <DeactivateAccount />
+      {(currentUser?.profile_capabilities?.google_link || currentUser?.google_email) && <ConnectedAccounts />}
     </>
   )
 }

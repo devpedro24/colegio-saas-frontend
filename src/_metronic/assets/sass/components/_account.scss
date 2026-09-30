@@ -1,0 +1,39 @@
+.account-user-menu {
+  max-width: calc(100vw - 2rem);
+  .min-w-0 { min-width: 0; }
+  .symbol { flex-shrink: 0; }
+}
+
+.account-summary {
+  .min-w-0 { min-width: 0; }
+  &__tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+
+    .nav-link {
+      flex: 0 0 auto;
+      border-bottom: 2px solid transparent;
+      color: var(--bs-gray-600);
+      white-space: nowrap;
+
+      &:hover, &:focus-visible, &.active { color: var(--bs-primary); }
+      &.active { border-bottom-color: var(--bs-primary); }
+    }
+  }
+}
+
+.account-mfa-setup {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  .account-mfa-qr { flex: none; padding: .75rem; background: #fff; border: 1px solid var(--bs-gray-200); border-radius: .75rem; }
+  > div:last-child { flex: 1 1 230px; }
+}
+.account-recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: .75rem;
+  code { padding: .75rem; background: var(--bs-gray-100); color: var(--bs-gray-900); border-radius: .5rem; }
+}

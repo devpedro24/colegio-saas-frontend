@@ -1,10 +1,11 @@
 import {useEffect} from 'react'
 import {useIntl} from 'react-intl'
 import {useNavigate} from 'react-router-dom'
-import {toAbsoluteUrl, withBase} from '../../../helpers'
+import {toAbsoluteUrl, withBase, reInitMenu} from '../../../helpers'
 import {getNavbarHtml} from './_NavbarContent'
 import {ThemeModeComponent} from '../../../assets/ts/layout'
 import {setLanguage, useLang} from '../../../i18n/Metronici18n'
+import {useAccountInstitution} from '@/app/modules/accounts/useAccountInstitution'
 import {useAuth} from '../../../../app/modules/auth'
 import {useAuthz} from '../../../../app/modules/auth/core/authz'
 import {useImpersonation} from '../../../../app/modules/impersonation/impersonation.store'
@@ -24,9 +25,11 @@ const Navbar = () => {
   const navigate = useNavigate()
   const lang = useLang()
   const intl = useIntl()
-  const {logout} = useAuth()
+  const {logout, currentUser} = useAuth()
+  const institution = useAccountInstitution()
   const {isPlatform, hasPermission} = useAuthz()
   const {activeColegio} = useImpersonation()
+  const planLabel = institution?.plan?.name || (currentUser?.is_platform && !activeColegio ? intl.formatMessage({id: 'account.platform'}) : intl.formatMessage({id: 'account.planUnavailable'}))
 
   // Buscador, notificaciones y accesos rapidos son herramientas de PLATAFORMA (superadmin sin
   // colegio activo); para usuarios de colegio (o superadmin suplantando uno) se ocultan.
@@ -43,6 +46,7 @@ const Navbar = () => {
   useEffect(() => {
     // Modo de tema: init nativo (bindea clicks de [data-kt-element="mode"], aplica el modo
     // actual y marca el item activo; el icono sun/moon del trigger se actualiza por CSS).
+    reInitMenu()
     ThemeModeComponent.init()
 
     // Idioma: marcar el item activo y actualizar el badge del trigger con el idioma actual.
@@ -68,6 +72,11 @@ const Navbar = () => {
       if (out) {
         e.preventDefault()
         logout()
+        return
+      }
+
+      if (target.closest('[data-kt-placeholder]')) {
+        e.preventDefault()
         return
       }
 
@@ -99,14 +108,14 @@ const Navbar = () => {
     // Fase de CAPTURA: KTMenu hace stopPropagation en algunos .menu-link, asi corremos antes.
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [navigate, lang, logout, intl, showQuickIcons, canConfigureInstitution, canManageCampuses])
+  }, [navigate, lang, logout, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, currentUser?.name, currentUser?.email, planLabel])
 
   return (
     <div
       className='app-navbar flex-shrink-0'
       dangerouslySetInnerHTML={{
         __html: withBase(
-          getNavbarHtml(intl, {showQuickIcons, canConfigureInstitution, canManageCampuses})
+          getNavbarHtml(intl, {showQuickIcons, canConfigureInstitution, canManageCampuses, userName: currentUser?.name, userEmail: currentUser?.email, planLabel})
         ),
       }}
     />

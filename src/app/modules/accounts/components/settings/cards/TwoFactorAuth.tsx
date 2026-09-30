@@ -1,350 +1,94 @@
-import {FC, useState} from 'react'
-import {FormattedMessage, useIntl} from 'react-intl'
-import {KTIcon} from '../../../../../../_metronic/helpers'
-import {ApiError} from '@/lib/api/client'
-import {useToast} from '@/lib/ui/toast'
+import {useState, type FormEvent} from 'react'
+import {QRCodeSVG} from 'qrcode.react'
+import {useIntl} from 'react-intl'
 import {useAuth} from '../../../../auth'
-import {
-  MfaSetupResponse,
-  useMfaConfirm,
-  useMfaDisable,
-  useMfaSetup,
-} from '@/app/pages/account/mfa.api'
+import {ApiError} from '@/lib/api/client'
+import {getUserByToken} from '../../../../auth/core/_requests'
+import {useMfaSetup, useMfaConfirm, useMfaDisable} from '@/app/pages/account/mfa.api'
+import {PasswordField} from '@/app/shared/components/PasswordField'
 
-// Card de "Verificación en dos pasos" (MFA/TOTP) para la página de ajustes de cuenta.
-// Flujo: Activar -> POST /mfa/setup (muestra secreto + otpauth_url para teclear en la app
-// autenticadora) -> código de 6 dígitos -> POST /mfa/confirm -> activado.
-// Si ya está activo: Desactivar -> POST /mfa/disable.
-const TwoFactorAuth: FC = () => {
+export function TwoFactorAuth() {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
-  const toast = useToast()
   const {currentUser, setCurrentUser} = useAuth()
-
-  const [enabled, setEnabled] = useState<boolean>(currentUser?.mfa_enabled === true)
-  const [setup, setSetup] = useState<MfaSetupResponse | null>(null)
+  const setup = useMfaSetup(), confirm = useMfaConfirm(), disable = useMfaDisable()
+  const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
-  const [codeError, setCodeError] = useState<string | undefined>(undefined)
-  const [disarming, setDisarming] = useState<boolean>(false)
-
-  const setupMutation = useMfaSetup()
-  const confirmMutation = useMfaConfirm()
-  const disableMutation = useMfaDisable()
-
-  // MFA/TOTP SOLO para usuarios de PLATAFORMA (superadmin): un usuario que está
-  // dentro de un colegio (tenant) no gestiona segundo factor desde sus ajustes.
-  const isPlatform = currentUser?.is_platform === true
-
-  if (!isPlatform) {
-    return null
+  const [secret, setSecret] = useState('')
+  const [setupUri, setSetupUri] = useState('')
+  const [showManualKey, setShowManualKey] = useState(false)
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
+  const [error, setError] = useState('')
+  const [acknowledged, setAcknowledged] = useState(false)
+  const [working, setWorking] = useState(false)
+  const enabled = currentUser?.mfa_enabled === true
+  const busy = working || setup.isPending || confirm.isPending || disable.isPending
+  const run = async (action: () => Promise<void>) => {
+    setError(''); setWorking(true)
+    try { await action() } catch (err) { setError(err instanceof ApiError ? err.message : t('account.security.error')) }
+    finally { setWorking(false) }
   }
-
-  // Refleja el nuevo estado de MFA en el usuario del contexto (para persistirlo en UI).
-  const syncUser = (mfa_enabled: boolean) => {
-    setCurrentUser((prev) => (prev ? {...prev, mfa_enabled} : prev))
-  }
-
-  const startSetup = () => {
-    setupMutation.mutate(undefined, {
-      onSuccess: (data) => {
-        setSetup(data)
-        setCode('')
-        setCodeError(undefined)
-      },
-      onError: (err) => {
-        toast.error(err instanceof ApiError ? err.message : t('account.mfa.setupError'))
-      },
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    void run(async () => {
+      if (secret) {
+        const result = await confirm.mutateAsync(code)
+        setRecoveryCodes(result.recovery_codes ?? [])
+        setSecret(''); setSetupUri(''); setCode('')
+      } else if (enabled) {
+        await disable.mutateAsync({code, password})
+        setCurrentUser(prev => prev ? {...prev, mfa_enabled: false} : prev)
+        setCode(''); setPassword('')
+      } else {
+        const result = await setup.mutateAsync(password)
+        setSecret(result.secret); setSetupUri(result.otpauth_url); setPassword('')
+      }
     })
   }
-
-  const cancelSetup = () => {
-    setSetup(null)
-    setCode('')
-    setCodeError(undefined)
-    confirmMutation.reset()
+  const finish = () => void run(async () => {
+    const {data} = await getUserByToken('')
+    setCurrentUser(data); setRecoveryCodes([])
+  })
+  const download = () => {
+    const blob = new Blob([`${t('account.security.recoveryTitle')}\n${currentUser?.email}\n\n${recoveryCodes.join('\n')}\n`], {type: 'text/plain;charset=utf-8'})
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a'); link.href = url; link.download = 'codigos-recuperacion.txt'; link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
-
-  const confirm = () => {
-    setCodeError(undefined)
-    confirmMutation.mutate(code, {
-      onSuccess: () => {
-        setEnabled(true)
-        setSetup(null)
-        setCode('')
-        syncUser(true)
-        toast.success(t('account.mfa.enabledToast'))
-      },
-      onError: (err) => {
-        if (err instanceof ApiError) {
-          const fieldError = err.fieldError('code')
-          if (fieldError) {
-            setCodeError(fieldError)
-          } else {
-            toast.error(err.message)
-          }
-        } else {
-          toast.error(t('account.mfa.confirmError'))
-        }
-      },
-    })
-  }
-
-  const disable = () => {
-    setCodeError(undefined)
-    disableMutation.mutate(code, {
-      onSuccess: () => {
-        setEnabled(false)
-        setSetup(null)
-        setDisarming(false)
-        setCode('')
-        syncUser(false)
-        toast.success(t('account.mfa.disabledToast'))
-      },
-      onError: (err) => {
-        if (err instanceof ApiError) {
-          const fieldError = err.fieldError('code')
-          if (fieldError) {
-            setCodeError(fieldError)
-          } else {
-            toast.error(err.message)
-          }
-        } else {
-          toast.error(t('account.mfa.disableError'))
-        }
-      },
-    })
-  }
-
-  return (
-    <div className='card mb-5 mb-xl-10'>
-      <div
-        className='card-header border-0 cursor-pointer'
-        role='button'
-        data-bs-toggle='collapse'
-        data-bs-target='#kt_account_two_factor'
-      >
-        <div className='card-title m-0'>
-          <h3 className='fw-bold m-0'>
-            <FormattedMessage id='account.mfa.title' />
-          </h3>
-        </div>
-      </div>
-
-      <div id='kt_account_two_factor' className='collapse show'>
-        <div className='card-body border-top p-9'>
-          {/* Estado ACTIVADO: badge + botón Desactivar */}
-          {enabled ? (
-            <div>
-              <div className='d-flex flex-wrap align-items-center'>
-                <div>
-                  <div className='fs-6 fw-bolder mb-1'>
-                    <FormattedMessage id='common.status' />
-                  </div>
-                  <div className='d-flex align-items-center'>
-                    <span className='badge badge-light-success fw-bold me-2'>
-                      <FormattedMessage id='account.mfa.active' />
-                    </span>
-                    <span className='fw-bold text-gray-600'>
-                      <FormattedMessage
-                        id='account.mfa.activeHint'
-                      />
-                    </span>
-                  </div>
-                </div>
-
-                {!disarming && (
-                  <div className='ms-auto'>
-                    <button
-                      type='button'
-                      className='btn btn-light-danger'
-                      onClick={() => {
-                        setCode('')
-                        setCodeError(undefined)
-                        setDisarming(true)
-                      }}
-                    >
-                      <FormattedMessage id='account.mfa.disable' />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {disarming && (
-                <div className='mt-6 pt-6 border-top'>
-                  <div className='fv-row mb-4 w-100 mw-300px'>
-                    <label htmlFor='kt_mfa_disable_code' className='form-label fs-6 fw-bolder mb-3'>
-                      <FormattedMessage
-                        id='account.mfa.enterCode'
-                      />
-                    </label>
-                    <input
-                      id='kt_mfa_disable_code'
-                      type='text'
-                      inputMode='numeric'
-                      autoComplete='one-time-code'
-                      maxLength={6}
-                      className='form-control form-control-lg form-control-solid'
-                      placeholder='000000'
-                      value={code}
-                      onChange={(e) => {
-                        setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                        setCodeError(undefined)
-                      }}
-                    />
-                    {codeError && (
-                      <div className='fv-plugins-message-container'>
-                        <div className='fv-help-block'>{codeError}</div>
-                      </div>
-                    )}
-                  </div>
-                  <div className='d-flex'>
-                    <button
-                      type='button'
-                      className='btn btn-light-danger me-2 px-6'
-                      onClick={disable}
-                      disabled={disableMutation.isPending || code.length !== 6}
-                    >
-                      {disableMutation.isPending ? (
-                        <span className='indicator-progress d-block'>
-                          <FormattedMessage id='common.pleaseWait' />
-                          <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
-                        </span>
-                      ) : (
-                        <FormattedMessage id='account.mfa.disable' />
-                      )}
-                    </button>
-                    <button
-                      type='button'
-                      className='btn btn-color-gray-500 btn-active-light-primary px-6'
-                      onClick={() => {
-                        setDisarming(false)
-                        setCode('')
-                        setCodeError(undefined)
-                      }}
-                      disabled={disableMutation.isPending}
-                    >
-                      <FormattedMessage id='common.cancel' />
-                    </button>
-                  </div>
-                </div>
-              )}
+  return <section className='card mb-6' id='account-security'>
+    <div className='card-header'><h2 className='card-title fs-3 fw-bold'>{t('account.security.title')}</h2></div>
+    <div className='card-body p-6 p-md-9'>
+      {error && <div className='alert alert-danger' role='alert'>{error}</div>}
+      {recoveryCodes.length > 0 ? <>
+        <h3 className='fs-4'>{t('account.security.recoveryTitle')}</h3>
+        <p className='text-gray-700'>{t('account.security.recoveryHelp')}</p>
+        <div className='account-recovery-codes mb-5'>{recoveryCodes.map(value => <code key={value}>{value}</code>)}</div>
+        <button type='button' className='btn btn-light-primary mb-5' onClick={download}>{t('account.security.download')}</button>
+        <label className='form-check form-check-custom mb-6 gap-3'><input type='checkbox' className='form-check-input' checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} /><span>{t('account.security.saved')}</span></label>
+        <button type='button' className='btn btn-primary' disabled={!acknowledged || busy} onClick={finish}>{t('account.security.continue')}</button>
+      </> : <>
+        <p className='fs-6 text-gray-700'>{t('account.security.optionalHelp')}</p>
+        {enabled && !secret && <div className='alert alert-success'>{t('account.security.active')}</div>}
+        <form onSubmit={submit}>
+          {secret ? <>
+            <p className='text-gray-700'>{t('account.security.stepApp')}</p>
+            <div className='account-mfa-setup mb-5'>
+              {setupUri && <div className='account-mfa-qr'><QRCodeSVG value={setupUri} size={190} level='M' marginSize={2} title={t('account.security.qrLabel')} /></div>}
+              <div><p className='fw-semibold text-gray-800'>{t('account.security.scanQr')}</p><p className='text-gray-700 mb-0'>{t('account.security.notGmail')}</p></div>
             </div>
-          ) : setup ? (
-            /* Estado ACTIVANDO: mostrar secreto + otpauth_url + input de código */
-            <div className='flex-row-fluid'>
-              <div className='fs-6 text-gray-700 mb-5'>
-                <FormattedMessage
-                  id='account.mfa.setupHint'
-                />
-              </div>
-
-              {/* Secreto en grande, para teclear en la app */}
-              <div className='mb-2 fw-bold fs-7 text-gray-600'>
-                <FormattedMessage id='account.mfa.secret' />
-              </div>
-              <div className='rounded bg-light-primary text-primary font-monospace fs-2 fw-bold px-4 py-4 text-center text-break mb-6'>
-                {setup.secret}
-              </div>
-
-              {/* Enlace otpauth (manual, sin librería de QR) */}
-              <div className='mb-2 fw-bold fs-7 text-gray-600'>
-                <FormattedMessage id='account.mfa.otpauthUrl' />
-              </div>
-              <div className='rounded bg-light font-monospace fs-8 text-gray-700 px-4 py-3 text-break mb-8'>
-                {setup.otpauth_url}
-              </div>
-
-              {/* Código de 6 dígitos */}
-              <div className='fv-row mb-6 w-100 mw-300px'>
-                <label htmlFor='kt_mfa_code' className='form-label fs-6 fw-bolder mb-3'>
-                  <FormattedMessage
-                    id='account.mfa.enterCode'
-                  />
-                </label>
-                <input
-                  id='kt_mfa_code'
-                  type='text'
-                  inputMode='numeric'
-                  autoComplete='one-time-code'
-                  maxLength={6}
-                  className='form-control form-control-lg form-control-solid'
-                  placeholder='000000'
-                  value={code}
-                  onChange={(e) => {
-                    setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                    setCodeError(undefined)
-                  }}
-                />
-                {codeError && (
-                  <div className='fv-plugins-message-container'>
-                    <div className='fv-help-block'>{codeError}</div>
-                  </div>
-                )}
-              </div>
-
-              <div className='d-flex'>
-                <button
-                  type='button'
-                  className='btn btn-primary me-2 px-6'
-                  onClick={confirm}
-                  disabled={confirmMutation.isPending || code.length !== 6}
-                >
-                  {confirmMutation.isPending ? (
-                    <span className='indicator-progress d-block'>
-                      <FormattedMessage id='common.pleaseWait' />
-                      <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
-                    </span>
-                  ) : (
-                    <FormattedMessage id='account.mfa.confirm' />
-                  )}
-                </button>
-                <button
-                  type='button'
-                  className='btn btn-color-gray-500 btn-active-light-primary px-6'
-                  onClick={cancelSetup}
-                  disabled={confirmMutation.isPending}
-                >
-                  <FormattedMessage id='common.cancel' />
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Estado DESACTIVADO: aviso + botón Activar */
-            <div className='notice d-flex bg-light-primary rounded border-primary border border-dashed p-6'>
-              <KTIcon iconName='shield-tick' className='fs-2tx text-primary me-4' />
-              <div className='d-flex flex-stack flex-grow-1 flex-wrap flex-md-nowrap'>
-                <div className='mb-3 mb-md-0 fw-bold'>
-                  <h4 className='text-gray-800 fw-bolder'>
-                    <FormattedMessage id='account.mfa.secureTitle' />
-                  </h4>
-                  <div className='fs-6 text-gray-600 pe-7'>
-                    <FormattedMessage
-                      id='account.mfa.secureBody'
-                    />
-                  </div>
-                </div>
-                <button
-                  type='button'
-                  className='btn btn-primary px-6 align-self-center text-nowrap'
-                  onClick={startSetup}
-                  disabled={setupMutation.isPending}
-                >
-                  {setupMutation.isPending ? (
-                    <span className='indicator-progress d-block'>
-                      <FormattedMessage id='common.pleaseWait' />
-                      <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
-                    </span>
-                  ) : (
-                    <FormattedMessage id='account.mfa.enable' />
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+            <button type='button' className='btn btn-link p-0 mb-3' onClick={() => setShowManualKey(value => !value)} aria-expanded={showManualKey}>{t('account.security.manualOption')}</button>
+            {showManualKey && <div className='bg-light rounded p-4 mb-5'><p className='text-gray-700 mb-2'>{t('account.security.stepSecret')}</p><code className='fs-5 text-break user-select-all d-block mb-3' data-testid='mfa-secret'>{secret}</code><button type='button' className='btn btn-sm btn-light-primary' onClick={() => void navigator.clipboard.writeText(secret)}>{t('account.security.copyKey')}</button></div>}
+          </> : <div className='mb-5'>
+            <label htmlFor='mfa-password' className='form-label'>{t('account.security.password')}</label>
+            <PasswordField id='mfa-password' value={password} autoComplete='current-password' required maxLength={128} onChange={e => setPassword(e.target.value)} />
+          </div>}
+          {(secret || enabled) && <div className='mb-5'>
+            <label htmlFor='mfa-code' className='form-label'>{t(secret ? 'account.security.appCode' : 'account.security.code')}</label>
+            <input id='mfa-code' className='form-control' autoComplete='one-time-code' value={code} required maxLength={secret ? 6 : 23} inputMode={secret ? 'numeric' : 'text'} pattern={secret ? '[0-9]{6}' : undefined} onChange={e => setCode(e.target.value)} />
+          </div>}
+          <button type='submit' className={`btn btn-${enabled && !secret ? 'light-danger' : 'primary'}`} disabled={busy}>{t(busy ? 'common.pleaseWait' : secret ? 'account.security.confirm' : enabled ? 'account.security.disable' : 'account.security.setup')}</button>
+        </form>
+      </>}
     </div>
-  )
+  </section>
 }
-
-export {TwoFactorAuth}

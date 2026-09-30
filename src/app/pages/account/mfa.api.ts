@@ -17,6 +17,7 @@ export interface MfaSetupResponse {
 export interface MfaStateResponse {
   /** Estado resultante de la verificación en dos pasos. */
   mfa_enabled: boolean
+  recovery_codes?: string[]
 }
 
 /**
@@ -25,7 +26,7 @@ export interface MfaStateResponse {
  */
 export function useMfaSetup() {
   return useMutation({
-    mutationFn: () => api.post<MfaSetupResponse>('/mfa/setup'),
+    mutationFn: (password: string) => api.post<MfaSetupResponse>('/mfa/setup', {password}),
   })
 }
 
@@ -41,10 +42,10 @@ export function useMfaConfirm() {
 
 /**
  * POST /mfa/disable — desactiva la verificación en dos pasos. El backend exige un
- * código válido de la app autenticadora (o la contraseña) para poder desactivar.
+ * código válido y contraseña.
  */
 export function useMfaDisable() {
   return useMutation({
-    mutationFn: (code: string) => api.post<MfaStateResponse>('/mfa/disable', {code}),
+    mutationFn: (input: {code: string; password: string}) => api.post<MfaStateResponse>('/mfa/disable', input),
   })
 }

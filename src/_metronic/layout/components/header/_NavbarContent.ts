@@ -5,10 +5,14 @@
 // #45670 y etiquetas de tiempo "1 hr") son datos placeholder de la plantilla y NO se traducen.
 /* eslint-disable */
 import type {IntlShape} from 'react-intl'
+import {escapeUserHtml, userInitials} from '@/app/modules/accounts/accountPresentation'
 
 export const getNavbarHtml = (
   intl: IntlShape,
   opts?: {
+    userName?: string
+    userEmail?: string
+    planLabel?: string
     showQuickIcons?: boolean
     canConfigureInstitution?: boolean
     canManageCampuses?: boolean
@@ -22,6 +26,10 @@ export const getNavbarHtml = (
   const showQuickIcons = opts?.showQuickIcons !== false
   const showInstitutionalSettings =
     opts?.canConfigureInstitution === true || opts?.canManageCampuses === true
+  const name = escapeUserHtml(opts?.userName || t('account.user'))
+  const email = escapeUserHtml(opts?.userEmail || '')
+  const plan = escapeUserHtml(opts?.planLabel || '')
+  const initials = escapeUserHtml(userInitials(opts?.userName))
   return String.raw`
 								<!--begin::Invite-->
 								<div class="align-items-center ms-1 ms-lg-3 d-none d-sm-flex">
@@ -1396,24 +1404,24 @@ export const getNavbarHtml = (
 								<!--begin::User menu-->
 								<div class="app-navbar-item ms-5" id="kt_header_user_menu_toggle">
 									<!--begin::Menu wrapper-->
-									<div class="cursor-pointer symbol symbol-35px symbol-md-40px" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end">
-										<img class="symbol symbol-35px symbol-md-40px" src="/media/avatars/300-3.jpg" alt="user" />
-									</div>
+									<button class="btn p-0 symbol symbol-35px symbol-md-40px" type="button" aria-label="${t('header.user.myProfile')}" data-kt-menu-trigger="click" aria-haspopup="true" data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end">
+										<span class="symbol-label bg-light-primary text-primary fw-bold">${initials}</span>
+									</button>
 									<!--begin::User account menu-->
-									<div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg menu-state-color fw-semibold py-4 fs-6 w-275px" data-kt-menu="true">
+									<div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg menu-state-color fw-semibold py-4 fs-6 account-user-menu w-300px" data-kt-menu="true">
 										<!--begin::Menu item-->
 										<div class="menu-item px-3">
 											<div class="menu-content d-flex align-items-center px-3">
 												<!--begin::Avatar-->
 												<div class="symbol symbol-50px me-5">
-													<img alt="Logo" src="/media/avatars/300-3.jpg" />
+													<span class="symbol-label bg-light-primary text-primary fw-bold fs-3">${initials}</span>
 												</div>
 												<!--end::Avatar-->
 												<!--begin::Username-->
-												<div class="d-flex flex-column">
-													<div class="fw-bold d-flex align-items-center fs-5">Max Smith
-													<span class="badge badge-light-success fw-bold fs-8 px-2 py-1 ms-2">Pro</span></div>
-													<a href="#" class="fw-semibold text-muted text-hover-primary fs-7">max@kt.com</a>
+												<div class="d-flex flex-column min-w-0">
+													<div class="fw-bold fs-5 text-break" data-testid="account-menu-name">${name}</div>
+<span class="text-muted fs-7 text-break" data-testid="account-menu-email">${email}</span>
+${plan ? `<span class="badge badge-light-primary align-self-start mt-2 text-wrap" data-testid="account-menu-plan">${plan}</span>` : ''}
 												</div>
 												<!--end::Username-->
 											</div>
@@ -1429,80 +1437,34 @@ export const getNavbarHtml = (
 											)}</a>
 										</div>
 										<!--end::Menu item-->
-										<!--begin::Menu item-->
+										<!--begin::Future account sections-->
 										<div class="menu-item px-5">
-											<a href="#" class="menu-link px-5">
-												<span class="menu-text">${t('header.menu.myProjects')}</span>
-												<span class="menu-badge">
-													<span class="badge badge-light-danger badge-circle fw-bold fs-7">3</span>
-												</span>
-											</a>
+											<a href="#" data-kt-placeholder class="menu-link px-5">${t('header.menu.myProjects')}</a>
 										</div>
-										<!--end::Menu item-->
-										<!--begin::Menu item-->
 										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
 											<a href="#" class="menu-link px-5">
 												<span class="menu-title">${t('header.user.mySubscription')}</span>
 												<span class="menu-arrow"></span>
 											</a>
-											<!--begin::Menu sub-->
 											<div class="menu-sub menu-sub-dropdown w-175px py-4">
-												<!--begin::Menu item-->
-												<div class="menu-item px-3">
-													<a href="#" class="menu-link px-5">${t('header.user.referrals')}</a>
-												</div>
-												<!--end::Menu item-->
-												<!--begin::Menu item-->
-												<div class="menu-item px-3">
-													<a href="#" class="menu-link px-5">${t('header.user.billing')}</a>
-												</div>
-												<!--end::Menu item-->
-												<!--begin::Menu item-->
-												<div class="menu-item px-3">
-													<a href="#" class="menu-link px-5">${t('header.user.payments')}</a>
-												</div>
-												<!--end::Menu item-->
-												<!--begin::Menu item-->
-												<div class="menu-item px-3">
-													<a href="#" class="menu-link d-flex flex-stack px-5">${t('header.user.statements')}
-													<span class="ms-2 lh-0" data-bs-toggle="tooltip" title="${t(
-														'header.user.statementsTooltip'
-													)}">
-														<i class="ki-duotone ki-information-5 fs-5">
-															<span class="path1"></span>
-															<span class="path2"></span>
-															<span class="path3"></span>
-														</i>
-													</span></a>
-												</div>
-												<!--end::Menu item-->
-												<!--begin::Menu separator-->
+												<div class="menu-item px-3"><a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.referrals')}</a></div>
+												<div class="menu-item px-3"><a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.billing')}</a></div>
+												<div class="menu-item px-3"><a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.payments')}</a></div>
+												<div class="menu-item px-3"><a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.statements')}</a></div>
 												<div class="separator my-2"></div>
-												<!--end::Menu separator-->
-												<!--begin::Menu item-->
-												<div class="menu-item px-3">
-													<div class="menu-content px-3">
-														<label class="form-check form-switch form-check-custom form-check-solid">
-															<input class="form-check-input w-30px h-20px" type="checkbox" value="1" checked="checked" name="notifications" />
-															<span class="form-check-label text-muted fs-7">${t(
-																'header.notifications.title'
-															)}</span>
-														</label>
-													</div>
-												</div>
-												<!--end::Menu item-->
+												<div class="menu-item px-3"><div class="menu-content px-3">
+													<label class="form-check form-switch form-check-custom form-check-solid">
+														<input class="form-check-input w-30px h-20px" type="checkbox" name="notifications" disabled />
+														<span class="form-check-label text-muted fs-7">${t('header.notifications.title')}</span>
+													</label>
+												</div></div>
 											</div>
-											<!--end::Menu sub-->
 										</div>
-										<!--end::Menu item-->
-										<!--begin::Menu item-->
 										<div class="menu-item px-5">
-											<a href="#" class="menu-link px-5">${t('header.user.myStatements')}</a>
+											<a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.myStatements')}</a>
 										</div>
-										<!--end::Menu item-->
-										<!--begin::Menu separator-->
 										<div class="separator my-2"></div>
-										<!--end::Menu separator-->
+										<!--end::Future account sections-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
 											<a href="#" class="menu-link px-5">
@@ -1614,7 +1576,7 @@ export const getNavbarHtml = (
 										<!--end::Menu item-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5 my-1">
-											<a href="#" class="menu-link px-5">${t('header.user.accountSettings')}</a>
+											<a href="/account/settings" data-kt-nav="/account/settings" class="menu-link px-5">${t('header.user.accountSettings')}</a>
 										</div>
 										<!--end::Menu item-->
 										${showInstitutionalSettings ? String.raw`

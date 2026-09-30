@@ -1,259 +1,35 @@
-import {FC, useEffect} from 'react'
-import {Link, useLocation} from 'react-router-dom'
+import {NavLink} from 'react-router-dom'
 import {FormattedMessage, useIntl} from 'react-intl'
-import {KTIcon, reInitMenu, toAbsoluteUrl} from '../../../_metronic/helpers'
+import {useAuth} from '../auth'
+import {roleLabels, userInitials} from './accountPresentation'
+import {useAccountInstitution} from './useAccountInstitution'
 
-// Header de cuenta con el diseno de demo46 (account/overview.html). Se quitaron a peticion:
-// los 3 stat boxes (Earnings/Projects/Success Rate) y los botones Follow y Hire Me. "Upgrade
-// to Pro" tampoco existe en demo46, se omite. Se conservan avatar, nombre+verify, info,
-// menu de 3 puntos, barra de Profile Completion y tabs Overview/Settings.
-const AccountHeader: FC = () => {
-  const location = useLocation()
+export function AccountHeader() {
+  const {currentUser} = useAuth()
   const intl = useIntl()
-
-  useEffect(() => {
-    reInitMenu()
-  }, [])
-
-  return (
-    <div className='card mb-5 mb-xl-10'>
-      <div className='card-body pt-9 pb-0'>
-            {/* begin::Details */}
-            <div className='d-flex flex-wrap flex-sm-nowrap'>
-              {/* begin::Pic */}
-              <div className='me-7 mb-4'>
-                <div className='symbol symbol-100px symbol-lg-160px symbol-fixed position-relative'>
-                  <img src={toAbsoluteUrl('media/avatars/300-1.jpg')} alt='Max Smith' />
-                  <div className='position-absolute translate-middle bottom-0 start-100 mb-6 bg-success rounded-circle border border-4 border-body h-20px w-20px'></div>
-                </div>
-              </div>
-              {/* end::Pic */}
-
-              {/* begin::Info */}
-              <div className='flex-grow-1'>
-                {/* begin::Title */}
-                <div className='d-flex justify-content-between align-items-start flex-wrap mb-2'>
-                  {/* begin::User */}
-                  <div className='d-flex flex-column'>
-                    {/* begin::Name */}
-                    <div className='d-flex align-items-center mb-2'>
-                      <a href='#' className='text-gray-900 text-hover-primary fs-2 fw-bold me-1'>
-                        Max Smith
-                      </a>
-                      <a href='#'>
-                        <KTIcon iconName='verify' className='fs-1 text-primary' />
-                      </a>
-                    </div>
-                    {/* end::Name */}
-
-                    {/* begin::Info */}
-                    <div className='d-flex flex-wrap fw-semibold fs-6 mb-4 pe-2'>
-                      <a
-                        href='#'
-                        className='d-flex align-items-center text-gray-500 text-hover-primary me-5 mb-2'
-                      >
-                        <KTIcon iconName='profile-circle' className='fs-4 me-1' />
-                        Developer
-                      </a>
-                      <a
-                        href='#'
-                        className='d-flex align-items-center text-gray-500 text-hover-primary me-5 mb-2'
-                      >
-                        <KTIcon iconName='geolocation' className='fs-4 me-1' />
-                        SF, Bay Area
-                      </a>
-                      <a
-                        href='#'
-                        className='d-flex align-items-center text-gray-500 text-hover-primary mb-2'
-                      >
-                        <KTIcon iconName='sms' className='fs-4 me-1' />
-                        max@kt.com
-                      </a>
-                    </div>
-                    {/* end::Info */}
-                  </div>
-                  {/* end::User */}
-
-                  {/* begin::Actions */}
-                  <div className='d-flex my-4'>
-                    {/* begin::Menu */}
-                    <div className='me-0'>
-                      <button
-                        className='btn btn-sm btn-icon btn-bg-light btn-active-color-primary'
-                        data-kt-menu-trigger='click'
-                        data-kt-menu-placement='bottom-end'
-                      >
-                        <i className='ki-solid ki-dots-horizontal fs-2x'></i>
-                      </button>
-                      {/* begin::Menu 3 */}
-                      <div
-                        className='menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-semibold w-200px py-3'
-                        data-kt-menu='true'
-                      >
-                        <div className='menu-item px-3'>
-                          <div className='menu-content text-muted pb-2 px-3 fs-7 text-uppercase'>
-                            <FormattedMessage id='common.payments' />
-                          </div>
-                        </div>
-                        <div className='menu-item px-3'>
-                          <a href='#' className='menu-link px-3'>
-                            <FormattedMessage
-                              id='account.menu.createInvoice'
-                            />
-                          </a>
-                        </div>
-                        <div className='menu-item px-3'>
-                          <a href='#' className='menu-link flex-stack px-3'>
-                            <FormattedMessage
-                              id='account.menu.createPayment'
-                            />
-                            <span
-                              className='ms-2'
-                              data-bs-toggle='tooltip'
-                              title={intl.formatMessage({
-                                id: 'account.menu.createPaymentTooltip',
-                              })}
-                            >
-                              <KTIcon iconName='information' className='fs-6' />
-                            </span>
-                          </a>
-                        </div>
-                        <div className='menu-item px-3'>
-                          <a href='#' className='menu-link px-3'>
-                            <FormattedMessage
-                              id='account.menu.generateBill'
-                            />
-                          </a>
-                        </div>
-                        <div
-                          className='menu-item px-3'
-                          data-kt-menu-trigger='hover'
-                          data-kt-menu-placement='right-end'
-                        >
-                          <a href='#' className='menu-link px-3'>
-                            <span className='menu-title'>
-                              <FormattedMessage
-                                id='account.menu.subscription'
-                              />
-                            </span>
-                            <span className='menu-arrow'></span>
-                          </a>
-                          <div className='menu-sub menu-sub-dropdown w-175px py-4'>
-                            <div className='menu-item px-3'>
-                              <a href='#' className='menu-link px-3'>
-                                <FormattedMessage id='common.plans' />
-                              </a>
-                            </div>
-                            <div className='menu-item px-3'>
-                              <a href='#' className='menu-link px-3'>
-                                <FormattedMessage
-                                  id='account.menu.billing'
-                                />
-                              </a>
-                            </div>
-                            <div className='menu-item px-3'>
-                              <a href='#' className='menu-link px-3'>
-                                <FormattedMessage
-                                  id='account.menu.statements'
-                                />
-                              </a>
-                            </div>
-                            <div className='separator my-2'></div>
-                            <div className='menu-item px-3'>
-                              <div className='menu-content px-3'>
-                                <label className='form-check form-switch form-check-custom form-check-solid'>
-                                  <input
-                                    className='form-check-input w-30px h-20px'
-                                    type='checkbox'
-                                    defaultChecked
-                                    name='notifications'
-                                  />
-                                  <span className='form-check-label text-muted fs-6'>
-                                    <FormattedMessage
-                                      id='account.menu.recurring'
-                                    />
-                                  </span>
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className='menu-item px-3 my-1'>
-                          <a href='#' className='menu-link px-3'>
-                            <FormattedMessage id='account.tab.settings' />
-                          </a>
-                        </div>
-                      </div>
-                      {/* end::Menu 3 */}
-                    </div>
-                    {/* end::Menu */}
-                  </div>
-                  {/* end::Actions */}
-                </div>
-                {/* end::Title */}
-
-                {/* begin::Stats (solo Profile Completion; stat boxes removidos) */}
-                <div className='d-flex flex-wrap flex-stack'>
-                  <div className='d-flex flex-column flex-grow-1 pe-8'></div>
-
-                  {/* begin::Progress */}
-                  <div className='d-flex align-items-center w-200px w-sm-300px flex-column mt-3'>
-                    <div className='d-flex justify-content-between w-100 mt-auto mb-2'>
-                      <span className='fw-semibold fs-6 text-gray-500'>
-                        <FormattedMessage
-                          id='account.profileCompletion'
-                        />
-                      </span>
-                      <span className='fw-bold fs-6'>50%</span>
-                    </div>
-                    <div className='h-5px mx-3 w-100 bg-light mb-3'>
-                      <div
-                        className='bg-success rounded h-5px'
-                        role='progressbar'
-                        style={{width: '50%'}}
-                        aria-valuenow={50}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                      ></div>
-                    </div>
-                  </div>
-                  {/* end::Progress */}
-                </div>
-                {/* end::Stats */}
-              </div>
-              {/* end::Info */}
-            </div>
-            {/* end::Details */}
-
-            {/* begin::Navs */}
-            <ul className='nav nav-stretch nav-line-tabs nav-line-tabs-2x border-transparent fs-5 fw-bold'>
-              <li className='nav-item mt-2'>
-                <Link
-                  className={
-                    'nav-link text-active-primary ms-0 me-10 py-5 ' +
-                    (location.pathname === '/account/overview' && 'active')
-                  }
-                  to='/account/overview'
-                >
-                  <FormattedMessage id='account.tab.overview' />
-                </Link>
-              </li>
-              <li className='nav-item mt-2'>
-                <Link
-                  className={
-                    'nav-link text-active-primary ms-0 me-10 py-5 ' +
-                    (location.pathname === '/account/settings' && 'active')
-                  }
-                  to='/account/settings'
-                >
-                  <FormattedMessage id='account.tab.settings' />
-                </Link>
-              </li>
-            </ul>
-            {/* end::Navs */}
+  const institution = useAccountInstitution()
+  return <section className='card mb-6 account-summary'>
+    <div className='card-body p-6 p-md-9 pb-0 pb-md-0'>
+      <div className='d-flex flex-wrap align-items-center gap-5 mb-7'>
+        <div className='symbol symbol-70px symbol-md-90px flex-shrink-0'>
+          <span className='symbol-label bg-light-primary text-primary fw-bold fs-2x' aria-hidden='true'>{userInitials(currentUser?.name)}</span>
+        </div>
+        <div className='flex-grow-1 min-w-0'>
+          <div className='text-muted fw-semibold mb-2'><FormattedMessage id='header.user.myProfile' /></div>
+          <h1 className='fs-2 fw-bold text-break mb-2'>{currentUser?.name}</h1>
+          <p className='text-gray-600 text-break fs-6 mb-3'>{currentUser?.email}</p>
+          <div className='d-flex flex-wrap gap-2'>
+            <span className='badge badge-light text-wrap'>{roleLabels(currentUser, intl)}</span>
+            {institution?.plan && <span className='badge badge-light-primary text-wrap'>{institution.plan.name}</span>}
+            <span className={`badge badge-light-${currentUser?.mfa_enabled ? 'success' : 'primary'}`}><FormattedMessage id={currentUser?.mfa_enabled ? 'account.security.active' : 'account.security.pending'} /></span>
           </div>
         </div>
-  )
+      </div>
+      <p className='text-gray-600 mb-6 fs-6'><FormattedMessage id='account.personalHelp' /></p>
+      <nav className='nav nav-stretch nav-line-tabs nav-line-tabs-2x border-transparent fs-5 fw-bold account-summary__tabs' aria-label={intl.formatMessage({id: 'header.user.myProfile'})}>
+        <NavLink to='/account/overview' className={({isActive}) => `nav-link text-active-primary me-10 py-5${isActive ? ' active' : ''}`}><FormattedMessage id='account.tab.overview' /></NavLink>
+        <NavLink to='/account/settings' className={({isActive}) => `nav-link text-active-primary me-10 py-5${isActive ? ' active' : ''}`}><FormattedMessage id='header.user.accountSettings' /></NavLink>
+      </nav>
+    </div>
+  </section>
 }
-
-export {AccountHeader}

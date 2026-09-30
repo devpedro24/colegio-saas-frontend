@@ -102,14 +102,18 @@ const ProfileDetails: FC = () => {
 
       <div id='kt_account_profile_details' className='collapse show'>
         <form onSubmit={formik.handleSubmit} noValidate className='form'>
-          <div className='card-body border-top p-9'>
+          <div className='card-body border-top p-6 p-md-9'>
+            {currentUser?.profile_capabilities?.edit_name === false && <p className='text-muted mb-6'><FormattedMessage id='account.managedIdentity' /></p>}
             <div className='row mb-6'>
-              <label className='col-lg-4 col-form-label required fw-bold fs-6'>
+              <label htmlFor="profile-name" className='col-lg-4 col-form-label required fw-bold fs-6'>
                 <FormattedMessage id='common.name' />
               </label>
 
               <div className='col-lg-8 fv-row'>
                 <input
+                  id='profile-name'
+                  disabled={currentUser?.profile_capabilities?.edit_name === false}
+                  autoComplete='name'
                   type='text'
                   className='form-control form-control-lg form-control-solid'
                   placeholder={intl.formatMessage({
@@ -132,6 +136,8 @@ const ProfileDetails: FC = () => {
 
               <div className='col-lg-8 fv-row'>
                 <input
+                  id='profile-phone'
+                  autoComplete='tel'
                   type='tel'
                   className='form-control form-control-lg form-control-solid'
                   placeholder={intl.formatMessage({
@@ -149,8 +155,8 @@ const ProfileDetails: FC = () => {
           </div>
 
           <div className='card-footer d-flex justify-content-end py-6 px-9'>
-            <button type='submit' className='btn btn-primary' disabled={loading}>
-              {!loading && <FormattedMessage id='common.save' />}
+            <button type='submit' className='btn btn-primary' disabled={loading || !formik.dirty}>
+              {!loading && <FormattedMessage id='account.profile.save' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
                   <FormattedMessage id='common.pleaseWait' />{' '}

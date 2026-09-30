@@ -1,6 +1,5 @@
 import {useState, FC} from 'react'
 import {FormattedMessage, useIntl} from 'react-intl'
-import {KTIcon} from '../../../../../../_metronic/helpers'
 import * as Yup from 'yup'
 import {useFormik} from 'formik'
 import {useAuth} from '../../../../auth'
@@ -23,18 +22,15 @@ interface PasswordForm {
 }
 
 // Card de "Método de inicio de sesión": cambiar CORREO y CONTRASEÑA reales
-// (POST /account/email y /account/password). La promoción de verificación en
-// dos pasos solo se muestra a usuarios de PLATAFORMA (superadmin): los usuarios
-// de colegio la ven resuelta en la card propia de MFA.
-const SignInMethod: FC = () => {
+// (POST /account/email y /account/password). MFA tiene su tarjeta compartida.
+const SignInMethod: FC<{passwordOnly?: boolean}> = ({passwordOnly = false}) => {
   const intl = useIntl()
   const toast = useToast()
   const {currentUser, setCurrentUser} = useAuth()
 
-  const isPlatform = currentUser?.is_platform === true
 
   const [showEmailForm, setShowEmailForm] = useState<boolean>(false)
-  const [showPasswordForm, setPasswordForm] = useState<boolean>(false)
+  const [showPasswordForm, setPasswordForm] = useState<boolean>(passwordOnly)
 
   const [loading1, setLoading1] = useState(false)
   const [loading2, setLoading2] = useState(false)
@@ -68,7 +64,7 @@ const SignInMethod: FC = () => {
           onSuccess: (data) => {
             const user = data.user
             if (user) {
-              setCurrentUser((prev) => (prev ? {...prev, email: user.email} : prev))
+              setCurrentUser((prev) => (prev ? {...prev, email: user.email, email_verified: false} : prev))
             }
             toast.success(data.message ?? 'Correo actualizado.')
             setLoading1(false)
@@ -104,6 +100,7 @@ const SignInMethod: FC = () => {
         },
         {
           onSuccess: (data) => {
+            setCurrentUser(prev => prev ? {...prev, must_change_password: false} : prev)
             toast.success(data.message ?? 'Contraseña actualizada.')
             setLoading2(false)
             setPasswordForm(false)
@@ -143,7 +140,7 @@ const SignInMethod: FC = () => {
 
       <div id='kt_account_signin_method' className='collapse show'>
         <div className='card-body border-top p-9'>
-          <div className='d-flex flex-wrap align-items-center'>
+          <div className={`d-flex flex-wrap align-items-center ${passwordOnly ? 'd-none' : ''}`}>
             <div id='kt_signin_email' className={' ' + (showEmailForm && 'd-none')}>
               <div className='fs-6 fw-bolder mb-1'>
                 <FormattedMessage id='common.email' />
@@ -241,6 +238,7 @@ const SignInMethod: FC = () => {
 
             <div id='kt_signin_email_button' className={'ms-auto ' + (showEmailForm && 'd-none')}>
               <button
+                disabled={currentUser?.profile_capabilities?.edit_email === false}
                 onClick={() => {
                   setShowEmailForm(true)
                 }}
@@ -383,31 +381,6 @@ const SignInMethod: FC = () => {
             </div>
           </div>
 
-          {isPlatform && (
-            <div className='notice d-flex bg-light-primary rounded border-primary border border-dashed p-6'>
-              <KTIcon iconName='shield-tick' className='fs-2tx text-primary me-4' />
-              <div className='d-flex flex-stack flex-grow-1 flex-wrap flex-md-nowrap'>
-                <div className='mb-3 mb-md-0 fw-bold'>
-                  <h4 className='text-gray-800 fw-bolder'>
-                    <FormattedMessage
-                      id='account.signin.secureTitle'
-                    />
-                  </h4>
-                  <div className='fs-6 text-gray-600 pe-7'>
-                    <FormattedMessage
-                      id='account.signin.secureBody'
-                    />
-                  </div>
-                </div>
-                <a
-                  href='#kt_account_two_factor'
-                  className='btn btn-primary px-6 align-self-center text-nowrap'
-                >
-                  <FormattedMessage id='account.signin.enable' />
-                </a>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

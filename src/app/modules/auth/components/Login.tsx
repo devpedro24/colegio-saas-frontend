@@ -21,7 +21,7 @@ const makeLoginSchema = (intl: IntlShape, mfaRequired: boolean) =>
     // El codigo TOTP solo se valida cuando el backend ya exigio MFA.
     code: mfaRequired
       ? Yup.string()
-          .matches(/^\d{6}$/, intl.formatMessage({id: 'auth.mfa.codeInvalid'}))
+          .matches(/^(?:\d{6}|[a-fA-F0-9]{5}(?:-?[a-fA-F0-9]{5}){3})$/, intl.formatMessage({id: 'auth.mfa.codeInvalid'}))
           .required(intl.formatMessage({id: 'auth.mfa.codeRequired'}))
       : Yup.string(),
   })
@@ -225,14 +225,14 @@ export function Login() {
           </label>
           <input
             type='text'
-            inputMode='numeric'
+            inputMode='text'
             autoComplete='one-time-code'
-            maxLength={6}
+            maxLength={23}
             placeholder='000000'
             name='code'
             value={formik.values.code}
             onChange={(e) =>
-              formik.setFieldValue('code', e.target.value.replace(/\D/g, '').slice(0, 6))
+              formik.setFieldValue('code', e.target.value.trim().slice(0, 23))
             }
             onBlur={formik.handleBlur}
             className={clsx(
