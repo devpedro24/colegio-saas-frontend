@@ -8,7 +8,8 @@ import {ApiError, api} from '@/lib/api/client'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {formatSchoolTime} from '@/lib/format/schoolTime'
 import {AcademicOptionSelect, type AcademicOption, type OpaqueAcademicOption} from '../../shared/AcademicOptionSelect'
-import {useSchedule, type Assignment, type ScheduleGroup, type Session} from '../horarios.api'
+import {useSchedule, type Assignment, type ScheduleData, type ScheduleGroup, type Session} from '../horarios.api'
+import type {AcademicPaged} from '../../estructura/estructura.api'
 import {fromOpaqueAcademic, toOpaqueAcademic} from '../../shared/opaqueAcademic'
 import {useAcademicYear} from '../../academic-year-context'
 import {useAcademicPagedList} from '../../estructura/useAcademicPagedList'
@@ -41,34 +42,35 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const requestedGroup = changingYear ? '' : searchParams.get('grupo') ?? ''
   const requestedTeacher = changingYear ? '' : searchParams.get('docente') ?? ''
   const requestedRoom = changingYear ? '' : searchParams.get('espacio') ?? ''
-  // The unfiltered timetable only fetches catalogs. Keep public selectors in
-  // the URL and use the same selectors for all subsequent requests.
-  const catalogQuery = useSchedule(mode, '', true, {group: requestedGroup, teacher: requestedTeacher, room: requestedRoom})
-  const catalog = catalogQuery.data
+  // A single response contains both rows and bounded selectors. The backend
+  // authorizes URL tokens; no preliminary catalog request is necessary.
+  const catalogQuery = useSchedule(mode, mode !== 'asignaciones', {group: requestedGroup, teacher: requestedTeacher, room: requestedRoom})
+  const [subjectId, setSubjectId] = useState('')
+  const assignmentList = useAcademicPagedList<Assignment, AcademicPaged<Assignment> & {schedule: ScheduleData}>({
+    key: ['horarios', 'assignment-page', selectedYear, requestedGroup, requestedTeacher, requestedRoom, subjectId],
+    storageKey: 'plan.asignaciones',
+    enabled: mode === 'asignaciones' && !!selectedYear,
+    fetchPage: async (page, perPage) => {
+      const params = new URLSearchParams({opaque: '1', ano_lectivo_token: selectedYear, page: String(page), per_page: String(perPage)})
+      if (requestedGroup) params.set('grupo_token', requestedGroup)
+      if (requestedTeacher) params.set('docente_token', requestedTeacher)
+      if (requestedRoom) params.set('selected_espacio_token', requestedRoom)
+      if (subjectId) params.set('materia_token', subjectId)
+      const response = await api.get<{data: unknown}>(`/horarios?${params}`)
+      const schedule = fromOpaqueAcademic<ScheduleData>(response.data)
+      return {data: schedule.asignaciones, meta: schedule.pagination!.asignaciones!, schedule}
+    },
+  })
+  const query = mode === 'asignaciones'
+    ? {data: assignmentList.response?.schedule, isLoading: assignmentList.isLoading, error: assignmentList.error}
+    : catalogQuery
+  const catalog = query.data
   const selectedGroup = catalog?.grupos.find(item => item.ano_lectivo_id === selectedYear && item.url_token === requestedGroup)
   const selectedTeacher = catalog?.docentes.find(item => item.url_token === requestedTeacher)
   const selectedRoom = catalog?.espacios.find(item => item.url_token === requestedRoom)
   const group = selectedGroup?.url_token ?? ''
   const teacher = selectedTeacher?.url_token ?? ''
   const room = selectedRoom?.url_token ?? ''
-  const [subjectId, setSubjectId] = useState('')
-  const assignmentList = useAcademicPagedList<Assignment>({
-    key: ['horarios', 'assignment-page', selectedYear, group, teacher, subjectId],
-    storageKey: 'plan.asignaciones',
-    enabled: mode === 'asignaciones' && !!selectedYear,
-    fetchPage: async (page, perPage) => {
-      const params = new URLSearchParams({opaque: '1', ano_lectivo_token: selectedYear, page: String(page), per_page: String(perPage)})
-      if (group) params.set('grupo_token', group)
-      if (teacher) params.set('docente_token', teacher)
-      if (subjectId) params.set('materia_token', subjectId)
-      const response = await api.get<{data: {asignaciones: unknown[]; pagination?: {asignaciones?: {current_page: number; last_page: number; per_page: number; total: number; from: number | null; to: number | null}}}}>(`/horarios?${params}`)
-      return {data: fromOpaqueAcademic<Assignment[]>(response.data.asignaciones), meta: response.data.pagination!.asignaciones!}
-    },
-  })
-  const selectedScheduleQuery = useSchedule('horarios', group, mode === 'horarios' && !!group)
-  const selectedSummaryQuery = useSchedule('resumen', group, mode === 'resumen' && !!(group || teacher), {}, teacher)
-  const query = mode === 'horarios' && group ? selectedScheduleQuery
-    : mode === 'resumen' && (group || teacher) ? selectedSummaryQuery : catalogQuery
   const yearName = (token: string) => years.find(year => year.url_token === token)?.nombre ?? '—'
   const data = query.data
   const resolveGroupOption = (option: ScheduleGroup | OpaqueAcademicOption | null): ScheduleGroup | null => {

@@ -11,6 +11,10 @@ const root = path.resolve(import.meta.dirname, '..')
 const realtimeMode = process.argv.includes('--realtime')
 const paginationMode = process.argv.includes('--pagination')
 const platformMode = process.argv.includes('--platform')
+const performanceMode = process.argv.includes('--performance')
+const cacheMode = process.argv.includes('--cache')
+const apiReads = []
+const detailedReads = []
 const reverbProbe = input => {
   const result = spawnSync('php', [path.join(root, '../colegio-saas-backend/tests/Support/reverb-probe.php')], {
     input: JSON.stringify(input), encoding: 'utf8', windowsHide: true,
@@ -26,6 +30,7 @@ fs.mkdirSync(artifacts, {recursive: true})
 const today = new Date().toLocaleDateString('en-CA')
 const user = {id: 'u'.repeat(24), tenant_channel: 't'.repeat(24), name: 'Rector de prueba', email: 'rector@example.test', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.anos.transicionar', 'academico.periodos.transicionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
 if (platformMode) { user.is_platform = true; user.tenant_channel = null; user.roles = ['superadmin']; user.permissions = [] }
+if (realtimeMode) user.tenant_channel = reverbProbe({action: 'channel'}).token
 const urlTokens = {year: 'a'.repeat(24), nextYear: 'b'.repeat(24), group: 'c'.repeat(24), groupB: 'd'.repeat(24), groupC: 'e'.repeat(24), teacher: 'f'.repeat(24), space: 'g'.repeat(24), assignment: 'h'.repeat(24), period: 'j'.repeat(24), enrollment: 'k'.repeat(24), sede: 'm'.repeat(24), event: 'i'.repeat(24), materia: 'v'.repeat(24)}
 const sieeTokens = {grade: 'o'.repeat(24), level: 'p'.repeat(24), area: 'q'.repeat(24), scale: 'r'.repeat(24), method: 's'.repeat(24)}
 const sieePath = `/api/siee/${urlTokens.year}`
@@ -203,6 +208,10 @@ try {
     vite.middlewares.use((req, res, next) => {
       const url = new URL(req.url, 'http://localhost')
       if (!url.pathname.startsWith('/api')) return next()
+      if (req.method === 'GET') {
+        apiReads.push(url.pathname)
+        detailedReads.push(url.pathname + url.search)
+      }
       const opaqueAcademic = url.searchParams.get('opaque') === '1' && (url.pathname.startsWith('/api/estructura/') || url.pathname.startsWith('/api/plan-estudios/'))
       const opaqueEval = url.searchParams.get('opaque') === '1' && url.pathname.startsWith('/api/evaluacion/')
       const opaqueTimetable = url.searchParams.get('opaque') === '1' && url.pathname === '/api/horarios'
@@ -436,7 +445,101 @@ try {
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   const navigate = async (route, text) => { console.log('Checking', route); await command('Page.navigate', {url: `http://127.0.0.1:5197${route}`}); await until(`document.body.innerText.includes(${JSON.stringify(text)})`) }
   const screenshot = async (name, full = false) => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: full}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
-  if (platformMode) {
+  if (cacheMode) {
+    user.onboarding = fixtures['/api/onboarding/status']
+    await navigate('/academico/anos-lectivos', 'Años lectivos')
+    await sleep(500)
+    await evaluate(`window.cacheNavigationSentinel = 'same-document'`)
+    const menu = async (route, title) => {
+      await evaluate(`document.querySelector('a[data-kt-nav=${JSON.stringify(route)}]').click()`)
+      await until(`location.pathname === ${JSON.stringify(route)} && document.body.innerText.includes(${JSON.stringify(title)})`)
+      await sleep(400)
+    }
+    const tab = async (label, key) => {
+      await evaluate(`[...document.querySelectorAll('.nav-tabs .nav-link')].find(a=>a.textContent.trim()===${JSON.stringify(label)}).click()`)
+      await until(`new URLSearchParams(location.search).get('tab') === ${JSON.stringify(key)}`)
+      await sleep(400)
+    }
+    await menu('/academico/estructura', 'Estructura organizacional')
+    await tab('Niveles', 'niveles')
+    await menu('/academico/siee', 'Currículo por Grado')
+    assert.equal(apiReads.filter(p => p === '/api/anos-lectivos').length, 1, 'SIEE reuses the loaded year selector.')
+    await menu('/academico/plan-estudios', 'Plan de estudios')
+    let before = detailedReads.length
+    await tab('Áreas y materias', 'areas')
+    const areaReads = detailedReads.slice(before)
+    assert.equal(areaReads.filter(p => p.startsWith('/api/plan-estudios/areas?')).length, 1, JSON.stringify(areaReads))
+    assert.equal(areaReads.filter(p => p.startsWith('/api/plan-estudios/materias?')).length, 1)
+    assert.equal(areaReads.filter(p => p.startsWith('/api/estructura/niveles?')).length, 0, 'Reuse the complete structure level table as a catalog.')
+    before = detailedReads.length
+    await evaluate(`(()=>{const select=document.querySelector('section select[aria-label="Estado"]');select.value='activo';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await sleep(400)
+    assert.equal(detailedReads.slice(before).filter(p => p.startsWith('/api/plan-estudios/areas?')).length, 1, 'A new filter has its own request.')
+    before = detailedReads.length
+    await evaluate(`(()=>{const select=document.querySelector('section select[aria-label="Estado"]');select.value='';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await sleep(400)
+    assert.deepEqual(detailedReads.slice(before), [], 'Clearing a filter reuses the unfiltered cache key.')
+    before = detailedReads.length
+    await tab('Asignación docente', 'asignaciones')
+    assert.equal(detailedReads.slice(before).filter(p => p.startsWith('/api/horarios?')).length, 1, 'One response provides assignment rows AND catalogs.')
+    assert.equal(detailedReads.slice(before).filter(p => p.startsWith('/api/catalogos-academicos?')).length, 0, 'No catalog download on tab entry.')
+    await evaluate(`document.querySelector('select[aria-label="Grupo"]').dispatchEvent(new PointerEvent('pointerover', {bubbles:true}))`)
+    await sleep(300)
+    assert.equal(detailedReads.slice(before).filter(p => p.startsWith('/api/catalogos-academicos?')).length, 0, 'Hover must not download selectors.')
+    await tab('Horarios', 'horarios')
+    before = detailedReads.length
+    await evaluate(`(()=>{const select=document.querySelector('select[aria-label="Grupo"]');select.value='${urlTokens.group}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`!!document.querySelector('.schedule-session')`)
+    await sleep(400)
+    assert.equal(detailedReads.slice(before).filter(p => p.startsWith('/api/horarios?')).length, 1, 'Changing group needs one timetable response, not a catalog + timetable.')
+    // Exceed the old 30-second expiry without a page reload or changing the
+    // realtime recovery clock (which deliberately reconciles disconnected tabs).
+    await evaluate(`window.originalNow=Date.now; Date.now=()=>window.originalNow()+35000`)
+    await tab('Áreas y materias', 'areas')
+    await menu('/academico/siee', 'Currículo por Grado')
+    await menu('/academico/plan-estudios', 'Plan de estudios')
+    await tab('Áreas y materias', 'areas')
+    before = detailedReads.length
+    await tab('Asignación docente', 'asignaciones')
+    await tab('Áreas y materias', 'areas')
+    await menu('/academico/siee', 'Currículo por Grado')
+    assert.deepEqual(detailedReads.slice(before), [], 'Returning to cached views must not request unchanged data.')
+    assert.equal(apiReads.filter(p => p === '/api/anos-lectivos').length, 1)
+    assert.equal(await evaluate('window.cacheNavigationSentinel'), 'same-document')
+    await evaluate(`Date.now=window.originalNow`)
+    await menu('/academico/plan-estudios', 'Plan de estudios')
+    await tab('Áreas y materias', 'areas')
+    await evaluate(`document.querySelector('section table tbody tr td:last-child button').click()`)
+    await until(`!!document.querySelector('.modal.show form')`)
+    before = detailedReads.length
+    await evaluate(`document.querySelector('.modal.show form').requestSubmit()`)
+    await until(`!document.querySelector('.modal.show')`)
+    await sleep(500)
+    const afterSave = detailedReads.slice(before)
+    assert.equal(afterSave.filter(p => p.startsWith('/api/plan-estudios/areas?')).length, 1, 'Hook + local realtime invalidation refresh areas only once after a save.')
+    assert.equal(afterSave.filter(p => p.startsWith('/api/plan-estudios/materias?')).length, 1)
+    assert.equal(afterSave.filter(p => p.startsWith('/api/anos-lectivos')).length, 0, 'Editing an area must not reload years.')
+    assert.ok(writes.some(write => write.method === 'PUT' && write.path.startsWith('/api/plan-estudios/areas/')))
+    assert.deepEqual(errors, [])
+    console.log('PASS: SPA cache >30s; years once across SIEE/plan; areas 1; assignments 1; group timetable 1; cached return 0; hover 0; save refreshes once.')
+    console.log('Measured GETs:', JSON.stringify(detailedReads))
+  } else if (performanceMode) {
+    user.onboarding = fixtures['/api/onboarding/status']
+    const route = `/academico/plan-estudios?ano=${urlTokens.year}&tab=areas`
+    await navigate(route, 'Matemáticas')
+    await sleep(500)
+    assert.equal(apiReads.filter(path => path === '/api/me').length, 1, 'One session validation on startup.')
+    assert.equal(apiReads.filter(path => path === '/api/onboarding/status').length, 0, 'Onboarding is bootstrapped by /me.')
+    const before = apiReads.length
+    await command('Page.reload')
+    await until(`document.querySelector('table')?.innerText.includes('Matemáticas')`)
+    await sleep(500)
+    const reloadReads = apiReads.slice(before)
+    assert.equal(reloadReads.filter(path => path === '/api/me').length, 1, 'F5 validates the session exactly once.')
+    assert.equal(reloadReads.filter(path => path === '/api/onboarding/status').length, 0)
+    assert.deepEqual(errors, [])
+    console.log('PASS: startup and F5: 1 /me, 0 /onboarding/status; no uncaught errors.')
+  } else if (platformMode) {
     await navigate('/configuracion/colegios', 'Colegio de prueba')
     assert.equal(await evaluate(`localStorage.getItem('colegio-saas.auth-token')`), null)
     await evaluate(`document.querySelector('table tbody tr td:last-child button:nth-of-type(3)').click()`)
@@ -530,7 +633,7 @@ try {
     await evaluate(`document.querySelector('section[aria-label="Materias"]').scrollIntoView({block:'start'})`)
     await screenshot('materias-filters-desktop', true)
     assert.ok(await evaluate(`(()=>{const section=document.querySelector('section[aria-label="Materias"]');return !!section.querySelector('select[aria-label="Área"]') && !!section.querySelector('select[aria-label="Nivel educativo"]') && !!section.querySelector('select[aria-label="Estado"]') && section.querySelectorAll('input[type="search"]').length===1})()`), 'The Materias section needs one name search and visibly identified area, level, and status selectors.')
-    await evaluate(`(()=>{const area=document.querySelector('section[aria-label="Materias"] select[aria-label="Área"]');area.focus();area.dispatchEvent(new PointerEvent('pointerover',{bubbles:true}))})()`)
+    await evaluate(`(()=>{const area=document.querySelector('section[aria-label="Materias"] select[aria-label="Área"]');area.focus();area.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}))})()`)
     await until(`document.querySelector('section[aria-label="Materias"] select[aria-label="Área"]').options.length === 26`)
     assert.ok(pagedReads.some(read => read.page === 1 && read.perPage === 1000), 'Opening the area selector must load the remaining existing areas.')
     assert.ok(pagedReads.some(read => read.page === 1 && read.perPage === 20), 'The first area request must fetch twenty rows.')
@@ -629,10 +732,14 @@ try {
     console.log('PASS: areas, SIEE, evaluation catalog and gradebook: 20 default, numbered pages above 20, complete small lists without footer, persisted page size and retained grade drafts.')
   } else if (realtimeMode) {
     user.institution = {name: 'Colegio de prueba', plan: {key: 'esencial', name: 'Esencial'}}
-    const subscribed = `window.Echo?.connector.pusher.channels.channels['private-tenant.smoke']?.subscribed === true`
+    user.onboarding = fixtures['/api/onboarding/status']
+    const subscribed = `window.Echo?.connector.pusher.channels.channels['private-tenant.${user.tenant_channel}']?.subscribed === true`
     await navigate(`/academico/plan-estudios?ano=${urlTokens.year}&tab=horarios&grupo=${urlTokens.group}&espacio=${urlTokens.space}`, 'Horarios')
     await until(subscribed)
     await until(`!!document.querySelector('.schedule-session')`)
+    await sleep(300)
+    assert.equal(apiReads.filter(path => path === '/api/me').length, 1, 'Initial WebSocket subscription must not duplicate /me.')
+    assert.equal(apiReads.filter(path => path === '/api/onboarding/status').length, 0)
     await evaluate(`window.realtimePageSentinel = 'unchanged'`)
     user.institution.plan = {key: 'premium', name: 'Premium'}
     reverbProbe({action: 'publish', resources: ['rbac']})
@@ -643,15 +750,22 @@ try {
     assert.equal(await evaluate(`window.realtimePageSentinel`), 'unchanged', 'Year selectors must update without navigation/reload.')
     assert.ok(await evaluate(`location.search.includes('grupo=${urlTokens.group}') && location.search.includes('espacio=${urlTokens.space}')`), 'Remote changes preserve filters.')
     const readsBefore = scheduleReads.length
+    const yearsBefore = apiReads.filter(path => path === '/api/anos-lectivos').length
     fixtures['/api/horarios'].data.sesiones[0].materia = {id: 1, nombre: 'Clase actualizada por otra sesión'}
     reverbProbe({action: 'publish', resources: ['schedule']})
     await until(`document.body.innerText.includes('Clase actualizada por otra sesión')`)
     assert.ok(scheduleReads.length > readsBefore)
     const scheduleUpdates = scheduleReads.slice(readsBefore)
+    assert.equal(scheduleUpdates.length, 1, 'One remote schedule change causes one timetable read.')
+    assert.equal(apiReads.filter(path => path === '/api/anos-lectivos').length, yearsBefore, 'A schedule change does not invalidate years.')
     assert.ok(scheduleUpdates.some(read => read.group === urlTokens.group), 'The selected group is refreshed.')
     assert.ok(scheduleUpdates.every(read => read.view === 'horarios' && [null, urlTokens.group].includes(read.group)), 'Only the empty filter catalog and selected group are requested.')
     await evaluate(`window.Echo.connector.pusher.disconnect()`)
     await until(`window.Echo.connector.pusher.connection.state === 'disconnected'`)
+    fixtures['/api/anos-lectivos'].data[0].nombre = '2026 recuperado sin socket'
+    await evaluate(`window.nowBeforeRecovery=Date.now; Date.now=()=>window.nowBeforeRecovery()+61000; document.dispatchEvent(new Event('visibilitychange'))`)
+    await until(`Array.from(document.querySelectorAll('option')).some(option => option.textContent.includes('2026 recuperado sin socket'))`)
+    await evaluate(`Date.now=window.nowBeforeRecovery`)
     fixtures['/api/anos-lectivos'].data.push({...year, id: 4, url_token: 'o'.repeat(24), nombre: '2029'})
     await evaluate(`window.Echo.connector.pusher.connect()`)
     await until(subscribed)

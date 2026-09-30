@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import type {InfiniteData} from '@tanstack/react-query';
 import { useIntl } from "react-intl";
 import { api } from "@/lib/api/client";
 import type { AcademicPageMeta } from "@/app/shared/components/AcademicPagination";
@@ -90,6 +91,9 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [opened, setOpened] = useState(false);
+  const client = useQueryClient();
+  const allOptionsKey = ["academic-options-all", tipo, yearId, compatibleNivelId, compatibleNivelToken, opaque];
+  const cachedOptions = client.getQueryData<InfiniteData<{data: T[]}>>(allOptionsKey)?.pages.flatMap(page => page.data) ?? [];
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -100,7 +104,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
   }, [search]);
 
   const selectedMissing =
-    !!value && !initialOptions.some((option) => optionValue(option) === value);
+    !!value && ![...initialOptions, ...cachedOptions].some((option) => optionValue(option) === value);
   const remote = useQuery({
     queryKey: ["academic-options", tipo, yearId, debouncedSearch, value, compatibleNivelId, compatibleNivelToken, opaque],
     queryFn: () => {
@@ -121,14 +125,14 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
       );
     },
     enabled:
-      !!yearId && ((!selectOnly && !!debouncedSearch) || selectedMissing),
+      !disabled && !!yearId && ((!selectOnly && !!debouncedSearch) || selectedMissing),
   });
 
   // A filter with only a select loads the rest of its options when opened.
   // Requests remain bounded and every option stays reachable without a second search field.
   const allOptions = useInfiniteQuery({
-    queryKey: ["academic-options-all", tipo, yearId, compatibleNivelId, compatibleNivelToken, opaque],
-    enabled: selectOnly && opened && !!yearId,
+    queryKey: allOptionsKey,
+    enabled: !disabled && selectOnly && opened && !!yearId,
     initialPageParam: 1,
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ tipo, page: String(pageParam), per_page: "1000" });
@@ -151,6 +155,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
   useEffect(() => {
     if (
       selectOnly &&
+      !disabled &&
       opened &&
       hasNextPage &&
       !isFetchingNextPage
@@ -159,6 +164,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
     }
   }, [
     selectOnly,
+    disabled,
     opened,
     hasNextPage,
     isFetchingNextPage,
@@ -177,7 +183,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
   const filteredOptions = filterOption ? options.filter(filterOption) : options;
   const selectedOption =
     value &&
-    [...initialOptions, ...(remote.data?.data ?? [])].find(
+    [...initialOptions, ...fetchedOptions, ...(remote.data?.data ?? [])].find(
       (option) => optionValue(option) === value && (!filterOption || filterOption(option)),
     );
   const merged =
@@ -225,7 +231,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
         onFocus={() => {
           if (selectOnly) setOpened(true);
         }}
-        onPointerEnter={() => {
+        onPointerDown={() => {
           if (selectOnly) setOpened(true);
         }}
         onChange={(event) => {

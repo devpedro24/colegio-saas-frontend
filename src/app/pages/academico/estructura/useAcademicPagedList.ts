@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react'
+import {useCallback, useEffect, useState} from 'react'
 import {useQueries, useQuery} from '@tanstack/react-query'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
 import type {AcademicPaged} from './estructura.api'
@@ -9,32 +9,33 @@ import {useAcademicYear} from '../academic-year-context'
  * Server-side paging for academic tables. Lists of up to 20 are shown in full;
  * numbered pages appear only above that threshold.
  */
-export function useAcademicPagedList<T>(options: {
+export function useAcademicPagedList<T, TPage extends AcademicPaged<T> = AcademicPaged<T>>(options: {
   key: readonly unknown[]
   storageKey: string
   enabled: boolean
-  fetchPage: (page: number, perPage: number, search: string, filters: Record<string, string>) => Promise<AcademicPaged<T>>
+  fetchPage: (page: number, perPage: number, search: string, filters: Record<string, string>) => Promise<TPage>
 }) {
   const [pageSize, savePageSize] = usePageSize(options.storageKey)
-  const [page, setPage] = useState(1)
+  const scope = JSON.stringify(options.key)
+  const [paging, setPaging] = useState({scope, page: 1})
+  const page = paging.scope === scope ? paging.page : 1
+  const setPage = useCallback((next: number) => setPaging({scope, page: next}), [scope])
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
-  const scope = JSON.stringify(options.key)
 
-  useEffect(() => {
-    setPage(1)
-  }, [scope])
+  useEffect(() => {setPage(1)}, [setPage])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      if (searchInput !== search) {
+      const nextSearch = searchInput.trim()
+      if (nextSearch !== search) {
         setPage(1)
-        setSearch(searchInput)
+        setSearch(nextSearch)
       }
     }, 300)
     return () => window.clearTimeout(timer)
-  }, [searchInput, search])
+  }, [searchInput, search, setPage])
 
   const key = [...options.key, search, filters, pageSize]
   const query = useQuery({
@@ -58,10 +59,15 @@ export function useAcademicPagedList<T>(options: {
 
   useEffect(() => {
     if (meta && page > meta.last_page) setPage(Math.max(1, meta.last_page))
-  }, [page, meta])
+  }, [page, meta, setPage])
 
   const setFilter = (name: string, value: string) => {
-    setFilters(current => ({...current, [name]: value}))
+    setFilters(current => {
+      const next = {...current}
+      if (value) next[name] = value
+      else delete next[name]
+      return next
+    })
     setPage(1)
   }
   const changePageSize = (size: number) => {
@@ -69,7 +75,8 @@ export function useAcademicPagedList<T>(options: {
     setPage(1)
   }
   return {
-    rows, meta, pageSize, page, searchInput, setSearchInput, filters, setFilter,
+    response: query.data, error: query.error,
+    rows, meta, pageSize, page, search, searchInput, setSearchInput, filters, setFilter,
     isLoading: query.isPending || extra.some(result => result.isPending),
     isError: query.isError || extra.some(result => result.isError),
     isFetching: query.isFetching || extra.some(result => result.isFetching),

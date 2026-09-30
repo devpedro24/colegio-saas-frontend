@@ -26,6 +26,9 @@ export function shouldRefreshQuery(key: readonly unknown[], resources: readonly 
   if (scope === 'platform' && !platformRoots.has(root) && root !== 'account' && root !== 'institution-context') return false
   if (scope === 'tenant' && resources.includes('rbac')) return true
   if (resources.some(resource => resource === 'all' || resource === 'access' || !dependencies[resource])) return true
+  if (root === 'academic-options' || root === 'academic-options-all') {
+    return resources.some(resource => ['academic', 'structure', 'curriculum', 'schedule', 'users'].includes(resource))
+  }
   return resources.some(resource => dependencies[resource].includes(root))
 }
 
@@ -36,7 +39,7 @@ export function refreshesIdentity(resources: readonly string[]): boolean {
 export function resourceForPath(path: string): string {
   const root = path.split('?')[0].split('/').filter(Boolean)[0]
   return ({'anos-lectivos': 'academic', periodos: 'academic', estructura: 'structure', 'plan-estudios': 'curriculum',
-    horarios: 'schedule', evaluacion: 'evaluation', siee: 'academic-config', config: 'academic-config', eventos: 'events',
+    horarios: 'schedule', asignaciones: 'schedule', evaluacion: 'evaluation', siee: 'academic-config', config: 'academic-config', eventos: 'events',
     onboarding: 'institution', branding: 'institution', usuarios: 'users', rbac: 'rbac', colegios: 'schools', plans: 'plans',
     planes: 'plans', account: 'account', mfa: 'account', storage: 'storage'} as Record<string, string>)[root] ?? 'all'
 }

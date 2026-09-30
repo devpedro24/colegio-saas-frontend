@@ -4,6 +4,7 @@
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
+import {completeAcademicPage} from '@/lib/api/academic-cache'
 import {useAcademicYear} from '../academic-year-context'
 import {fromOpaqueAcademic, opaqueParams, toOpaqueAcademic} from '../shared/opaqueAcademic'
 import type {
@@ -66,12 +67,19 @@ export function sedeSubdomainUrl(tenantDomain: string): string {
 // ---- Sedes ----
 
 export function useSedes(enabled = true, forSelect = false, params?: AcademicListParams, opaque = true) {
+  const client = useQueryClient()
   const query = new URLSearchParams({page: String(params?.page ?? 1), per_page: String(params?.perPage ?? (forSelect ? 1000 : 20))})
   if (params?.search?.trim()) query.set('search', params.search.trim())
   return useQuery({
     queryKey: [...SEDES_KEY, opaque ? 'opaque' : 'legacy', forSelect ? 'options' : 'list', params?.page ?? 1, params?.perPage ?? (forSelect ? 1000 : 20), params?.search ?? ''],
     enabled,
     queryFn: async () => {
+      if (forSelect && !params?.search?.trim()) {
+        const cached = client.getQueryCache().findAll({queryKey: [...SEDES_KEY, opaque ? 'opaque' : 'legacy', 'list']})
+          .find(item => item.queryKey[4] === 1 && !item.queryKey[6] && !item.state.isInvalidated && item.state.fetchStatus === 'idle'
+            && (item.state.data as AcademicPaged<Sede> | undefined)?.meta?.total === (item.state.data as AcademicPaged<Sede> | undefined)?.data?.length)
+        if (cached?.state.data) return cached.state.data as AcademicPaged<Sede>
+      }
       const result = await api.get<AcademicPaged<Sede>>(`/estructura/sedes?${opaque ? opaqueParams(query) : query}`)
       return opaque ? {...result, data: fromOpaqueAcademic<Sede[]>(result.data)} : result
     },
@@ -122,11 +130,14 @@ export function useDeleteSede() {
 // ---- Jornadas ----
 
 export function useJornadas(sedeId?: string | null) {
+  const client = useQueryClient()
   const {yearToken} = useAcademicYear()
   return useQuery({
     queryKey: [...JORNADAS_KEY, yearToken, sedeId ?? '_'],
     enabled: !!yearToken && (sedeId === undefined || sedeId !== null),
     queryFn: async () => {
+      const cached = !sedeId && completeAcademicPage<Jornada>(client, [...JORNADAS_KEY, yearToken])
+      if (cached) return cached
       const result = await api.get<{data: Jornada[]}>(`${annualUrl('/estructura/jornadas', yearToken, 'sede_id', sedeId)}&per_page=1000`)
       return {...result, data: fromOpaqueAcademic<Jornada[]>(result.data)}
     },
@@ -164,10 +175,13 @@ export function useDeleteJornada() {
 // ---- Niveles ----
 
 export function useNiveles() {
+  const client = useQueryClient()
   const {yearToken} = useAcademicYear()
   return useQuery({
     queryKey: [...NIVELES_KEY, yearToken], enabled: !!yearToken,
     queryFn: async () => {
+      const cached = completeAcademicPage<Nivel>(client, [...NIVELES_KEY, yearToken])
+      if (cached) return cached
       const result = await api.get<{data: Nivel[]}>(`${annualUrl('/estructura/niveles', yearToken)}&per_page=1000`)
       return {...result, data: fromOpaqueAcademic<Nivel[]>(result.data)}
     },
@@ -205,11 +219,14 @@ export function useDeleteNivel() {
 // ---- Grados ----
 
 export function useGrados(nivelId?: string) {
+  const client = useQueryClient()
   const {yearToken} = useAcademicYear()
   return useQuery({
     queryKey: [...GRADOS_KEY, yearToken],
     enabled: !!yearToken && nivelId === undefined,
     queryFn: async () => {
+      const cached = completeAcademicPage<Grado>(client, [...GRADOS_KEY, yearToken])
+      if (cached) return cached
       const result = await api.get<{data: Grado[]}>(`${annualUrl('/estructura/grados', yearToken)}&per_page=1000`)
       return {...result, data: fromOpaqueAcademic<Grado[]>(result.data)}
     },
@@ -247,12 +264,15 @@ export function useDeleteGrado() {
 // ---- Grupos ----
 
 export function useGrupos(anoLectivoId?: string) {
+  const client = useQueryClient()
   const {yearToken} = useAcademicYear()
   const selectedYear = anoLectivoId ?? yearToken
   return useQuery({
     queryKey: [...GRUPOS_KEY, selectedYear],
     enabled: !!selectedYear,
     queryFn: async () => {
+      const cached = completeAcademicPage<Grupo>(client, [...GRUPOS_KEY, selectedYear])
+      if (cached) return cached
       const result = await api.get<{data: Grupo[]}>(`${annualUrl('/estructura/grupos', selectedYear)}&per_page=20`)
       return {...result, data: fromOpaqueAcademic<Grupo[]>(result.data)}
     },
@@ -287,11 +307,14 @@ export function useDeleteGrupo() {
 // ---- Bloques horarios ----
 
 export function useBloquesHorarios(jornadaId?: string) {
+  const client = useQueryClient()
   const {yearToken} = useAcademicYear()
   return useQuery({
     queryKey: [...BLOQUES_KEY, yearToken, jornadaId ?? '_all'],
     enabled: !!yearToken && (jornadaId === undefined || jornadaId !== null),
     queryFn: async () => {
+      const cached = !jornadaId && completeAcademicPage<BloqueHorario>(client, [...BLOQUES_KEY, yearToken])
+      if (cached) return cached
       const result = await api.get<{data: BloqueHorario[]}>(`${annualUrl('/estructura/bloques-horarios', yearToken, 'jornada_id', jornadaId)}&per_page=1000`)
       return {...result, data: fromOpaqueAcademic<BloqueHorario[]>(result.data)}
     },
@@ -330,11 +353,14 @@ export function useDeleteBloqueHorario() {
 // ---- Espacios físicos ----
 
 export function useEspaciosFisicos(sedeId?: string) {
+  const client = useQueryClient()
   const {yearToken} = useAcademicYear()
   return useQuery({
     queryKey: [...ESPACIOS_KEY, yearToken, sedeId ?? '_all'],
     enabled: !!yearToken && (sedeId === undefined || sedeId !== null),
     queryFn: async () => {
+      const cached = !sedeId && completeAcademicPage<EspacioFisico>(client, [...ESPACIOS_KEY, yearToken])
+      if (cached) return cached
       const result = await api.get<{data: EspacioFisico[]}>(`${annualUrl('/estructura/espacios-fisicos', yearToken, 'sede_id', sedeId)}&per_page=20`)
       return {...result, data: fromOpaqueAcademic<EspacioFisico[]>(result.data)}
     },

@@ -28,9 +28,9 @@ export type ScheduleData = {
   sesiones: Session[]
 }
 type CatalogTokens = {group?: string; teacher?: string; room?: string}
-export function useSchedule(view: 'resumen' | 'asignaciones' | 'horarios', groupId = '', enabled = true, tokens: CatalogTokens = {}, teacherId = '') {
+export function useSchedule(view: 'resumen' | 'asignaciones' | 'horarios', enabled = true, tokens: CatalogTokens = {}) {
   const {yearToken} = useAcademicYear()
-  return useQuery({queryKey: ['horarios', yearToken, view, view !== 'asignaciones' ? groupId : '', view === 'resumen' ? teacherId : '', tokens.group ?? '', tokens.teacher ?? '', tokens.room ?? ''], enabled: enabled && !!yearToken,
+  return useQuery({queryKey: ['horarios', yearToken, view, tokens.group ?? '', tokens.teacher ?? '', tokens.room ?? ''], enabled: enabled && !!yearToken,
     queryFn: async () => {
       const params = new URLSearchParams({opaque: '1', ano_lectivo_token: yearToken})
       if (tokens.group) params.set('grupo_token', tokens.group)
@@ -38,10 +38,6 @@ export function useSchedule(view: 'resumen' | 'asignaciones' | 'horarios', group
       if (tokens.room) params.set('selected_espacio_token', tokens.room)
       if (view === 'horarios') {
         params.set('vista', 'horarios')
-        if (groupId) params.set('grupo_token', groupId)
-      } else if (view === 'resumen') {
-        if (groupId) params.set('grupo_token', groupId)
-        if (teacherId) params.set('docente_token', teacherId)
       }
       return fromOpaqueAcademic<ScheduleData>((await api.get<{data: unknown}>(`/horarios?${params.toString()}`)).data)
     }})

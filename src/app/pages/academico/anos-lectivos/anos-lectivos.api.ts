@@ -168,7 +168,7 @@ export function useCreatePeriodo(anoLectivoId: string) {
       api.post<{data: PublicPeriod}>(`/anos-lectivos/${anoLectivoId}/periodos?opaque=1`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: periodosKey(anoLectivoId)})
-      queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
+      queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY, exact: true})
     },
   })
 }
@@ -194,7 +194,7 @@ export function useDeletePeriodo(anoLectivoId: string) {
     mutationFn: (id: string) => api.delete<{data: null}>(`/periodos/${id}?opaque=1`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: periodosKey(anoLectivoId)})
-      queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
+      queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY, exact: true})
     },
   })
 }
@@ -207,7 +207,7 @@ function usePeriodoTransition(anoLectivoId: string, action: 'abrir' | 'cerrar' |
     mutationFn: (id: string) => api.post<{data: PublicPeriod}>(`/periodos/${id}/${action}?opaque=1`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: periodosKey(anoLectivoId)})
-      queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
+      queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY, exact: true})
     },
   })
 }

@@ -16,7 +16,6 @@ import {
   useAllPlanAreas,
   useDeletePlanArea,
   useDeletePlanMateria,
-  usePlanAreas,
   getPlanAreasPage,
   getPlanMateriasPage,
   useUpdatePlanArea,
@@ -286,10 +285,6 @@ const AreasMateriasTab: FC = () => {
   const {data: niveles} = useNiveles()
   const [areaFilterOpen, setAreaFilterOpen] = useState(false)
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<Area | null>(null)
-  const {data: firstFilterAreas = []} = usePlanAreas()
-  const allFilterAreas = useAllPlanAreas(areaFilterOpen)
-  const filterAreas = allFilterAreas.areas.length ? allFilterAreas.areas : firstFilterAreas
-  const areaFilterOptions = selectedAreaFilter ? [selectedAreaFilter, ...filterAreas.filter(area => area.id !== selectedAreaFilter.id)] : filterAreas
   const areaList = useAcademicPagedList<Area>({
     key: ['plan-estudios', 'areas', yearToken], storageKey: 'plan.areas', enabled: !!yearToken,
     fetchPage: (page, perPage, search, filters) => getPlanAreasPage(yearToken, {page, perPage, search, filters}),
@@ -299,6 +294,11 @@ const AreasMateriasTab: FC = () => {
     fetchPage: (page, perPage, search, filters) => getPlanMateriasPage(yearToken, {page, perPage, search, filters}),
   })
   const areas = areaList.rows
+  const completeAreas = !!areaList.meta && areaList.page === 1 && !areaList.searchInput && !areaList.search
+    && !Object.values(areaList.filters).some(Boolean) && areas.length === areaList.meta.total
+  const allFilterAreas = useAllPlanAreas(areaFilterOpen && !completeAreas)
+  const filterAreas = completeAreas ? areas : allFilterAreas.areas.length ? allFilterAreas.areas : areas
+  const areaFilterOptions = selectedAreaFilter ? [selectedAreaFilter, ...filterAreas.filter(area => area.id !== selectedAreaFilter.id)] : filterAreas
   const materias = materiaList.rows
   const deleteAreaMutation = useDeletePlanArea()
   const deleteMateriaMutation = useDeletePlanMateria()
@@ -429,7 +429,7 @@ const AreasMateriasTab: FC = () => {
       </div>
       <AcademicListFilters search={materiaList.searchInput} onSearchChange={materiaList.setSearchInput}>
 
-        <select className='form-select form-select-solid w-auto' aria-label={t('academico.planEstudios.materia.area')} value={materiaList.filters.area_id ?? ''} onFocus={() => setAreaFilterOpen(true)} onPointerEnter={() => setAreaFilterOpen(true)} onChange={event => {setSelectedAreaFilter(filterAreas.find(area => String(area.id) === event.target.value) ?? null); materiaList.setFilter('area_id', event.target.value)}}>
+        <select className='form-select form-select-solid w-auto' aria-label={t('academico.planEstudios.materia.area')} value={materiaList.filters.area_id ?? ''} onFocus={() => setAreaFilterOpen(true)} onPointerDown={() => setAreaFilterOpen(true)} onChange={event => {setSelectedAreaFilter(filterAreas.find(area => String(area.id) === event.target.value) ?? null); materiaList.setFilter('area_id', event.target.value)}}>
           <option value=''>{t('academic.filter.allAreas')}</option>
           {areaFilterOptions.map(area => <option key={area.id} value={area.id}>{area.nombre}</option>)}
         </select>

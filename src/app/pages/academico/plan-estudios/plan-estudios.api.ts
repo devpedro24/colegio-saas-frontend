@@ -1,6 +1,7 @@
-import {useMutation, useQuery, useInfiniteQuery, useQueryClient} from '@tanstack/react-query'
+import {useMutation, useInfiniteQuery, useQueryClient} from '@tanstack/react-query'
 import {useEffect} from 'react'
 import {api} from '@/lib/api/client'
+import {completeAcademicPage} from '@/lib/api/academic-cache'
 import {useAcademicYear} from '../academic-year-context'
 import type {AcademicListParams, AcademicPageMeta} from '../estructura/estructura.api'
 import type {Area, CreateAreaInput, CreateMateriaInput, Materia} from './plan-estudios.types'
@@ -8,18 +9,6 @@ import {fromOpaqueAcademic, opaqueParams, toOpaqueAcademic} from '../shared/opaq
 
 export const PLAN_AREAS_KEY = ['plan-estudios', 'areas'] as const
 export const PLAN_MATERIAS_KEY = ['plan-estudios', 'materias'] as const
-
-export function usePlanAreas(search = '', enabled = true, perPage = 20) {
-  const {yearToken} = useAcademicYear()
-  return useQuery({
-    queryKey: [...PLAN_AREAS_KEY, yearToken, 'options', search, perPage], enabled: !!yearToken && enabled,
-    queryFn: async () => {
-      const params = new URLSearchParams({ano_lectivo_id: yearToken, per_page: String(perPage)})
-      if (search.trim()) params.set('search', search.trim())
-      return fromOpaqueAcademic<Area[]>((await api.get<{data: unknown[]}>(`/plan-estudios/areas?${opaqueParams(params)}`)).data)
-    },
-  })
-}
 
 type Paged<T> = {data: T[]; meta: AcademicPageMeta}
 function pageUrl(entity: 'areas' | 'materias', yearId: string, params: AcademicListParams) {
@@ -31,17 +20,20 @@ function pageUrl(entity: 'areas' | 'materias', yearId: string, params: AcademicL
 
 /** Un desplegable de áreas completo, cargado solamente cuando el usuario lo abre. */
 export function useAllPlanAreas(enabled: boolean) {
+  const client = useQueryClient()
   const {yearToken} = useAcademicYear()
   const result = useInfiniteQuery({
     queryKey: [...PLAN_AREAS_KEY, yearToken, 'all-options'],
     enabled: !!yearToken && enabled,
     initialPageParam: 1,
-    queryFn: ({pageParam}) => getPlanAreasPage(yearToken, {page: pageParam, perPage: 1000}),
+    queryFn: ({pageParam}) => (pageParam === 1 && completeAcademicPage<Area>(client, [...PLAN_AREAS_KEY, yearToken]))
+      || getPlanAreasPage(yearToken, {page: pageParam, perPage: 1000}),
     getNextPageParam: last => last.meta && last.meta.current_page < last.meta.last_page ? last.meta.current_page + 1 : undefined,
   })
+  const {hasNextPage, isFetchingNextPage, fetchNextPage} = result
   useEffect(() => {
-    if (enabled && result.hasNextPage && !result.isFetchingNextPage) void result.fetchNextPage()
-  }, [enabled, result.hasNextPage, result.isFetchingNextPage, result.fetchNextPage])
+    if (enabled && hasNextPage && !isFetchingNextPage) void fetchNextPage()
+  }, [enabled, hasNextPage, isFetchingNextPage, fetchNextPage])
   return {...result, areas: result.data?.pages.flatMap(page => page.data) ?? []}
 }
 export async function getPlanAreasPage(yearId: string, params: AcademicListParams): Promise<Paged<Area>> {
