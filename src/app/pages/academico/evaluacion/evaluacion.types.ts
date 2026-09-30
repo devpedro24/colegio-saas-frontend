@@ -20,6 +20,8 @@ export interface Matricula {
   grupo?: { id: number; nombre: string; grado: { id: number; nombre: string } }
 }
 
+import type {AcademicPageMeta} from '@/app/shared/components/AcademicPagination'
+
 export interface EvaluacionCatalogoResponse {
   can_manage: boolean
   can_configure: boolean
@@ -30,6 +32,11 @@ export interface EvaluacionCatalogoResponse {
   matriculas: Matricula[]
   grupos: Array<{id: number; nombre: string; ano_lectivo_id: number; grado: {id: number; nombre: string}}>
   estudiantes: Array<{id: number; name: string}>
+  estudiantes_disponibles: Array<{id: number; name: string}>
+  materias: Array<{id: number; nombre: string}>
+  selected_asignacion?: AsignacionDocente | null
+  selected_matricula?: Matricula | null
+  pagination: {asignaciones: AcademicPageMeta; matriculas: AcademicPageMeta}
 }
 
 export interface ComponenteEvaluacion {
@@ -76,6 +83,7 @@ export interface PlanillaResponse {
   matriculas: Matricula[]
   calificaciones: Calificacion[]
   resultados: ResultadoEstudiante[]
+  pagination: {matriculas: AcademicPageMeta}
 }
 
 export interface NotaUpdate {

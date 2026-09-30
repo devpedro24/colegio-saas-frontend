@@ -10,11 +10,41 @@ import type {
 
 const EVAL_URL = '/evaluacion'
 
-export const useCatalogoEvaluacion = () => {
+export type CatalogoFilters = {
+  yearId?: string
+  groupId?: string
+  materiaId?: string
+  enrollmentStatus?: string
+  search?: string
+  studentSearch?: string
+  assignmentPage?: number
+  assignmentPerPage?: number
+  enrollmentPage?: number
+  enrollmentPerPage?: number
+  assignmentToken?: string
+  enrollmentToken?: string
+}
+
+export const useCatalogoEvaluacion = (filters: CatalogoFilters = {}) => {
   return useQuery<EvaluacionCatalogoResponse>({
-    queryKey: ['evaluacion', 'catalogo'],
-    queryFn: () =>
-      api.get<{data: EvaluacionCatalogoResponse}>(`${EVAL_URL}/catalogo`).then((res) => res.data),
+    queryKey: ['evaluacion', 'catalogo', filters],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (filters.yearId) params.set('ano_lectivo_id', filters.yearId)
+      if (filters.groupId) params.set('grupo_id', filters.groupId)
+      if (filters.materiaId) params.set('materia_id', filters.materiaId)
+      if (filters.enrollmentStatus) params.set('estado', filters.enrollmentStatus)
+      if (filters.search) params.set('search', filters.search)
+      if (filters.studentSearch) params.set('student_search', filters.studentSearch)
+      if (filters.assignmentPage) params.set('asignaciones_page', String(filters.assignmentPage))
+      if (filters.assignmentPerPage) params.set('asignaciones_per_page', String(filters.assignmentPerPage))
+      if (filters.enrollmentPage) params.set('matriculas_page', String(filters.enrollmentPage))
+      if (filters.enrollmentPerPage) params.set('matriculas_per_page', String(filters.enrollmentPerPage))
+      if (filters.assignmentToken) params.set('asignacion_token', filters.assignmentToken)
+      if (filters.enrollmentToken) params.set('matricula_token', filters.enrollmentToken)
+      const query = params.toString()
+      return api.get<{data: EvaluacionCatalogoResponse}>(`${EVAL_URL}/catalogo${query ? `?${query}` : ''}`).then((res) => res.data)
+    },
   })
 }
 
@@ -29,12 +59,12 @@ export const useMatricular = () => {
   })
 }
 
-export const usePlanilla = (asignacionId: number, periodoId: number) => {
+export const usePlanilla = (asignacionId: number, periodoId: number, page: number, perPage: number, search: string) => {
   return useQuery<PlanillaResponse>({
-    queryKey: ['evaluacion', 'planillas', asignacionId, periodoId],
+    queryKey: ['evaluacion', 'planillas', asignacionId, periodoId, {page, perPage, search}],
     queryFn: () =>
       api
-        .get<{data: PlanillaResponse}>(`${EVAL_URL}/planillas/${asignacionId}/${periodoId}`)
+        .get<{data: PlanillaResponse}>(`${EVAL_URL}/planillas/${asignacionId}/${periodoId}?${new URLSearchParams({page: String(page), per_page: String(perPage), ...(search ? {search} : {})})}`)
         .then((res) => res.data),
     enabled: !!asignacionId && !!periodoId,
   })
