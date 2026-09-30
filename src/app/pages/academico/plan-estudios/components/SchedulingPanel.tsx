@@ -5,9 +5,12 @@ import {Modal} from 'react-bootstrap'
 import {createPortal} from 'react-dom'
 import {useSearchParams} from 'react-router-dom'
 import {ApiError, api} from '@/lib/api/client'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {formatSchoolTime} from '@/lib/format/schoolTime'
+import {AcademicOptionSelect, type AcademicOption} from '../../shared/AcademicOptionSelect'
 import {useSchedule, type Assignment, type ScheduleGroup, type Session} from '../horarios.api'
 import {useAcademicYear} from '../../academic-year-context'
+import {useAcademicPagedList} from '../../estructura/useAcademicPagedList'
 import {layoutSessions, minutes, sessionEnd, sessionStart} from './schedule-layout'
 import './schedule.css'
 
@@ -24,6 +27,7 @@ type ScheduleDrag = {session: Session; pointerId: number; startX: number; startY
 type CardMenu = {session: Session; left: number; top: number}
 const gradeGroupLabel = (item: ScheduleGroup) => `${item.grado?.nombre ?? ''} / (${item.nombre})`
 const groupLabel = (item: ScheduleGroup) => `${gradeGroupLabel(item)}${item.sede?.nombre ? ` · ${item.sede.nombre}` : ''}`
+const groupOptionLabel = (item: AcademicOption) => `${item.grado?.nombre ?? ''} / (${item.nombre ?? ''})${item.sede?.nombre ? ` · ${item.sede.nombre}` : ''}`
 
 export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'horarios' | 'resumen'}) {
   const intl = useIntl()
@@ -37,7 +41,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const requestedRoom = changingYear ? '' : searchParams.get('espacio') ?? ''
   // The unfiltered timetable only fetches catalogs. Resolve public URL tokens to
   // internal IDs before requesting the selected group's sessions.
-  const catalogQuery = useSchedule(mode)
+  const catalogQuery = useSchedule(mode, '', true, {group: requestedGroup, teacher: requestedTeacher, room: requestedRoom})
   const catalog = catalogQuery.data
   const selectedGroup = catalog?.grupos.find(item => String(item.ano_lectivo_id) === selectedYear && (item.url_token === requestedGroup || String(item.id) === requestedGroup))
   const selectedTeacher = catalog?.docentes.find(item => item.url_token === requestedTeacher || String(item.id) === requestedTeacher)
@@ -45,8 +49,24 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const group = selectedGroup ? String(selectedGroup.id) : ''
   const teacher = selectedTeacher ? String(selectedTeacher.id) : ''
   const room = selectedRoom ? String(selectedRoom.id) : ''
+  const [subjectId, setSubjectId] = useState('')
+  const assignmentList = useAcademicPagedList<Assignment>({
+    key: ['horarios', 'assignment-page', selectedYear, group, teacher, subjectId],
+    storageKey: 'plan.asignaciones',
+    enabled: mode === 'asignaciones' && !!selectedYear,
+    fetchPage: async (page, perPage) => {
+      const params = new URLSearchParams({ano_lectivo_id: selectedYear, page: String(page), per_page: String(perPage)})
+      if (group) params.set('grupo_id', group)
+      if (teacher) params.set('docente_id', teacher)
+      if (subjectId) params.set('materia_id', subjectId)
+      const response = await api.get<{data: {asignaciones: Assignment[]; pagination?: {asignaciones?: {current_page: number; last_page: number; per_page: number; total: number; from: number | null; to: number | null}}}}>(`/horarios?${params}`)
+      return {data: response.data.asignaciones, meta: response.data.pagination!.asignaciones!}
+    },
+  })
   const selectedScheduleQuery = useSchedule('horarios', group, mode === 'horarios' && !!group)
-  const query = mode === 'horarios' && group ? selectedScheduleQuery : catalogQuery
+  const selectedSummaryQuery = useSchedule('resumen', group, mode === 'resumen' && !!(group || teacher), {}, teacher)
+  const query = mode === 'horarios' && group ? selectedScheduleQuery
+    : mode === 'resumen' && (group || teacher) ? selectedSummaryQuery : catalogQuery
   const yearName = (id: number) => years.find(year => String(year.id) === String(id))?.nombre ?? '—'
   const data = query.data
   const client = useQueryClient()
@@ -67,6 +87,8 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const [sessionDay, setSessionDay] = useState(days[0])
   const [sessionSubjectId, setSessionSubjectId] = useState('')
   const [sessionGroupId, setSessionGroupId] = useState('')
+  const [selectedFormGroup, setSelectedFormGroup] = useState<ScheduleGroup | null>(null)
+  const [selectedFormSubject, setSelectedFormSubject] = useState<AcademicOption | null>(null)
   const [sessionTeacherId, setSessionTeacherId] = useState('')
   const [sessionSpaceId, setSessionSpaceId] = useState('')
   const [sessionBlockId, setSessionBlockId] = useState('')
@@ -110,6 +132,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   }, [selectedYear, setSearchParams])
   useEffect(() => {
     setShow(false); setCopySource(null); setCardMenu(null)
+    setSubjectId('')
     if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current)
     scrollFrameRef.current = null; setDropTarget(null); dragTargetRef.current = null; setDraggingId(null); dragRef.current = null
   }, [selectedYear])
@@ -136,9 +159,9 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   }, onSuccess: async () => {await client.invalidateQueries({queryKey: ['horarios']}); setShow(false); setEditing(null); setAssignmentEditing(null); setDeleting(null); setError('')}, onError: e => setError(e instanceof ApiError && e.errors ? Object.values(e.errors).flat()[0] ?? e.message : e.message)})
 
   const writable = data?.can_manage && yearWritable
-  const assignments = data?.asignaciones.filter(item => String(item.ano_lectivo_id) === selectedYear && (!group || String(item.grupo_id) === group) && (!teacher || String(item.docente_id) === teacher)) ?? []
+  const assignments = mode === 'asignaciones' ? assignmentList.rows : data?.asignaciones.filter(item => String(item.ano_lectivo_id) === selectedYear && (!group || String(item.grupo_id) === group) && (!teacher || String(item.docente_id) === teacher)) ?? []
   const sessions = data?.sesiones.filter(item => String(item.grupo?.ano_lectivo_id) === selectedYear && (!group || String(item.grupo_id) === group) && (!teacher || String(item.docente_id) === teacher) && (!room || String(item.espacio_fisico_id) === room)) ?? []
-  const activeGroup = data?.grupos.find(item => String(item.id) === sessionGroupId)
+  const activeGroup = data?.grupos.find(item => String(item.id) === sessionGroupId) ?? (String(selectedFormGroup?.id) === sessionGroupId ? selectedFormGroup : null)
   const visibleBlocks = data?.bloques.filter(item => item.jornada_id === activeGroup?.jornada_id) ?? []
   const blockMode = useBlock && visibleBlocks.length > 0
   const activeBlock = visibleBlocks.find(item => String(item.id) === sessionBlockId)
@@ -260,18 +283,21 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
 
   function openNew() {
     setEditing(null); setAssignmentEditing(null); setSessionDay(days[0]); setSessionSubjectId(''); setSessionGroupId(group)
+    setSelectedFormGroup(selectedGroup ?? null); setSelectedFormSubject(null)
     setSessionTeacherId(''); setSessionSpaceId(''); setSessionBlockId('')
     setSessionStartTime(''); setSessionEndTime(''); setUseBlock(false); setError(''); setShow(true)
   }
   function openSession(item: Session) {
     setEditing(item); setSessionDay(item.dia); setSessionSubjectId(String(item.materia_id)); setSessionGroupId(String(item.grupo_id))
+    setSelectedFormGroup(item.grupo); setSelectedFormSubject(item.materia)
     setSessionTeacherId(item.docente_id ? String(item.docente_id) : ''); setSessionSpaceId(item.espacio_fisico_id ? String(item.espacio_fisico_id) : '')
     setSessionBlockId(item.bloque_horario_id ? String(item.bloque_horario_id) : '')
     setSessionStartTime(sessionStart(item).slice(0, 5)); setSessionEndTime(sessionEnd(item).slice(0, 5))
     setUseBlock(Boolean(item.bloque_horario_id)); setError(''); setShow(true)
   }
   function openAssignment(item: Assignment) {
-    setEditing(null); setAssignmentEditing(item); setError(''); setShow(true)
+    setEditing(null); setAssignmentEditing(item); setSessionSubjectId(String(item.materia_id)); setSessionGroupId(String(item.grupo_id)); setSessionTeacherId(item.docente_id ? String(item.docente_id) : '')
+    setSelectedFormGroup(item.grupo); setSelectedFormSubject(item.materia); setError(''); setShow(true)
   }
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -302,10 +328,11 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   </div>
   const needsGroup = mode === 'horarios' && !!data?.can_manage && !group
   return <>
-    <div className='d-flex flex-wrap gap-3 mb-6 schedule-controls'>
-      <select aria-label={t('schedule.group')} className='form-select w-auto' value={selectedGroup?.url_token ?? ''} onChange={e => setFilter('grupo', e.target.value)}><option value=''>{mode === 'horarios' && data?.can_manage ? t('schedule.selectGroup') : t('schedule.allGroups')}</option>{data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear).map(item => <option key={item.id} value={item.url_token}>{groupLabel(item)}</option>)}</select>
-      {data?.can_manage && <select aria-label={t('schedule.teacher')} className='form-select w-auto' value={selectedTeacher?.url_token ?? ''} onChange={e => setFilter('docente', e.target.value)}><option value=''>{t('schedule.allTeachers')}</option>{data.docentes.map(item => <option key={item.id} value={item.url_token}>{item.name}</option>)}</select>}
-      {mode === 'horarios' && <select aria-label={t('schedule.room')} className='form-select w-auto' value={selectedRoom?.url_token ?? ''} onChange={e => setFilter('espacio', e.target.value)}><option value=''>{t('schedule.allRooms')}</option>{data?.espacios.map(item => <option key={item.id} value={item.url_token}>{item.nombre}</option>)}</select>}
+    <div className='d-flex flex-wrap align-items-center gap-3 mb-5 schedule-controls'>
+      <AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('schedule.group')} value={group} onChange={() => undefined} onSelectOption={option => setFilter('grupo', option?.url_token ?? '')} initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []} emptyLabel={mode === 'horarios' && data?.can_manage ? t('schedule.selectGroup') : t('schedule.allGroups')} formatOption={groupOptionLabel} hideLabel selectOnly />
+      {data?.can_manage && <AcademicOptionSelect tipo='docentes' yearId={selectedYear} label={t('schedule.teacher')} value={teacher} onChange={() => undefined} onSelectOption={option => setFilter('docente', option?.url_token ?? '')} initialOptions={data.docentes} emptyLabel={t('schedule.allTeachers')} hideLabel selectOnly />}
+      {mode === 'asignaciones' && <AcademicOptionSelect tipo='materias' yearId={selectedYear} label={t('schedule.subject')} value={subjectId} onChange={setSubjectId} initialOptions={data?.materias ?? []} emptyLabel={t('academic.filter.allSubjects')} hideLabel selectOnly />}
+      {mode === 'horarios' && <AcademicOptionSelect tipo='espacios' yearId={selectedYear} label={t('schedule.room')} value={room} onChange={() => undefined} onSelectOption={option => setFilter('espacio', option?.url_token ?? '')} initialOptions={data?.espacios ?? []} emptyLabel={t('schedule.allRooms')} hideLabel selectOnly />}
       {writable && mode !== 'resumen' && <button className='btn btn-primary ms-auto' disabled={!selectedYear || needsGroup} onClick={openNew}>+ {t(mode === 'asignaciones' ? 'schedule.newAssignment' : 'schedule.newSession')}</button>}
       {mode === 'horarios' && <button className='btn btn-light' disabled={needsGroup} onClick={() => window.print()}>{t('schedule.print')}</button>}
     </div>
@@ -313,8 +340,8 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     {writable && mode === 'horarios' && !needsGroup && <p className='text-muted fs-7 mb-3' id='schedule-drag-hint'>{t('schedule.dragHint')}</p>}
     {copySource && mode === 'horarios' && <div className='alert alert-info d-flex align-items-center justify-content-between gap-3 schedule-copy-banner' data-schedule-copy-banner role='status'><span>{t('schedule.placeCopy')} <strong>{copySource.materia?.nombre} · {gradeGroupLabel(copySource.grupo)}</strong></span><button type='button' className='btn btn-sm btn-light' onClick={() => {setCopySource(null); setDropTarget(null)}}>{t('common.cancel')}</button></div>}
     {error && !show && <div className='alert alert-danger' role='alert'>{error}</div>}
-    {mode === 'resumen' && <div className='row g-5'>{[['schedule.subjects', data?.materias.length], ['schedule.assignments', assignments.length], ['schedule.sessions', sessions.length]].map(([label, value]) => <div className='col-md-4' key={label}><div className='bg-light-primary rounded p-8'><div className='fs-2x fw-bold'>{value}</div><div>{t(String(label))}</div></div></div>)}</div>}
-    {mode === 'asignaciones' && <div className='table-responsive'><table className='table table-row-dashed align-middle'><thead><tr><th>{t('common.field.anoLectivo')}</th>{['teacher', 'subject', 'group', 'actions'].map(item => <th key={item}>{t(`schedule.${item}`)}</th>)}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{yearName(item.ano_lectivo_id)}</td><td>{item.docente?.name ?? t('schedule.noTeacher')}</td><td>{item.materia?.nombre}</td><td>{gradeGroupLabel(item.grupo)}</td><td>{writable && <div className='d-flex gap-2'><button className='btn btn-sm btn-light-primary' onClick={() => openAssignment(item)}>{t('common.edit')}</button><button className='btn btn-sm btn-light-danger' onClick={() => setDeleting(item.id)}>{t('common.delete')}</button></div>}</td></tr>)}</tbody></table>{!assignments.length && <p className='text-muted p-6'>{t('schedule.emptyAssignments')}</p>}</div>}
+    {mode === 'resumen' && <div className='row g-5'>{[['schedule.subjects', data?.counts?.materias ?? data?.materias.length], ['schedule.assignments', data?.pagination?.asignaciones?.total ?? assignments.length], ['schedule.sessions', data?.counts?.sesiones ?? sessions.length]].map(([label, value]) => <div className='col-md-4' key={label}><div className='bg-light-primary rounded p-8'><div className='fs-2x fw-bold'>{value}</div><div>{t(String(label))}</div></div></div>)}</div>}
+    {mode === 'asignaciones' && <><div className='table-responsive'><table className='table table-row-dashed align-middle'><thead><tr><th>{t('common.field.anoLectivo')}</th>{['teacher', 'subject', 'group', 'actions'].map(item => <th key={item}>{t(`schedule.${item}`)}</th>)}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{yearName(item.ano_lectivo_id)}</td><td>{item.docente?.name ?? t('schedule.noTeacher')}</td><td>{item.materia?.nombre}</td><td>{gradeGroupLabel(item.grupo)}</td><td>{writable && <div className='d-flex gap-2'><button className='btn btn-sm btn-light-primary' onClick={() => openAssignment(item)}>{t('common.edit')}</button><button className='btn btn-sm btn-light-danger' onClick={() => setDeleting(item.id)}>{t('common.delete')}</button></div>}</td></tr>)}</tbody></table>{!assignments.length && <p className='text-muted p-6'>{assignmentList.isLoading ? t('common.pleaseWait') : t('schedule.emptyAssignments')}</p>}</div><AcademicPagination meta={assignmentList.meta} visibleCount={assignments.length} loading={assignmentList.isFetching} onPageChange={assignmentList.onPageChange} onPerPageChange={assignmentList.onPerPageChange} onLoadMore={assignmentList.onLoadMore} /></>}
     {mode === 'horarios' && !needsGroup && <div className='schedule-scroll' ref={scrollRef}><div className='schedule-week'>
       <div className='schedule-day-label'/>{days.map((day, i) => <div className='schedule-day-label' key={day}>{intl.formatDate(new Date(2026, 8, 21 + i), {weekday: 'long'})}</div>)}
       <div className='schedule-time-axis' style={{height}}>{Array.from({length: endHour - startHour + 1}, (_, index) => <span key={index} style={{top: index * hourHeight}}>{formatSchoolTime(`${String(startHour + index).padStart(2, '0')}:00`)}</span>)}</div>
@@ -356,19 +383,19 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     <Modal show={show} onHide={() => setShow(false)} centered scrollable size='lg' className='schedule-editor-modal'><Modal.Header closeButton><Modal.Title>{t(mode === 'asignaciones' ? 'schedule.newAssignment' : 'schedule.session')}</Modal.Title></Modal.Header>
       <form key={assignmentEditing?.id ?? 'new'} onSubmit={save}><Modal.Body>
         {error && <div className='alert alert-danger' role='alert'>{error}</div>}
-        {mode === 'asignaciones' ? <>
-          <label className='form-label'>{t('schedule.teacherOptional')}</label><select name='docente_id' className='form-select mb-5' defaultValue={assignmentEditing?.docente_id ?? ''}><option value=''>{t('schedule.noTeacher')}</option>{data?.docentes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-          <label className='form-label required'>{t('schedule.subject')}</label><select required name='materia_id' className='form-select mb-5' defaultValue={assignmentEditing?.materia_id ?? ''}><option value=''>{t('common.select')}</option>{data?.materias.filter(item => item.estado === 'activo').map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select>
-          <label className='form-label required'>{t('schedule.group')}</label><select required name='grupo_id' className='form-select mb-5' defaultValue={assignmentEditing?.grupo_id ?? group}><option value=''>{t('common.select')}</option>{data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear).map(item => <option key={item.id} value={item.id}>{groupLabel(item)}</option>)}</select>
-        </> : <>
+        {mode === 'asignaciones' ? <div className='vstack gap-5'>
+          <AcademicOptionSelect tipo='docentes' yearId={selectedYear} label={t('schedule.teacherOptional')} name='docente_id' value={sessionTeacherId} onChange={setSessionTeacherId} initialOptions={data?.docentes ?? []} emptyLabel={t('schedule.noTeacher')} selectOnly />
+          <AcademicOptionSelect tipo='materias' yearId={selectedYear} label={t('schedule.subject')} name='materia_id' required value={sessionSubjectId} onChange={setSessionSubjectId} onSelectOption={setSelectedFormSubject} initialOptions={data?.materias.filter(item => item.estado === 'activo') ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSubjectId || item.estado === 'activo'} selectOnly />
+          <AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('schedule.group')} name='grupo_id' required value={sessionGroupId} onChange={setSessionGroupId} onSelectOption={option => setSelectedFormGroup(option as ScheduleGroup | null)} initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []} emptyLabel={t('common.select')} formatOption={groupOptionLabel} selectOnly />
+        </div> : <>
           <label className='form-label required'>{t('schedule.day')}</label><select required name='dia' className='form-select mb-5' value={sessionDay} onChange={e => setSessionDay(e.target.value)}>{days.map((day, i) => <option key={day} value={day}>{intl.formatDate(new Date(2026, 8, 21 + i), {weekday: 'long'})}</option>)}</select>
-          <label className='form-label required'>{t('schedule.subject')}</label><select required name='materia_id' className='form-select mb-5' value={sessionSubjectId} onChange={e => setSessionSubjectId(e.target.value)}><option value=''>{t('common.select')}</option>{data?.materias.filter(item => item.estado === 'activo' && (!activeGroup || item.nivel_id == null || item.nivel_id === activeGroup.grado.nivel_id)).map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select>
-          <label className='form-label required'>{t('schedule.group')}</label><select required name='grupo_id' className='form-select mb-5' value={sessionGroupId} onChange={e => {
-            const next = data?.grupos.find(item => String(item.id) === e.target.value)
-            const subject = data?.materias.find(item => String(item.id) === sessionSubjectId)
-            if (subject?.nivel_id != null && next && subject.nivel_id !== next.grado.nivel_id) setSessionSubjectId('')
-            setSessionGroupId(e.target.value); setSessionBlockId(''); setSessionSpaceId('')
-          }}><option value=''>{t('common.select')}</option>{data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear).map(item => <option key={item.id} value={item.id}>{groupLabel(item)}</option>)}</select>
+          <div className='mb-5'><AcademicOptionSelect tipo='materias' yearId={selectedYear} label={t('schedule.subject')} name='materia_id' required value={sessionSubjectId} onChange={setSessionSubjectId} onSelectOption={setSelectedFormSubject} initialOptions={data?.materias.filter(item => item.estado === 'activo' && (!activeGroup || item.nivel_id == null || item.nivel_id === activeGroup.grado.nivel_id)) ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSubjectId || (item.estado === 'activo' && (!activeGroup || item.nivel_id == null || item.nivel_id === activeGroup.grado.nivel_id))} selectOnly /></div>
+          <div className='mb-5'><AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('schedule.group')} name='grupo_id' required value={sessionGroupId} onChange={value => {setSessionGroupId(value); setSessionBlockId(''); setSessionSpaceId('')}} onSelectOption={option => {
+            const next = option as ScheduleGroup | null
+            const subject = data?.materias.find(item => String(item.id) === sessionSubjectId) ?? selectedFormSubject
+            if (subject && 'nivel_id' in subject && subject.nivel_id != null && next && subject.nivel_id !== next.grado.nivel_id) setSessionSubjectId('')
+            setSelectedFormGroup(next)
+          }} initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []} emptyLabel={t('common.select')} formatOption={groupOptionLabel} selectOnly /></div>
           {activeGroup && <div className='alert alert-light-primary py-3' role='status'>{activeGroup.jornada ? `${t('schedule.journey')}: ${activeGroup.jornada.nombre} · ${activeGroup.sede?.nombre ?? ''} (${formatSchoolTime(activeGroup.jornada.hora_inicio)}–${formatSchoolTime(activeGroup.jornada.hora_fin)})` : t('schedule.noJourney')}</div>}
           {visibleBlocks.length > 0 && <div className='rounded border p-4 mb-5'>
             <label className='form-check form-switch form-check-custom form-check-solid mb-2'><input className='form-check-input' type='checkbox' checked={blockMode} onChange={e => setUseBlock(e.target.checked)} /><span className='form-check-label fw-semibold'>{t('schedule.useBlock')}</span></label>
@@ -391,8 +418,8 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
           </div>}
           {activeGroup && visibleBlocks.length === 0 && <p className='text-muted fs-7 mb-4'>{t('schedule.noBlocks')}</p>}
           {!blockMode && <div className='row g-4 mb-5'><div className='col-md-6'><label className='form-label required' htmlFor='schedule-start'>{t('schedule.startTime')}</label><input id='schedule-start' name='hora_inicio' required type='time' step={60} className='form-control' min={activeGroup?.jornada?.hora_inicio?.slice(0,5)} max={activeGroup?.jornada?.hora_fin?.slice(0,5)} value={sessionStartTime} onChange={e => setSessionStartTime(e.target.value)} /></div><div className='col-md-6'><label className='form-label required' htmlFor='schedule-end'>{t('schedule.endTime')}</label><input id='schedule-end' name='hora_fin' required type='time' step={60} className='form-control' min={activeGroup?.jornada?.hora_inicio?.slice(0,5)} max={activeGroup?.jornada?.hora_fin?.slice(0,5)} value={sessionEndTime} onChange={e => setSessionEndTime(e.target.value)} /></div></div>}
-          <label className='form-label'>{t('schedule.teacherOptional')}</label><select name='docente_id' className='form-select mb-5' value={sessionTeacherId} onChange={e => setSessionTeacherId(e.target.value)}><option value=''>{t('schedule.noTeacher')}</option>{data?.docentes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-          <label className='form-label'>{t('schedule.room')} {t('common.field.optional')}</label><select className='form-select' value={sessionSpaceId} onChange={e => setSessionSpaceId(e.target.value)}><option value=''>{t('common.select')}</option>{data?.espacios.filter(item => item.sede_id === activeGroup?.sede_id).map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select>
+          <div className='mb-5'><AcademicOptionSelect tipo='docentes' yearId={selectedYear} label={t('schedule.teacherOptional')} name='docente_id' value={sessionTeacherId} onChange={setSessionTeacherId} initialOptions={data?.docentes ?? []} emptyLabel={t('schedule.noTeacher')} selectOnly /></div>
+          <AcademicOptionSelect tipo='espacios' yearId={selectedYear} label={t('schedule.room')} value={sessionSpaceId} onChange={setSessionSpaceId} initialOptions={data?.espacios.filter(item => item.sede_id === activeGroup?.sede_id) ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSpaceId || (!!activeGroup && item.sede_id === activeGroup.sede_id && (item.estado == null || item.estado === 'disponible'))} selectOnly />
         </>}
       </Modal.Body><Modal.Footer>
         {editing && writable && <button className='btn btn-light-danger me-auto' type='button' onClick={() => {setShow(false); setDeleting(editing.id)}}>{t('common.delete')}</button>}

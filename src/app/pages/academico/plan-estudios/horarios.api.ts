@@ -22,16 +22,25 @@ export type ScheduleData = {
   bloques: Block[]
   espacios: (Named & {url_token: string; sede_id: number | null})[]
   asignaciones: Assignment[]
+  pagination?: {asignaciones?: {current_page: number; last_page: number; per_page: number; total: number; from: number | null; to: number | null}}
+  counts?: {materias?: number; sesiones?: number}
   sesiones: Session[]
 }
-export function useSchedule(view: 'resumen' | 'asignaciones' | 'horarios', groupId = '', enabled = true) {
+type CatalogTokens = {group?: string; teacher?: string; room?: string}
+export function useSchedule(view: 'resumen' | 'asignaciones' | 'horarios', groupId = '', enabled = true, tokens: CatalogTokens = {}, teacherId = '') {
   const {yearId} = useAcademicYear()
-  return useQuery({queryKey: ['horarios', yearId, view, view === 'horarios' ? groupId : ''], enabled: enabled && !!yearId,
+  return useQuery({queryKey: ['horarios', yearId, view, view !== 'asignaciones' ? groupId : '', view === 'resumen' ? teacherId : '', tokens.group ?? '', tokens.teacher ?? '', tokens.room ?? ''], enabled: enabled && !!yearId,
     queryFn: async () => {
       const params = new URLSearchParams({ano_lectivo_id: yearId})
+      if (tokens.group) params.set('grupo_token', tokens.group)
+      if (tokens.teacher) params.set('docente_token', tokens.teacher)
+      if (tokens.room) params.set('espacio_token', tokens.room)
       if (view === 'horarios') {
         params.set('vista', 'horarios')
         if (groupId) params.set('grupo_id', groupId)
+      } else if (view === 'resumen') {
+        if (groupId) params.set('grupo_id', groupId)
+        if (teacherId) params.set('docente_id', teacherId)
       }
       return (await api.get<{data: ScheduleData}>(`/horarios?${params.toString()}`)).data
     }})
