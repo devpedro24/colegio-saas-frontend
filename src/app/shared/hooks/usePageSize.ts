@@ -2,13 +2,15 @@ import {useCallback, useState, useEffect} from 'react'
 
 const STORAGE_KEY = 'colegio-saas.page-size'
 const DEFAULT_PAGE_SIZE = 5
+const allowed = [5, 10, 20, 50, 100, 1000]
 
-export function usePageSize(): [number, (size: number) => void] {
+export function usePageSize(listKey?: string): [number, (size: number) => void] {
+  const storageKey = listKey ? `${STORAGE_KEY}.${listKey}` : STORAGE_KEY
   const [pageSize, setPageSizeState] = useState<number>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(storageKey)
     if (stored) {
       const parsed = parseInt(stored, 10)
-      if ([5, 10, 15, 20, 25, 50].includes(parsed)) {
+      if (allowed.includes(parsed)) {
         return parsed
       }
     }
@@ -17,21 +19,22 @@ export function usePageSize(): [number, (size: number) => void] {
 
   useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
+      if (e.key === storageKey && e.newValue) {
         const parsed = parseInt(e.newValue, 10)
-        if ([5, 10, 15, 20, 25, 50].includes(parsed)) {
+        if (allowed.includes(parsed)) {
           setPageSizeState(parsed)
         }
       }
     }
     window.addEventListener('storage', handler)
     return () => window.removeEventListener('storage', handler)
-  }, [])
+  }, [storageKey])
 
   const setPageSize = useCallback((size: number) => {
-    localStorage.setItem(STORAGE_KEY, String(size))
+    if (!allowed.includes(size)) return
+    localStorage.setItem(storageKey, String(size))
     setPageSizeState(size)
-  }, [])
+  }, [storageKey])
 
   return [pageSize, setPageSize]
 }

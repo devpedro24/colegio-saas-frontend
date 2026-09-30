@@ -1,4 +1,4 @@
-import {type FC} from 'react'
+import {type FC, useId} from 'react'
 import {useIntl} from 'react-intl'
 
 type Props = {
@@ -10,7 +10,7 @@ type Props = {
   onPerPageChange: (perPage: number) => void
 }
 
-const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25, 50]
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 1000]
 const MAX_VISIBLE = 5
 
 function visiblePages(current: number, total: number): number[] {
@@ -36,6 +36,7 @@ const PaginationBar: FC<Props> = ({
   onPerPageChange,
 }) => {
   const intl = useIntl()
+  const sizeId = useId()
   const startItem = (currentPage - 1) * perPage + 1
   const endItem = Math.min(currentPage * perPage, total)
   const pages = visiblePages(currentPage, totalPages)
@@ -49,9 +50,14 @@ const PaginationBar: FC<Props> = ({
         )}
       </div>
 
-      <div className='d-flex align-items-center gap-3'>
+      <div className='d-flex align-items-center justify-content-end flex-wrap gap-3'>
+        <label className='fs-7 text-gray-600' htmlFor={sizeId}>
+          {intl.formatMessage({id: 'shared.pagination.perPage'})}
+        </label>
         <select
+          id={sizeId}
           className='form-select form-select-sm form-select-solid w-auto'
+          aria-label={intl.formatMessage({id: 'shared.pagination.perPage'})}
           value={perPage}
           onChange={(e) => onPerPageChange(Number(e.target.value))}
         >
@@ -63,6 +69,7 @@ const PaginationBar: FC<Props> = ({
         <ul className='pagination pagination-sm mb-0'>
           <li className={`page-item ${currentPage <= 1 ? 'disabled' : ''}`}>
             <button
+              type='button'
               className='page-link'
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage <= 1}
@@ -74,7 +81,7 @@ const PaginationBar: FC<Props> = ({
           {pages[0] > 1 && (
             <>
               <li className='page-item'>
-                <button className='page-link' onClick={() => onPageChange(1)}>1</button>
+                <button type='button' className='page-link' onClick={() => onPageChange(1)}>1</button>
               </li>
               {pages[0] > 2 && (
                 <li className='page-item disabled'><span className='page-link'>...</span></li>
@@ -84,7 +91,7 @@ const PaginationBar: FC<Props> = ({
 
           {pages.map((p) => (
             <li key={p} className={`page-item ${currentPage === p ? 'active' : ''}`}>
-              <button className='page-link' onClick={() => onPageChange(p)}>{p}</button>
+              <button type='button' className='page-link' onClick={() => onPageChange(p)} aria-current={currentPage === p ? 'page' : undefined}>{p}</button>
             </li>
           ))}
 
@@ -94,13 +101,14 @@ const PaginationBar: FC<Props> = ({
                 <li className='page-item disabled'><span className='page-link'>...</span></li>
               )}
               <li className='page-item'>
-                <button className='page-link' onClick={() => onPageChange(totalPages)}>{totalPages}</button>
+                <button type='button' className='page-link' onClick={() => onPageChange(totalPages)}>{totalPages}</button>
               </li>
             </>
           )}
 
           <li className={`page-item ${currentPage >= totalPages ? 'disabled' : ''}`}>
             <button
+              type='button'
               className='page-link'
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage >= totalPages}
