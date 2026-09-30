@@ -7,7 +7,7 @@ import { Modal } from "react-bootstrap";
 import { Content } from "@/_metronic/layout/components/content";
 
 type Entry = {
-  id: number;
+  id: string;
   actor_email: string | null;
   actor_rol: string | null;
   impersonated_by?: string | null;
@@ -21,7 +21,7 @@ type Entry = {
   motivo: string | null;
 };
 const initial = {
-  tenant_id: "",
+  colegio_slug: "",
   actor: "",
   rol: "",
   accion: "",
@@ -40,7 +40,7 @@ export default function AuditoriaPage() {
   const tenants = useQuery({
     queryKey: ["audit-tenants"],
     queryFn: () =>
-      api.get<{ data: { id: string; name: string }[] }>(
+      api.get<{ data: { slug: string; name: string }[] }>(
         "/platform/auditoria/colegios",
       ),
   });
@@ -79,14 +79,14 @@ export default function AuditoriaPage() {
                 <select
                   id="audit-tenant"
                   className="form-select"
-                  value={draft.tenant_id}
+                  value={draft.colegio_slug}
                   onChange={(e) =>
-                    setDraft({ ...draft, tenant_id: e.target.value })
+                    setDraft({ ...draft, colegio_slug: e.target.value })
                   }
                 >
                   <option value="">{t("audit.platform")}</option>
                   {tenants.data?.data.map((item) => (
-                    <option key={item.id} value={item.id}>
+                    <option key={item.slug} value={item.slug}>
                       {item.name}
                     </option>
                   ))}

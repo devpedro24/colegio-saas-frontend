@@ -1,5 +1,6 @@
 ﻿import {FC, useEffect, useState} from 'react'
 import {createPortal} from 'react-dom'
+import type {FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
@@ -24,28 +25,26 @@ const EMPTY_FORM: ColegioSedeInput = {
   nombre: '',
   direccion: '',
   telefono: '',
-  responsable: '',
-  es_principal: false,
   estado: 'activa',
 }
 
 // Modal "Sedes del colegio": el superadmin lista y administra las sedes de un
-// colegio (viven en la BD del tenant) via /colegios/{id}/sedes.
+// colegio (viven en la BD del tenant) via /colegios/{slug}/sedes.
 const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
 
-  const id = show ? colegio?.id ?? null : null
-  const {data, isLoading, isError} = useColegioSedes(id)
+  const slug = show ? colegio?.slug ?? null : null
+  const {data, isLoading, isError} = useColegioSedes(slug)
   const create = useCreateColegioSede()
   const update = useUpdateColegioSede()
   const remove = useDeleteColegioSede()
 
   const [form, setForm] = useState<ColegioSedeInput>(EMPTY_FORM)
   const [creating, setCreating] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
   const [error, setError] = useState<ApiError | null>(null)
 
   useEffect(() => {
@@ -74,13 +73,11 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
   const startEdit = (sede: ColegioSede) => {
     setCreating(false)
     setDeleteId(null)
-    setEditingId(sede.id)
+    setEditingId(sede.url_token)
     setForm({
       nombre: sede.nombre,
       direccion: sede.direccion ?? '',
       telefono: sede.telefono ?? '',
-      responsable: sede.responsable ?? '',
-      es_principal: sede.es_principal,
       estado: sede.estado,
     })
     setError(null)
@@ -94,22 +91,21 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
 
   const set = (patch: Partial<ColegioSedeInput>) => setForm((prev) => ({...prev, ...patch}))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!id) return
+    if (!slug) return
 
     const input: ColegioSedeInput = {
       ...form,
       nombre: form.nombre.trim(),
       direccion: form.direccion?.trim() || null,
       telefono: form.telefono?.trim() || null,
-      responsable: form.responsable?.trim() || null,
     }
 
     if (editingId !== null) {
       update.mutate(
-        {id, sedeId: editingId, input},
+        {slug, sedeToken: editingId, input},
         {
           onSuccess: () => {
             toast.success(t('common.toast.updated'))
@@ -127,7 +123,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
       )
     } else {
       create.mutate(
-        {id, input},
+        {slug, input},
         {
           onSuccess: () => {
             toast.success(t('common.toast.created'))
@@ -147,9 +143,9 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
   }
 
   const handleDelete = (sede: ColegioSede) => {
-    if (!id) return
+    if (!slug) return
     remove.mutate(
-      {id, sedeId: sede.id},
+      {slug, sedeToken: sede.url_token},
       {
         onSuccess: () => {
           toast.success(t('common.toast.deleted'))
@@ -167,7 +163,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
   const fe = (field: string): string | undefined => error?.fieldError(field)
 
   const pending =
-    (create.isPending || update.isPending) && (create.variables ?? update.variables)?.id === id
+    (create.isPending || update.isPending) && (create.variables ?? update.variables)?.slug === slug
 
   return createPortal(
     <Modal
@@ -218,7 +214,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
               <form onSubmit={handleSubmit} className='mb-7'>
                 <div className='rounded border border-dashed border-gray-300 p-4'>
                   <div className='row'>
-                    <div className='col-md-8 fv-row mb-4'>
+                    <div className='col-12 fv-row mb-4'>
                       <label className='required fs-7 fw-semibold mb-2'>
                         {t('colegios.sedes.field.name')}
                       </label>
@@ -230,20 +226,6 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                         onChange={(e) => set({nombre: e.target.value})}
                       />
                       {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
-                    </div>
-                    <div className='col-md-4 fv-row mb-4'>
-                      <label className='fs-7 fw-semibold mb-2'>
-                        {t('colegios.sedes.field.manager')}
-                      </label>
-                      <input
-                        type='text'
-                        className={`form-control form-control-solid ${fe('responsable') ? 'is-invalid' : ''}`}
-                        value={form.responsable ?? ''}
-                        onChange={(e) => set({responsable: e.target.value})}
-                      />
-                      {fe('responsable') && (
-                        <div className='invalid-feedback'>{fe('responsable')}</div>
-                      )}
                     </div>
                   </div>
                   <div className='row'>
@@ -276,15 +258,6 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                   </div>
                   <div className='d-flex align-items-center justify-content-between flex-wrap gap-3'>
                     <div className='d-flex align-items-center gap-6'>
-                      <label className='form-check form-check-custom form-check-solid'>
-                        <input
-                          className='form-check-input'
-                          type='checkbox'
-                          checked={form.es_principal ?? false}
-                          onChange={(e) => set({es_principal: e.target.checked})}
-                        />
-                        <span className='form-check-label'>{t('colegios.sedes.field.principal')}</span>
-                      </label>
                       <select
                         className='form-select form-select-solid w-150px'
                         value={form.estado ?? 'activa'}
@@ -339,16 +312,11 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                   </thead>
                   <tbody className='text-gray-600 fw-semibold'>
                     {sedes.map((sede) => (
-                      <tr key={sede.id}>
+                      <tr key={sede.url_token}>
                         <td>
                           <div className='d-flex flex-column'>
                             <div className='d-flex align-items-center gap-2'>
                               <span className='text-gray-800 fw-bold'>{sede.nombre}</span>
-                              {sede.es_principal && (
-                                <span className='badge badge-light-primary'>
-                                  {t('colegios.sedes.principal')}
-                                </span>
-                              )}
                               <span
                                 className={
                                   sede.estado === 'activa'
@@ -361,9 +329,6 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                                   : t('common.inactive')}
                               </span>
                             </div>
-                            {sede.responsable && (
-                              <span className='text-muted fs-7'>{sede.responsable}</span>
-                            )}
                           </div>
                         </td>
                         <td>
@@ -373,7 +338,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                           )}
                         </td>
                         <td>
-                          {deleteId === sede.id ? (
+                          {deleteId === sede.url_token ? (
                             <div className='d-flex align-items-center justify-content-end gap-2'>
                               <span className='text-muted fs-7'>
                                 {intl.formatMessage(
@@ -414,7 +379,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                                 type='button'
                                 className='btn btn-icon btn-light btn-sm'
                                 title={intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}
-                                onClick={() => setDeleteId(sede.id)}
+                                onClick={() => setDeleteId(sede.url_token)}
                               >
                                 <i className='ki-duotone ki-trash fs-5'>
                                   <span className='path1'></span>
@@ -441,13 +406,6 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
       </div>
     </Modal>,
     modalsRoot
-  )
-}
-
-const FormattedSedesSubtitle: FC<{name: string}> = ({name}) => {
-  const intl = useIntl()
-  return (
-    <>{intl.formatMessage({id: 'colegios.sedes.subtitle'}, {name})}</>
   )
 }
 

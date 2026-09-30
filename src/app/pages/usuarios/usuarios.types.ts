@@ -1,9 +1,10 @@
 // Tipos del feature Usuarios del colegio (permiso `usuarios.gestionar`).
 // Los usuarios de la sede principal viven en la BD del colegio; los de una sede
-// adicional viven en la BD del tenant hijo. `sede_id` null => cole'gio.
+// adicional viven en la BD del tenant hijo. Los selectores públicos son opacos.
 
 export interface Usuario {
   id: string
+  url_token: string
   name: string
   email: string
   phone: string | null
@@ -12,24 +13,22 @@ export interface Usuario {
   status: string
   must_change_password: boolean
   created_at: string | null
-  sede_id: string | null
+  sede_url_token: string | null
   sede_nombre: string | null
-  tenant_id: string | null
-  temporary_password: string | null
 }
 
 export interface UsuarioCreateInput {
   name: string
   email: string
   role: string
-  sede_id?: string | number | null
+  sede_url_token?: string | null
   password?: string | null
 }
 
 export interface UsuarioUpdateInput {
   name?: string
   role?: string
-  sede_id?: string | null
+  sede_url_token?: string | null
   status?: string | null
   password?: string | null
 }

@@ -78,7 +78,7 @@ const PermForm: FC<{
 
     if (isEdit && permission) {
       update.mutate(
-        {id: permission.id, input},
+        {key: permission.key, input},
         {
           onSuccess: () => {
             toast.success(t('common.toast.updated'))
@@ -237,7 +237,7 @@ const PermissionFormDialog: FC<Props> = ({show, permission, features, onClose}) 
 
       {show && (
         <PermForm
-          key={permission?.id ?? 'new'}
+          key={permission?.key ?? 'new'}
           permission={permission}
           features={features}
           onClose={onClose}

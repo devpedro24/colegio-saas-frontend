@@ -72,7 +72,7 @@ const ColegiosPage: FC = () => {
   const onToggle = (colegio: Colegio, nextEnabled: boolean) => {
     if (nextEnabled) {
       updateStatus.mutate(
-        {id: colegio.id, status: 'active'},
+        {slug: colegio.slug, status: 'active'},
         {
           onSuccess: () => toast.success(t('colegios.toast.enabled', {name: colegio.name})),
           onError: () => toast.error(t('common.toast.genericError')),
@@ -169,11 +169,11 @@ const ColegiosPage: FC = () => {
                     {filtered.map((c) => {
                       const enabled = c.status !== 'suspended'
                       const rowPending =
-                        updateStatus.isPending && updateStatus.variables?.id === c.id
+                        updateStatus.isPending && updateStatus.variables?.slug === c.slug
                       const status = statusBadge(c.status)
                       const plan = planBadge(c.plan)
                       return (
-                        <tr key={c.id}>
+                        <tr key={c.slug}>
                           {/* Nombre + razon social */}
                           <td>
                             <div className='d-flex flex-column'>

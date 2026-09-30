@@ -27,7 +27,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
   const [generated, setGenerated] = useState<ResetPasswordResponse | null>(null)
 
   // Consulta el estado actual (temporal/changed/none) del rector.
-  const {data: pwInfo, isLoading, isError} = useRectorPassword(show ? colegio?.id ?? null : null)
+  const {data: pwInfo, isLoading, isError} = useRectorPassword(show ? colegio?.slug ?? null : null)
 
   // Al cerrar, limpia la contrasena mostrada para no dejarla en el DOM.
   useEffect(() => {
@@ -40,7 +40,7 @@ const RectorPasswordDialog: FC<Props> = ({show, colegio, onClose}) => {
 
   const regenerate = () => {
     if (!colegio) return
-    reset.mutate(colegio.id, {
+    reset.mutate(colegio.slug, {
       onSuccess: (data) => {
         setGenerated(data)
         toast.success(t('common.pwd.toast'))

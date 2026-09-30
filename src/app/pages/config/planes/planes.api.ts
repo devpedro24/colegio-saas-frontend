@@ -1,5 +1,5 @@
 ﻿// Capa de datos del feature Planes: funciones sobre el api client + hooks de
-// TanStack Query. Rutas bajo /api (proxied) con auth Bearer y middleware 'platform'.
+// TanStack Query. Rutas bajo /api con sesión HttpOnly y middleware 'platform'.
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
@@ -28,13 +28,13 @@ export function useCreatePlan() {
   })
 }
 
-/** PUT /plans/{id} — actualiza un plan existente. */
+/** PUT /plans/{key} — actualiza un plan por su clave pública. */
 export function useUpdatePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({id, input}: {id: number; input: PlanInput}) =>
-      api.put<{plan: Plan}>(`/plans/${id}`, input),
+    mutationFn: ({key, input}: {key: string; input: PlanInput}) =>
+      api.put<{plan: Plan}>(`/plans/${encodeURIComponent(key)}`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: PLANES_KEY})
     },

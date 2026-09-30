@@ -26,7 +26,7 @@ const DisableColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
   const confirm = () => {
     if (!colegio) return
     updateStatus.mutate(
-      {id: colegio.id, status: 'suspended'},
+      {slug: colegio.slug, status: 'suspended'},
       {
         onSuccess: () => {
           toast.success(intl.formatMessage({id: 'colegios.toast.disabled'}, {name: colegio.name}))

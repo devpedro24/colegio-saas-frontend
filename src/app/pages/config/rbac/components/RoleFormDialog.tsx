@@ -57,7 +57,7 @@ const RoleForm: FC<{role: RbacRole | null; onClose: () => void}> = ({role, onClo
 
     if (isEdit && role) {
       update.mutate(
-        {id: role.id, input: {label}},
+        {key: role.key, input: {label}},
         {
           onSuccess: () => {
             toast.success(t('common.toast.updated'))
@@ -169,7 +169,7 @@ const RoleFormDialog: FC<Props> = ({show, role, onClose}) => {
         </div>
       </div>
 
-      {show && <RoleForm key={role?.id ?? 'new'} role={role} onClose={onClose} />}
+      {show && <RoleForm key={role?.key ?? 'new'} role={role} onClose={onClose} />}
     </Modal>,
     modalsRoot
   )

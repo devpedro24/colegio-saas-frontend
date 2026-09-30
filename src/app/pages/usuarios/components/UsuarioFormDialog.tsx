@@ -27,16 +27,16 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
   const toast = useToast()
   const create = useCreateUsuario()
   const update = useUpdateUsuario()
-  const {data: sedes} = useSedes(show, true)
+  const {data: sedes} = useSedes(show, true, undefined, true)
   const isEdit = usuario !== null
   const pending = create.isPending || update.isPending
 
-  const sedesExtra = (sedes?.data ?? []).filter((s) => s.tenant_id !== null)
+  const sedesExtra = (sedes?.data ?? []).filter((s) => Boolean(s.tenant_slug))
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('docente')
-  const [sedeId, setSedeId] = useState('')
+  const [sedeToken, setSedeToken] = useState('')
   const [status, setStatus] = useState('active')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<ApiError | null>(null)
@@ -45,7 +45,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
     setName(usuario?.name ?? '')
     setEmail(usuario?.email ?? '')
     setRole(usuario?.role ?? 'docente')
-    setSedeId(usuario?.sede_id ?? '')
+    setSedeToken(usuario?.sede_url_token ?? '')
     setStatus(usuario?.status ?? 'active')
     setPassword('')
     setError(null)
@@ -70,11 +70,11 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
     if (isEdit && usuario) {
       update.mutate(
         {
-          id: usuario.id,
+          id: usuario.url_token,
           input: {
             name: name.trim(),
             role,
-            sede_id: usuario.sede_id ?? null,
+            sede_url_token: usuario.sede_url_token,
             status,
             ...(password ? {password} : {}),
           },
@@ -90,7 +90,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
           name: name.trim(),
           email: email.trim(),
           role,
-          sede_id: sedeId ? Number(sedeId) : null,
+          sede_url_token: sedeToken || null,
           ...(password ? {password} : null),
         },
         {
@@ -176,18 +176,18 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
               <div className='col-md-6 fv-row mb-7'>
                 <label className='fs-6 fw-semibold mb-2'>{t('common.field.sede')}</label>
                 <select
-                  className={`form-select form-select-solid ${fe('sede_id') ? 'is-invalid' : ''}`}
-                  value={sedeId}
-                  onChange={(e) => setSedeId(e.target.value)}
+                  className={`form-select form-select-solid ${fe('sede_url_token') ? 'is-invalid' : ''}`}
+                  value={sedeToken}
+                  onChange={(e) => setSedeToken(e.target.value)}
                 >
                   <option value=''>{t('academico.usuarios.sede.colegio')}</option>
                   {sedesExtra.map((s) => (
-                    <option key={s.id} value={s.id}>
+                    <option key={s.url_token ?? s.id} value={s.url_token ?? s.id}>
                       {s.nombre}
                     </option>
                   ))}
                 </select>
-                {fe('sede_id') && <div className='invalid-feedback'>{fe('sede_id')}</div>}
+                {fe('sede_url_token') && <div className='invalid-feedback'>{fe('sede_url_token')}</div>}
               </div>
             ) : (
               <div className='col-md-6 fv-row mb-7'>

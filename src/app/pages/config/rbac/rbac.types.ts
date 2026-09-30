@@ -7,7 +7,6 @@ export type CellType = 'structural' | 'configurable' | 'denied'
 
 /** Rol del catalogo central. */
 export interface RbacRole {
-  id: number
   key: string
   label: string
   is_system: boolean
@@ -16,7 +15,6 @@ export interface RbacRole {
 
 /** Permiso del catalogo central. `feature_key` liga el permiso a una feature de plan (gating). */
 export interface RbacPermission {
-  id: number
   key: string
   module: string
   action: string

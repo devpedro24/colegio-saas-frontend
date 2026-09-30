@@ -11,9 +11,9 @@ import { useAuthz } from "@/app/modules/auth/core/authz";
 import { useImpersonation } from "@/app/modules/impersonation/impersonation.store";
 import "./eventos.css";
 
-type Group = { id: number; nombre: string; grado?: { nombre: string } };
+type Group = { url_token: string; nombre: string; grado?: { nombre: string } };
 type EventItem = {
-  id: number;
+  url_token: string;
   titulo: string;
   descripcion: string;
   fecha: string;
@@ -21,15 +21,16 @@ type EventItem = {
   hora_fin: string | null;
   categoria: string;
   institucional: boolean;
-  materia_id: number | null;
+  materia_token: string | null;
+  grupo_tokens: string[];
   grupos: Group[];
-  created_by: number;
+  created_by_token: string;
   created_at: string;
 };
 type Detail = EventItem & {
   puede_editar: boolean;
   archivos: {
-    id: number;
+    url_token: string;
     nombre: string;
     mime: string;
     size: number;
@@ -41,8 +42,8 @@ type Catalog = {
   puede_crear: boolean;
   docentes_cualquier_grupo: boolean;
   grupos: Group[];
-  materias: { id: number; nombre: string }[];
-  asignaciones: { grupo_id: number; materia_id: number }[];
+  materias: { url_token: string; nombre: string }[];
+  asignaciones: { grupo_token: string; materia_token: string }[];
 };
 const dateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -72,11 +73,11 @@ function Calendar() {
   const [group, setGroup] = useState("");
   const [day, setDay] = useState("");
   const [list, setList] = useState(false);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<EventItem> | null>(null);
   const [eventStartTime, setEventStartTime] = useState("");
   const [eventEndTime, setEventEndTime] = useState("");
-  const [formGroups, setFormGroups] = useState<number[]>([]);
+  const [formGroups, setFormGroups] = useState<string[]>([]);
   const [institutional, setInstitutional] = useState(false);
   const [subject, setSubject] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -86,7 +87,7 @@ function Calendar() {
   const catalog = useQuery({
     queryKey: ["eventos-catalogo"],
     queryFn: async () =>
-      (await api.get<{ data: Catalog }>("/eventos/catalogo")).data,
+      (await api.get<{ data: Catalog }>("/eventos/catalogo?opaque=1")).data,
   });
   const from = dateKey(month);
   const until = dateKey(new Date(month.getFullYear(), month.getMonth() + 1, 0));
@@ -98,7 +99,7 @@ function Calendar() {
       let lastPage = 1;
       do {
         const result = await api.get<{ data: EventItem[]; last_page: number }>(
-          `/eventos?desde=${from}&hasta=${until}&grupo_id=${group}&page=${page}`,
+          `/eventos?opaque=1&desde=${from}&hasta=${until}&grupo_token=${encodeURIComponent(group)}&page=${page}`,
         );
         all.push(...result.data);
         lastPage = result.last_page;
@@ -111,7 +112,7 @@ function Calendar() {
     queryKey: ["evento", selected],
     enabled: selected !== null,
     queryFn: async () =>
-      (await api.get<{ data: Detail }>(`/eventos/${selected}`)).data,
+      (await api.get<{ data: Detail }>(`/eventos/${encodeURIComponent(selected!)}?opaque=1`)).data,
   });
   const mutation = useMutation({
     mutationFn: async ({
@@ -131,25 +132,25 @@ function Calendar() {
   });
   const saveMutation = useMutation({
     mutationFn: async (body: unknown) => {
-      const result = form?.id
-        ? await api.put<{ data: EventItem }>(`/eventos/${form.id}`, body)
-        : await api.post<{ data: EventItem }>("/eventos", body);
-      // Conservar el id si falla un adjunto: reintentar no duplica el evento.
+      const result = form?.url_token
+        ? await api.put<{ data: EventItem }>(`/eventos/${encodeURIComponent(form.url_token)}?opaque=1`, body)
+        : await api.post<{ data: EventItem }>("/eventos?opaque=1", body);
+      // Conservar el selector si falla un adjunto: reintentar no duplica el evento.
       setForm(result.data);
       for (const file of files) {
         const body = new FormData();
         body.append("file", file);
-        await api.post(`/eventos/${result.data.id}/archivos`, body);
+        await api.post(`/eventos/${encodeURIComponent(result.data.url_token)}/archivos?opaque=1`, body);
         setFiles((current) => current.filter((item) => item !== file));
       }
       return result.data;
     },
     onSuccess: async (result) => {
       setForm(null);
-      setSelected(result.id);
+      setSelected(result.url_token);
       setNotice(t("events.saved"));
       await client.invalidateQueries({ queryKey: ["eventos"] });
-      await client.invalidateQueries({ queryKey: ["evento", result.id] });
+      await client.invalidateQueries({ queryKey: ["evento", result.url_token] });
     },
     onError: (cause) => setError(cause.message),
   });
@@ -175,9 +176,9 @@ function Calendar() {
     setForm(
       event ?? { fecha: day || dateKey(new Date()), categoria: "actividad" },
     );
-    setFormGroups(event?.grupos.map((item) => item.id) ?? []);
+    setFormGroups(event?.grupo_tokens ?? []);
     setInstitutional(event?.institucional ?? false);
-    setSubject(String(event?.materia_id ?? ""));
+    setSubject(event?.materia_token ?? "");
     setFiles([]);
   }
   function save(event: FormEvent<HTMLFormElement>) {
@@ -187,8 +188,8 @@ function Calendar() {
     saveMutation.mutate({
       ...fields,
       institucional: institutional,
-      grupo_ids: institutional ? [] : formGroups,
-      materia_id: institutional || !subject ? null : Number(subject),
+      grupo_tokens: institutional ? [] : formGroups,
+      materia_token: institutional || !subject ? null : subject,
       hora_inicio: fields.hora_inicio || null,
       hora_fin: fields.hora_fin || null,
     });
@@ -198,9 +199,9 @@ function Calendar() {
       (item) =>
         catalog.data?.es_rector ||
         catalog.data?.docentes_cualquier_grupo ||
-        formGroups.every((id) =>
+        formGroups.every((token) =>
           catalog.data?.asignaciones.some(
-            (a) => a.grupo_id === id && a.materia_id === item.id,
+            (a) => a.grupo_token === token && a.materia_token === item.url_token,
           ),
         ),
     ) ?? [];
@@ -249,7 +250,7 @@ function Calendar() {
                   disabled={mutation.isPending}
                   onChange={(e) =>
                     mutation.mutate({
-                      path: "/eventos/configuracion",
+                      path: "/eventos/configuracion?opaque=1",
                       method: "put",
                       body: { docentes_cualquier_grupo: e.target.checked },
                     })
@@ -323,7 +324,7 @@ function Calendar() {
                   >
                     <option value="">{t("schedule.allGroups")}</option>
                     {catalog.data?.grupos.map((item) => (
-                      <option key={item.id} value={item.id}>
+                      <option key={item.url_token} value={item.url_token}>
                         {item.grado?.nombre} · {item.nombre}
                       </option>
                     ))}
@@ -353,8 +354,8 @@ function Calendar() {
                     {visible.map((item) => (
                       <button
                         className="event-list-row"
-                        key={item.id}
-                        onClick={() => setSelected(item.id)}
+                        key={item.url_token}
+                        onClick={() => setSelected(item.url_token)}
                       >
                         <span className="badge badge-light-primary">
                           {item.fecha}
@@ -392,7 +393,7 @@ function Calendar() {
                           <div className="event-dots">
                             {entries.slice(0, 3).map((item) => (
                               <i
-                                key={item.id}
+                                key={item.url_token}
                                 style={{ background: colors[item.categoria] }}
                               />
                             ))}
@@ -445,9 +446,9 @@ function Calendar() {
                 )}
                 {recent.map((item) => (
                   <button
-                    key={item.id}
+                    key={item.url_token}
                     className="event-preview"
-                    onClick={() => setSelected(item.id)}
+                    onClick={() => setSelected(item.url_token)}
                   >
                     <span className="badge badge-light-primary mb-3">
                       {t(`events.category.${item.categoria}`)}
@@ -514,7 +515,7 @@ function Calendar() {
                 {detail.data.archivos.map((file) => (
                   <a
                     className="card border p-3 event-attachment"
-                    key={file.id}
+                    key={file.url_token}
                     href={file.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -539,7 +540,7 @@ function Calendar() {
                 disabled={mutation.isPending}
                 onClick={() =>
                   mutation.mutate(
-                    { path: `/eventos/${selected}`, method: "delete" },
+                    { path: `/eventos/${encodeURIComponent(selected!)}?opaque=1`, method: "delete" },
                     {
                       onSuccess: () => {
                         setSelected(null);
@@ -588,7 +589,7 @@ function Calendar() {
       >
         <Modal.Header closeButton>
           <Modal.Title>
-            {t(form?.id ? "events.edit" : "events.new")}
+            {t(form?.url_token ? "events.edit" : "events.new")}
           </Modal.Title>
         </Modal.Header>
         <form onSubmit={save}>
@@ -692,17 +693,17 @@ function Calendar() {
                   </legend>
                   <div className="event-group-picker">
                     {catalog.data?.grupos.map((item) => (
-                      <label className="form-check" key={item.id}>
+                      <label className="form-check" key={item.url_token}>
                         <input
                           type="checkbox"
                           className="form-check-input"
-                          checked={formGroups.includes(item.id)}
+                          checked={formGroups.includes(item.url_token)}
                           onChange={(e) => {
                             setSubject("");
                             setFormGroups(
                               e.target.checked
-                                ? [...formGroups, item.id]
-                                : formGroups.filter((id) => id !== item.id),
+                                ? [...formGroups, item.url_token]
+                                : formGroups.filter((token) => token !== item.url_token),
                             );
                           }}
                         />
@@ -724,7 +725,7 @@ function Calendar() {
                 >
                   <option value="">{t("events.optionalSubject")}</option>
                   {allowedSubjects.map((item) => (
-                    <option key={item.id} value={item.id}>
+                    <option key={item.url_token} value={item.url_token}>
                       {item.nombre}
                     </option>
                   ))}

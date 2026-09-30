@@ -1,5 +1,5 @@
 ﻿// Capa de datos del feature RBAC: funciones sobre el api client + hooks de
-// TanStack Query. Rutas bajo /api (proxied) con auth Bearer y middleware 'platform'.
+// TanStack Query. Rutas bajo /api con sesión HttpOnly y middleware 'platform'.
 // Esta es la administracion del catalogo CENTRAL (fuente de verdad del RBAC).
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
@@ -43,8 +43,8 @@ export function useCreatePermission() {
 export function useUpdatePermission() {
   const invalidate = useInvalidateRbac()
   return useMutation({
-    mutationFn: ({id, input}: {id: number; input: PermissionInput}) =>
-      api.put<{permission: RbacPermission}>(`/rbac/permissions/${id}`, input),
+    mutationFn: ({key, input}: {key: string; input: PermissionInput}) =>
+      api.put<{permission: RbacPermission}>(`/rbac/permissions/${encodeURIComponent(key)}`, input),
     onSuccess: invalidate,
   })
 }
@@ -52,7 +52,7 @@ export function useUpdatePermission() {
 export function useDeletePermission() {
   const invalidate = useInvalidateRbac()
   return useMutation({
-    mutationFn: (id: number) => api.delete<{deleted: boolean}>(`/rbac/permissions/${id}`),
+    mutationFn: (key: string) => api.delete<{deleted: boolean}>(`/rbac/permissions/${encodeURIComponent(key)}`),
     onSuccess: invalidate,
   })
 }
@@ -70,8 +70,8 @@ export function useCreateRole() {
 export function useUpdateRole() {
   const invalidate = useInvalidateRbac()
   return useMutation({
-    mutationFn: ({id, input}: {id: number; input: RoleInput}) =>
-      api.put<{role: RbacRole}>(`/rbac/roles/${id}`, input),
+    mutationFn: ({key, input}: {key: string; input: RoleInput}) =>
+      api.put<{role: RbacRole}>(`/rbac/roles/${encodeURIComponent(key)}`, input),
     onSuccess: invalidate,
   })
 }
@@ -79,7 +79,7 @@ export function useUpdateRole() {
 export function useDeleteRole() {
   const invalidate = useInvalidateRbac()
   return useMutation({
-    mutationFn: (id: number) => api.delete<{deleted: boolean}>(`/rbac/roles/${id}`),
+    mutationFn: (key: string) => api.delete<{deleted: boolean}>(`/rbac/roles/${encodeURIComponent(key)}`),
     onSuccess: invalidate,
   })
 }

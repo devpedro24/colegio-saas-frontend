@@ -76,7 +76,7 @@ const RbacPage: FC = () => {
   const [editingPerm, setEditingPerm] = useState<RbacPermission | null>(null)
   const [showRoleCreate, setShowRoleCreate] = useState(false)
   const [editingRole, setEditingRole] = useState<RbacRole | null>(null)
-  const [deleting, setDeleting] = useState<{kind: 'permiso' | 'rol'; id: number; name: string} | null>(
+  const [deleting, setDeleting] = useState<{kind: 'permiso' | 'rol'; key: string; name: string} | null>(
     null
   )
   const [editingCell, setEditingCell] = useState<{
@@ -137,7 +137,7 @@ const RbacPage: FC = () => {
   const confirmDelete = () => {
     if (!deleting) return
     const mutation = deleting.kind === 'permiso' ? deletePermission : deleteRole
-    mutation.mutate(deleting.id, {
+    mutation.mutate(deleting.key, {
       onSuccess: () => {
         toast.success(t(deleting.kind === 'permiso' ? 'common.toast.deleted' : 'common.toast.deleted'))
         setDeleting(null)
@@ -242,7 +242,7 @@ const RbacPage: FC = () => {
                         </thead>
                         <tbody className='text-gray-600 fw-semibold'>
                           {permissions.map((p) => (
-                            <tr key={p.id}>
+                            <tr key={p.key}>
                               <td className='text-gray-700'>{p.module}</td>
                               <td className='text-gray-800 fw-bold'>{p.action}</td>
                               <td>
@@ -282,7 +282,7 @@ const RbacPage: FC = () => {
                                       className='btn btn-icon btn-light-danger btn-sm'
                                       title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.rol'})})}
                                       onClick={() =>
-                                        setDeleting({kind: 'permiso', id: p.id, name: p.key})
+                                        setDeleting({kind: 'permiso', key: p.key, name: p.key})
                                       }
                                     >
                                       <i className='ki-duotone ki-trash fs-5'>
@@ -335,7 +335,7 @@ const RbacPage: FC = () => {
                         </thead>
                         <tbody className='text-gray-600 fw-semibold'>
                           {roles.map((r) => (
-                            <tr key={r.id}>
+                            <tr key={r.key}>
                               <td className='text-gray-800 fw-bold'>{r.label}</td>
                               <td>
                                 <span className='text-muted font-monospace fs-7'>{r.key}</span>
@@ -360,7 +360,7 @@ const RbacPage: FC = () => {
                                       type='button'
                                       className='btn btn-icon btn-light-danger btn-sm'
                                       title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.rol'})})}
-                                      onClick={() => setDeleting({kind: 'rol', id: r.id, name: r.label})}
+                                      onClick={() => setDeleting({kind: 'rol', key: r.key, name: r.label})}
                                     >
                                       <i className='ki-duotone ki-trash fs-5'>
                                         <span className='path1'></span>

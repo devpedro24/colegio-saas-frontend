@@ -17,7 +17,6 @@ export type ColegioStatus = 'active' | 'configuring' | 'provisioning' | 'suspend
  * gestiona aparte, via reset de contrasena).
  */
 export interface Colegio {
-  id: string
   name: string
   slug: string
   legal_name: string | null
@@ -46,7 +45,7 @@ export interface CreateColegioResponse {
   rector_password: string
 }
 
-/** Body de PUT /colegios/{id} (update). */
+/** Body de PUT /colegios/{slug} (update). */
 export interface UpdateColegioInput {
   name: string
   slug: string
@@ -55,7 +54,7 @@ export interface UpdateColegioInput {
   plan: string
 }
 
-/** Respuesta de POST /colegios/{id}/reset-password. */
+/** Respuesta de POST /colegios/{slug}/reset-password. */
 export interface ResetPasswordResponse {
   colegio: Colegio
   rector_email: string
@@ -64,7 +63,7 @@ export interface ResetPasswordResponse {
 }
 
 /**
- * Respuesta de GET /colegios/{id}/rector-password (NO invalida la clave):
+ * Respuesta de GET /colegios/{slug}/rector-password (NO invalida la clave):
  *  - 'temporal': el rector aun no la cambio -> rector_password es la vigente.
  *  - 'changed' : el rector ya cambio su clave -> la temporal ya no funciona.
  *  - 'none'    : no hay clave guardada/recuperable; hay que regenerar.
@@ -78,26 +77,24 @@ export interface RectorPasswordInfo {
 /**
  * Sede de un colegio (vive en la BD del tenant; raiz de la jerarquia
  * Sede→Jornada→Nivel→Grado→Grupo). Endpoints del superadmin:
- * /colegios/{id}/sedes.
+ * /colegios/{slug}/sedes.
  */
 export interface ColegioSede {
-  id: number
+  url_token: string
   nombre: string
   direccion: string | null
   telefono: string | null
-  responsable: string | null
-  es_principal: boolean
   estado: 'activa' | 'inactiva'
-  created_at: string | null
+  tenant_slug: string | null
+  tenant_domain: string | null
+  tenant_status: string | null
 }
 
-/** Body de POST/PUT /colegios/{id}/sedes. */
+/** Body de POST/PUT /colegios/{slug}/sedes. */
 export interface ColegioSedeInput {
   nombre: string
   direccion?: string | null
   telefono?: string | null
-  responsable?: string | null
-  es_principal?: boolean
   estado?: 'activa' | 'inactiva'
 }
 

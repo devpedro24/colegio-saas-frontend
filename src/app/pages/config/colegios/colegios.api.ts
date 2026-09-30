@@ -1,5 +1,5 @@
 ﻿// Capa de datos del feature Colegios: funciones sobre el api client + hooks de
-// TanStack Query. Todas las rutas viven bajo /api (proxied) con auth Bearer y el
+// TanStack Query. Todas las rutas viven bajo /api con sesión HttpOnly y el
 // middleware 'platform' del backend.
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
@@ -39,112 +39,112 @@ export function useCreateColegio() {
   })
 }
 
-/** PUT /colegios/{id} — edita nombre, razon social, NIT y plan. */
+/** PUT /colegios/{slug} — edita nombre, razon social, NIT y plan. */
 export function useUpdateColegio() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({id, input}: {id: string; input: UpdateColegioInput}) =>
-      api.put<{colegio: Colegio}>(`/colegios/${id}`, input),
+    mutationFn: ({slug, input}: {slug: string; input: UpdateColegioInput}) =>
+      api.put<{colegio: Colegio}>(`/colegios/${encodeURIComponent(slug)}`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: COLEGIOS_KEY})
     },
   })
 }
 
-/** PATCH /colegios/{id}/status — habilita (active) o inhabilita (suspended). */
+/** PATCH /colegios/{slug}/status — habilita (active) o inhabilita (suspended). */
 export function useUpdateColegioStatus() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({id, status}: {id: string; status: 'active' | 'suspended'}) =>
-      api.patch<{colegio: Colegio}>(`/colegios/${id}/status`, {status}),
+    mutationFn: ({slug, status}: {slug: string; status: 'active' | 'suspended'}) =>
+      api.patch<{colegio: Colegio}>(`/colegios/${encodeURIComponent(slug)}/status`, {status}),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: COLEGIOS_KEY})
     },
   })
 }
 
-/** PATCH /colegios/{id}/plan — cambia solo el plan (re-sincroniza el RBAC del tenant). */
+/** PATCH /colegios/{slug}/plan — cambia solo el plan (re-sincroniza el RBAC del tenant). */
 export function useUpdateColegioPlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({id, plan}: {id: string; plan: string}) =>
-      api.patch<{colegio: Colegio}>(`/colegios/${id}/plan`, {plan}),
+    mutationFn: ({slug, plan}: {slug: string; plan: string}) =>
+      api.patch<{colegio: Colegio}>(`/colegios/${encodeURIComponent(slug)}/plan`, {plan}),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: COLEGIOS_KEY})
     },
   })
 }
 
-/** POST /colegios/{id}/reset-password — regenera la contrasena temporal del rector. */
+/** POST /colegios/{slug}/reset-password — regenera la contrasena temporal del rector. */
 export function useResetRectorPassword() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<ResetPasswordResponse>(`/colegios/${id}/reset-password`),
+    mutationFn: (slug: string) =>
+      api.post<ResetPasswordResponse>(`/colegios/${encodeURIComponent(slug)}/reset-password`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: COLEGIOS_KEY})
     },
   })
 }
 
-/** GET /colegios/{id}/rector-password — consulta la clave temporal VIGENTE. */
-export function useRectorPassword(id: string | null) {
+/** GET /colegios/{slug}/rector-password — consulta la clave temporal VIGENTE. */
+export function useRectorPassword(slug: string | null) {
   return useQuery({
-    queryKey: [...COLEGIOS_KEY, id, 'rector-password'],
-    queryFn: () => api.get<RectorPasswordInfo>(`/colegios/${id}/rector-password`),
-    enabled: id !== null,
+    queryKey: [...COLEGIOS_KEY, slug, 'rector-password'],
+    queryFn: () => api.get<RectorPasswordInfo>(`/colegios/${encodeURIComponent(slug!)}/rector-password`),
+    enabled: slug !== null,
     refetchOnWindowFocus: false,
   })
 }
 
-/** Clave de cache de las sedes de un colegio (por id del colegio). */
-const sedesKey = (id: string | null) => [...COLEGIOS_KEY, id, 'sedes'] as const
+/** Clave de cache de las sedes de un colegio (por slug del colegio). */
+const sedesKey = (slug: string | null) => [...COLEGIOS_KEY, slug, 'sedes'] as const
 
-/** GET /colegios/{id}/sedes — sedes del colegio gestionadas por el superadmin. */
-export function useColegioSedes(id: string | null) {
+/** GET /colegios/{slug}/sedes — sedes del colegio gestionadas por el superadmin. */
+export function useColegioSedes(slug: string | null) {
   return useQuery({
-    queryKey: sedesKey(id),
+    queryKey: sedesKey(slug),
     queryFn: () =>
-      api.get<{data: ColegioSede[]}>(`/colegios/${id}/sedes`),
-    enabled: id !== null,
+      api.get<{data: ColegioSede[]}>(`/colegios/${encodeURIComponent(slug!)}/sedes`),
+    enabled: slug !== null,
   })
 }
 
-/** POST /colegios/{id}/sedes — crea una sede en el colegio. */
+/** POST /colegios/{slug}/sedes — crea una sede en el colegio. */
 export function useCreateColegioSede() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({id, input}: {id: string; input: ColegioSedeInput}) =>
-      api.post<{data: ColegioSede}>(`/colegios/${id}/sedes`, input),
+    mutationFn: ({slug, input}: {slug: string; input: ColegioSedeInput}) =>
+      api.post<{data: ColegioSede}>(`/colegios/${encodeURIComponent(slug)}/sedes`, input),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({queryKey: sedesKey(variables.id)})
+      queryClient.invalidateQueries({queryKey: sedesKey(variables.slug)})
     },
   })
 }
 
-/** PUT /colegios/{id}/sedes/{sedeId} — edita una sede del colegio. */
+/** PUT /colegios/{slug}/sedes/{sedeToken} — edita una sede del colegio. */
 export function useUpdateColegioSede() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({id, sedeId, input}: {id: string; sedeId: number; input: ColegioSedeInput}) =>
-      api.put<{data: ColegioSede}>(`/colegios/${id}/sedes/${sedeId}`, input),
+    mutationFn: ({slug, sedeToken, input}: {slug: string; sedeToken: string; input: ColegioSedeInput}) =>
+      api.put<{data: ColegioSede}>(`/colegios/${encodeURIComponent(slug)}/sedes/${encodeURIComponent(sedeToken)}`, input),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({queryKey: sedesKey(variables.id)})
+      queryClient.invalidateQueries({queryKey: sedesKey(variables.slug)})
     },
   })
 }
 
-/** DELETE /colegios/{id}/sedes/{sedeId} — elimina (soft-delete) una sede. */
+/** DELETE /colegios/{slug}/sedes/{sedeToken} — elimina (soft-delete) una sede. */
 export function useDeleteColegioSede() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({id, sedeId}: {id: string; sedeId: number}) =>
-      api.delete(`/colegios/${id}/sedes/${sedeId}`),
+    mutationFn: ({slug, sedeToken}: {slug: string; sedeToken: string}) =>
+      api.delete(`/colegios/${encodeURIComponent(slug)}/sedes/${encodeURIComponent(sedeToken)}`),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({queryKey: sedesKey(variables.id)})
+      queryClient.invalidateQueries({queryKey: sedesKey(variables.slug)})
     },
   })
 }

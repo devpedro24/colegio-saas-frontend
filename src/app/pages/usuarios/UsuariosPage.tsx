@@ -61,7 +61,7 @@ const UsuariosPage: FC = () => {
 
   const onDelete = () => {
     if (!deleteUser) return
-    del.mutate({id: deleteUser.id, sedeId: deleteUser.tenant_id ? deleteUser.sede_id : null}, {
+    del.mutate({id: deleteUser.url_token, sedeToken: deleteUser.sede_url_token}, {
       onSuccess: () => { toast.success(t('common.toast.deleted')); setDeleteUser(null) },
       onError: () => { toast.error(t('common.toast.deleteError')); setDeleteUser(null) },
     })
@@ -124,7 +124,7 @@ const UsuariosPage: FC = () => {
                       {list.map((u) => {
                         const status = statusBadge(u.status)
                         return (
-                          <tr key={u.id}>
+                          <tr key={`${u.sede_url_token ?? 'principal'}:${u.url_token}`}>
                             <td>
                               <div className='d-flex align-items-center gap-2'>
                                 <span className='symbol symbol-40px symbol-circle me-3 bg-light-primary text-primary'>

@@ -6,7 +6,6 @@
  * Ojo: los precios llegan como string (cast decimal de Laravel) o null.
  */
 export interface Plan {
-  id: number
   /** Clave (slug) unica del plan; el colegio referencia el plan por esta key. */
   key: string
   name: string

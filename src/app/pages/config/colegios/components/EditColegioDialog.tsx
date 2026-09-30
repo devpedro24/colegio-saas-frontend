@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import type {FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
@@ -52,12 +53,12 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     update.mutate(
       {
-        id: colegio.id,
+        slug: colegio.slug,
         input: {
           name,
           slug,
@@ -211,7 +212,7 @@ const EditColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
         </div>
       </div>
 
-      {colegio && <EditForm key={colegio.id} colegio={colegio} onClose={onClose} />}
+      {colegio && <EditForm key={colegio.slug} colegio={colegio} onClose={onClose} />}
     </Modal>,
     modalsRoot
   )

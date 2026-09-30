@@ -98,7 +98,7 @@ const PlanesPage: FC = () => {
               const monthly = formatPrice(plan.price_monthly)
               const annual = formatPrice(plan.price_annual)
               return (
-                <div className='col-md-6 col-lg-4' key={plan.id}>
+                <div className='col-md-6 col-lg-4' key={plan.key}>
                   {/* begin::Card plan */}
                   <div className='card h-100'>
                     <div className='card-body d-flex flex-column p-9'>

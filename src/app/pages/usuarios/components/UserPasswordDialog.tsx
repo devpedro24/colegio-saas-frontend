@@ -17,8 +17,8 @@ const UserPasswordDialog: FC<Props> = ({show, usuario, onClose}) => {
   const reset = useResetUserPassword()
   const [generated, setGenerated] = useState<ResetPasswordGenerated | null>(null)
 
-  const sedeId = usuario?.tenant_id ? usuario.sede_id : null
-  const {data: pwInfo, isLoading, isError} = useUserTemporalPassword(show ? usuario?.id ?? null : null, sedeId)
+  const sedeToken = usuario?.sede_url_token ?? null
+  const {data: pwInfo, isLoading, isError} = useUserTemporalPassword(show ? usuario?.url_token ?? null : null, sedeToken)
 
   useEffect(() => {
     if (!show) { setGenerated(null); reset.reset() }
@@ -27,7 +27,7 @@ const UserPasswordDialog: FC<Props> = ({show, usuario, onClose}) => {
 
   const regenerate = () => {
     if (!usuario) return
-    reset.mutate({id: usuario.id, sedeId}, {
+    reset.mutate({id: usuario.url_token, sedeToken}, {
       onSuccess: (data) => {
         setGenerated({email: usuario.email, password: data.password})
         toast.success(intl.formatMessage({id: 'academico.usuarios.tempPasswordGenerated'}))

@@ -97,7 +97,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
 
     if (isEdit && plan) {
       update.mutate(
-        {id: plan.id, input},
+        {key: plan.key, input},
         {
           onSuccess: () => {
             toast.success(t('common.toast.updated', {name}))
@@ -355,7 +355,7 @@ const PlanFormDialog: FC<Props> = ({show, plan, onClose}) => {
         </div>
       </div>
 
-      {show && <PlanForm key={plan?.id ?? 'new'} plan={plan} onClose={onClose} />}
+      {show && <PlanForm key={plan?.key ?? 'new'} plan={plan} onClose={onClose} />}
     </Modal>,
     modalsRoot
   )
