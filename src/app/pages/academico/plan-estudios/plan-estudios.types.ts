@@ -22,6 +22,7 @@ export interface Materia {
   id: string
   ano_lectivo_id: string
   area_id: string
+  area?: {id: string; nombre: string} | null
   nombre: string
   /** Horas semanales de intensidad. */
   intensidad_horaria: number

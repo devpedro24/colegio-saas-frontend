@@ -3,17 +3,22 @@ import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {ApiError} from '@/lib/api/client'
-import {AcademicYearCell} from '../../academic-year-context'
+import {AcademicYearCell, useAcademicYear} from '../../academic-year-context'
 import {useNiveles} from '../../estructura/estructura.api'
+import {useAcademicPagedList} from '../../estructura/useAcademicPagedList'
+import {AcademicListFilters} from '../../estructura/components/AcademicListFilters'
 import {DeleteConfirmDialog} from '../../estructura/components/DeleteConfirmDialog'
 import {
   useCreatePlanArea,
   useCreatePlanMateria,
+  useAllPlanAreas,
   useDeletePlanArea,
   useDeletePlanMateria,
   usePlanAreas,
-  usePlanMaterias,
+  getPlanAreasPage,
+  getPlanMateriasPage,
   useUpdatePlanArea,
   useUpdatePlanMateria,
 } from '../plan-estudios.api'
@@ -130,10 +135,9 @@ const fromMateria = (m: Materia): CreateMateriaInput => ({
   estado: m.estado,
 })
 
-const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area[]; onClose: () => void}> = ({
+const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; onClose: () => void}> = ({
   show,
   materia,
-  areas,
   onClose,
 }) => {
   const intl = useIntl()
@@ -142,6 +146,10 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area
   const create = useCreatePlanMateria()
   const update = useUpdatePlanMateria()
   const {data: niveles} = useNiveles()
+  const areaOptionsQuery = useAllPlanAreas(show)
+  const foundAreas = areaOptionsQuery.areas
+  const selectedArea = materia?.area ? [{id: materia.area.id, nombre: materia.area.nombre}] : []
+  const areaOptions = [...selectedArea, ...foundAreas.filter(area => area.id !== materia?.area_id)]
   const isEdit = materia !== null
   const [form, setForm] = useState<CreateMateriaInput>(materia ? fromMateria(materia) : emptyMateriaForm())
   const set = (patch: Partial<CreateMateriaInput>) => setForm((prev) => ({...prev, ...patch}))
@@ -200,7 +208,8 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area
               onChange={(e) => set({area_id: e.target.value})}
             >
               <option value=''>{t('common.select')}</option>
-              {areas.map((a) => (
+              {areaOptionsQuery.isFetching && foundAreas.length === 0 && <option value='' disabled>{t('common.pleaseWait')}</option>}
+              {areaOptions.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.nombre}
                 </option>
@@ -270,12 +279,27 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area
 
 const AreasMateriasTab: FC = () => {
   const intl = useIntl()
+  const {yearId} = useAcademicYear()
 
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
   const {data: niveles} = useNiveles()
-  const {data: areas = []} = usePlanAreas()
-  const {data: materias = []} = usePlanMaterias()
+  const [areaFilterOpen, setAreaFilterOpen] = useState(false)
+  const [selectedAreaFilter, setSelectedAreaFilter] = useState<Area | null>(null)
+  const {data: firstFilterAreas = []} = usePlanAreas()
+  const allFilterAreas = useAllPlanAreas(areaFilterOpen)
+  const filterAreas = allFilterAreas.areas.length ? allFilterAreas.areas : firstFilterAreas
+  const areaFilterOptions = selectedAreaFilter ? [selectedAreaFilter, ...filterAreas.filter(area => area.id !== selectedAreaFilter.id)] : filterAreas
+  const areaList = useAcademicPagedList<Area>({
+    key: ['plan-estudios', 'areas', yearId], storageKey: 'plan.areas', enabled: !!yearId,
+    fetchPage: (page, perPage, search, filters) => getPlanAreasPage(yearId, {page, perPage, search, filters}),
+  })
+  const materiaList = useAcademicPagedList<Materia>({
+    key: ['plan-estudios', 'materias', yearId], storageKey: 'plan.materias', enabled: !!yearId,
+    fetchPage: (page, perPage, search, filters) => getPlanMateriasPage(yearId, {page, perPage, search, filters}),
+  })
+  const areas = areaList.rows
+  const materias = materiaList.rows
   const deleteAreaMutation = useDeletePlanArea()
   const deleteMateriaMutation = useDeletePlanMateria()
 
@@ -294,7 +318,8 @@ const AreasMateriasTab: FC = () => {
 
   return (
     <>
-      <div className='d-flex justify-content-between align-items-center mb-4'>
+      <section className='pb-8 mb-8 border-bottom' aria-label={t('academico.planEstudios.area.title')}>
+      <div className='d-flex flex-wrap justify-content-between align-items-center gap-3 mb-5'>
         <h4 className='fw-bold mb-0'>{t('academico.planEstudios.area.title')}</h4>
         <button
           type='button'
@@ -308,7 +333,17 @@ const AreasMateriasTab: FC = () => {
           {t('academico.planEstudios.area.new')}
         </button>
       </div>
-      <div className='table-responsive mb-10'>
+      <AcademicListFilters search={areaList.searchInput} onSearchChange={areaList.setSearchInput}>
+
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.status')} value={areaList.filters.estado ?? ''} onChange={event => areaList.setFilter('estado', event.target.value)}>
+          <option value=''>{t('academic.filter.allStatuses')}</option>
+          <option value='activo'>{t('common.active')}</option>
+          <option value='inactivo'>{t('common.inactive')}</option>
+        </select>
+
+      </AcademicListFilters>
+      {areaList.isError && <div className='alert alert-danger' role='alert'>{t('common.loadError', {name: intl.formatMessage({id: 'entity.area'})})}</div>}
+      <div className='table-responsive'>
         <table className='table table-row-dashed align-middle gs-0 gy-4'>
           <thead>
             <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
@@ -367,20 +402,22 @@ const AreasMateriasTab: FC = () => {
             {areas.length === 0 && (
               <tr>
                 <td colSpan={5} className='text-center text-muted py-10'>
-                  {t('common.empty', {name: intl.formatMessage({id: 'entity.area'})})}
+                  {areaList.isLoading ? t('common.pleaseWait') : t('common.empty', {name: intl.formatMessage({id: 'entity.area'})})}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+      <AcademicPagination meta={areaList.meta} visibleCount={areas.length} loading={areaList.isFetching} onPageChange={areaList.onPageChange} onPerPageChange={areaList.onPerPageChange} onLoadMore={areaList.onLoadMore} />
+      </section>
 
-      <div className='d-flex justify-content-between align-items-center mb-4'>
+      <section aria-label={t('academico.planEstudios.materia.title')}>
+      <div className='d-flex flex-wrap justify-content-between align-items-center gap-3 mb-5'>
         <h4 className='fw-bold mb-0'>{t('academico.planEstudios.materia.title')}</h4>
         <button
           type='button'
           className='btn btn-primary'
-          disabled={areas.length === 0}
           onClick={() => {
             setEditMateria(null)
             setMateriaFormOpen(true)
@@ -390,6 +427,28 @@ const AreasMateriasTab: FC = () => {
           {t('academico.planEstudios.materia.new')}
         </button>
       </div>
+      <AcademicListFilters search={materiaList.searchInput} onSearchChange={materiaList.setSearchInput}>
+
+        <select className='form-select form-select-solid w-auto' aria-label={t('academico.planEstudios.materia.area')} value={materiaList.filters.area_id ?? ''} onFocus={() => setAreaFilterOpen(true)} onPointerEnter={() => setAreaFilterOpen(true)} onChange={event => {setSelectedAreaFilter(filterAreas.find(area => String(area.id) === event.target.value) ?? null); materiaList.setFilter('area_id', event.target.value)}}>
+          <option value=''>{t('academic.filter.allAreas')}</option>
+          {areaFilterOptions.map(area => <option key={area.id} value={area.id}>{area.nombre}</option>)}
+        </select>
+
+
+        <select className='form-select form-select-solid w-auto' aria-label={t('academico.planEstudios.materia.nivel')} value={materiaList.filters.nivel_id ?? ''} onChange={event => materiaList.setFilter('nivel_id', event.target.value)}>
+          <option value=''>{t('academico.nivel.todos')}</option>
+          {(niveles?.data ?? []).map(nivel => <option key={nivel.id} value={nivel.id}>{nivel.nombre}</option>)}
+        </select>
+
+
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.status')} value={materiaList.filters.estado ?? ''} onChange={event => materiaList.setFilter('estado', event.target.value)}>
+          <option value=''>{t('academic.filter.allStatuses')}</option>
+          <option value='activo'>{t('common.active')}</option>
+          <option value='inactivo'>{t('common.inactive')}</option>
+        </select>
+
+      </AcademicListFilters>
+      {materiaList.isError && <div className='alert alert-danger' role='alert'>{t('common.loadError', {name: intl.formatMessage({id: 'entity.materia'})})}</div>}
       <div className='table-responsive'>
         <table className='table table-row-dashed align-middle gs-0 gy-4'>
           <thead>
@@ -408,7 +467,7 @@ const AreasMateriasTab: FC = () => {
               <tr key={m.id}>
                 <td className='text-gray-800 fw-bold'>{m.nombre}</td>
                 <AcademicYearCell yearId={m.ano_lectivo_id} />
-                <td>{areas.find((a) => a.id === m.area_id)?.nombre ?? '—'}</td>
+                <td>{m.area?.nombre ?? '—'}</td>
                 <td>{m.intensidad_horaria}</td>
                 <td>{nivelNombre(m.nivel_id)}</td>
                 <td>
@@ -453,13 +512,15 @@ const AreasMateriasTab: FC = () => {
             {materias.length === 0 && (
               <tr>
                 <td colSpan={7} className='text-center text-muted py-10'>
-                  {t('common.empty', {name: intl.formatMessage({id: 'entity.materia'})})}
+                  {materiaList.isLoading ? t('common.pleaseWait') : t('common.empty', {name: intl.formatMessage({id: 'entity.materia'})})}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+      <AcademicPagination meta={materiaList.meta} visibleCount={materias.length} loading={materiaList.isFetching} onPageChange={materiaList.onPageChange} onPerPageChange={materiaList.onPerPageChange} onLoadMore={materiaList.onLoadMore} />
+      </section>
 
       {areaFormOpen && (
         <AreaFormDialog show={areaFormOpen} area={editArea} onClose={() => setAreaFormOpen(false)} />
@@ -468,7 +529,6 @@ const AreasMateriasTab: FC = () => {
         <MateriaFormDialog
           show={materiaFormOpen}
           materia={editMateria}
-          areas={areas}
           onClose={() => setMateriaFormOpen(false)}
         />
       )}
