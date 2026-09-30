@@ -3,6 +3,7 @@ import {useMutation, useQueryClient} from '@tanstack/react-query'
 import {useIntl} from 'react-intl'
 import {Modal} from 'react-bootstrap'
 import {createPortal} from 'react-dom'
+import {useSearchParams} from 'react-router-dom'
 import {ApiError, api} from '@/lib/api/client'
 import {formatSchoolTime} from '@/lib/format/schoolTime'
 import {useSchedule, type Assignment, type ScheduleGroup, type Session} from '../horarios.api'
@@ -27,17 +28,32 @@ const groupLabel = (item: ScheduleGroup) => `${gradeGroupLabel(item)}${item.sede
 export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'horarios' | 'resumen'}) {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id}, {name: ''})
-  const query = useSchedule()
   const {yearId: selectedYear, years, writable: yearWritable} = useAcademicYear()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const previousYearRef = useRef(selectedYear)
+  const changingYear = !!previousYearRef.current && !!selectedYear && previousYearRef.current !== selectedYear
+  const requestedGroup = changingYear ? '' : searchParams.get('grupo') ?? ''
+  const requestedTeacher = changingYear ? '' : searchParams.get('docente') ?? ''
+  const requestedRoom = changingYear ? '' : searchParams.get('espacio') ?? ''
+  // The unfiltered timetable only fetches catalogs. Resolve public URL tokens to
+  // internal IDs before requesting the selected group's sessions.
+  const catalogQuery = useSchedule(mode)
+  const catalog = catalogQuery.data
+  const selectedGroup = catalog?.grupos.find(item => String(item.ano_lectivo_id) === selectedYear && (item.url_token === requestedGroup || String(item.id) === requestedGroup))
+  const selectedTeacher = catalog?.docentes.find(item => item.url_token === requestedTeacher || String(item.id) === requestedTeacher)
+  const selectedRoom = catalog?.espacios.find(item => item.url_token === requestedRoom || String(item.id) === requestedRoom)
+  const group = selectedGroup ? String(selectedGroup.id) : ''
+  const teacher = selectedTeacher ? String(selectedTeacher.id) : ''
+  const room = selectedRoom ? String(selectedRoom.id) : ''
+  const selectedScheduleQuery = useSchedule('horarios', group, mode === 'horarios' && !!group)
+  const query = mode === 'horarios' && group ? selectedScheduleQuery : catalogQuery
   const yearName = (id: number) => years.find(year => String(year.id) === String(id))?.nombre ?? '—'
   const data = query.data
   const client = useQueryClient()
-  const [group, setGroup] = useState('')
-  const [teacher, setTeacher] = useState('')
-  const [room, setRoom] = useState('')
   const [copySource, setCopySource] = useState<Session | null>(null)
   const [cardMenu, setCardMenu] = useState<CardMenu | null>(null)
   const [dropTarget, setDropTarget] = useState<ScheduleDrop | null>(null)
+  const dragTargetRef = useRef<ScheduleDrop | null>(null)
   const [draggingId, setDraggingId] = useState<number | null>(null)
   const dragRef = useRef<ScheduleDrag | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -57,10 +73,45 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const [sessionStartTime, setSessionStartTime] = useState('')
   const [sessionEndTime, setSessionEndTime] = useState('')
   const [useBlock, setUseBlock] = useState(false)
+  function setFilter(name: 'grupo' | 'docente' | 'espacio', value: string) {
+    setSearchParams(current => {
+      const next = new URLSearchParams(current)
+      if (value) next.set(name, value)
+      else next.delete(name)
+      return next
+    })
+  }
   useEffect(() => {
-    setGroup(''); setTeacher(''); setRoom(''); setShow(false); setCopySource(null); setCardMenu(null)
+    if (!catalog || changingYear) return
+    const canonical: Record<'grupo' | 'docente' | 'espacio', string> = {
+      grupo: selectedGroup?.url_token ?? '',
+      docente: selectedTeacher?.url_token ?? '',
+      espacio: selectedRoom?.url_token ?? '',
+    }
+    if (Object.entries(canonical).every(([name, token]) => (searchParams.get(name) ?? '') === token)) return
+    setSearchParams(current => {
+      const next = new URLSearchParams(current)
+      for (const [name, token] of Object.entries(canonical)) {
+        if (token) next.set(name, token)
+        else next.delete(name)
+      }
+      return next
+    }, {replace: true})
+  }, [catalog, changingYear, searchParams, selectedGroup, selectedTeacher, selectedRoom, setSearchParams])
+  useEffect(() => {
+    if (previousYearRef.current && selectedYear && previousYearRef.current !== selectedYear) {
+      setSearchParams(current => {
+        const next = new URLSearchParams(current)
+        for (const name of ['grupo', 'docente', 'espacio']) next.delete(name)
+        return next
+      }, {replace: true})
+    }
+    previousYearRef.current = selectedYear
+  }, [selectedYear, setSearchParams])
+  useEffect(() => {
+    setShow(false); setCopySource(null); setCardMenu(null)
     if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current)
-    scrollFrameRef.current = null; setDropTarget(null); setDraggingId(null); dragRef.current = null
+    scrollFrameRef.current = null; setDropTarget(null); dragTargetRef.current = null; setDraggingId(null); dragRef.current = null
   }, [selectedYear])
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -94,8 +145,8 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const visibleGroups = data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear && (!group || String(item.id) === group)) ?? []
   const starts = [...sessions.map(item => minutes(sessionStart(item))), ...visibleGroups.flatMap(item => item.jornada?.hora_inicio ? [minutes(item.jornada.hora_inicio)] : [])]
   const ends = [...sessions.map(item => minutes(sessionEnd(item))), ...visibleGroups.flatMap(item => item.jornada?.hora_fin ? [minutes(item.jornada.hora_fin)] : [])]
-  const startHour = Math.floor(Math.min(360, ...starts) / 60)
-  const endHour = Math.max(19, Math.ceil(Math.max(1140, ...ends) / 60))
+  const startHour = Math.floor((starts.length ? Math.min(...starts) : 360) / 60)
+  const endHour = Math.max(startHour + 1, Math.ceil((ends.length ? Math.max(...ends) : 1140) / 60))
   const height = (endHour - startHour) * hourHeight
 
   function getDropTarget(drag: Pick<ScheduleDrag, 'session' | 'offsetY'>, x: number, y: number): ScheduleDrop | null {
@@ -110,6 +161,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
 
   function updateDragPreview(drag: ScheduleDrag) {
     const target = getDropTarget(drag, drag.x, drag.y)
+    dragTargetRef.current = target
     setDropTarget(previous => previous?.day === target?.day && previous?.start === target?.start ? previous : target)
   }
 
@@ -119,21 +171,22 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     const scroll = scrollRef.current
     if (!drag?.active || !scroll) return
     const bounds = scroll.getBoundingClientRect()
-    const beforeX = scroll.scrollLeft, beforeY = scroll.scrollTop
+    const beforeX = scroll.scrollLeft, beforeY = window.scrollY
     if (drag.x >= bounds.left && drag.x <= bounds.right && drag.y >= bounds.top && drag.y <= bounds.bottom) {
-      if (drag.x > bounds.right - 35) scroll.scrollLeft += 16
-      else if (drag.x < bounds.left + 35) scroll.scrollLeft -= 16
-      if (drag.y > bounds.bottom - 35) scroll.scrollTop += 16
-      else if (drag.y < bounds.top + 35) scroll.scrollTop -= 16
+      if (drag.x > bounds.right - 20) scroll.scrollLeft += 16
+      else if (drag.x < bounds.left + 20) scroll.scrollLeft -= 16
     }
+    if (drag.y > window.innerHeight - 48) window.scrollBy(0, 16)
+    else if (drag.y < 48) window.scrollBy(0, -16)
     updateDragPreview(drag)
-    if (beforeX !== scroll.scrollLeft || beforeY !== scroll.scrollTop) scrollFrameRef.current = requestAnimationFrame(autoScroll)
+    if (beforeX !== scroll.scrollLeft || beforeY !== window.scrollY) scrollFrameRef.current = requestAnimationFrame(autoScroll)
   }
 
   function clearDrag() {
     if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current)
     scrollFrameRef.current = null
     dragRef.current = null
+    dragTargetRef.current = null
     setDropTarget(null)
     setDraggingId(null)
   }
@@ -162,7 +215,9 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     const drag = dragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    const target = drag.active ? getDropTarget(drag, event.clientX, event.clientY) : null
+    const target = drag.active ? (event.pointerType === 'touch'
+      ? dragTargetRef.current
+      : getDropTarget(drag, event.clientX, event.clientY)) : null
     const copy = copySource?.id === drag.session.id
     if (drag.active) suppressClickRef.current = {id: drag.session.id, until: performance.now() + 500}
     clearDrag()
@@ -241,21 +296,26 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     })
   }
   if (query.isLoading) return <p role='status'>{t('common.pleaseWait')}</p>
-  if (query.error) return <div className='alert alert-danger' role='alert'>{query.error.message}</div>
+  if (query.error) return <div className='alert alert-danger' role='alert'>
+    {query.error.message}
+    {mode === 'horarios' && group && <button type='button' className='btn btn-sm btn-light ms-3' onClick={() => setFilter('grupo', '')}>{t('schedule.resetGroup')}</button>}
+  </div>
+  const needsGroup = mode === 'horarios' && !!data?.can_manage && !group
   return <>
     <div className='d-flex flex-wrap gap-3 mb-6 schedule-controls'>
-      <select aria-label={t('schedule.group')} className='form-select w-auto' value={group} onChange={e => setGroup(e.target.value)}><option value=''>{t('schedule.allGroups')}</option>{data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear).map(item => <option key={item.id} value={item.id}>{groupLabel(item)}</option>)}</select>
-      {data?.can_manage && <select aria-label={t('schedule.teacher')} className='form-select w-auto' value={teacher} onChange={e => setTeacher(e.target.value)}><option value=''>{t('schedule.allTeachers')}</option>{data.docentes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
-      {mode === 'horarios' && <select aria-label={t('schedule.room')} className='form-select w-auto' value={room} onChange={e => setRoom(e.target.value)}><option value=''>{t('schedule.allRooms')}</option>{data?.espacios.map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select>}
-      {writable && mode !== 'resumen' && <button className='btn btn-primary ms-auto' disabled={!selectedYear} onClick={openNew}>+ {t(mode === 'asignaciones' ? 'schedule.newAssignment' : 'schedule.newSession')}</button>}
-      {mode === 'horarios' && <button className='btn btn-light' onClick={() => window.print()}>{t('schedule.print')}</button>}
+      <select aria-label={t('schedule.group')} className='form-select w-auto' value={selectedGroup?.url_token ?? ''} onChange={e => setFilter('grupo', e.target.value)}><option value=''>{mode === 'horarios' && data?.can_manage ? t('schedule.selectGroup') : t('schedule.allGroups')}</option>{data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear).map(item => <option key={item.id} value={item.url_token}>{groupLabel(item)}</option>)}</select>
+      {data?.can_manage && <select aria-label={t('schedule.teacher')} className='form-select w-auto' value={selectedTeacher?.url_token ?? ''} onChange={e => setFilter('docente', e.target.value)}><option value=''>{t('schedule.allTeachers')}</option>{data.docentes.map(item => <option key={item.id} value={item.url_token}>{item.name}</option>)}</select>}
+      {mode === 'horarios' && <select aria-label={t('schedule.room')} className='form-select w-auto' value={selectedRoom?.url_token ?? ''} onChange={e => setFilter('espacio', e.target.value)}><option value=''>{t('schedule.allRooms')}</option>{data?.espacios.map(item => <option key={item.id} value={item.url_token}>{item.nombre}</option>)}</select>}
+      {writable && mode !== 'resumen' && <button className='btn btn-primary ms-auto' disabled={!selectedYear || needsGroup} onClick={openNew}>+ {t(mode === 'asignaciones' ? 'schedule.newAssignment' : 'schedule.newSession')}</button>}
+      {mode === 'horarios' && <button className='btn btn-light' disabled={needsGroup} onClick={() => window.print()}>{t('schedule.print')}</button>}
     </div>
-    {writable && mode === 'horarios' && <p className='text-muted fs-7 mb-3' id='schedule-drag-hint'>{t('schedule.dragHint')}</p>}
+    {needsGroup && <div className='alert alert-light-primary mb-5' role='status'>{t('schedule.groupRequired')}</div>}
+    {writable && mode === 'horarios' && !needsGroup && <p className='text-muted fs-7 mb-3' id='schedule-drag-hint'>{t('schedule.dragHint')}</p>}
     {copySource && mode === 'horarios' && <div className='alert alert-info d-flex align-items-center justify-content-between gap-3 schedule-copy-banner' data-schedule-copy-banner role='status'><span>{t('schedule.placeCopy')} <strong>{copySource.materia?.nombre} · {gradeGroupLabel(copySource.grupo)}</strong></span><button type='button' className='btn btn-sm btn-light' onClick={() => {setCopySource(null); setDropTarget(null)}}>{t('common.cancel')}</button></div>}
     {error && !show && <div className='alert alert-danger' role='alert'>{error}</div>}
     {mode === 'resumen' && <div className='row g-5'>{[['schedule.subjects', data?.materias.length], ['schedule.assignments', assignments.length], ['schedule.sessions', sessions.length]].map(([label, value]) => <div className='col-md-4' key={label}><div className='bg-light-primary rounded p-8'><div className='fs-2x fw-bold'>{value}</div><div>{t(String(label))}</div></div></div>)}</div>}
     {mode === 'asignaciones' && <div className='table-responsive'><table className='table table-row-dashed align-middle'><thead><tr><th>{t('common.field.anoLectivo')}</th>{['teacher', 'subject', 'group', 'actions'].map(item => <th key={item}>{t(`schedule.${item}`)}</th>)}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{yearName(item.ano_lectivo_id)}</td><td>{item.docente?.name ?? t('schedule.noTeacher')}</td><td>{item.materia?.nombre}</td><td>{gradeGroupLabel(item.grupo)}</td><td>{writable && <div className='d-flex gap-2'><button className='btn btn-sm btn-light-primary' onClick={() => openAssignment(item)}>{t('common.edit')}</button><button className='btn btn-sm btn-light-danger' onClick={() => setDeleting(item.id)}>{t('common.delete')}</button></div>}</td></tr>)}</tbody></table>{!assignments.length && <p className='text-muted p-6'>{t('schedule.emptyAssignments')}</p>}</div>}
-    {mode === 'horarios' && <div className='schedule-scroll' ref={scrollRef}><div className='schedule-week'>
+    {mode === 'horarios' && !needsGroup && <div className='schedule-scroll' ref={scrollRef}><div className='schedule-week'>
       <div className='schedule-day-label'/>{days.map((day, i) => <div className='schedule-day-label' key={day}>{intl.formatDate(new Date(2026, 8, 21 + i), {weekday: 'long'})}</div>)}
       <div className='schedule-time-axis' style={{height}}>{Array.from({length: endHour - startHour + 1}, (_, index) => <span key={index} style={{top: index * hourHeight}}>{formatSchoolTime(`${String(startHour + index).padStart(2, '0')}:00`)}</span>)}</div>
       {days.map(day => <div key={day} data-schedule-day={day} className={`schedule-day${dropTarget?.day === day ? ' schedule-day-drop-target' : ''}${copySource ? ' schedule-day-copy-ready' : ''}`} style={{height}} onClick={placeCopy} onPointerMove={event => {

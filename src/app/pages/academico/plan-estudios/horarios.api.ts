@@ -3,7 +3,7 @@ import {api} from '@/lib/api/client'
 import {useAcademicYear} from '../academic-year-context'
 
 export type Named = {id: number; nombre: string}
-export type ScheduleGroup = Named & {ano_lectivo_id: number; jornada_id: number | null; sede_id: number | null; grado: Named & {nivel_id: number; nivel?: Named}; sede: Named | null; jornada: (Named & {hora_inicio: string | null; hora_fin: string | null}) | null}
+export type ScheduleGroup = Named & {url_token: string; ano_lectivo_id: number; jornada_id: number | null; sede_id: number | null; grado: Named & {nivel_id: number; nivel?: Named}; sede: Named | null; jornada: (Named & {hora_inicio: string | null; hora_fin: string | null}) | null}
 export type Assignment = {id: number; ano_lectivo_id: number; docente_id: number | null; materia_id: number; grupo_id: number; docente: {id: number; name: string} | null; materia: Named; grupo: ScheduleGroup}
 export type Block = Named & {jornada_id: number; hora_inicio: string; hora_fin: string}
 type SessionBase = {id: number; asignacion_id: number | null; grupo_id: number; materia_id: number; docente_id: number | null; grupo: ScheduleGroup; materia: Named; docente: {id: number; name: string} | null; dia: string; espacio_fisico_id: number | null; espacio: Named | null}
@@ -16,18 +16,25 @@ export type ScheduleData = {
   can_manage: boolean
   anos: (Named & {estado: string})[]
   grupos: ScheduleGroup[]
-  docentes: {id: number; name: string}[]
+  docentes: {id: number; url_token: string; name: string}[]
   areas: Named[]
   materias: (Named & {estado: string; area_id: number | null; nivel_id: number | null; intensidad_horaria: number})[]
   bloques: Block[]
-  espacios: (Named & {sede_id: number | null})[]
+  espacios: (Named & {url_token: string; sede_id: number | null})[]
   asignaciones: Assignment[]
   sesiones: Session[]
 }
-export function useSchedule() {
+export function useSchedule(view: 'resumen' | 'asignaciones' | 'horarios', groupId = '', enabled = true) {
   const {yearId} = useAcademicYear()
-  return useQuery({queryKey: ['horarios', yearId], enabled: !!yearId,
-    queryFn: async () => (await api.get<{data: ScheduleData}>(`/horarios?ano_lectivo_id=${yearId}`)).data})
+  return useQuery({queryKey: ['horarios', yearId, view, view === 'horarios' ? groupId : ''], enabled: enabled && !!yearId,
+    queryFn: async () => {
+      const params = new URLSearchParams({ano_lectivo_id: yearId})
+      if (view === 'horarios') {
+        params.set('vista', 'horarios')
+        if (groupId) params.set('grupo_id', groupId)
+      }
+      return (await api.get<{data: ScheduleData}>(`/horarios?${params.toString()}`)).data
+    }})
 }
 import {useMutation, useQueryClient} from '@tanstack/react-query'
 
