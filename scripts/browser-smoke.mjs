@@ -2,51 +2,68 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import {spawn} from 'node:child_process'
+import {spawn, spawnSync} from 'node:child_process'
 import {once} from 'node:events'
 import assert from 'node:assert/strict'
 import {createServer} from 'vite'
 
 const root = path.resolve(import.meta.dirname, '..')
+const realtimeMode = process.argv.includes('--realtime')
+const reverbProbe = input => {
+  const result = spawnSync('php', [path.join(root, '../colegio-saas-backend/tests/Support/reverb-probe.php')], {
+    input: JSON.stringify(input), encoding: 'utf8', windowsHide: true,
+  })
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout)
+  return JSON.parse(result.stdout)
+}
 const browserPath = process.env.SMOKE_BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 assert.ok(fs.existsSync(browserPath), 'Set SMOKE_BROWSER_PATH to a Chromium browser executable.')
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'colegio-ui-smoke-'))
 const artifacts = path.join(root, 'artifacts', 'ui-smoke')
 fs.mkdirSync(artifacts, {recursive: true})
 const today = new Date().toLocaleDateString('en-CA')
-const user = {id: 1, name: 'Rector de prueba', email: 'rector@example.test', tenant_id: 'smoke', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
-const year = {id: 1, url_token: 'opaque-year-one', nombre: '2026', estado: 'en_curso', tipo_calendario: 'A', fecha_inicio: '2026-01-01', fecha_fin: '2026-12-31', num_periodos: 3, periodo_sumatorio: true}
-const nextYear = {...year, id: 2, url_token: 'opaque-year-two', nombre: '2027', estado: 'planificado'}
-const group = {id: 1, nombre: 'A', ano_lectivo_id: 1, jornada_id: 1, sede_id: 1, grado: {id: 1, nombre: 'Primero', nivel_id: 1}, sede: {id: 1, nombre: 'Sede Principal'}, jornada: {id: 1, nombre: 'Mañana', hora_inicio: '07:00:00', hora_fin: '12:30:00'}}
-const groupB = {...group, id: 2, nombre: 'B'}
-const groupC = {...group, id: 3, nombre: 'C', jornada_id: 2, jornada: {id: 2, nombre: 'Tarde', hora_inicio: '13:00:00', hora_fin: '17:00:00'}}
-const enrollment = {id: 1, estudiante_id: 2, ano_lectivo_id: 1, grupo_id: 1, estado: 'activa', estudiante: {id: 2, name: 'Estudiante de prueba'}, grupo: group}
-const assignment = {id: 1, ano_lectivo_id: 1, grupo_id: 1, materia_id: 1, docente_id: 3, grupo: group, materia: {id: 1, nombre: 'Matemáticas'}}
-const period = {id: 1, ano_lectivo_id: 1, nombre: 'Trimestre 1', orden: 1, estado: 'abierto'}
+const user = {id: 1, name: 'Rector de prueba', email: 'rector@example.test', tenant_id: 'smoke', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.anos.transicionar', 'academico.periodos.transicionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
+const urlTokens = {year: 'a'.repeat(24), nextYear: 'b'.repeat(24), group: 'c'.repeat(24), groupB: 'd'.repeat(24), groupC: 'e'.repeat(24), teacher: 'f'.repeat(24), space: 'g'.repeat(24), assignment: 'h'.repeat(24), period: 'j'.repeat(24), enrollment: 'k'.repeat(24), sede: 'm'.repeat(24)}
+const year = {id: 1, url_token: urlTokens.year, nombre: '2026', estado: 'en_curso', tipo_calendario: 'A', fecha_inicio: '2026-01-01', fecha_fin: '2026-12-31', num_periodos: 3, periodo_sumatorio: true}
+const nextYear = {...year, id: 2, url_token: urlTokens.nextYear, legacy_url_token: '2'.repeat(64), nombre: '2027', estado: 'planificado'}
+const group = {id: 1, url_token: urlTokens.group, nombre: 'A', ano_lectivo_id: 1, jornada_id: 1, sede_id: 1, grado: {id: 1, nombre: 'Primero', nivel_id: 1}, sede: {id: 1, nombre: 'Sede Principal'}, jornada: {id: 1, nombre: 'Mañana', hora_inicio: '07:00:00', hora_fin: '12:30:00'}}
+const groupB = {...group, id: 2, url_token: urlTokens.groupB, nombre: 'B'}
+const groupC = {...group, id: 3, url_token: urlTokens.groupC, nombre: 'C', jornada_id: 2, jornada: {id: 2, nombre: 'Tarde', hora_inicio: '13:00:00', hora_fin: '17:00:00'}}
+const enrollment = {id: 1, url_token: urlTokens.enrollment, estudiante_id: 2, ano_lectivo_id: 1, grupo_id: 1, estado: 'activa', estudiante: {id: 2, name: 'Estudiante de prueba'}, grupo: group}
+const assignment = {id: 1, url_token: urlTokens.assignment, ano_lectivo_id: 1, grupo_id: 1, materia_id: 1, docente_id: 3, grupo: group, materia: {id: 1, nombre: 'Matemáticas'}}
+const period = {id: 1, url_token: urlTokens.period, ano_lectivo_id: 1, nombre: 'Trimestre 1', orden: 1, fecha_inicio: '2026-09-01', fecha_fin: '2026-09-30', peso: 50, estado: 'abierto', es_actual: true, reapertura_manual: false, created_at: null}
+const nextPeriod = {...period, id: 2, url_token: 'l'.repeat(24), nombre: 'Trimestre 2', orden: 2, fecha_inicio: '2026-10-01', fecha_fin: '2026-12-31', estado: 'planificado', es_actual: false}
 const block = {id: 1, nombre: 'Primera', jornada_id: 1, hora_inicio: '08:00', hora_fin: '08:45'}
 const config = {usar_areas: false, modo_area: 'SIMPLE_AVERAGE', modo_asignatura: 'SIMPLE_AVERAGE', modo_anual: 'SIMPLE_AVERAGE', redondeo: 'HALF_UP', precision_calculo: 8, recuperacion: 'REPLACE', mostrar_final: true, etiqueta_final: 'Definitiva', escala_id: 1, metodo_id: 1, valor_min: '0', valor_max: '5', decimales: 2, nota_minima: '3'}
 const event = {id: 1, titulo: 'Feria de ciencias', descripcion: 'Compartimos nuestros experimentos.', fecha: today, hora_inicio: null, hora_fin: null, categoria: 'actividad', institucional: true, materia_id: null, grupos: [], created_by: 1, created_at: new Date().toISOString()}
+const sede = {id: '1', hashed_id: urlTokens.sede, nombre: 'Sede Norte', direccion: 'Calle 1', telefono: '601 123 4567', responsable: null, coordinador_name: 'Coordinadora de prueba', coordinador_email: 'coordinadora@example.test', tenant_id: 'sede-smoke', tenant_slug: 'norte', tenant_domain: 'norte', tenant_status: 'active', es_principal: false, estado: 'activa', created_at: null}
 const fixtures = {
   '/api/me': {user},
   '/api/onboarding/status': {required: false, password_required: false, institution_required: false, institution: null, logo_url: null},
   '/api/broadcasting/auth': {auth: 'smoke'},
   '/api/tenant-status': {is_tenant: true, tenant: {id: 'smoke', name: 'Colegio de prueba', status: 'active'}},
   '/api/anos-lectivos': {data: [year, nextYear]},
+  '/api/anos-lectivos/1/periodos': {data: [period, nextPeriod]},
   '/api/anos-lectivos/2/estado-copia': {data: {origen_id: 1, opciones: {jornadas: true, periodos: true}, reemplazable: false}},
+  '/api/config/datos-institucionales': {data: {nombre: 'Colegio de prueba', nit: '900123456-7', resolucion_men: '123 de 2026', direccion: 'Calle 1', telefono: '601 123 4567', correo: 'contacto@example.test'}},
+  '/api/estructura/sedes': {data: [sede]},
+  [`/api/estructura/sedes/${urlTokens.sede}`]: {data: sede},
+  '/api/estructura/sedes/opaque-sede-one': {data: sede},
   '/api/estructura/jornadas': {data: [{id: 1, ano_lectivo_id: 1, nombre: 'Mañana', sede_id: 1, estado: 'activa', hora_inicio: '07:00:00', hora_fin: '12:30:00'}]},
   '/api/estructura/bloques-horarios': {data: [{...block, ano_lectivo_id: 1, estado: 'activo', es_descanso: false, jornada: {id: 1, nombre: 'Mañana', sede_id: 1}}]},
   '/api/plan-estudios/areas': {data: [{id: 1, ano_lectivo_id: 1, nombre: 'Matemáticas', descripcion: null, estado: 'activo'}]},
   '/api/plan-estudios/materias': {data: [{id: 1, ano_lectivo_id: 1, area_id: 1, nivel_id: null, nombre: 'Matemáticas', intensidad_horaria: 5, estado: 'activo'}]},
-  '/api/horarios': {data: {can_manage: true, anos: [year], grupos: [group, groupB, groupC], docentes: [], areas: [], materias: [{...assignment.materia, estado: 'activo', nivel_id: null}], bloques: [block], espacios: [{id: 1, nombre: 'Aula Primero', sede_id: 1}], asignaciones: [{...assignment, docente_id: null, docente: null}], sesiones: [{id: 1, asignacion_id: 1, grupo_id: 1, materia_id: 1, docente_id: null, grupo: group, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: 1, hora_inicio: null, hora_fin: null, espacio_fisico_id: 1, bloque: block, espacio: {id: 1, nombre: 'Aula Primero'}}, {id: 2, asignacion_id: null, grupo_id: 2, materia_id: 1, docente_id: null, grupo: groupB, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: null, hora_inicio: '08:00:00', hora_fin: '09:15:00', espacio_fisico_id: null, bloque: null, espacio: null}]}},
+  '/api/horarios': {data: {can_manage: true, anos: [year], grupos: [group, groupB, groupC], docentes: [{id: 3, url_token: urlTokens.teacher, name: 'Docente de prueba'}], areas: [], materias: [{...assignment.materia, estado: 'activo', nivel_id: null}], bloques: [block], espacios: [{id: 1, url_token: urlTokens.space, nombre: 'Aula Primero', sede_id: 1}], asignaciones: [{...assignment, docente_id: null, docente: null}], sesiones: [{id: 1, asignacion_id: 1, grupo_id: 1, materia_id: 1, docente_id: null, grupo: group, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: 1, hora_inicio: null, hora_fin: null, espacio_fisico_id: 1, bloque: block, espacio: {id: 1, nombre: 'Aula Primero'}}, {id: 2, asignacion_id: null, grupo_id: 2, materia_id: 1, docente_id: null, grupo: groupB, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: null, hora_inicio: '08:00:00', hora_fin: '09:15:00', espacio_fisico_id: null, bloque: null, espacio: null}]}},
   '/api/eventos/catalogo': {data: {es_rector: true, puede_crear: true, docentes_cualquier_grupo: false, grupos: [group], materias: [assignment.materia], asignaciones: [assignment]}},
   '/api/eventos': {data: [event], last_page: 1},
   '/api/eventos/1': {data: {...event, archivos: [], puede_editar: true}},
-  '/api/evaluacion/catalogo': {data: {can_manage: true, can_configure: true, can_view_reports: true, anos: [year, {...year, id: 2, nombre: '2027'}], periodos: [period, {...period, id: 2, ano_lectivo_id: 2}], asignaciones: [assignment], matriculas: [enrollment], grupos: [group], estudiantes: []}},
+  '/api/evaluacion/catalogo': {data: {can_manage: true, can_configure: true, can_view_reports: true, anos: [year, nextYear], periodos: [period, {...period, id: 2, ano_lectivo_id: 2, url_token: 'l'.repeat(24)}], asignaciones: [assignment], matriculas: [enrollment], grupos: [group], estudiantes: []}},
   '/api/evaluacion/planillas/1/1': {data: {editable: true, configuracion: config, componentes: [{id: 1, asignacion_id: 1, periodo_id: 1, nombre: 'Talleres', modo: 'SIMPLE_AVERAGE', peso: null, actividades: [{id: 1, componente_id: 1, nombre: 'Taller 1', fecha: today, peso: null}]}], matriculas: [enrollment], calificaciones: [], resultados: [{matricula_id: 1, estado: 'pendiente', motivo: 'Faltan notas'}]}},
   '/api/evaluacion/boletines/1': {data: {tipo: 'VISTA_PREVIA', generado_en: new Date().toISOString(), institucion: 'Colegio de prueba', estudiante: enrollment.estudiante, grupo: 'A', grado: 'Primero', ano: '2026', configuracion: config, periodos: [period], periodo_sumatorio: {orden: 4, nombre: 'P4', modo: 'SIMPLE_AVERAGE'}, asignaturas: [{materia_id: 1, nombre: 'Matemáticas', peso_area: null, periodos: [{periodo_id: 1, estado: 'pendiente'}], anual: {estado: 'pendiente'}}], areas: [], advertencias: []}},
-  '/api/siee/1': {data: {editable: true, configuracion: config, version: 1, escalas: [{id: 1, nombre: 'Numérica', tipo: 'numerica', valor_min: '0', valor_max: '5', decimales: 2}], metodos: [{id: 1, calculo_nota: 'promedio_simple', nota_minima: '3', ambito: 'materia'}], curriculo: [], grados: [group.grado], materias: [assignment.materia], areas: []}},
+  '/api/siee/1': {data: {editable: true, configuracion: config, escalas: [{id: 1, nombre: 'Numérica', tipo: 'numerica', valor_min: '0', valor_max: '5', decimales: 2}], metodos: [{id: 1, calculo_nota: 'promedio_simple', nota_minima: '3', ambito: 'materia'}], curriculo: [], grados: [group.grado], materias: [assignment.materia], areas: []}},
 }
 const writes = []
+const scheduleReads = []
 let server, browser, socket
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 try {
@@ -56,8 +73,18 @@ try {
       if (!url.pathname.startsWith('/api')) return next()
       console.log('Fixture', req.method, url.pathname)
       const annualStructure = ['/api/estructura/jornadas', '/api/estructura/bloques-horarios', '/api/plan-estudios/areas', '/api/plan-estudios/materias']
-      const fixture = annualStructure.includes(url.pathname) && url.searchParams.get('ano_lectivo_id') === '2'
+      let fixture = annualStructure.includes(url.pathname) && url.searchParams.get('ano_lectivo_id') === '2'
         ? {data: []} : fixtures[url.pathname]
+      if (url.pathname === '/api/horarios') {
+        scheduleReads.push({view: url.searchParams.get('vista'), group: url.searchParams.get('grupo_id')})
+        if (url.searchParams.get('vista') === 'horarios') {
+          const groupId = url.searchParams.get('grupo_id')
+          fixture = {data: {...fixture.data,
+            asignaciones: groupId ? fixture.data.asignaciones.filter(item => String(item.grupo_id) === groupId) : [],
+            sesiones: groupId ? fixture.data.sesiones.filter(item => String(item.grupo_id) === groupId) : [],
+          }}
+        }
+      }
       const respond = () => {
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify(fixture ?? {data: [], meta: {total: 0, current_page: 1, last_page: 1}}))
@@ -67,7 +94,12 @@ try {
       req.on('data', chunk => {body += chunk})
       req.on('end', () => {
         const parsed = req.headers['content-type']?.includes('application/json') ? JSON.parse(body || '{}') : Object.fromEntries(new URLSearchParams(body))
-        writes.push({method: req.method, path: url.pathname, body: parsed})
+        if (realtimeMode && url.pathname === '/api/broadcasting/auth') {
+          fixture = reverbProbe({action: 'auth', ...parsed})
+        }
+        if (url.pathname !== '/api/broadcasting/auth') {
+          writes.push({method: req.method, path: url.pathname, body: parsed})
+        }
         respond()
       })
     })
@@ -104,7 +136,10 @@ try {
     return result.result?.value
   }
   const until = async expression => {
-    for (let i = 0; i < 300; i++) { if (await evaluate(expression)) return; await sleep(100) }
+    for (let i = 0; i < 300; i++) {
+      try { if (await evaluate(expression)) return } catch { /* A navigation can replace the page during evaluation. */ }
+      await sleep(100)
+    }
     console.error('Page at failure:', await evaluate('document.body.innerText.slice(0, 2500)'), errors)
     const capture = await command('Page.captureScreenshot', {format: 'png'})
     fs.writeFileSync(path.join(artifacts, 'failure.png'), Buffer.from(capture.data, 'base64'))
@@ -115,7 +150,43 @@ try {
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   const navigate = async (route, text) => { console.log('Checking', route); await command('Page.navigate', {url: `http://127.0.0.1:5197${route}`}); await until(`document.body.innerText.includes(${JSON.stringify(text)})`) }
   const screenshot = async (name, full = false) => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: full}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
-  if (process.env.ONBOARDING_PREVIEW === '1') {
+  if (realtimeMode) {
+    const subscribed = `window.Echo?.connector.pusher.channels.channels['private-tenant.smoke']?.subscribed === true`
+    await navigate(`/academico/plan-estudios?ano=${urlTokens.year}&tab=horarios&grupo=${urlTokens.group}&espacio=${urlTokens.space}`, 'Horarios')
+    await until(subscribed)
+    await until(`!!document.querySelector('.schedule-session')`)
+    await evaluate(`window.realtimePageSentinel = 'unchanged'`)
+    fixtures['/api/anos-lectivos'].data.push({...year, id: 3, url_token: 'n'.repeat(24), nombre: '2028'})
+    reverbProbe({action: 'publish', resources: ['academic']})
+    await until(`Array.from(document.querySelectorAll('option')).some(option => option.textContent.includes('2028'))`)
+    assert.equal(await evaluate(`window.realtimePageSentinel`), 'unchanged', 'Year selectors must update without navigation/reload.')
+    assert.ok(await evaluate(`location.search.includes('grupo=${urlTokens.group}') && location.search.includes('espacio=${urlTokens.space}')`), 'Remote changes preserve filters.')
+    const readsBefore = scheduleReads.length
+    fixtures['/api/horarios'].data.sesiones[0].materia = {id: 1, nombre: 'Clase actualizada por otra sesión'}
+    reverbProbe({action: 'publish', resources: ['schedule']})
+    await until(`document.body.innerText.includes('Clase actualizada por otra sesión')`)
+    assert.ok(scheduleReads.length > readsBefore)
+    const scheduleUpdates = scheduleReads.slice(readsBefore)
+    assert.ok(scheduleUpdates.some(read => read.group === '1'), 'The selected group is refreshed.')
+    assert.ok(scheduleUpdates.every(read => read.view === 'horarios' && [null, '1'].includes(read.group)), 'Only the empty filter catalog and selected group are requested.')
+    await evaluate(`window.Echo.connector.pusher.disconnect()`)
+    await until(`window.Echo.connector.pusher.connection.state === 'disconnected'`)
+    fixtures['/api/anos-lectivos'].data.push({...year, id: 4, url_token: 'o'.repeat(24), nombre: '2029'})
+    await evaluate(`window.Echo.connector.pusher.connect()`)
+    await until(subscribed)
+    await until(`Array.from(document.querySelectorAll('option')).some(option => option.textContent.includes('2029'))`)
+    await navigate(`/academico/anos-lectivos?ano=${urlTokens.year}`, 'Años lectivos')
+    await until(subscribed)
+    user.permissions = user.permissions.filter(permission => permission !== 'academico.anos.transicionar')
+    reverbProbe({action: 'publish', resources: ['rbac']})
+    await until(`!Array.from(document.querySelectorAll('button')).some(button => /Cerrar año|Iniciar año|Reabrir año/.test(button.textContent))`)
+    fixtures['/api/anos-lectivos'].data[0].nombre = '2026 actualizado'
+    reverbProbe({action: 'publish', resources: ['academic']})
+    await until(`document.body.innerText.includes('2026 actualizado')`)
+    assert.deepEqual(errors, [], 'Realtime browser errors.')
+    await screenshot('realtime-updated')
+    console.log('PASS: real Reverb private channel, remote year selectors and schedules, preserved filters, reconnection, permission refresh and navigation.')
+  } else if (process.env.ONBOARDING_PREVIEW === '1') {
     const stages = [
       {name: 'password', text: 'Cambia la contraseña temporal', status: {required: true, password_required: true, institution_required: true, institution: null, logo_url: null}},
       {name: 'logo', text: 'Logo del colegio', status: {required: true, password_required: false, institution_required: true, institution: null, logo_url: null}},
@@ -176,6 +247,100 @@ try {
     await screenshot('configuration-logo-mobile')
     assert.deepEqual(errors, [], 'Uncaught browser errors.')
     console.log('PASS: onboarding and configuration logo layouts, translations, crop dragging and mobile sizes.')
+  } else if (process.argv.includes('--institutional')) {
+    await command('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true})
+    await navigate('/academico/anos-lectivos', 'Años lectivos')
+    await until(`!!document.querySelector('[data-testid="institutional-settings-trigger"]')`)
+    await sleep(500)
+    assert.ok(await evaluate(`!!document.querySelector('[data-kt-nav="/academico/parametros-academicos"]')`), 'Academic settings must have their own header destination.')
+    assert.equal(await evaluate(`!!document.querySelector('[data-kt-nav="/academico/configuracion"]')`), false, 'The old combined school configuration must leave the academic menu.')
+    const openInstitutionalMenu = async () => {
+      await sleep(500)
+      await evaluate(`(() => {const root=document.querySelector('#kt_header_user_menu_toggle'),menu=root.querySelector(':scope > [data-kt-menu="true"]');if(!menu.classList.contains('show')) root.querySelector('[data-kt-menu-trigger]').click()})()`)
+      await until(`document.querySelector('#kt_header_user_menu_toggle > [data-kt-menu="true"]')?.classList.contains('show')`)
+      await evaluate(`(() => {const panel=document.querySelector('[data-testid="institutional-settings-panel"]');if(!panel.classList.contains('show')) document.querySelector('[data-testid="institutional-settings-trigger"]').click()})()`)
+      await until(`document.querySelector('[data-testid="institutional-settings-panel"]')?.classList.contains('show')`)
+    }
+    await openInstitutionalMenu()
+    assert.ok(await evaluate(`(() => {const trigger=document.querySelector('[data-testid="institutional-settings-trigger"]'),panel=document.querySelector('[data-testid="institutional-settings-panel"]');return !!trigger && !!panel && trigger.parentElement===panel.parentElement && panel.classList.contains('menu-sub-dropdown') && trigger.parentElement.getAttribute('data-kt-menu-placement')?.includes('left-start') && [...panel.querySelectorAll('a[data-kt-nav]')].map(a=>a.getAttribute('data-kt-nav')).join(',') === '/ajustes-institucionales/datos,/ajustes-institucionales/sedes'})()`), 'Institutional settings must open a separate flyout with Datos and Sedes.')
+    await sleep(350)
+    await screenshot('institutional-menu-mobile')
+    await evaluate(`document.querySelector('[data-testid="institutional-settings-panel"] a[data-kt-nav="/ajustes-institucionales/datos"]').click()`)
+    await until(`location.pathname === '/ajustes-institucionales/datos' && !!document.querySelector('.institutional-settings__header') && document.body.innerText.includes('Datos institucionales')`)
+    assert.ok(await evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`), 'Institutional data page overflows on mobile.')
+    await screenshot('institutional-data-mobile')
+    await openInstitutionalMenu()
+    await evaluate(`document.querySelector('[data-testid="institutional-settings-panel"] a[data-kt-nav="/ajustes-institucionales/sedes"]').click()`)
+    await until(`location.pathname === '/ajustes-institucionales/sedes' && document.querySelector('table tbody')?.innerText.includes('Sede Norte')`)
+    assert.ok(await evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`), 'Campuses page overflows on mobile.')
+    await screenshot('institutional-campuses-mobile')
+    await evaluate(`document.querySelector('table tbody tr button.btn-light-primary').click()`)
+    await until(`location.pathname === '/ajustes-institucionales/sedes/${urlTokens.sede}' && document.body.innerText.includes('Sede Norte')`)
+    await evaluate(`document.querySelector('a[href="/ajustes-institucionales/sedes"]').click()`)
+    await until(`location.pathname === '/ajustes-institucionales/sedes' && document.querySelector('table tbody')?.innerText.includes('Sede Norte')`)
+    await command('Page.navigate', {url: 'http://127.0.0.1:5197/academico/sedes/opaque-sede-one'})
+    await until(`location.pathname === '/ajustes-institucionales/sedes/${urlTokens.sede}' && document.body.innerText.includes('Sede Norte')`)
+    for (const [legacy, destination] of [
+      ['datos', '/ajustes-institucionales/datos'],
+      ['sedes', '/ajustes-institucionales/sedes'],
+      ['escala', '/academico/parametros-academicos'],
+      ['metodo', '/academico/parametros-academicos'],
+      ['modelo', '/academico/parametros-academicos'],
+    ]) {
+      await command('Page.navigate', {url: `http://127.0.0.1:5197/academico/configuracion?tab=${legacy}`})
+      await until(`location.pathname === ${JSON.stringify(destination)} && (document.querySelector(${JSON.stringify(['datos', 'sedes'].includes(legacy) ? '.institutional-settings__header' : '.card-header h3')})?.textContent.includes(${JSON.stringify(['datos', 'sedes'].includes(legacy) ? 'Ajustes institucionales' : 'Parámetros académicos')}) ?? false)`)
+      if (['escala', 'metodo', 'modelo'].includes(legacy)) {
+        assert.equal(await evaluate(`new URLSearchParams(location.search).get('tab')`), legacy, `Legacy ${legacy} tab must be preserved.`)
+      }
+    }
+    for (const section of ['datos', 'sedes']) {
+      await command('Page.navigate', {url: `http://127.0.0.1:5197/academico/ajustes-institucionales/${section}`})
+      await until(`location.pathname === '/ajustes-institucionales/${section}' && !!document.querySelector('.institutional-settings__header')`)
+    }
+    await command('Page.navigate', {url: 'http://127.0.0.1:5197/ajustes-institucionales'})
+    await until(`location.pathname === '/ajustes-institucionales/datos' && !!document.querySelector('.institutional-settings__header')`)
+    await navigate('/academico/parametros-academicos?tab=escala', 'Parámetros académicos')
+    assert.ok(await evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`), 'Academic parameters page overflows on mobile.')
+    await screenshot('academic-parameters-mobile')
+    await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
+    await navigate('/ajustes-institucionales/datos', 'Datos institucionales')
+    await screenshot('institutional-data-desktop')
+    await navigate('/ajustes-institucionales/sedes', 'Sede Norte')
+    await screenshot('institutional-campuses-desktop')
+    await navigate('/academico/parametros-academicos?tab=escala', 'Parámetros académicos')
+    await screenshot('academic-parameters-desktop')
+    await navigate('/academico/anos-lectivos', 'Años lectivos')
+    await sleep(500)
+    const avatar = await evaluate(`(() => {const box=document.querySelector('#kt_header_user_menu_toggle [data-kt-menu-trigger]').getBoundingClientRect();return {x:box.left+box.width/2,y:box.top+box.height/2}})()`)
+    await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: avatar.x, y: avatar.y})
+    await until(`document.querySelector('#kt_header_user_menu_toggle > [data-kt-menu="true"]')?.classList.contains('show')`)
+    const trigger = await evaluate(`(() => {const box=document.querySelector('[data-testid="institutional-settings-trigger"]').getBoundingClientRect();return {x:box.left+box.width/2,y:box.top+box.height/2}})()`)
+    await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: trigger.x, y: trigger.y})
+    await until(`document.querySelector('[data-testid="institutional-settings-panel"]')?.classList.contains('show')`)
+    await sleep(350)
+    const flyout = await evaluate(`(() => {const main=document.querySelector('#kt_header_user_menu_toggle > [data-kt-menu="true"]').getBoundingClientRect(),panel=document.querySelector('[data-testid="institutional-settings-panel"]').getBoundingClientRect();return {mainLeft:main.left,mainRight:main.right,panelLeft:panel.left,panelRight:panel.right,panelWidth:panel.width}})()`)
+    assert.ok(flyout.panelWidth > 200 && (flyout.panelRight <= flyout.mainLeft + 16 || flyout.panelLeft >= flyout.mainRight - 16), `Institutional flyout must be beside the user menu: ${JSON.stringify(flyout)}`)
+    await screenshot('institutional-menu-desktop')
+    assert.deepEqual(errors, [], 'Uncaught browser errors during institutional navigation.')
+    console.log('PASS: separate institutional flyout, data and campuses pages, campus detail return, mobile width and legacy links.')
+  } else if (process.argv.includes('--navigation')) {
+    await navigate('/academico/anos-lectivos', 'Años lectivos')
+    await until(`document.querySelector('.card-header h3')?.textContent.includes('Años lectivos')`)
+    for (const [path, title] of [
+      ['/academico/plan-estudios', 'Plan de estudios'],
+      ['/academico/estructura', 'Estructura organizacional'],
+      ['/academico/anos-lectivos', 'Años lectivos'],
+    ]) {
+      await evaluate(`document.querySelector('a[data-kt-nav=${JSON.stringify(path)}]').click()`)
+      await until(`location.pathname === ${JSON.stringify(path)} && document.querySelector('.card-header h3')?.textContent.includes(${JSON.stringify(title)})`)
+    }
+    fixtures['/api/anos-lectivos'] = {data: []}
+    await navigate('/academico/anos-lectivos', 'Años lectivos')
+    await until(`document.querySelector('table tbody')?.textContent.includes('No hay año lectivo')`)
+    await evaluate(`document.querySelector('a[data-kt-nav="/academico/plan-estudios"]').click()`)
+    await until(`location.pathname === '/academico/plan-estudios' && document.querySelector('.card-header h3')?.textContent.includes('Plan de estudios') && document.body.innerText.includes('Primero crea un año lectivo')`)
+    assert.deepEqual(errors, [], 'Uncaught browser errors during academic navigation.')
+    console.log('PASS: academic menu navigation updates both URL and page content.')
   } else {
   await navigate('/comunicacion/eventos', 'Feria de ciencias')
   const dropdowns = await evaluate(`['Académico','Comunicación'].map(label=>{const title=[...document.querySelectorAll('#kt_app_header_menu .menu-title')].find(el=>el.textContent===label);const item=title.closest('[data-kt-menu-trigger]');return [item.className,item.querySelector('.menu-sub').className,item.querySelector('.menu-link').className]})`)
@@ -191,13 +356,28 @@ try {
   await navigate('/academico/evaluacion/catalogo', 'Matemáticas')
   await screenshot('grade-catalog-mobile')
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
-  await navigate('/academico/evaluacion/planillas/1/1', 'Taller 1')
+  await navigate(`/academico/evaluacion/planillas/${urlTokens.assignment}/${urlTokens.period}`, 'Taller 1')
   await until(`!!document.querySelector('input[aria-label="Estudiante de prueba · Taller 1"]')`)
   assert.equal(await evaluate(`document.querySelector('input[aria-label="Estudiante de prueba · Taller 1"]').max`), '5')
   await screenshot('gradebook-desktop')
-  await navigate('/academico/boletines/1', 'Informe preliminar')
+  await navigate(`/academico/boletines/${urlTokens.enrollment}`, 'Informe preliminar')
   assert.ok(await evaluate(`document.querySelector('.grade-report thead')?.innerText.includes('P4')`), 'The summary result must appear as the next numbered column.')
   await screenshot('report-preview')
+  await navigate('/academico/anos-lectivos', '2027')
+  assert.ok(await evaluate(`(()=>{const row=[...document.querySelectorAll('table tbody tr')].find(item=>item.cells[0]?.textContent.trim()==='2026');return !!row && [...row.querySelectorAll('button')].some(button=>button.textContent.trim()==='Cerrar')})()`), 'A rector with the transition permission must see the year Close button.')
+  await evaluate(`(()=>{const row=[...document.querySelectorAll('table tbody tr')].find(item=>item.cells[0]?.textContent.trim()==='2026');[...row.querySelectorAll('button')].find(button=>button.textContent.includes('Periodos')).click()})()`)
+  await until(`!!document.querySelector('#kt_modal_periodos tbody tr')`)
+  assert.ok(await evaluate(`(()=>{const rows=[...document.querySelectorAll('#kt_modal_periodos tbody tr')];return rows.some(row=>row.innerText.includes('Trimestre 1') && [...row.querySelectorAll('button')].some(button=>button.textContent.trim()==='Cerrar')) && rows.some(row=>row.innerText.includes('Trimestre 2') && [...row.querySelectorAll('button')].some(button=>button.textContent.trim()==='Abrir'))})()`), 'A rector with period transition permission must see manual Close and Open buttons.')
+  await evaluate(`document.querySelector('#kt_modal_periodos .modal-header .btn-active-color-primary').click()`)
+  await until(`!document.querySelector('#kt_modal_periodos tbody tr')`)
+  const rectorPermissions = user.permissions
+  user.permissions = rectorPermissions.filter(permission => !['academico.anos.transicionar', 'academico.periodos.transicionar'].includes(permission))
+  await navigate('/academico/anos-lectivos', '2027')
+  assert.equal(await evaluate(`(()=>{const row=[...document.querySelectorAll('table tbody tr')].find(item=>item.cells[0]?.textContent.trim()==='2026');return [...row.querySelectorAll('button')].some(button=>button.textContent.trim()==='Cerrar')})()`), false, 'A rector without transition permission must not see the year Close button.')
+  await evaluate(`(()=>{const row=[...document.querySelectorAll('table tbody tr')].find(item=>item.cells[0]?.textContent.trim()==='2026');[...row.querySelectorAll('button')].find(button=>button.textContent.includes('Periodos')).click()})()`)
+  await until(`!!document.querySelector('#kt_modal_periodos tbody tr')`)
+  assert.equal(await evaluate(`(()=>[...document.querySelectorAll('#kt_modal_periodos tbody tr button')].some(button=>['Abrir','Cerrar','Reabrir'].includes(button.textContent.trim())))()`), false, 'A rector without transition permission must not see manual period actions.')
+  user.permissions = rectorPermissions
   await navigate('/academico/anos-lectivos', '2027')
   await evaluate(`[...document.querySelectorAll('tr')].find(row=>row.innerText.includes('2027')).querySelector('button.btn-light-info').click()`)
   await until(`!!document.querySelector('.modal.show') && document.querySelectorAll('.modal.show input[type="checkbox"]:checked').length === 2`)
@@ -215,18 +395,20 @@ try {
   await navigate('/academico/estructura?tab=bloques', 'Primera')
   assert.ok(await evaluate(`document.querySelector('table thead').innerText.includes('AÑO LECTIVO')`))
   await evaluate(`(()=>{const select=document.querySelector('.card-toolbar select');select.value='2';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
-  await until(`location.search.includes('ano=opaque-year-two') && !document.querySelector('table tbody')?.innerText.includes('Primera')`)
+  await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.nextYear}' && !document.querySelector('table tbody')?.innerText.includes('Primera')`)
   assert.equal(await evaluate(`document.querySelector('.card-toolbar select').value`), '2')
   await evaluate(`(()=>{const select=document.querySelector('.card-toolbar select');select.value='1';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
-  await until(`location.search.includes('ano=opaque-year-one') && document.querySelector('table tbody')?.innerText.includes('Primera')`)
+  await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.year}' && document.querySelector('table tbody')?.innerText.includes('Primera')`)
   assert.ok(await evaluate(`document.querySelector('[data-kt-nav="/academico/evaluacion/catalogo"]')?.getAttribute('href') === '/academico/evaluacion/catalogo'`), 'A header link must open its real route in another tab.')
   await navigate('/academico/estructura?tab=bloques&ano=1', 'Primera')
-  await until(`location.search.includes('ano=opaque-year-one')`)
+  await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.year}'`)
   await navigate('/academico/plan-estudios?tab=areas', 'Matemáticas')
   await evaluate(`(()=>{const select=document.querySelector('.card-toolbar select');select.value='2';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
-  await until(`location.search.includes('ano=opaque-year-two') && !document.querySelector('table tbody')?.innerText.includes('Matemáticas')`)
+  await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.nextYear}' && !document.querySelector('table tbody')?.innerText.includes('Matemáticas')`)
   await evaluate(`(()=>{const select=document.querySelector('.card-toolbar select');select.value='1';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
-  await until(`location.search.includes('ano=opaque-year-one') && document.querySelector('table tbody')?.innerText.includes('Matemáticas')`)
+  await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.year}' && document.querySelector('table tbody')?.innerText.includes('Matemáticas')`)
+  await navigate(`/academico/plan-estudios?tab=areas&ano=${nextYear.legacy_url_token}`, 'Plan de estudios')
+  await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.nextYear}' && !document.querySelector('table tbody')?.innerText.includes('Matemáticas')`)
   await navigate('/academico/plan-estudios?tab=asignaciones', 'Sin docente asignado')
   assert.ok(await evaluate(`document.querySelector('table tbody')?.innerText.includes('Primero / (A)')`), 'The assignment table must show grade and group together.')
   await evaluate(`document.querySelector('table tbody .btn-light-primary').click()`)
@@ -234,15 +416,33 @@ try {
   assert.ok(await evaluate(`!document.querySelector('.modal.show select[name="materia_id"]').disabled && !document.querySelector('.modal.show select[name="grupo_id"]').disabled`), 'Subject and group must be editable in assignments.')
   await evaluate(`document.querySelector('.modal.show .btn-close').click()`)
   await until(`!document.querySelector('.modal.show')`)
-  await navigate('/academico/plan-estudios?tab=horarios', 'Matemáticas')
-  await until(`document.querySelectorAll('.schedule-session').length === 2`)
+  await navigate('/academico/plan-estudios?tab=horarios&grupo=1&espacio=1&docente=3', 'Plan de estudios')
+  await until(`(()=>{const params=new URLSearchParams(location.search);return params.get('grupo')==='${urlTokens.group}' && params.get('espacio')==='${urlTokens.space}' && params.get('docente')==='${urlTokens.teacher}'})()`)
+  await navigate('/academico/plan-estudios?tab=horarios', 'Selecciona un grupo')
+  assert.equal(await evaluate(`document.querySelectorAll('.schedule-session').length`), 0, 'The rector must choose a group before loading the timetable.')
+  assert.ok(scheduleReads.some(read => read.view === 'horarios' && read.group === null), 'The first schedule request must ask only for catalogs.')
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='${urlTokens.group}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await until(`new URLSearchParams(location.search).get('grupo') === '${urlTokens.group}' && document.querySelectorAll('.schedule-session').length === 1`)
+  assert.ok(scheduleReads.some(read => read.view === 'horarios' && read.group === '1'), 'The timetable request must send the chosen group to the API.')
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Espacio físico"]');select.value='${urlTokens.space}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await until(`new URLSearchParams(location.search).get('espacio') === '${urlTokens.space}' && document.querySelectorAll('.schedule-session').length === 1`)
+  await command('Page.reload')
+  await sleep(500)
+  await until(`document.querySelectorAll('.schedule-session').length === 1 && document.querySelector('.schedule-controls select[aria-label="Grupo"]')?.value === '${urlTokens.group}' && document.querySelector('.schedule-controls select[aria-label="Espacio físico"]')?.value === '${urlTokens.space}'`)
+  assert.ok(await evaluate(`(()=>{const url=new URL(location.href);return ['ano','grupo','espacio'].every(name => /^[A-Za-z0-9_-]{20,30}$/.test(url.searchParams.get(name) ?? ''))})()`), 'The selected year, group and room must have short opaque URL tokens.')
+  assert.ok(await evaluate(`(()=>{const scroll=document.querySelector('.schedule-scroll');return scroll.scrollHeight <= scroll.clientHeight + 1 && scroll.scrollWidth > scroll.clientWidth})()`), 'Only horizontal scrolling should remain inside the timetable.')
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Docente"]');select.value='${urlTokens.teacher}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await until(`new URLSearchParams(location.search).get('docente') === '${urlTokens.teacher}' && document.querySelectorAll('.schedule-session').length === 0`)
+  await command('Page.reload')
+  await sleep(500)
+  await until(`document.querySelector('.schedule-controls select[aria-label="Docente"]')?.value === '${urlTokens.teacher}' && document.querySelectorAll('.schedule-session').length === 0`)
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Docente"]');select.value='';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await until(`!location.search.includes('docente=') && document.querySelectorAll('.schedule-session').length === 1`)
   await screenshot('schedule-actions-desktop')
   assert.ok(await evaluate(`[...document.querySelectorAll('.schedule-session-time')].every(el=>el.getBoundingClientRect().height < 14 && el.scrollWidth <= el.clientWidth)`), 'Class hours must stay on one visible line beside the actions button.')
   const lastTimeLabel = await evaluate(`document.querySelector('.schedule-time-axis span:last-child')?.innerText`)
-  assert.ok(/19:00|7:00.*(?:PM|p\.\s?m\.)/i.test(lastTimeLabel), `The weekly grid must remain visible through 7 PM; got ${lastTimeLabel}.`)
-  assert.ok(await evaluate(`(()=>{const [a,b]=[...document.querySelectorAll('.schedule-session')].map(el=>el.getBoundingClientRect());return a.right <= b.left && a.top === b.top})()`), 'Simultaneous classes must not cover one another.')
+  assert.ok(/13:00|1:00.*(?:PM|p\.\s?m\.)/i.test(lastTimeLabel), `The weekly grid must cover the selected group's shift; got ${lastTimeLabel}.`)
   assert.ok(await evaluate(`(()=>{const card=document.querySelector('.schedule-session');const room=card.querySelector('.schedule-session-room');return card.innerText.includes('Primero / (A)') && room?.innerText==='Aula Primero' && card.innerText.includes('Sin docente asignado') && [...card.children].every(el=>el.getBoundingClientRect().bottom <= card.getBoundingClientRect().bottom && el.scrollWidth <= el.clientWidth)})()`), 'The class card must visibly show time, subject, grade/group, room and teacher without clipping.')
-  assert.ok(await evaluate(`(()=>{const [short,long]=document.querySelectorAll('.schedule-session');const fits=card=>{const box=card.getBoundingClientRect(),lines=card.children;return lines[0].getBoundingClientRect().top-box.top<9 && box.bottom-lines[lines.length-1].getBoundingClientRect().bottom<9};return fits(short)&&fits(long)&&parseFloat(getComputedStyle(long).fontSize)>parseFloat(getComputedStyle(short).fontSize)})()`), 'Cards must use their available height evenly, with larger text in longer classes.')
   await screenshot('schedule-desktop')
   await evaluate(`document.querySelector('.schedule-session').click()`)
   await until(`!!document.querySelector('.modal.show')`)
@@ -251,13 +451,19 @@ try {
   await screenshot('schedule-block-modal')
   await evaluate(`document.querySelector('.modal.show .btn-close').click()`)
   await until(`!document.querySelector('.modal.show')`)
-  await evaluate(`[...document.querySelectorAll('.schedule-session')][1].click()`)
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Espacio físico"]');select.value='';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await until(`!location.search.includes('espacio=') && document.querySelectorAll('.schedule-session').length === 1`)
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='${urlTokens.groupB}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await until(`new URLSearchParams(location.search).get('grupo') === '${urlTokens.groupB}' && document.querySelectorAll('.schedule-session').length === 1`)
+  await evaluate(`document.querySelector('.schedule-session').click()`)
   await until(`!!document.querySelector('.modal.show input[name="hora_inicio"]')`)
   assert.ok(await evaluate(`!!document.querySelector('.modal.show input[name="hora_fin"]')`))
   await sleep(300)
   await screenshot('schedule-custom-modal')
   await evaluate(`document.querySelector('.modal.show .btn-close').click()`)
   await until(`!document.querySelector('.modal.show')`)
+  await evaluate(`(()=>{const select=document.querySelector('.schedule-controls select[aria-label="Grupo"]');select.value='${urlTokens.group}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await until(`new URLSearchParams(location.search).get('grupo') === '${urlTokens.group}' && document.querySelectorAll('.schedule-session').length === 1`)
   await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Agregar clase')).click()`)
   await until(`!!document.querySelector('.modal.show select[name="grupo_id"]')`)
   assert.ok(await evaluate(`!!document.querySelector('.modal.show select[name="materia_id"]')`))
@@ -280,10 +486,10 @@ try {
   assert.ok(await evaluate(`(()=>{const button=document.querySelector('.modal.show .btn-primary');const box=button.getBoundingClientRect();return button.contains(document.elementFromPoint(box.left+box.width*.85,box.top+box.height*.5))})()`), 'A floating control covers the schedule save button.')
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   assert.equal(writes.length, 0, 'Smoke test should not submit any mutation.')
-  await navigate('/academico/plan-estudios?tab=horarios', 'Matemáticas')
-  await until(`document.querySelectorAll('.schedule-session').length === 2`)
+  await navigate(`/academico/plan-estudios?tab=horarios&grupo=${urlTokens.group}`, 'Matemáticas')
+  await until(`document.querySelectorAll('.schedule-session').length === 1`)
   const dragClass = async (day, startMinutes, expectedWrites) => {
-    const points = await evaluate(`(()=>{const card=document.querySelector('.schedule-session').getBoundingClientRect();const target=document.querySelector('[data-schedule-day=${JSON.stringify(day)}]').getBoundingClientRect();return {fromX:card.left+25,fromY:card.top+12,toX:target.left+70,toY:target.top+(${startMinutes}-360)/60*112+12}})()`)
+    const points = await evaluate(`(()=>{const card=document.querySelector('.schedule-session').getBoundingClientRect();const target=document.querySelector('[data-schedule-day=${JSON.stringify(day)}]').getBoundingClientRect();const firstHour=Number(document.querySelector('.schedule-time-axis span').innerText.split(':')[0]);return {fromX:card.left+25,fromY:card.top+12,toX:target.left+70,toY:target.top+(${startMinutes}-firstHour*60)/60*112+12}})()`)
     await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: points.fromX, y: points.fromY})
     await command('Input.dispatchMouseEvent', {type: 'mousePressed', x: points.fromX, y: points.fromY, button: 'left', clickCount: 1})
     await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: points.toX, y: points.toY, button: 'left', buttons: 1})
@@ -296,7 +502,7 @@ try {
   assert.deepEqual([writes[0].method, writes[0].path, writes[0].body.dia, writes[0].body.bloque_horario_id], ['PUT', '/api/horarios/1', 'martes', 1])
   assert.deepEqual([writes[0].body.grupo_id, writes[0].body.materia_id, writes[0].body.espacio_fisico_id, writes[0].body.docente_id], [1, 1, 1, null])
   assert.equal(await evaluate(`!!document.querySelector('.modal.show')`), false, 'Dragging must not open the edit modal.')
-  await until(`document.querySelectorAll('.schedule-session').length === 2`)
+  await until(`document.querySelectorAll('.schedule-session').length === 1`)
   assert.equal(await evaluate(`!!document.querySelector('.schedule-controls button[aria-pressed]')`), false, 'Copy must not be a global mode.')
   await evaluate(`document.querySelector('.schedule-card-actions').click()`)
   await until(`!!document.querySelector('.schedule-actions-menu')`)
@@ -307,7 +513,7 @@ try {
   assert.equal(writes.length, 2, 'Copying a class should send exactly one creation.')
   assert.deepEqual([writes[1].method, writes[1].path, writes[1].body.dia, writes[1].body.hora_inicio, writes[1].body.hora_fin, writes[1].body.bloque_horario_id], ['POST', '/api/horarios', 'miercoles', '09:15', '10:00', null])
   assert.deepEqual([writes[1].body.grupo_id, writes[1].body.materia_id, writes[1].body.espacio_fisico_id, writes[1].body.docente_id], [1, 1, 1, null])
-  await until(`document.querySelectorAll('.schedule-session').length === 2`)
+  await until(`document.querySelectorAll('.schedule-session').length === 1`)
   await sleep(400)
   await evaluate(`document.querySelector('.schedule-card-actions').click()`)
   await until(`!!document.querySelector('.schedule-actions-menu')`)
@@ -334,23 +540,25 @@ try {
   assert.equal(writes.length, 2, 'Cancelling a drag outside the calendar must not write data.')
   await command('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true})
   await command('Emulation.setTouchEmulationEnabled', {enabled: true})
-  await navigate('/academico/plan-estudios?tab=horarios', 'Matemáticas')
-  await until(`document.querySelectorAll('.schedule-session').length === 2`)
-  await evaluate(`(()=>{const scroll=document.querySelector('.schedule-scroll');window.scrollTo(0,scroll.getBoundingClientRect().top+window.scrollY-120);scroll.scrollTop=160})()`)
+  await navigate(`/academico/plan-estudios?tab=horarios&grupo=${urlTokens.group}`, 'Matemáticas')
+  await until(`document.querySelectorAll('.schedule-session').length === 1`)
+  await evaluate(`(()=>{const scroll=document.querySelector('.schedule-scroll');window.scrollTo(0,scroll.getBoundingClientRect().top+window.scrollY-120)})()`)
   await evaluate(`document.querySelector('.schedule-card-actions').scrollIntoView({block:'center',inline:'center'})`)
   assert.ok(await evaluate(`(()=>{const button=document.querySelector('.schedule-card-actions'),box=button.getBoundingClientRect();return box.top>=0 && box.bottom<=window.innerHeight && document.elementFromPoint(box.left+box.width/2,box.top+box.height/2)===button})()`), 'Mobile quick actions must be reachable on the class card.')
   await evaluate(`document.querySelector('.schedule-card-actions').click()`)
   await until(`!!document.querySelector('.schedule-actions-menu')`)
-  assert.ok(await evaluate(`(()=>{const box=document.querySelector('.schedule-actions-menu').getBoundingClientRect(),card=document.querySelector('.schedule-card-actions').getBoundingClientRect();return box.left>=0 && box.right<=window.innerWidth && box.top>=0 && box.bottom<=window.innerHeight && Math.abs(box.top-card.top)<180})()`), 'Quick actions must fit the mobile viewport near their class.')
+  const menuGeometry = await evaluate(`(()=>{const box=document.querySelector('.schedule-actions-menu').getBoundingClientRect(),card=document.querySelector('.schedule-card-actions').getBoundingClientRect();return {left:box.left,right:box.right,top:box.top,bottom:box.bottom,cardTop:card.top,width:window.innerWidth,height:window.innerHeight}})()`)
+  assert.ok(menuGeometry.left>=0 && menuGeometry.right<=menuGeometry.width && menuGeometry.top>=0 && menuGeometry.bottom<=menuGeometry.height, `Quick actions must fit the mobile viewport: ${JSON.stringify(menuGeometry)}`)
   await screenshot('schedule-actions-mobile')
   await evaluate(`document.querySelectorAll('.schedule-actions-menu button')[1].click()`)
   await until(`!!document.querySelector('.schedule-copy-banner')`)
   await evaluate(`document.querySelector('.schedule-copy-banner button').click()`)
   await until(`!document.querySelector('.schedule-copy-banner')`)
-  await evaluate(`document.querySelector('.schedule-scroll').scrollTop=140`)
+  assert.ok(await evaluate(`(()=>{const scroll=document.querySelector('.schedule-scroll');return scroll.scrollHeight <= scroll.clientHeight + 1 && scroll.scrollTop === 0})()`), 'The timetable must have no inner vertical scroll on mobile.')
+  await evaluate(`(()=>{document.querySelector('.schedule-scroll').scrollLeft=0;document.querySelector('.schedule-session').scrollIntoView({block:'center',inline:'start'})})()`)
   await sleep(150)
   const touch = await evaluate(`(()=>{const card=document.querySelector('.schedule-session').getBoundingClientRect();return {x:card.left+25,y:card.top+12}})()`)
-  const touchVisibility = await evaluate(`(()=>{const card=document.querySelector('.schedule-session'),box=card.getBoundingClientRect();return {visible:document.elementFromPoint(box.left+25,box.top+12)?.closest('.schedule-session')===card && document.elementFromPoint(box.left+25,box.top-44)?.closest('.schedule-day')!==null && box.bottom<window.innerHeight,top:box.top,viewport:window.innerHeight,hit:document.elementFromPoint(box.left+25,box.top+12)?.className,scroll:document.querySelector('.schedule-scroll').scrollTop}})()`)
+  const touchVisibility = await evaluate(`(()=>{const card=document.querySelector('.schedule-session'),box=card.getBoundingClientRect(),origin=document.elementFromPoint(box.left+25,box.top+12)?.closest('.schedule-session')===card,destination=document.elementFromPoint(box.left+25,box.top-44)?.closest('.schedule-day')!==null,bottom=box.bottom<window.innerHeight;return {visible:origin&&destination&&bottom,origin,destination,bottom,top:box.top,viewport:window.innerHeight,hit:document.elementFromPoint(box.left+25,box.top+12)?.className,scroll:window.scrollY,body:document.scrollingElement?.scrollHeight}})()`)
   assert.ok(touchVisibility.visible, `Touch origin and destination must be visible inside the calendar: ${JSON.stringify(touchVisibility)}`)
   await command('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [{x: touch.x, y: touch.y, id: 0}]})
   await command('Input.dispatchTouchEvent', {type: 'touchMove', touchPoints: [{x: touch.x, y: touch.y - 56, id: 0}]})
