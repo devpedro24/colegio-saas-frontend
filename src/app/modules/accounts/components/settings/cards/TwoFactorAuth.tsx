@@ -3,7 +3,7 @@ import {QRCodeSVG} from 'qrcode.react'
 import {useIntl} from 'react-intl'
 import {useAuth} from '../../../../auth'
 import {ApiError} from '@/lib/api/client'
-import {getUserByToken} from '../../../../auth/core/_requests'
+import {getCurrentUser} from '../../../../auth/core/_requests'
 import {useMfaSetup, useMfaConfirm, useMfaDisable} from '@/app/pages/account/mfa.api'
 import {PasswordField} from '@/app/shared/components/PasswordField'
 
@@ -46,7 +46,7 @@ export function TwoFactorAuth() {
     })
   }
   const finish = () => void run(async () => {
-    const {data} = await getUserByToken('')
+    const {data} = await getCurrentUser()
     setCurrentUser(data); setRecoveryCodes([])
   })
   const download = () => {

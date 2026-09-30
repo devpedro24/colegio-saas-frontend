@@ -14,7 +14,7 @@ export function HeaderWrapper() {
   const {config, classes} = useLayout()
   const intl = useIntl()
   const {currentUser} = useAuth()
-  const branding = useOnboarding(currentUser?.tenant_id, !currentUser?.is_platform)
+  const branding = useOnboarding(currentUser?.tenant_channel, !currentUser?.is_platform)
   if (config.app?.header?.default?.container === 'fluid') {
     LayoutSetup.classes.headerContainer.push('container-fluid')
   } else {

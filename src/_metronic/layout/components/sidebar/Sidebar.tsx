@@ -21,7 +21,7 @@ const PLATFORM_ID = '__platform__'
  * Wiring del rail para el SUPERADMIN: carita fija "Plataforma" + colegios reales (MRU).
  * - activeId = colegio activo (suplantación) o "Plataforma" cuando no hay colegio activo.
  * - Seleccionar "Plataforma" -> useExitColegio() + clear() (modo plataforma).
- * - Seleccionar un colegio  -> useEnterColegio() -> setActive({colegio, token}) (modo colegio).
+ * - Seleccionar un colegio  -> useEnterColegio() -> setActive(colegio) (modo colegio).
  * Se llama SÓLO dentro de componentes que se montan cuando isPlatform, así useColegios (endpoint
  * de plataforma) nunca se dispara para un usuario de colegio.
  */
@@ -41,21 +41,21 @@ function usePlatformTeams() {
       isPlatform: true,
     }
     const schools: RailItem[] = (colegios?.data ?? []).map((c) => ({
-      id: c.id,
+      id: c.slug,
       name: c.name,
       initial: c.name.charAt(0).toUpperCase(),
     }))
     return [platform, ...schools]
   }, [colegios, intl])
 
-  const activeId = activeColegio ? activeColegio.id : PLATFORM_ID
+  const activeId = activeColegio ? activeColegio.slug : PLATFORM_ID
 
   const onSelect = (item: RailItem) => {
     // "Plataforma": salir de la suplantación (si la hay) y volver a modo plataforma.
     if (item.isPlatform) {
-      const current = activeColegio?.id
-      if (current) {
-        exit.mutate(current, {
+      if (activeColegio) {
+        exit.mutate(undefined, {
+          onSuccess: () => {clear(); window.location.href = '/dashboard'},
           onError: () =>
             toast.error(
               intl.formatMessage({
@@ -64,16 +64,15 @@ function usePlatformTeams() {
             ),
         })
       }
-      clear()
-      window.location.href = '/dashboard'
+      else window.location.href = '/dashboard'
       return
     }
     // Ya estoy administrando ese colegio: no hago nada.
-    if (item.id === activeColegio?.id) return
+    if (item.id === activeColegio?.slug) return
     // Entrar a administrar el colegio (suplantación).
     enter.mutate(item.id, {
       onSuccess: (res) => {
-        setActive(res.data.colegio, res.data.token)
+        setActive(res.data.colegio)
         toast.success(
           intl.formatMessage(
             {id: 'impersonation.enter.success'},

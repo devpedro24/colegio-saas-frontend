@@ -14,7 +14,7 @@ export interface OnboardingStatus {
   required: boolean
   password_required: boolean
   institution_required: boolean
-  institution: (Institution & {id?: number}) | null
+  institution: Institution | null
   logo_url: string | null
 }
 

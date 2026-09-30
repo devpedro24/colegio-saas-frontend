@@ -1,11 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
 import {FC, useState, useEffect, createContext, useContext, Dispatch, SetStateAction} from 'react'
 import {LayoutSplashScreen} from '../../../../_metronic/layout/core'
-import {AuthModel, UserModel} from './_models'
+import type {AuthModel, UserModel} from './_models'
 import * as authHelper from './AuthHelpers'
-import {getUserByToken, logout as requestLogout} from './_requests'
-import {clearImpersonation} from '../../impersonation/impersonation.store'
-import {WithChildren} from '../../../../_metronic/helpers'
+import {getCurrentUser, logout as requestLogout} from './_requests'
+import {getImpersonationStatus} from '../../impersonation/impersonation.api'
+import {clearImpersonation, setActiveColegio} from '../../impersonation/impersonation.store'
+import {advanceSessionGeneration, onSessionExpired, ApiError} from '@/lib/api/client'
+import type {WithChildren} from '../../../../_metronic/helpers'
 
 type AuthContextProps = {
   auth: AuthModel | undefined
@@ -15,82 +17,85 @@ type AuthContextProps = {
   logout: () => Promise<void>
 }
 
-const initAuthContextPropsState = {
-  auth: authHelper.getAuth(),
+const AuthContext = createContext<AuthContextProps>({
+  auth: undefined,
   saveAuth: () => {},
   currentUser: undefined,
   setCurrentUser: () => {},
   logout: async () => {},
-}
+})
 
-const AuthContext = createContext<AuthContextProps>(initAuthContextPropsState)
+export const useAuth = () => useContext(AuthContext)
 
-const useAuth = () => {
-  return useContext(AuthContext)
-}
-
-const AuthProvider: FC<WithChildren> = ({children}) => {
-  const [auth, setAuth] = useState<AuthModel | undefined>(authHelper.getAuth())
+export const AuthProvider: FC<WithChildren> = ({children}) => {
+  const [auth, setAuth] = useState<AuthModel | undefined>()
   const [currentUser, setCurrentUser] = useState<UserModel | undefined>()
-  const saveAuth = (auth: AuthModel | undefined) => {
-    setAuth(auth)
-    if (auth) {
-      authHelper.setAuth(auth)
-    } else {
-      authHelper.removeAuth()
-    }
+
+  const saveAuth = (next: AuthModel | undefined) => {
+    if (next) authHelper.setAuth(next)
+    else authHelper.removeAuth()
+    advanceSessionGeneration()
+    setAuth(next)
   }
 
+  useEffect(() => onSessionExpired(() => {
+    authHelper.removeAuth()
+    advanceSessionGeneration()
+    setAuth(undefined)
+    setCurrentUser(undefined)
+    clearImpersonation()
+  }), [])
+
   const logout = async () => {
-    // Invalida el token en el backend (best-effort) y luego limpia el estado local,
-    // incluyendo la suplantación de colegio (colegio activo + token de impersonación).
-    await requestLogout().catch(() => {})
+    try { await requestLogout() }
+    catch (error) {
+      // Un 401 confirma que la sesión ya expiró. Ante un error de red, la
+      // cookie puede seguir vigente: conservar la pantalla permite reintentar.
+      if (!(error instanceof ApiError && error.status === 401)) throw error
+    }
     saveAuth(undefined)
     setCurrentUser(undefined)
     clearImpersonation()
   }
 
-  return (
-    <AuthContext.Provider value={{auth, saveAuth, currentUser, setCurrentUser, logout}}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={{auth, saveAuth, currentUser, setCurrentUser, logout}}>{children}</AuthContext.Provider>
 }
 
-const AuthInit: FC<WithChildren> = ({children}) => {
-  const {auth, currentUser, logout, setCurrentUser} = useAuth()
-  const [showSplashScreen, setShowSplashScreen] = useState(true)
+export const AuthInit: FC<WithChildren> = ({children}) => {
+  const {saveAuth, setCurrentUser} = useAuth()
+  const [ready, setReady] = useState(false)
 
-  // We should request user by authToken (IN OUR EXAMPLE IT'S API_TOKEN) before rendering the application
   useEffect(() => {
-    const requestUser = async (apiToken: string) => {
+    let disposed = false
+    const rehydrate = async () => {
       try {
-        if (!currentUser) {
-          const {data} = await getUserByToken(apiToken)
-          if (data) {
-            setCurrentUser(data)
-          }
+        const {data: user} = await getCurrentUser()
+        if (disposed) return
+        if (user.is_platform) {
+          const {data} = await getImpersonationStatus()
+          if (disposed) return
+          if (data.colegio) setActiveColegio(data.colegio)
+          else clearImpersonation()
+        } else clearImpersonation()
+        if (!disposed) {
+          saveAuth({authenticated: true})
+          setCurrentUser(user)
         }
-      } catch (error) {
-        console.error(error)
-        if (currentUser) {
-          logout()
+      } catch {
+        if (!disposed) {
+          saveAuth(undefined)
+          setCurrentUser(undefined)
+          clearImpersonation()
         }
       } finally {
-        setShowSplashScreen(false)
+        if (!disposed) setReady(true)
       }
     }
-
-    if (auth && auth.api_token) {
-      requestUser(auth.api_token)
-    } else {
-      logout()
-      setShowSplashScreen(false)
-    }
-    // eslint-disable-next-line
+    void rehydrate()
+    return () => { disposed = true }
+    // Session bootstrap runs once per tab. Subsequent state changes use the provider.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return showSplashScreen ? <LayoutSplashScreen /> : <>{children}</>
+  return ready ? <>{children}</> : <LayoutSplashScreen />
 }
-
-export {AuthProvider, AuthInit, useAuth}

@@ -5,7 +5,7 @@ import clsx from 'clsx'
 import {Link} from 'react-router-dom'
 import {useFormik} from 'formik'
 import {FormattedMessage, useIntl, IntlShape} from 'react-intl'
-import {getUserByToken, isMfaRequiredError, login} from '../core/_requests'
+import {isMfaRequiredError, login} from '../core/_requests'
 import {toAbsoluteUrl} from '../../../../_metronic/helpers'
 import {useAuth} from '../core/Auth'
 import {PasswordField} from '@/app/shared/components/PasswordField'
@@ -51,13 +51,12 @@ export function Login() {
     onSubmit: async (values, {setStatus, setSubmitting}) => {
       setLoading(true)
       try {
-        const {data: auth} = await login(
+        const {data: auth, user} = await login(
           values.email,
           values.password,
           mfaRequired ? values.code : undefined
         )
         saveAuth(auth)
-        const {data: user} = await getUserByToken(auth.api_token)
         setCurrentUser(user)
       } catch (error) {
         console.error(error)

@@ -6,12 +6,11 @@ import {api} from '@/lib/api/client'
 
 /** Usuario devuelto por los endpoint de cuenta (subconjunto para refrescar UI). */
 export interface AccountUser {
-  id: number | string
+  id: string
   name: string
   email: string
   phone?: string | null
   google_email?: string | null
-  tenant_id?: string | null
 }
 
 export interface AccountResponse {

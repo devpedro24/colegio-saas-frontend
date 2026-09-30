@@ -5,7 +5,7 @@ import {SignInMethod} from './cards/SignInMethod'
 import {TwoFactorAuth} from './cards/TwoFactorAuth'
 import {ConnectedAccounts} from './cards/ConnectedAccounts'
 import {useAuth} from '../../../auth'
-import {getUserByToken} from '../../../auth/core/_requests'
+import {getCurrentUser} from '../../../auth/core/_requests'
 import {useToast} from '@/lib/ui/toast'
 
 // Sin <Content> propio: AccountPage ya envuelve header + child en un solo Content.
@@ -32,7 +32,7 @@ export function Settings() {
       toast.error('No se pudo vincular la cuenta de Google.')
     }
 
-    getUserByToken('')
+    getCurrentUser()
       .then(({data}) => setCurrentUser(data))
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps

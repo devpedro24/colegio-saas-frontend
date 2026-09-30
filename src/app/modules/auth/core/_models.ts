@@ -1,6 +1,5 @@
 export interface AuthModel {
-  api_token: string
-  refreshToken?: string
+  authenticated: true
 }
 
 export interface UserAddressModel {
@@ -49,7 +48,7 @@ export interface UserSocialNetworksModel {
  * opcionales para no romper los componentes que ya los consumen.
  */
 export interface UserModel {
-  id: number
+  id: string
   /** Nombre completo del usuario tal como lo devuelve el backend. */
   name: string
   email: string
@@ -63,8 +62,8 @@ export interface UserModel {
   is_platform?: boolean
   /** true si es la cuenta sombra del superadministrador dentro de un colegio. */
   is_superadmin?: boolean
-  /** UUID del colegio (solo usuarios de colegio); usado para el canal WS privado. */
-  tenant_id?: string | null
+  /** Selector opaco del canal del colegio, validado por Reverb con la sesión. */
+  tenant_channel?: string | null
   /** true si el usuario ya activó la verificación en dos pasos (MFA/TOTP). */
   mfa_enabled?: boolean
   mfa_required?: boolean

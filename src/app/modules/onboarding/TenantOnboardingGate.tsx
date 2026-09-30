@@ -9,7 +9,7 @@ export function TenantOnboardingGate() {
   const {currentUser} = useAuth()
   const intl = useIntl()
   const location = useLocation()
-  const status = useOnboarding(currentUser?.tenant_id)
+  const status = useOnboarding(currentUser?.tenant_channel)
 
   if (!currentUser) return null
   if (status.isPending) {

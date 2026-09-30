@@ -1,24 +1,23 @@
 import {useEffect} from 'react'
 import {useQueryClient} from '@tanstack/react-query'
 import {useAuth} from './Auth'
-import {getUserByToken} from './_requests'
+import {getCurrentUser} from './_requests'
 import {ApiError} from '@/lib/api/client'
 import {initializeEcho, disconnectEcho} from '@/lib/echo'
 import {onLocalChange, refreshesIdentity, shouldRefreshQuery, type RealtimeScope} from '@/lib/realtime'
-import {useImpersonation} from '../../impersonation/impersonation.store'
+import {clearImpersonation, useImpersonation} from '../../impersonation/impersonation.store'
 
 /** Owns the socket for the entire authenticated session, independent of the page. */
 export function WebSocketManager() {
   const {auth, currentUser, setCurrentUser, saveAuth} = useAuth()
-  const {activeColegio, token: impersonationToken} = useImpersonation()
+  const {activeColegio} = useImpersonation()
   const client = useQueryClient()
   const platform = currentUser?.is_platform === true
-  const tenantId = platform ? activeColegio?.id : currentUser?.tenant_id
+  const tenantChannel = platform ? activeColegio?.channel_token : currentUser?.tenant_channel
   const userId = currentUser?.id
 
   useEffect(() => {
-    const token = auth?.api_token
-    if (!token || !userId) return
+    if (!auth?.authenticated || !userId) return
     let disposed = false
     let timer: ReturnType<typeof setTimeout> | undefined
     let refreshingUser = false
@@ -28,12 +27,13 @@ export function WebSocketManager() {
       if (refreshingUser) {refreshUserAgain = true; return}
       refreshingUser = true
       try {
-        const {data} = await getUserByToken(token)
+        const {data} = await getCurrentUser()
         if (!disposed) setCurrentUser(data)
       } catch (error) {
         if (!disposed && error instanceof ApiError && [401, 403].includes(error.status)) {
           saveAuth(undefined)
           setCurrentUser(undefined)
+          clearImpersonation()
           client.clear()
         }
       } finally {
@@ -60,14 +60,12 @@ export function WebSocketManager() {
       }, 100)
     }
     const unsubscribeLocal = onLocalChange(change => {
-      if (change.tenantId) {
-        if (change.tenantId === tenantId && change.token === impersonationToken) schedule('tenant', [change.resource])
-      } else if (change.token === token) {
-        schedule(platform ? 'platform' : 'tenant', [change.resource])
-      }
+      if (change.scope === 'tenant') {
+        if (!platform || (activeColegio && change.tenantKey === activeColegio.slug)) schedule('tenant', [change.resource])
+      } else schedule(platform ? 'platform' : 'tenant', [change.resource])
     })
     try {
-      const echo = initializeEcho(token, tenantId ? {id: tenantId, token: platform ? impersonationToken! : token, viaHeader: platform} : undefined)
+      const echo = initializeEcho(tenantChannel, platform)
       const subscribe = (name: string, scope: RealtimeScope) => {
         echo.private(name)
           .listen('.application.changed', (payload: {resources?: string[]}) => schedule(scope, payload.resources))
@@ -79,7 +77,7 @@ export function WebSocketManager() {
           })
       }
       if (platform) subscribe('platform', 'platform')
-      if (tenantId && (!platform || impersonationToken)) subscribe(`tenant.${tenantId}`, 'tenant')
+      if (tenantChannel) subscribe(`tenant.${tenantChannel}`, 'tenant')
     } catch (error) {
       console.error('[WS] Connection failed', error)
     }
@@ -91,6 +89,6 @@ export function WebSocketManager() {
     }
     // Recreate only for identity/context changes, not when /me refreshes the profile.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth?.api_token, userId, platform, tenantId, impersonationToken, client])
+  }, [auth?.authenticated, userId, platform, tenantChannel, activeColegio?.slug, client])
   return null
 }

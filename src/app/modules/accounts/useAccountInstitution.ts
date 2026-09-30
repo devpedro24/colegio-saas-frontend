@@ -8,7 +8,7 @@ export function useAccountInstitution() {
   const {currentUser} = useAuth()
   const {activeColegio} = useImpersonation()
   const context = useQuery({
-    queryKey: ['institution-context', activeColegio?.id],
+    queryKey: ['institution-context', activeColegio?.slug],
     queryFn: () => api.get<{data: UserModel['institution']}>('/institution-context'),
     enabled: !!currentUser?.is_platform && !!activeColegio,
   })

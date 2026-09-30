@@ -9,6 +9,7 @@ import {useAccountInstitution} from '@/app/modules/accounts/useAccountInstitutio
 import {useAuth} from '../../../../app/modules/auth'
 import {useAuthz} from '../../../../app/modules/auth/core/authz'
 import {useImpersonation} from '../../../../app/modules/impersonation/impersonation.store'
+import {useToast} from '@/lib/ui/toast'
 
 // Idiomas soportados (badge del trigger + estado activo). El submenu de demo46 se recorto a
 // English + Spanish, cada item con data-kt-lang. El nombre visible se traduce con i18n.
@@ -26,6 +27,7 @@ const Navbar = () => {
   const lang = useLang()
   const intl = useIntl()
   const {logout, currentUser} = useAuth()
+  const toast = useToast()
   const institution = useAccountInstitution()
   const {isPlatform, hasPermission} = useAuthz()
   const {activeColegio} = useImpersonation()
@@ -35,7 +37,7 @@ const Navbar = () => {
   // colegio activo); para usuarios de colegio (o superadmin suplantando uno) se ocultan.
   const showQuickIcons = isPlatform && !activeColegio
   // El usuario de plataforma conserva sus permisos centrales (normalmente vacíos)
-  // mientras administra un colegio, pero su token de suplantación tiene acceso total.
+  // mientras administra un colegio; la sesión temporal se resuelve por cookie.
   const schoolContext = !isPlatform || !!activeColegio
   const superadminInSchool = isPlatform && !!activeColegio
   const canConfigureInstitution =
@@ -71,7 +73,7 @@ const Navbar = () => {
       const out = target.closest<HTMLElement>('[data-kt-action="logout"]')
       if (out) {
         e.preventDefault()
-        logout()
+        void logout().catch(() => toast.error(intl.formatMessage({id: 'common.toast.genericError'})))
         return
       }
 
@@ -108,7 +110,7 @@ const Navbar = () => {
     // Fase de CAPTURA: KTMenu hace stopPropagation en algunos .menu-link, asi corremos antes.
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [navigate, lang, logout, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, currentUser?.name, currentUser?.email, planLabel])
+  }, [navigate, lang, logout, toast, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, currentUser?.name, currentUser?.email, planLabel])
 
   return (
     <div

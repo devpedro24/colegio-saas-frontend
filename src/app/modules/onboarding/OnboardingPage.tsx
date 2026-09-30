@@ -1,7 +1,7 @@
 import {FormEvent, useState} from 'react'
 import {useAuth} from '@/app/modules/auth'
-import {getUserByToken} from '@/app/modules/auth/core/_requests'
-import {ApiError, api, getToken} from '@/lib/api/client'
+import {getCurrentUser} from '@/app/modules/auth/core/_requests'
+import {ApiError, api} from '@/lib/api/client'
 import {onboardingKey, type Institution, type OnboardingStatus} from './onboarding.api'
 import {useQueryClient} from '@tanstack/react-query'
 import {useIntl} from 'react-intl'
@@ -33,7 +33,7 @@ export function OnboardingPage({status, refresh}: Props) {
   const [error, setError] = useState('')
 
   const reload = async () => {
-    await queryClient.invalidateQueries({queryKey: onboardingKey(currentUser?.tenant_id)})
+    await queryClient.invalidateQueries({queryKey: onboardingKey(currentUser?.tenant_channel)})
     await refresh()
   }
 
@@ -45,8 +45,7 @@ export function OnboardingPage({status, refresh}: Props) {
     setBusy(true)
     try {
       await api.post('/account/password', password)
-      const token = getToken()
-      if (token) setCurrentUser((await getUserByToken(token)).data)
+      setCurrentUser((await getCurrentUser()).data)
       setPassword({current_password: '', new_password: '', new_password_confirmation: ''})
       await reload()
     } catch (err) { setError(message(err, t('onboarding.saveError'))) }
@@ -77,7 +76,7 @@ export function OnboardingPage({status, refresh}: Props) {
               <i className='bi bi-stars' aria-hidden='true' />
               {t('onboarding.first')}
             </span>
-            <button type='button' className='onboarding-logout' onClick={() => void logout()}>
+            <button type='button' className='onboarding-logout' onClick={() => void logout().catch(() => setError(t('common.toast.genericError')))}>
               <i className='bi bi-box-arrow-right' aria-hidden='true' />
               {t('onboarding.logout')}
             </button>

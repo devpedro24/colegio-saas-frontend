@@ -8,7 +8,7 @@ import {PasswordRequirements} from '@/app/shared/components/PasswordRequirements
 import {passwordMeetsPolicy} from '@/app/shared/passwordPolicy'
 import clsx from 'clsx'
 import {FormattedMessage, useIntl, IntlShape} from 'react-intl'
-import {getUserByToken, register} from '../core/_requests'
+import {register} from '../core/_requests'
 import {Link} from 'react-router-dom'
 import {toAbsoluteUrl} from '../../../../_metronic/helpers'
 import {PasswordMeterComponent} from '../../../../_metronic/assets/ts/components'
@@ -64,7 +64,7 @@ export function Registration() {
     onSubmit: async (values, {setStatus, setSubmitting}) => {
       setLoading(true)
       try {
-        const {data: auth} = await register(
+        const {data: auth, user} = await register(
           values.email,
           values.firstname,
           values.lastname,
@@ -72,7 +72,6 @@ export function Registration() {
           values.changepassword
         )
         saveAuth(auth)
-        const {data: user} = await getUserByToken(auth.api_token)
         setCurrentUser(user)
       } catch (error) {
         console.error(error)

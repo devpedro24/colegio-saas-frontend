@@ -14,7 +14,7 @@ type PropsType = {
 const SidebarLogo = (props: PropsType) => {
   const {config} = useLayout()
   const {currentUser} = useAuth()
-  const branding = useOnboarding(currentUser?.tenant_id, !currentUser?.is_platform)
+  const branding = useOnboarding(currentUser?.tenant_channel, !currentUser?.is_platform)
   const toggleRef = useRef<HTMLDivElement>(null)
 
   const appSidebarDefaultMinimizeDesktopEnabled =

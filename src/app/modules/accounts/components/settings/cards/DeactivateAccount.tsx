@@ -53,7 +53,7 @@ const DeactivateAccount: FC = () => {
           onSuccess: (data) => {
             toast.success(data.message ?? 'Cuenta desactivada.')
             setLoading(false)
-            setTimeout(() => logout(), 900)
+            setTimeout(() => {void logout().catch(() => toast.error(intl.formatMessage({id: 'common.toast.genericError'})))}, 900)
           },
           onError: (err) => {
             if (err instanceof ApiError) {
