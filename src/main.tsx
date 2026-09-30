@@ -1,7 +1,6 @@
 import {createRoot} from 'react-dom/client'
 // Axios
 import axios from 'axios'
-import {Chart, registerables} from 'chart.js'
 import {QueryClientProvider} from '@tanstack/react-query'
 import {ReactQueryDevtools} from '@tanstack/react-query-devtools'
 // Apps
@@ -33,7 +32,6 @@ import {AuthProvider, setupAxios} from './app/modules/auth'
  * @see https://github.com/axios/axios#interceptors
  */
 setupAxios(axios)
-Chart.register(...registerables)
 
 const container = document.getElementById('root')
 if (container) {

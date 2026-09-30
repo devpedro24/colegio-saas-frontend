@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/check-build-budget.mjs",
+    "check:bundle": "node scripts/check-build-budget.mjs",
+    "test:ui:performance": "node scripts/browser-smoke.mjs --performance",
+    "test:ui:cache": "node scripts/browser-smoke.mjs --cache",
     "check:i18n": "node scripts/i18n-audit.mjs",
     "test": "node --test scripts/*.test.mjs",
     "test:ui": "node scripts/browser-smoke.mjs",

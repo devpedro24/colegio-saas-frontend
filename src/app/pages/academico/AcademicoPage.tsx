@@ -1,14 +1,16 @@
-import {FC} from 'react'
+import {FC, lazy} from 'react'
 import {Navigate, Route, Routes, useLocation, useParams, useSearchParams} from 'react-router-dom'
 import {useAuthz} from '../../modules/auth/core/authz'
 import {useImpersonation} from '../../modules/impersonation/impersonation.store'
-import AnosLectivosPage from './anos-lectivos/AnosLectivosPage'
-import ConfiguracionColegioPage from './configuracion/ConfiguracionColegioPage'
-import EstructuraPage from './estructura/EstructuraPage'
-import PlanEstudiosPage from './plan-estudios/PlanEstudiosPage'
-import EvaluacionPage from './evaluacion/EvaluacionPage'
-import SieePage from './siee/SieePage'
-import BoletinesPage from './boletines/BoletinesPage'
+// Reuse the parent route's Suspense boundary; visiting one section must not
+// download the editors, calendar and reports of every other academic section.
+const AnosLectivosPage = lazy(() => import('./anos-lectivos/AnosLectivosPage'))
+const ConfiguracionColegioPage = lazy(() => import('./configuracion/ConfiguracionColegioPage'))
+const EstructuraPage = lazy(() => import('./estructura/EstructuraPage'))
+const PlanEstudiosPage = lazy(() => import('./plan-estudios/PlanEstudiosPage'))
+const EvaluacionPage = lazy(() => import('./evaluacion/EvaluacionPage'))
+const SieePage = lazy(() => import('./siee/SieePage'))
+const BoletinesPage = lazy(() => import('./boletines/BoletinesPage'))
 
 // Los enlaces previos siguen funcionando después de separar la configuración.
 const LegacyConfiguracionRedirect: FC = () => {
