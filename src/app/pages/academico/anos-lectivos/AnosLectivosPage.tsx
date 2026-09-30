@@ -1,7 +1,8 @@
-﻿import {FC, useState} from 'react'
+import {FC, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {useAuthz} from '@/app/modules/auth/core/authz'
+import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
 import {ApiError} from '@/lib/api/client'
@@ -54,7 +55,12 @@ const AnosLectivosPage: FC = () => {
   const {data, isLoading, isError} = useAnosLectivos()
   const iniciar = useIniciarAnoLectivo()
   const eliminar = useDeleteAnoLectivo()
-  const {isPlatform} = useAuthz()
+  const {isPlatform, isSuperadminImpersonating, hasRole, hasPermission} = useAuthz()
+  const {activeColegio} = useImpersonation()
+  const canTransitionYear =
+    (hasRole('rector') && hasPermission('academico.anos.transicionar')) ||
+    isSuperadminImpersonating ||
+    (isPlatform && !!activeColegio)
 
   const list = data?.data ?? []
 
@@ -220,7 +226,7 @@ const AnosLectivosPage: FC = () => {
                                   </i>
                                 </button>
                               )}
-                              {isPlatform && (
+                              {(isSuperadminImpersonating || (isPlatform && !!activeColegio)) && (
                                 <button
                                   type='button'
                                   className='btn btn-icon btn-light-danger btn-sm'
@@ -236,7 +242,7 @@ const AnosLectivosPage: FC = () => {
                                   </i>
                                 </button>
                               )}
-                              {a.estado === 'planificado' && (
+                              {canTransitionYear && a.estado === 'planificado' && (
                                 <button
                                   type='button'
                                   className='btn btn-light-success btn-sm'
@@ -250,7 +256,7 @@ const AnosLectivosPage: FC = () => {
                                   )}
                                 </button>
                               )}
-                              {a.estado === 'en_curso' && (
+                              {canTransitionYear && a.estado === 'en_curso' && (
                                 <button
                                   type='button'
                                   className='btn btn-light-danger btn-sm'
@@ -259,7 +265,7 @@ const AnosLectivosPage: FC = () => {
                                   {t('common.close')}
                                 </button>
                               )}
-                              {isPlatform && a.estado === 'cerrado' && (
+                              {(isSuperadminImpersonating || (isPlatform && !!activeColegio)) && a.estado === 'cerrado' && (
                                 <button
                                   type='button'
                                   className='btn btn-light-primary btn-sm'

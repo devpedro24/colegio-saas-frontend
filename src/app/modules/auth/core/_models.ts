@@ -61,6 +61,8 @@ export interface UserModel {
   permissions: string[]
   /** true si es usuario de PLATAFORMA (superadministrador). */
   is_platform?: boolean
+  /** true si es la cuenta sombra del superadministrador dentro de un colegio. */
+  is_superadmin?: boolean
   /** UUID del colegio (solo usuarios de colegio); usado para el canal WS privado. */
   tenant_id?: string | null
   /** true si el usuario ya activó la verificación en dos pasos (MFA/TOTP). */

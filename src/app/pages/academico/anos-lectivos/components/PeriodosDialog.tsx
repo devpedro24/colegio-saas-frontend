@@ -4,10 +4,15 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {useAuthz} from '@/app/modules/auth/core/authz'
+import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 import {
+  useAbrirPeriodo,
+  useCerrarPeriodo,
   useCreatePeriodo,
   useDeletePeriodo,
   usePeriodos,
+  useReabrirPeriodo,
   useUpdatePeriodo,
 } from '../anos-lectivos.api'
 import type {AnoLectivo, CreatePeriodoInput, Periodo} from '../anos-lectivos.types'
@@ -53,6 +58,8 @@ type Props = {
   onClose: () => void
 }
 
+type PeriodoTransition = 'abrir' | 'cerrar' | 'reabrir'
+
 // Contenido interno del modal (se remonta por ano lectivo). Lista los periodos y
 // permite crear/editar/eliminar uno a la vez con un formulario en linea.
 const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
@@ -65,8 +72,18 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
   const create = useCreatePeriodo(ano.id)
   const update = useUpdatePeriodo(ano.id)
   const del = useDeletePeriodo(ano.id)
+  const abrir = useAbrirPeriodo(ano.id)
+  const cerrar = useCerrarPeriodo(ano.id)
+  const reabrir = useReabrirPeriodo(ano.id)
+  const {isPlatform, isSuperadminImpersonating, hasRole, hasPermission} = useAuthz()
+  const {activeColegio} = useImpersonation()
+  const canTransition =
+    (hasRole('rector') && hasPermission('academico.periodos.transicionar')) ||
+    isSuperadminImpersonating ||
+    (isPlatform && !!activeColegio)
 
   const periodos = data?.data ?? []
+  const periodoActual = periodos.find((periodo) => periodo.es_actual)
   const maxPeriodos = ano.num_periodos
   const opcionesPeriodo = Array.from({length: maxPeriodos}, (_, index) => ({orden: index + 1, nombre: `P${index + 1}`}))
   const siguienteOrden = opcionesPeriodo.find((p) => !periodos.some((existente) => existente.orden === p.orden))?.orden ?? 1
@@ -75,10 +92,12 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
   const [editing, setEditing] = useState<Periodo | null>(null)
   const [form, setForm] = useState<PeriodoFormState>(emptyPeriodoForm(siguienteOrden))
   const [error, setError] = useState<ApiError | null>(null)
+  const [transition, setTransition] = useState<{periodo: Periodo; action: PeriodoTransition} | null>(null)
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<PeriodoFormState>) => setForm((prev) => ({...prev, ...patch}))
   const pending = create.isPending || update.isPending
+  const transitionPending = abrir.isPending || cerrar.isPending || reabrir.isPending
 
   const startCreate = () => {
     setEditing(null)
@@ -152,8 +171,32 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
     })
   }
 
+  const confirmTransition = () => {
+    if (!transition || !canTransition) return
+    const {periodo, action} = transition
+    const mutation = action === 'abrir' ? abrir : action === 'cerrar' ? cerrar : reabrir
+    mutation.mutate(periodo.id, {
+      onSuccess: () => {
+        toast.success(t(`academico.periodos.transition.success.${action}`, {name: periodo.nombre}))
+        if (editing?.id === periodo.id) startCreate()
+        setTransition(null)
+      },
+      onError: (err) => {
+        toast.error(err instanceof ApiError ? err.message : t('common.toast.genericError'))
+      },
+    })
+  }
+
   return (
     <div className='modal-body py-lg-8 px-lg-8'>
+      <div className='alert alert-light-primary mb-6' role='status'>
+        {periodoActual && (
+          <div className='fw-bold fs-6 mb-1'>
+            {t('academico.periodos.currentPeriod', {name: periodoActual.nombre})}
+          </div>
+        )}
+        <div className='fs-7'>{t('academico.periodos.lifecycleHelp')}</div>
+      </div>
       {/* Lista de periodos */}
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-10'>
@@ -198,14 +241,31 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
                     </td>
                     {mostrarPeso && <td>{p.peso === null ? '—' : `${p.peso}%`}</td>}
                     <td>
-                      <span className={b.className}>{b.label}</span>
+                      <div className='d-flex flex-wrap gap-1'>
+                        <span className={b.className}>{b.label}</span>
+                        {p.es_actual && <span className='badge badge-light-primary'>{t('academico.periodos.inUse')}</span>}
+                        {p.reapertura_manual && <span className='badge badge-light-warning'>{t('academico.periodos.manualReopened')}</span>}
+                      </div>
                     </td>
                     <td>
-                      <div className='d-flex align-items-center justify-content-end flex-shrink-0'>
+                      <div className='d-flex align-items-center justify-content-end flex-wrap gap-2'>
+                        {canTransition && ano.estado === 'en_curso' && (
+                          p.estado === 'planificado' || p.estado === 'abierto' || p.estado === 'cerrado'
+                        ) && (
+                          <button
+                            type='button'
+                            className={`btn btn-sm ${p.estado === 'abierto' ? 'btn-light-danger' : 'btn-light-success'}`}
+                            disabled={transitionPending}
+                            onClick={() => setTransition({periodo: p, action: p.estado === 'planificado' ? 'abrir' : p.estado === 'abierto' ? 'cerrar' : 'reabrir'})}
+                          >
+                            {t(`academico.periodos.transition.${p.estado === 'planificado' ? 'abrir' : p.estado === 'abierto' ? 'cerrar' : 'reabrir'}`)}
+                          </button>
+                        )}
                         <button
                           type='button'
                           className='btn btn-icon btn-light-primary btn-sm me-2'
                           title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.periodo'})})}
+                          disabled={p.estado === 'cerrado' || ['cerrado', 'archivado'].includes(ano.estado)}
                           onClick={() => startEdit(p)}
                         >
                           <i className='ki-duotone ki-pencil fs-6'>
@@ -217,7 +277,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
                           type='button'
                           className='btn btn-icon btn-light-danger btn-sm'
                           title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.periodo'})})}
-                          disabled={del.isPending}
+                          disabled={del.isPending || p.estado === 'cerrado' || ['cerrado', 'archivado'].includes(ano.estado)}
                           onClick={() => handleDelete(p)}
                         >
                           <i className='ki-duotone ki-trash fs-6'>
@@ -245,7 +305,24 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
         </div>
       )}
 
+      {transition && canTransition && (
+        <div className={`alert ${transition.action === 'cerrar' ? 'alert-warning' : 'alert-primary'} d-flex flex-column gap-3 mb-8`} role='alert'>
+          <div className='fw-bold fs-5'>{t(`academico.periodos.transition.${transition.action}`)}: {transition.periodo.nombre}</div>
+          <div>{t(`academico.periodos.transition.confirm.${transition.action}`, {name: transition.periodo.nombre})}</div>
+          <div className='d-flex flex-wrap gap-2 justify-content-end'>
+            <button type='button' className='btn btn-sm btn-light' onClick={() => setTransition(null)} disabled={transitionPending}>
+              {t('common.cancel')}
+            </button>
+            <button type='button' className={`btn btn-sm ${transition.action === 'cerrar' ? 'btn-danger' : 'btn-primary'}`} onClick={confirmTransition} disabled={transitionPending}>
+              {transitionPending && <span className='spinner-border spinner-border-sm me-2' role='status' />}
+              {t(`academico.periodos.transition.${transition.action}`)}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Formulario en linea: crear / editar periodo */}
+      {!['cerrado', 'archivado'].includes(ano.estado) && <>
       <div className='separator separator-dashed mb-6'></div>
       <h4 className='fw-bold mb-4'>
         {editing ? t('academico.periodos.formTitleEdit') : t('academico.periodos.new')}
@@ -347,6 +424,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
           </button>
         </div>
       </form>
+      </>}
     </div>
   )
 }

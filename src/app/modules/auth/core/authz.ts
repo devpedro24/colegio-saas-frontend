@@ -9,6 +9,8 @@ import {useAuth} from './Auth'
 export interface Authz {
   /** true si es usuario de PLATAFORMA (superadministrador). */
   isPlatform: boolean
+  /** true si es el superadministrador con una suplantación de colegio válida. */
+  isSuperadminImpersonating: boolean
   /** Roles (slugs) del usuario, ej: ['rector']. */
   roles: string[]
   /** Permisos efectivos del usuario. */
@@ -30,9 +32,11 @@ export function useAuthz(): Authz {
     const roles = currentUser?.roles ?? []
     const permissions = currentUser?.permissions ?? []
     const isPlatform = currentUser?.is_platform === true
+    const isSuperadminImpersonating = currentUser?.is_superadmin === true
 
     return {
       isPlatform,
+      isSuperadminImpersonating,
       roles,
       permissions,
       hasRole: (role: string) => roles.includes(role),

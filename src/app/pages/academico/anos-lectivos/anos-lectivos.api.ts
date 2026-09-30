@@ -186,3 +186,28 @@ export function useDeletePeriodo(anoLectivoId: string) {
     },
   })
 }
+
+/** Cambios de estado reservados al rector y al superadministrador suplantando. */
+function usePeriodoTransition(anoLectivoId: string, action: 'abrir' | 'cerrar' | 'reabrir') {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => api.post<{data: Periodo}>(`/periodos/${id}/${action}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: periodosKey(anoLectivoId)})
+      queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
+    },
+  })
+}
+
+export function useAbrirPeriodo(anoLectivoId: string) {
+  return usePeriodoTransition(anoLectivoId, 'abrir')
+}
+
+export function useCerrarPeriodo(anoLectivoId: string) {
+  return usePeriodoTransition(anoLectivoId, 'cerrar')
+}
+
+export function useReabrirPeriodo(anoLectivoId: string) {
+  return usePeriodoTransition(anoLectivoId, 'reabrir')
+}

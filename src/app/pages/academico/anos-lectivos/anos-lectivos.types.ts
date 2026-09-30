@@ -65,6 +65,10 @@ export interface Periodo {
   /** Peso porcentual del periodo (opcional). */
   peso: number | null
   estado: PeriodoEstado
+  /** Indica el período abierto que coincide con la fecha local del colegio. */
+  es_actual: boolean
+  /** Una reapertura excepcional permanece abierta hasta el cierre manual. */
+  reapertura_manual: boolean
   created_at: string | null
 }
 
