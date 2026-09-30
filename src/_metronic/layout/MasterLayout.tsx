@@ -4,7 +4,6 @@ import {HeaderWrapper, UpgradePlanModal} from './components/header'
 import {ScrollTop} from './components/scroll-top'
 import {FooterWrapper} from './components/footer'
 import {Sidebar} from './components/sidebar'
-import {ActivityDrawer, DrawerMessenger, InviteUsers} from '../partials'
 import {PageDataProvider} from './core'
 import {reInitMenu} from '../helpers'
 import {ImpersonationBanner} from '../../app/modules/impersonation/ImpersonationBanner'
@@ -49,13 +48,7 @@ const MasterLayout = () => {
       </div>
       {/* end::App */}
 
-      {/* begin:: Drawers (kt_activities y kt_drawer_chat existen en demo46) */}
-      <ActivityDrawer />
-      <DrawerMessenger />
-      {/* end:: Drawers */}
-
-      {/* begin:: Modals (demo46: kt_modal_upgrade_plan + kt_modal_invite_friends) */}
-      <InviteUsers />
+      {/* begin:: Modals */}
       <UpgradePlanModal />
       {/* end:: Modals */}
       <ScrollTop />
