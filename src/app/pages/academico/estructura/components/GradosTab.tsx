@@ -203,7 +203,7 @@ const GradosTab: FC = () => {
 
   return (
     <>
-      <div className='d-flex justify-content-end mb-4'>
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput} action={
         <button
           type='button'
           className='btn btn-primary'
@@ -215,9 +215,7 @@ const GradosTab: FC = () => {
           <i className='ki-duotone ki-plus fs-2'></i>
           {t('academico.estructura.new')}
         </button>
-      </div>
-
-      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+      }>
         <select className='form-select form-select-solid w-auto' aria-label={t('common.field.nivel')} value={listQuery.filters.nivel_id ?? ''} onChange={event => listQuery.setFilter('nivel_id', event.target.value)}>
           <option value=''>{t('academico.nivel.todos')}</option>
           {(niveles?.data ?? []).map(nivel => <option key={nivel.id} value={nivel.id}>{nivel.nombre}</option>)}

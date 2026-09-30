@@ -277,7 +277,7 @@ const GruposTab: FC = () => {
 
   return (
     <>
-      <div className='d-flex justify-content-end mb-4'>
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput} action={
         <button
           type='button'
           className='btn btn-primary'
@@ -289,9 +289,7 @@ const GruposTab: FC = () => {
           <i className='ki-duotone ki-plus fs-2'></i>
           {t('academico.estructura.new')}
         </button>
-      </div>
-
-      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+      }>
         <select className='form-select form-select-solid w-auto' aria-label={t('academico.estructura.grupo.grado')} value={listQuery.filters.grado_id ?? ''} onChange={event => listQuery.setFilter('grado_id', event.target.value)}>
           <option value=''>{t('academic.filter.allGrades')}</option>
           {(grados?.data ?? []).map(grado => <option key={grado.id} value={grado.id}>{grado.nombre}</option>)}

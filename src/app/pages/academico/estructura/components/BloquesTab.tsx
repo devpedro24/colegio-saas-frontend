@@ -248,7 +248,7 @@ const BloquesTab: FC = () => {
 
   return (
     <>
-      <div className='d-flex justify-content-end mb-4'>
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput} action={
         <button
           type='button'
           className='btn btn-primary'
@@ -260,9 +260,7 @@ const BloquesTab: FC = () => {
           <i className='ki-duotone ki-plus fs-2'></i>
           {t('academico.estructura.new')}
         </button>
-      </div>
-
-      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+      }>
         <select className='form-select form-select-solid w-auto' aria-label={t('common.field.jornada')} value={listQuery.filters.jornada_id ?? ''} onChange={event => listQuery.setFilter('jornada_id', event.target.value)}>
           <option value=''>{t('academic.filter.allJourneys')}</option>
           {(jornadas?.data ?? []).map(jornada => <option key={jornada.id} value={jornada.id}>{jornada.nombre}</option>)}

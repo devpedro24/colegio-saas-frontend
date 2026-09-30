@@ -182,7 +182,7 @@ const NivelesTab: FC = () => {
 
   return (
     <>
-      <div className='d-flex justify-content-end mb-4'>
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput} action={
         <button
           type='button'
           className='btn btn-primary'
@@ -194,9 +194,7 @@ const NivelesTab: FC = () => {
           <i className='ki-duotone ki-plus fs-2'></i>
           {t('academico.estructura.new')}
         </button>
-      </div>
-
-      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+      }>
         <select className='form-select form-select-solid w-auto' aria-label={t('common.status')} value={listQuery.filters.estado ?? ''} onChange={event => listQuery.setFilter('estado', event.target.value)}>
           <option value=''>{t('academic.filter.allStatuses')}</option>
           <option value='activo'>{t('common.active')}</option>

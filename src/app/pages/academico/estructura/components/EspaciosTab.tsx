@@ -279,7 +279,7 @@ const EspaciosTab: FC = () => {
 
   return (
     <>
-      <div className='d-flex justify-content-end mb-4'>
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput} action={
         <button
           type='button'
           className='btn btn-primary'
@@ -291,9 +291,7 @@ const EspaciosTab: FC = () => {
           <i className='ki-duotone ki-plus fs-2'></i>
           {t('academico.estructura.new')}
         </button>
-      </div>
-
-      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+      }>
         <select className='form-select form-select-solid w-auto' aria-label={t('common.field.sede')} value={listQuery.filters.sede_id ?? ''} onChange={event => listQuery.setFilter('sede_id', event.target.value)}>
           <option value=''>{t('academic.filter.allCampuses')}</option>
           {(sedes?.data ?? []).map(sede => <option key={sede.id} value={sede.id}>{sede.nombre}</option>)}
