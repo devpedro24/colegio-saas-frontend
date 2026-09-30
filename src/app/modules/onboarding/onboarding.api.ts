@@ -1,5 +1,6 @@
 import {useQuery} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
+import {useAuth} from '../auth/core/Auth'
 
 export interface Institution {
   nombre: string
@@ -21,11 +22,13 @@ export interface OnboardingStatus {
 export const onboardingKey = (tenantId?: string | null) => ['onboarding', tenantId] as const
 
 export function useOnboarding(tenantId?: string | null, enabled = true) {
+  const {currentUser} = useAuth()
   return useQuery({
     queryKey: onboardingKey(tenantId),
     queryFn: () => api.get<OnboardingStatus>('/onboarding/status'),
     enabled: enabled && !!tenantId,
-    staleTime: 10_000,
-    retry: 1,
+    initialData: () => currentUser?.tenant_channel === tenantId ? currentUser?.onboarding : undefined,
+    initialDataUpdatedAt: currentUser?.onboardingFetchedAt,
+    staleTime: 5 * 60_000,
   })
 }

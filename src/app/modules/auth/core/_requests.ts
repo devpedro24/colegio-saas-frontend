@@ -52,6 +52,7 @@ function normalizeUser(user: UserModel): UserModel {
   const last = parts.join(' ')
   return {
     ...user,
+    onboardingFetchedAt: user.onboarding ? Date.now() : undefined,
     first_name: user.first_name ?? first,
     last_name: user.last_name ?? last,
     fullname: user.fullname ?? user.name,

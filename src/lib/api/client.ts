@@ -16,7 +16,17 @@ import {notifyLocalChange, resourceForPath} from '../realtime';
 
 const CSRF_COOKIE = 'school_saas_csrf';
 let sessionGeneration = 0;
+const pendingReads = new Map<string, {context: ReturnType<typeof getImpersonation>; promise: Promise<unknown>}>();
 const expiredListeners = new Set<() => void>();
+let socketIdProvider: () => string | undefined = () => undefined;
+
+export function setSocketIdProvider(provider: () => string | undefined): void {
+  socketIdProvider = provider;
+}
+
+export function discardPendingReads(): void {
+  pendingReads.clear();
+}
 
 // Captura y borra las credenciales legadas de forma síncrona. La revocación en
 // segundo plano es best effort; no bloquea la nueva sesión con cookie HttpOnly.
@@ -63,6 +73,7 @@ export function getCsrfToken(): string | null {
 /** Invalida respuestas de la sesión anterior y descarta sus datos cacheados. */
 export function advanceSessionGeneration(): void {
   sessionGeneration += 1;
+  pendingReads.clear();
   queryClient.clear();
 }
 
@@ -92,10 +103,28 @@ export class ApiError extends Error {
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-async function request<TResponse>(method: HttpMethod, path: string, body?: unknown): Promise<TResponse> {
+function request<TResponse>(method: HttpMethod, path: string, body?: unknown): Promise<TResponse> {
+  if (method !== 'GET') {
+    // A read started before a write must not be reused by the post-save refresh.
+    pendingReads.clear();
+    return performRequest<TResponse>(method, path, body).finally(() => pendingReads.clear());
+  }
+  const key = `${sessionGeneration}:${path}`;
+  const context = getImpersonation();
+  const pending = pendingReads.get(key);
+  if (pending?.context === context) return pending.promise as Promise<TResponse>;
+  const promise = performRequest<TResponse>(method, path, body).finally(() => {
+    if (pendingReads.get(key)?.promise === promise) pendingReads.delete(key);
+  });
+  pendingReads.set(key, {context, promise});
+  return promise;
+}
+
+async function performRequest<TResponse>(method: HttpMethod, path: string, body?: unknown): Promise<TResponse> {
   const context = getImpersonation();
   const generation = sessionGeneration;
   const csrf = method === 'GET' ? null : getCsrfToken();
+  const socketId = method === 'GET' ? undefined : socketIdProvider();
 
   const response = await fetch(`/api${path}`, {
     method,
@@ -104,6 +133,7 @@ async function request<TResponse>(method: HttpMethod, path: string, body?: unkno
       Accept: 'application/json',
       ...(body !== undefined && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...(csrf ? {'X-CSRF-Token': csrf} : {}),
+      ...(socketId ? {'X-Socket-ID': socketId} : {}),
     },
     body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });

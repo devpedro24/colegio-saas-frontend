@@ -1,3 +1,5 @@
+import type {OnboardingStatus} from '../../onboarding/onboarding.api'
+
 export interface AuthModel {
   authenticated: true
 }
@@ -64,6 +66,8 @@ export interface UserModel {
   is_superadmin?: boolean
   /** Selector opaco del canal del colegio, validado por Reverb con la sesión. */
   tenant_channel?: string | null
+  onboarding?: OnboardingStatus
+  onboardingFetchedAt?: number
   /** true si el usuario ya activó la verificación en dos pasos (MFA/TOTP). */
   mfa_enabled?: boolean
   mfa_required?: boolean

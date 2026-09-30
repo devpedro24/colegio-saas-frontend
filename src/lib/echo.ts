@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Pusher from 'pusher-js'
 import Echo from 'laravel-echo'
-import {getCsrfToken} from './api/client'
+import {getCsrfToken, setSocketIdProvider} from './api/client'
 
 declare global {
   interface Window {
@@ -49,6 +49,7 @@ export function initializeEcho(tenantChannel?: string | null, platform = false):
   })
 
   window.Echo = echoInstance
+  setSocketIdProvider(() => echoInstance?.socketId())
   return echoInstance
 }
 
@@ -56,6 +57,7 @@ export function disconnectEcho(): void {
   if (echoInstance) {
     echoInstance.disconnect()
     echoInstance = null
+    setSocketIdProvider(() => undefined)
   }
 }
 
