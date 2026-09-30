@@ -5,9 +5,12 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {AcademicYearCell} from '../../academic-year-context'
-import {useCreateNivel, useDeleteNivel, useNiveles, useUpdateNivel} from '../estructura.api'
+import {useCreateNivel, useDeleteNivel, useUpdateNivel} from '../estructura.api'
 import type {CreateNivelInput, Nivel} from '../estructura.types'
+import {useEstructuraList} from '../useAcademicPagedList'
+import {AcademicListFilters} from './AcademicListFilters'
 import {DeleteConfirmDialog} from './DeleteConfirmDialog'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
@@ -166,14 +169,15 @@ const NivelesTab: FC = () => {
   const t = (id: string, values?: Record<string, string | number>) =>
     intl.formatMessage({id}, values)
   const toast = useToast()
-  const {data, isLoading, isError} = useNiveles()
+  const listQuery = useEstructuraList<Nivel>('niveles')
+  const {isLoading, isError} = listQuery
   const del = useDeleteNivel()
 
   const [formOpen, setFormOpen] = useState(false)
   const [edit, setEdit] = useState<Nivel | null>(null)
   const [deleteId, setDeleteId] = useState<Nivel | null>(null)
 
-  const list = data?.data ?? []
+  const list = listQuery.rows
 
   return (
     <>
@@ -190,6 +194,14 @@ const NivelesTab: FC = () => {
           {t('academico.estructura.new')}
         </button>
       </div>
+
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.status')} value={listQuery.filters.estado ?? ''} onChange={event => listQuery.setFilter('estado', event.target.value)}>
+          <option value=''>{t('academic.filter.allStatuses')}</option>
+          <option value='activo'>{t('common.active')}</option>
+          <option value='inactivo'>{t('common.inactive')}</option>
+        </select>
+      </AcademicListFilters>
 
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
@@ -297,6 +309,8 @@ const NivelesTab: FC = () => {
           </table>
         </div>
       )}
+
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
 
       <NivelFormDialog
         show={formOpen}

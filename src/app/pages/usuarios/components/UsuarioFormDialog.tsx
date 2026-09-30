@@ -27,7 +27,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
   const toast = useToast()
   const create = useCreateUsuario()
   const update = useUpdateUsuario()
-  const {data: sedes} = useSedes(show)
+  const {data: sedes} = useSedes(show, true)
   const isEdit = usuario !== null
   const pending = create.isPending || update.isPending
 

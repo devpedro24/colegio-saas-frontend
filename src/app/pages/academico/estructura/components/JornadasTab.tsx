@@ -5,16 +5,18 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {formatSchoolTime} from '@/lib/format/schoolTime'
 import {AcademicYearCell} from '../../academic-year-context'
 import {
   useCreateJornada,
   useDeleteJornada,
-  useJornadas,
   useSedes,
   useUpdateJornada,
 } from '../estructura.api'
 import type {CreateJornadaInput, Jornada} from '../estructura.types'
+import {useEstructuraList} from '../useAcademicPagedList'
+import {AcademicListFilters} from './AcademicListFilters'
 import {DeleteConfirmDialog} from './DeleteConfirmDialog'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
@@ -44,7 +46,7 @@ const JornadaFormDialog: FC<{
 
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
-  const {data: sedes} = useSedes()
+  const {data: sedes} = useSedes(true, true)
   const create = useCreateJornada()
   const update = useUpdateJornada()
   const isEdit = jornada !== null
@@ -212,14 +214,16 @@ const JornadasTab: FC = () => {
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data, isLoading, isError} = useJornadas()
+  const listQuery = useEstructuraList<Jornada>('jornadas')
+  const {isLoading, isError} = listQuery
+  const {data: sedes} = useSedes(true, true)
   const del = useDeleteJornada()
 
   const [formOpen, setFormOpen] = useState(false)
   const [edit, setEdit] = useState<Jornada | null>(null)
   const [deleteId, setDeleteId] = useState<Jornada | null>(null)
 
-  const list = data?.data ?? []
+  const list = listQuery.rows
 
   return (
     <>
@@ -236,6 +240,18 @@ const JornadasTab: FC = () => {
           {t('academico.estructura.jornada.new')}
         </button>
       </div>
+
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.field.sede')} value={listQuery.filters.sede_id ?? ''} onChange={event => listQuery.setFilter('sede_id', event.target.value)}>
+          <option value=''>{t('academic.filter.allCampuses')}</option>
+          {(sedes?.data ?? []).map(sede => <option key={sede.id} value={sede.id}>{sede.nombre}</option>)}
+        </select>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.status')} value={listQuery.filters.estado ?? ''} onChange={event => listQuery.setFilter('estado', event.target.value)}>
+          <option value=''>{t('academic.filter.allStatuses')}</option>
+          <option value='activa'>{t('common.active')}</option>
+          <option value='inactiva'>{t('common.inactive')}</option>
+        </select>
+      </AcademicListFilters>
 
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
@@ -343,6 +359,8 @@ const JornadasTab: FC = () => {
           </table>
         </div>
       )}
+
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
 
       <JornadaFormDialog
         show={formOpen}

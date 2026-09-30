@@ -3,17 +3,20 @@ import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useNavigate} from 'react-router-dom'
-import {ApiError} from '@/lib/api/client'
+import {ApiError, api} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {
   sedeSubdomainUrl,
   useCreateSede,
   useDeleteSede,
   useHeredarSede,
-  useSedes,
   useUpdateSede,
 } from '../../estructura/estructura.api'
+import type {AcademicPaged} from '../../estructura/estructura.api'
 import type {CreateSedeInput, Sede} from '../../estructura/estructura.types'
+import {AcademicListFilters} from '../../estructura/components/AcademicListFilters'
+import {useAcademicPagedList} from '../../estructura/useAcademicPagedList'
 import {DeleteConfirmDialog} from '../../estructura/components/DeleteConfirmDialog'
 import {HeredarDialog} from './HeredarDialog'
 
@@ -396,7 +399,20 @@ const SedesConfigTab: FC = () => {
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const navigate = useNavigate()
-  const {data, isLoading, isError} = useSedes()
+  const {
+    rows: list, meta, searchInput, setSearchInput, filters, setFilter,
+    isLoading, isError, isFetching, onPageChange, onPerPageChange, onLoadMore,
+  } = useAcademicPagedList<Sede>({
+    key: ['estructura', 'sedes', 'config'],
+    storageKey: 'ajustes-institucionales.sedes',
+    enabled: true,
+    fetchPage: (page, perPage, search, selectedFilters) => {
+      const params = new URLSearchParams({page: String(page), per_page: String(perPage)})
+      if (search) params.set('search', search)
+      if (selectedFilters.estado) params.set('estado', selectedFilters.estado)
+      return api.get<AcademicPaged<Sede>>(`/estructura/sedes?${params}`)
+    },
+  })
   const del = useDeleteSede()
   const heredar = useHeredarSede()
 
@@ -405,8 +421,6 @@ const SedesConfigTab: FC = () => {
   const [deleteId, setDeleteId] = useState<Sede | null>(null)
   const [heredarSede, setHeredarSede] = useState<Sede | null>(null)
   const [creds, setCreds] = useState<{email: string | null; password: string | null; url: string | null} | null>(null)
-
-  const list = data?.data ?? []
 
   const openCreate = () => {
     setSedeEdit(null)
@@ -467,7 +481,20 @@ const SedesConfigTab: FC = () => {
           )}
 
           {!isLoading && !isError && (
-            <div className='table-responsive'>
+            <>
+            <AcademicListFilters search={searchInput} onSearchChange={setSearchInput}>
+              <select
+                className='form-select form-select-solid w-auto'
+                aria-label={t('common.status')}
+                value={filters.estado ?? ''}
+                onChange={(event) => setFilter('estado', event.target.value)}
+              >
+                <option value=''>{t('academic.filter.allStatuses')}</option>
+                <option value='activa'>{t('common.active')}</option>
+                <option value='inactiva'>{t('common.inactive')}</option>
+              </select>
+            </AcademicListFilters>
+            <div className='table-responsive' aria-busy={isFetching}>
               <table className='table table-row-dashed align-middle gs-0 gy-4'>
                 <thead>
                   <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
@@ -591,6 +618,15 @@ const SedesConfigTab: FC = () => {
                 </tbody>
               </table>
             </div>
+            <AcademicPagination
+              meta={meta}
+              visibleCount={list.length}
+              loading={isFetching}
+              onPageChange={onPageChange}
+              onPerPageChange={onPerPageChange}
+              onLoadMore={onLoadMore}
+            />
+            </>
           )}
         </div>
       </div>

@@ -5,16 +5,18 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {formatSchoolTime} from '@/lib/format/schoolTime'
 import {AcademicYearCell} from '../../academic-year-context'
 import {
-  useBloquesHorarios,
   useCreateBloqueHorario,
   useDeleteBloqueHorario,
   useJornadas,
   useUpdateBloqueHorario,
 } from '../estructura.api'
 import type {BloqueHorario, CreateBloqueHorarioInput} from '../estructura.types'
+import {useEstructuraList} from '../useAcademicPagedList'
+import {AcademicListFilters} from './AcademicListFilters'
 import {DeleteConfirmDialog} from './DeleteConfirmDialog'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
@@ -232,14 +234,16 @@ const BloquesTab: FC = () => {
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data, isLoading, isError} = useBloquesHorarios()
+  const listQuery = useEstructuraList<BloqueHorario>('bloques-horarios')
+  const {isLoading, isError} = listQuery
+  const {data: jornadas} = useJornadas()
   const del = useDeleteBloqueHorario()
 
   const [formOpen, setFormOpen] = useState(false)
   const [edit, setEdit] = useState<BloqueHorario | null>(null)
   const [deleteId, setDeleteId] = useState<BloqueHorario | null>(null)
 
-  const list = data?.data ?? []
+  const list = listQuery.rows
 
   return (
     <>
@@ -256,6 +260,18 @@ const BloquesTab: FC = () => {
           {t('academico.estructura.new')}
         </button>
       </div>
+
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.field.jornada')} value={listQuery.filters.jornada_id ?? ''} onChange={event => listQuery.setFilter('jornada_id', event.target.value)}>
+          <option value=''>{t('academic.filter.allJourneys')}</option>
+          {(jornadas?.data ?? []).map(jornada => <option key={jornada.id} value={jornada.id}>{jornada.nombre}</option>)}
+        </select>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.status')} value={listQuery.filters.estado ?? ''} onChange={event => listQuery.setFilter('estado', event.target.value)}>
+          <option value=''>{t('academic.filter.allStatuses')}</option>
+          <option value='activo'>{t('common.active')}</option>
+          <option value='inactivo'>{t('common.inactive')}</option>
+        </select>
+      </AcademicListFilters>
 
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
@@ -377,6 +393,8 @@ const BloquesTab: FC = () => {
           </table>
         </div>
       )}
+
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
 
       <BloqueFormDialog
         show={formOpen}

@@ -5,18 +5,20 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {useAnosLectivos} from '../../anos-lectivos/anos-lectivos.api'
 import {useAcademicYear} from '../../academic-year-context'
 import {
   useCreateGrupo,
   useDeleteGrupo,
   useGrados,
-  useGrupos,
   useJornadas,
   useSedes,
   useUpdateGrupo,
 } from '../estructura.api'
 import type {CreateGrupoInput, Grupo} from '../estructura.types'
+import {useEstructuraList} from '../useAcademicPagedList'
+import {AcademicListFilters} from './AcademicListFilters'
 import {DeleteConfirmDialog} from './DeleteConfirmDialog'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
@@ -54,7 +56,7 @@ const GrupoFormDialog: FC<{show: boolean; grupo: Grupo | null; onClose: () => vo
   const {yearId, setYearId} = useAcademicYear()
   const {data: grados} = useGrados()
   const {data: jornadas} = useJornadas()
-  const {data: sedes} = useSedes()
+  const {data: sedes} = useSedes(true, true)
   const create = useCreateGrupo()
   const update = useUpdateGrupo()
   const isEdit = grupo !== null
@@ -260,14 +262,17 @@ const GruposTab: FC = () => {
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data, isLoading, isError} = useGrupos()
+  const listQuery = useEstructuraList<Grupo>('grupos')
+  const {isLoading, isError} = listQuery
+  const {data: grados} = useGrados()
+  const {data: jornadas} = useJornadas()
   const del = useDeleteGrupo()
 
   const [formOpen, setFormOpen] = useState(false)
   const [edit, setEdit] = useState<Grupo | null>(null)
   const [deleteId, setDeleteId] = useState<Grupo | null>(null)
 
-  const list = data?.data ?? []
+  const list = listQuery.rows
 
   return (
     <>
@@ -284,6 +289,22 @@ const GruposTab: FC = () => {
           {t('academico.estructura.new')}
         </button>
       </div>
+
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+        <select className='form-select form-select-solid w-auto' aria-label={t('academico.estructura.grupo.grado')} value={listQuery.filters.grado_id ?? ''} onChange={event => listQuery.setFilter('grado_id', event.target.value)}>
+          <option value=''>{t('academic.filter.allGrades')}</option>
+          {(grados?.data ?? []).map(grado => <option key={grado.id} value={grado.id}>{grado.nombre}</option>)}
+        </select>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.field.jornada')} value={listQuery.filters.jornada_id ?? ''} onChange={event => listQuery.setFilter('jornada_id', event.target.value)}>
+          <option value=''>{t('academic.filter.allJourneys')}</option>
+          {(jornadas?.data ?? []).map(jornada => <option key={jornada.id} value={jornada.id}>{jornada.nombre}</option>)}
+        </select>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.status')} value={listQuery.filters.estado ?? ''} onChange={event => listQuery.setFilter('estado', event.target.value)}>
+          <option value=''>{t('academic.filter.allStatuses')}</option>
+          <option value='activo'>{t('common.active')}</option>
+          <option value='inactivo'>{t('common.inactive')}</option>
+        </select>
+      </AcademicListFilters>
 
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
@@ -397,6 +418,8 @@ const GruposTab: FC = () => {
           </table>
         </div>
       )}
+
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
 
       <GrupoFormDialog
         show={formOpen}

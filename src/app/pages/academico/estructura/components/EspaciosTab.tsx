@@ -5,15 +5,17 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {AcademicYearCell} from '../../academic-year-context'
 import {
   useCreateEspacioFisico,
   useDeleteEspacioFisico,
-  useEspaciosFisicos,
   useSedes,
   useUpdateEspacioFisico,
 } from '../estructura.api'
 import type {CreateEspacioFisicoInput, EspacioFisico} from '../estructura.types'
+import {useEstructuraList} from '../useAcademicPagedList'
+import {AcademicListFilters} from './AcademicListFilters'
 import {DeleteConfirmDialog} from './DeleteConfirmDialog'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
@@ -52,7 +54,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data: sedes} = useSedes()
+  const {data: sedes} = useSedes(true, true)
   const create = useCreateEspacioFisico()
   const update = useUpdateEspacioFisico()
   const isEdit = espacio !== null
@@ -237,14 +239,16 @@ const EspaciosTab: FC = () => {
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data, isLoading, isError} = useEspaciosFisicos()
+  const listQuery = useEstructuraList<EspacioFisico>('espacios-fisicos')
+  const {isLoading, isError} = listQuery
+  const {data: sedes} = useSedes(true, true)
   const del = useDeleteEspacioFisico()
 
   const [formOpen, setFormOpen] = useState(false)
   const [edit, setEdit] = useState<EspacioFisico | null>(null)
   const [deleteId, setDeleteId] = useState<EspacioFisico | null>(null)
 
-  const list = data?.data ?? []
+  const list = listQuery.rows
 
   const estadoBadge = (estado: string) => {
     switch (estado) {
@@ -287,6 +291,20 @@ const EspaciosTab: FC = () => {
           {t('academico.estructura.new')}
         </button>
       </div>
+
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.field.sede')} value={listQuery.filters.sede_id ?? ''} onChange={event => listQuery.setFilter('sede_id', event.target.value)}>
+          <option value=''>{t('academic.filter.allCampuses')}</option>
+          {(sedes?.data ?? []).map(sede => <option key={sede.id} value={sede.id}>{sede.nombre}</option>)}
+        </select>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.status')} value={listQuery.filters.estado ?? ''} onChange={event => listQuery.setFilter('estado', event.target.value)}>
+          <option value=''>{t('academic.filter.allStatuses')}</option>
+          <option value='disponible'>{t('academico.estructura.estado.disponible')}</option>
+          <option value='ocupado'>{t('academico.estructura.estado.ocupado')}</option>
+          <option value='mantenimiento'>{t('academico.estructura.estado.mantenimiento')}</option>
+          <option value='inactivo'>{t('academico.estructura.estado.inactivo')}</option>
+        </select>
+      </AcademicListFilters>
 
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
@@ -388,6 +406,8 @@ const EspaciosTab: FC = () => {
           </table>
         </div>
       )}
+
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
 
       <EspacioFormDialog
         show={formOpen}

@@ -5,9 +5,12 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {AcademicYearCell} from '../../academic-year-context'
-import {useCreateGrado, useDeleteGrado, useGrados, useNiveles, useUpdateGrado} from '../estructura.api'
+import {useCreateGrado, useDeleteGrado, useNiveles, useUpdateGrado} from '../estructura.api'
 import type {CreateGradoInput, Grado} from '../estructura.types'
+import {useEstructuraList} from '../useAcademicPagedList'
+import {AcademicListFilters} from './AcademicListFilters'
 import {DeleteConfirmDialog} from './DeleteConfirmDialog'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
@@ -186,14 +189,16 @@ const GradosTab: FC = () => {
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data, isLoading, isError} = useGrados()
+  const listQuery = useEstructuraList<Grado>('grados')
+  const {isLoading, isError} = listQuery
+  const {data: niveles} = useNiveles()
   const del = useDeleteGrado()
 
   const [formOpen, setFormOpen] = useState(false)
   const [edit, setEdit] = useState<Grado | null>(null)
   const [deleteId, setDeleteId] = useState<Grado | null>(null)
 
-  const list = data?.data ?? []
+  const list = listQuery.rows
 
   return (
     <>
@@ -210,6 +215,18 @@ const GradosTab: FC = () => {
           {t('academico.estructura.new')}
         </button>
       </div>
+
+      <AcademicListFilters search={listQuery.searchInput} onSearchChange={listQuery.setSearchInput}>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.field.nivel')} value={listQuery.filters.nivel_id ?? ''} onChange={event => listQuery.setFilter('nivel_id', event.target.value)}>
+          <option value=''>{t('academico.nivel.todos')}</option>
+          {(niveles?.data ?? []).map(nivel => <option key={nivel.id} value={nivel.id}>{nivel.nombre}</option>)}
+        </select>
+        <select className='form-select form-select-solid w-auto' aria-label={t('common.status')} value={listQuery.filters.estado ?? ''} onChange={event => listQuery.setFilter('estado', event.target.value)}>
+          <option value=''>{t('academic.filter.allStatuses')}</option>
+          <option value='activo'>{t('common.active')}</option>
+          <option value='inactivo'>{t('common.inactive')}</option>
+        </select>
+      </AcademicListFilters>
 
       {isLoading && (
         <div className='d-flex justify-content-center align-items-center py-15'>
@@ -315,6 +332,8 @@ const GradosTab: FC = () => {
           </table>
         </div>
       )}
+
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
 
       <GradoFormDialog
         show={formOpen}

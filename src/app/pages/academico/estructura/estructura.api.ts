@@ -30,6 +30,18 @@ export const GRADOS_KEY = ['estructura', 'grados'] as const
 export const GRUPOS_KEY = ['estructura', 'grupos'] as const
 export const BLOQUES_KEY = ['estructura', 'bloques-horarios'] as const
 export const ESPACIOS_KEY = ['estructura', 'espacios-fisicos'] as const
+export type AcademicPageMeta = {current_page: number; per_page: number; last_page: number; total: number; from: number | null; to: number | null}
+export type AcademicPaged<T> = {data: T[]; meta: AcademicPageMeta}
+export type AcademicListParams = {page: number; perPage: number; search?: string; filters?: Record<string, string>}
+const listUrl = (path: string, yearId: string, params: AcademicListParams) => {
+  const query = new URLSearchParams({ano_lectivo_id: yearId, page: String(params.page), per_page: String(params.perPage)})
+  if (params.search?.trim()) query.set('search', params.search.trim())
+  Object.entries(params.filters ?? {}).forEach(([name, value]) => {if (value) query.set(name, value)})
+  return `${path}?${query}`
+}
+export function getEstructuraPage<T>(entity: 'jornadas' | 'niveles' | 'grados' | 'grupos' | 'bloques-horarios' | 'espacios-fisicos', yearId: string, params: AcademicListParams) {
+  return api.get<AcademicPaged<T>>(listUrl(`/estructura/${entity}`, yearId, params))
+}
 const annualUrl = (path: string, yearId: string, key?: string, value?: string | null) => {
   const params = new URLSearchParams({ano_lectivo_id: yearId})
   if (key && value) params.set(key, value)
@@ -51,11 +63,13 @@ export function sedeSubdomainUrl(tenantDomain: string): string {
 
 // ---- Sedes ----
 
-export function useSedes(enabled = true) {
+export function useSedes(enabled = true, forSelect = false, params?: AcademicListParams) {
+  const query = new URLSearchParams({page: String(params?.page ?? 1), per_page: String(params?.perPage ?? (forSelect ? 1000 : 5))})
+  if (params?.search?.trim()) query.set('search', params.search.trim())
   return useQuery({
-    queryKey: SEDES_KEY,
+    queryKey: [...SEDES_KEY, forSelect ? 'options' : 'list', params?.page ?? 1, params?.perPage ?? (forSelect ? 1000 : 5), params?.search ?? ''],
     enabled,
-    queryFn: () => api.get<{data: Sede[]}>('/estructura/sedes'),
+    queryFn: () => api.get<AcademicPaged<Sede>>(`/estructura/sedes?${query}`),
   })
 }
 
@@ -104,7 +118,7 @@ export function useJornadas(sedeId?: string | null) {
   return useQuery({
     queryKey: [...JORNADAS_KEY, yearId, sedeId ?? '_'],
     enabled: !!yearId && (sedeId === undefined || sedeId !== null),
-    queryFn: () => api.get<{data: Jornada[]}>(annualUrl('/estructura/jornadas', yearId, 'sede_id', sedeId)),
+    queryFn: () => api.get<{data: Jornada[]}>(`${annualUrl('/estructura/jornadas', yearId, 'sede_id', sedeId)}&per_page=1000`),
   })
 }
 
@@ -142,7 +156,7 @@ export function useNiveles() {
   const {yearId} = useAcademicYear()
   return useQuery({
     queryKey: [...NIVELES_KEY, yearId], enabled: !!yearId,
-    queryFn: () => api.get<{data: Nivel[]}>(annualUrl('/estructura/niveles', yearId)),
+    queryFn: () => api.get<{data: Nivel[]}>(`${annualUrl('/estructura/niveles', yearId)}&per_page=1000`),
   })
 }
 
@@ -181,7 +195,7 @@ export function useGrados(nivelId?: string) {
   return useQuery({
     queryKey: [...GRADOS_KEY, yearId],
     enabled: !!yearId && nivelId === undefined,
-    queryFn: () => api.get<{data: Grado[]}>(annualUrl('/estructura/grados', yearId)),
+    queryFn: () => api.get<{data: Grado[]}>(`${annualUrl('/estructura/grados', yearId)}&per_page=1000`),
   })
 }
 
@@ -221,7 +235,7 @@ export function useGrupos(anoLectivoId?: string) {
   return useQuery({
     queryKey: [...GRUPOS_KEY, selectedYear],
     enabled: !!selectedYear,
-    queryFn: () => api.get<{data: Grupo[]}>(annualUrl('/estructura/grupos', selectedYear)),
+    queryFn: () => api.get<{data: Grupo[]}>(`${annualUrl('/estructura/grupos', selectedYear)}&per_page=20`),
   })
 }
 
@@ -257,7 +271,7 @@ export function useBloquesHorarios(jornadaId?: string) {
   return useQuery({
     queryKey: [...BLOQUES_KEY, yearId, jornadaId ?? '_all'],
     enabled: !!yearId && (jornadaId === undefined || jornadaId !== null),
-    queryFn: () => api.get<{data: BloqueHorario[]}>(annualUrl('/estructura/bloques-horarios', yearId, 'jornada_id', jornadaId)),
+    queryFn: () => api.get<{data: BloqueHorario[]}>(`${annualUrl('/estructura/bloques-horarios', yearId, 'jornada_id', jornadaId)}&per_page=1000`),
   })
 }
 
@@ -297,7 +311,7 @@ export function useEspaciosFisicos(sedeId?: string) {
   return useQuery({
     queryKey: [...ESPACIOS_KEY, yearId, sedeId ?? '_all'],
     enabled: !!yearId && (sedeId === undefined || sedeId !== null),
-    queryFn: () => api.get<{data: EspacioFisico[]}>(annualUrl('/estructura/espacios-fisicos', yearId, 'sede_id', sedeId)),
+    queryFn: () => api.get<{data: EspacioFisico[]}>(`${annualUrl('/estructura/espacios-fisicos', yearId, 'sede_id', sedeId)}&per_page=20`),
   })
 }
 
