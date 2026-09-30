@@ -1,5 +1,6 @@
-import {useParams, useNavigate} from 'react-router-dom'
+import {useParams, useNavigate, Navigate} from 'react-router-dom'
 import {useBoletin} from '../boletines.api'
+import {useCatalogoEvaluacion} from '../../evaluacion/evaluacion.api'
 import {KTCard, KTCardBody} from '@/_metronic/helpers'
 import type {BoletinData} from '../boletines.types'
 import {useIntl} from 'react-intl'
@@ -7,11 +8,23 @@ import '../boletines.css'
 
 export const BoletinView = () => {
   const {matriculaId} = useParams()
+  const intl = useIntl()
+  const catalog = useCatalogoEvaluacion()
+  if (catalog.isLoading) return <div className='card card-body text-muted p-6' role='status'>{intl.formatMessage({id: 'boletines.generando'})}</div>
+  if (catalog.error || !catalog.data) return <div className='alert alert-danger' role='alert'>{catalog.error?.message || intl.formatMessage({id: 'common.error'})}</div>
+
+  const enrollment = catalog.data.matriculas.find(item => item.url_token === matriculaId || String(item.id) === matriculaId)
+  if (!enrollment) return <div className='alert alert-danger' role='alert'>{intl.formatMessage({id: 'common.error'})}</div>
+  if (matriculaId !== enrollment.url_token) return <Navigate to={`/academico/boletines/${enrollment.url_token}`} replace />
+  return <BoletinContent key={enrollment.id} matriculaId={enrollment.id} />
+}
+
+const BoletinContent = ({matriculaId}: {matriculaId: number}) => {
   const navigate = useNavigate()
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
 
-  const {data, isLoading, isError, error} = useBoletin(Number(matriculaId))
+  const {data, isLoading, isError, error} = useBoletin(matriculaId)
 
   if (isLoading) {
     return (

@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react'
-import {useParams, useNavigate} from 'react-router-dom'
-import {usePlanilla, useGuardarNotas, useGuardarComponente, useGuardarActividad} from '../evaluacion.api'
+import {useParams, useNavigate, Navigate} from 'react-router-dom'
+import {useCatalogoEvaluacion, usePlanilla, useGuardarNotas, useGuardarComponente, useGuardarActividad} from '../evaluacion.api'
 import {KTCard, KTCardBody} from '@/_metronic/helpers'
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
@@ -8,7 +8,20 @@ import type {NotaUpdate, ComponenteEvaluacion} from '../evaluacion.types'
 
 export const PlanillaView = () => {
   const {asignacionId, periodoId} = useParams()
-  return <PlanillaEditor key={`${asignacionId}:${periodoId}`} asignacionId={Number(asignacionId)} periodoId={Number(periodoId)} />
+  const intl = useIntl()
+  const catalog = useCatalogoEvaluacion()
+  if (catalog.isLoading) return <div className='text-muted p-5' role='status'>{intl.formatMessage({id: 'siee.cargando'})}</div>
+  if (catalog.error || !catalog.data) return <div className='alert alert-danger' role='alert'>{catalog.error?.message || intl.formatMessage({id: 'common.error'})}</div>
+
+  const assignment = catalog.data.asignaciones.find(item => item.url_token === asignacionId || String(item.id) === asignacionId)
+  const period = catalog.data.periodos.find(item => item.url_token === periodoId || String(item.id) === periodoId)
+  if (!assignment || !period || assignment.ano_lectivo_id !== period.ano_lectivo_id) {
+    return <div className='alert alert-danger' role='alert'>{intl.formatMessage({id: 'common.error'})}</div>
+  }
+  if (asignacionId !== assignment.url_token || periodoId !== period.url_token) {
+    return <Navigate to={`/academico/evaluacion/planillas/${assignment.url_token}/${period.url_token}`} replace />
+  }
+  return <PlanillaEditor key={`${assignment.id}:${period.id}`} asignacionId={assignment.id} periodoId={period.id} />
 }
 
 const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: number; periodoId: number}) => {

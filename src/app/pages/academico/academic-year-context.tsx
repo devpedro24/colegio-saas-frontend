@@ -5,7 +5,7 @@ import {useAnosLectivos} from './anos-lectivos/anos-lectivos.api'
 
 type AcademicYearContextValue = {
   yearId: string
-  years: {id: string; nombre: string; estado: string}[]
+  years: {id: string; url_token: string; legacy_url_token?: string; nombre: string; estado: string}[]
   setYearId: (id: string) => void
   writable: boolean
 }
@@ -17,7 +17,7 @@ export function AcademicYearProvider({children}: {children: ReactNode}) {
   const [params, setParams] = useSearchParams()
   const years = data?.data ?? []
   const requested = params.get('ano')
-  const selected = years.find(item => item.url_token === requested)
+  const selected = years.find(item => item.url_token === requested || item.legacy_url_token === requested || String(item.id) === requested)
     ?? years.find(item => item.estado === 'en_curso')
     ?? years.find(item => item.estado === 'planificado')
     ?? years[0]

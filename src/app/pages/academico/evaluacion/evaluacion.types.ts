@@ -4,12 +4,14 @@
   grupo_id: number
   materia_id: number
   docente_id: number
+  url_token: string
   materia: { id: number; nombre: string }
   grupo: { id: number; nombre: string; grado: { id: number; nombre: string } }
 }
 
 export interface Matricula {
   id: number
+  url_token: string
   estudiante_id: number
   grupo_id: number
   ano_lectivo_id: number
@@ -23,7 +25,7 @@ export interface EvaluacionCatalogoResponse {
   can_configure: boolean
   can_view_reports: boolean
   anos: Array<{id: number; nombre: string; estado: string}>
-  periodos: Array<{id: number; ano_lectivo_id: number; nombre: string; orden: number; estado: string}>
+  periodos: Array<{id: number; url_token: string; ano_lectivo_id: number; nombre: string; orden: number; estado: string}>
   asignaciones: AsignacionDocente[]
   matriculas: Matricula[]
   grupos: Array<{id: number; nombre: string; ano_lectivo_id: number; grado: {id: number; nombre: string}}>

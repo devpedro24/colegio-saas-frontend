@@ -16,6 +16,8 @@ export interface AnoLectivo {
   id: string
   /** Selector opaco para la URL; el ID solo se usa dentro de la aplicación. */
   url_token: string
+  /** Permite migrar enlaces anteriores al selector corto sin cambiar de año. */
+  legacy_url_token?: string
   /** Identificacion: "2026" (Calendario A) o "2025-2026" (Calendario B). */
   nombre: string
   tipo_calendario: TipoCalendario

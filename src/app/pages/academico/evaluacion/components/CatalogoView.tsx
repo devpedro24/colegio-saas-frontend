@@ -21,6 +21,7 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
   const selectedYear = year || String((data.anos.find(a => a.estado === 'en_curso') ?? data.anos[0])?.id ?? '')
   const periods = data.periodos.filter(p => String(p.ano_lectivo_id) === selectedYear)
   const selectedPeriod = periods.some(p => String(p.id) === period) ? period : String((periods.find(p => p.estado === 'abierto') ?? periods[0])?.id ?? '')
+  const selectedPeriodToken = periods.find(p => String(p.id) === selectedPeriod)?.url_token
   const assignments = data.asignaciones.filter(a => String(a.ano_lectivo_id) === selectedYear)
   const enrollments = data.matriculas.filter(m => String(m.ano_lectivo_id) === selectedYear)
   const groups = data.grupos.filter(g => String(g.ano_lectivo_id) === selectedYear)
@@ -52,7 +53,7 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
         <thead><tr className='text-muted fw-bold'><th>{t('siee.materia')}</th><th>{t('evaluacion.matriculas.grupo')}</th><th className='text-end'>{t('evaluacion.catalogo.acciones')}</th></tr></thead>
         <tbody>{assignments.map(a => <tr key={a.id}>
           <td className='fw-semibold'>{a.materia.nombre}</td><td>{a.grupo.grado.nombre} / {a.grupo.nombre}</td>
-          <td className='text-end'><button className='btn btn-light-primary btn-sm' disabled={!selectedPeriod} onClick={() => navigate(`/academico/evaluacion/planillas/${a.id}/${selectedPeriod}`)}>{t('evaluacion.catalogo.ver_planilla')}</button></td>
+          <td className='text-end'><button className='btn btn-light-primary btn-sm' disabled={!selectedPeriodToken || !a.url_token} onClick={() => navigate(`/academico/evaluacion/planillas/${a.url_token}/${selectedPeriodToken}`)}>{t('evaluacion.catalogo.ver_planilla')}</button></td>
         </tr>)}
         {!assignments.length && <tr><td colSpan={3} className='text-center text-muted py-8'>{t('evaluacion.catalogo.no_asignaturas')}</td></tr>}
         </tbody>
@@ -84,7 +85,7 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
           <thead><tr className='text-muted fw-bold'><th>{t('evaluacion.matriculas.estudiante')}</th><th>{t('evaluacion.matriculas.grupo')}</th><th>{t('evaluacion.matriculas.estado')}</th><th className='text-end'>{t('boletines.title')}</th></tr></thead>
           <tbody>{enrollments.map(m => <tr key={m.id}>
             <td className='fw-semibold'>{m.estudiante.name}</td><td>{m.grupo?.grado.nombre} / {m.grupo?.nombre}</td><td><span className='badge badge-light-success'>{t(`evaluacion.matriculas.estado.${m.estado}`)}</span></td>
-            <td className='text-end'><button className='btn btn-light-primary btn-sm' onClick={() => navigate(`/academico/boletines/${m.id}`)}>{t('evaluacion.matriculas.ver_boletin')}</button></td>
+            <td className='text-end'><button className='btn btn-light-primary btn-sm' disabled={!m.url_token} onClick={() => navigate(`/academico/boletines/${m.url_token}`)}>{t('evaluacion.matriculas.ver_boletin')}</button></td>
           </tr>)}
           {!enrollments.length && <tr><td colSpan={4} className='text-muted text-center py-8'>{t('evaluacion.matriculas.empty')}</td></tr>}
           </tbody>
