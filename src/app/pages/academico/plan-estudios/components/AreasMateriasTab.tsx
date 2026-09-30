@@ -2,7 +2,6 @@ import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {useToast} from '@/lib/ui/toast'
 import {ApiError} from '@/lib/api/client'
 import {AcademicYearCell} from '../../academic-year-context'
@@ -13,8 +12,6 @@ import {
   useCreatePlanMateria,
   useDeletePlanArea,
   useDeletePlanMateria,
-  PLAN_AREAS_KEY,
-  PLAN_MATERIAS_KEY,
   usePlanAreas,
   usePlanMaterias,
   useUpdatePlanArea,
@@ -273,7 +270,7 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; areas: Area
 
 const AreasMateriasTab: FC = () => {
   const intl = useIntl()
-  useTenantSync({area: PLAN_AREAS_KEY, materia: PLAN_MATERIAS_KEY})
+
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
   const {data: niveles} = useNiveles()

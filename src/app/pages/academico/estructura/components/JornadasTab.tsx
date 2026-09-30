@@ -1,9 +1,8 @@
-﻿import {FC, useState} from 'react'
+import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {useEffect, type FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {formatSchoolTime} from '@/lib/format/schoolTime'
@@ -42,7 +41,7 @@ const JornadaFormDialog: FC<{
   onClose: () => void
 }> = ({show, jornada, onClose}) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
   const {data: sedes} = useSedes()
@@ -210,7 +209,7 @@ const JornadaFormDialog: FC<{
 
 const JornadasTab: FC = () => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useJornadas()

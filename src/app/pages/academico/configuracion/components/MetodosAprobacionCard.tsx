@@ -1,8 +1,7 @@
-﻿import {FC, useState} from 'react'
+import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {
@@ -49,7 +48,7 @@ const MetodoForm: FC<{
   onClose: () => void
 }> = ({anoLectivoId, metodo, onClose}) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const create = useCreateMetodo(anoLectivoId)
@@ -178,7 +177,7 @@ const MetodoForm: FC<{
 // Bloque 5: metodo de aprobacion. Lista + crear/editar/eliminar, filtrada por ano lectivo.
 const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useMetodosAprobacion(anoLectivoId)

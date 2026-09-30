@@ -1,9 +1,8 @@
-﻿import {FC, useState} from 'react'
+import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {AcademicYearCell} from '../../academic-year-context'
@@ -50,7 +49,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
   onClose,
 }) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data: sedes} = useSedes()
@@ -235,7 +234,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
 
 const EspaciosTab: FC = () => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useEspaciosFisicos()

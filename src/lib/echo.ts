@@ -12,7 +12,7 @@ window.Pusher = Pusher
 
 let echoInstance: Echo<any> | null = null
 
-export function initializeEcho(token: string): Echo<any> {
+export function initializeEcho(token: string, tenantAccess?: {id: string; token: string; viaHeader: boolean}): Echo<any> {
   if (echoInstance) {
     echoInstance.disconnect()
   }
@@ -26,13 +26,24 @@ export function initializeEcho(token: string): Echo<any> {
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
     enabledTransports: ['ws', 'wss'],
     disableStats: true,
-    auth: {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
+    authorizer: (channel: {name: string}) => ({
+      authorize: (socketId: string, callback: (error: Error | null, data: {auth: string; channel_data?: string; shared_secret?: string} | null) => void) => {
+        const tenantChannel = tenantAccess && channel.name === `private-tenant.${tenantAccess.id}`
+        const viaHeader = tenantChannel && tenantAccess.viaHeader
+        fetch(viaHeader ? '/api/tenant-broadcasting/auth' : '/api/broadcasting/auth', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json', 'Content-Type': 'application/json',
+            Authorization: `Bearer ${tenantChannel ? tenantAccess.token : token}`,
+            ...(viaHeader ? {'X-Tenant': tenantAccess.id} : {}),
+          },
+          body: JSON.stringify({socket_id: socketId, channel_name: channel.name}),
+        }).then(async response => {
+          if (!response.ok) throw new Error(`WebSocket authorization failed (${response.status})`)
+          callback(null, await response.json())
+        }).catch(error => callback(error, null))
       },
-    },
-    authEndpoint: '/api/broadcasting/auth',
+    }),
   })
 
   window.Echo = echoInstance

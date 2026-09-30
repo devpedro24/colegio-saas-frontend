@@ -1,8 +1,7 @@
-import {FC, useState} from 'react'
+import {FC, useState, useEffect, useRef} from 'react'
 import type {FormEvent} from 'react'
 import {useIntl} from 'react-intl'
 import {useQueryClient} from '@tanstack/react-query'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {useAuth} from '@/app/modules/auth'
 import {onboardingKey, useOnboarding} from '@/app/modules/onboarding/onboarding.api'
 import {LogoUploader} from '@/app/modules/onboarding/LogoUploader'
@@ -29,19 +28,23 @@ const fromDatos = (d: DatosInstitucionales | undefined): FormState => ({
   correo: d?.correo ?? '',
 })
 
-// Formulario interno: se remonta (via key) cuando llegan los datos del backend.
+// Actualiza datos remotos solo mientras el usuario no tenga cambios pendientes.
 const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const update = useUpdateDatosInstitucionales()
 
   const [form, setForm] = useState<FormState>(fromDatos(datos))
+  const editing = useRef(false)
+  useEffect(() => {
+    if (!editing.current) setForm(fromDatos(datos))
+  }, [datos])
   const [error, setError] = useState<ApiError | null>(null)
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
-  const set = (patch: Partial<FormState>) => setForm((prev) => ({...prev, ...patch}))
+  const set = (patch: Partial<FormState>) => { editing.current = true; setForm((prev) => ({...prev, ...patch})) }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -56,7 +59,7 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
         correo: form.correo.trim() || null,
       },
       {
-        onSuccess: () => toast.success(t('academico.config.datos.toast.saved')),
+        onSuccess: () => { editing.current = false; toast.success(t('academico.config.datos.toast.saved')) },
         onError: (err) => {
           if (err instanceof ApiError) {
             setError(err)
@@ -175,7 +178,7 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
 // Bloque 1: datos institucionales. GET/PUT /config/datos-institucionales (sin filtro de ano).
 const DatosInstitucionalesCard: FC = () => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const {data, isLoading, isError} = useDatosInstitucionales()
 
@@ -206,7 +209,7 @@ const DatosInstitucionalesCard: FC = () => {
           </div>
         )}
 
-        {!isLoading && !isError && <DatosForm key={data?.data?.nombre ?? 'empty'} datos={data?.data} />}
+        {!isLoading && !isError && <DatosForm datos={data?.data} />}
         {!isLoading && !isError && <LogoEditor />}
       </div>
     </div>

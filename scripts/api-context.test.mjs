@@ -8,7 +8,8 @@ const impersonationModule = moduleUrl(`export const getActiveImpersonation = () 
 const queryModule = moduleUrl(`export const queryClient = {clear: () => globalThis.smokeContext.clears++}`)
 const source = fs.readFileSync(new URL('../src/lib/api/client.ts', import.meta.url), 'utf8')
 let js = ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022}}).outputText
-js = js.replaceAll('@/app/modules/impersonation/impersonation.store', impersonationModule).replaceAll('./query-client', queryModule)
+const realtimeModule = moduleUrl(ts.transpileModule(fs.readFileSync(new URL('../src/lib/realtime.ts', import.meta.url), 'utf8'), {compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022}}).outputText)
+js = js.replaceAll('@/app/modules/impersonation/impersonation.store', impersonationModule).replaceAll('./query-client', queryModule).replaceAll('../realtime', realtimeModule)
 const {api, setToken} = await import(moduleUrl(js))
 
 test('requests from an old school cannot populate the new school context', async () => {

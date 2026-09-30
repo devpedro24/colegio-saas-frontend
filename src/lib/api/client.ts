@@ -14,6 +14,7 @@
 
 import {clearImpersonation, getActiveImpersonation} from '@/app/modules/impersonation/impersonation.store';
 import {queryClient} from './query-client';
+import {notifyLocalChange, resourceForPath} from '../realtime';
 
 const TOKEN_STORAGE_KEY = 'colegio-saas.auth-token';
 
@@ -117,6 +118,10 @@ async function request<TResponse>(method: HttpMethod, path: string, body?: unkno
     throw new ApiError(response.status, message, data?.errors, data);
   }
 
+  if (method !== 'GET' && !['/login', '/logout', '/forgot-password', '/broadcasting/auth', '/tenant-broadcasting/auth'].includes(path)) {
+    notifyLocalChange({resource: resourceForPath(path), token: authToken,
+      tenantId: useImpersonation ? impersonation!.colegioId : undefined});
+  }
   return data as TResponse;
 }
 

@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react'
+import {useState, useEffect, useRef} from 'react'
 import {KTCard, KTCardBody} from '@/_metronic/helpers'
 import {useSiee, useUpdateSiee, useUpdateCurriculo} from '../siee.api'
 import {useIntl} from 'react-intl'
@@ -13,6 +13,7 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
   const {data, isLoading, isError, error} = useSiee(anoLectivoId)
   const mutation = useUpdateSiee(anoLectivoId)
   const curriculoMutation = useUpdateCurriculo(anoLectivoId)
+  const editing = useRef(false)
 
   const [formData, setFormData] = useState<SieeConfiguracion>({
     usar_areas: false,
@@ -36,7 +37,7 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
   })
 
   useEffect(() => {
-    if (data?.configuracion) {
+    if (data?.configuracion && !editing.current) {
       setFormData({
         ...data.configuracion,
         escala_id: data.configuracion.escala_id,
@@ -64,6 +65,7 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
   }
 
   const handleChange = <K extends keyof SieeConfiguracion>(field: K, value: SieeConfiguracion[K]) => {
+    editing.current = true
     setFormData(prev => ({...prev, [field]: value}))
   }
 
@@ -76,7 +78,7 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
       metodo_id: Number(formData.metodo_id),
     }
     mutation.mutate(payload, {
-      onSuccess: () => toast.success(t('siee.saved')),
+      onSuccess: () => { editing.current = false; toast.success(t('siee.saved')) },
       onError: (err) =>
         toast.error(err?.message || t('common.error')),
     })

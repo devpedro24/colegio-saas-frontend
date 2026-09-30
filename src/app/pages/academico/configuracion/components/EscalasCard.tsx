@@ -1,8 +1,7 @@
-﻿import {FC, useState} from 'react'
+import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useCreateEscala, useDeleteEscala, useEscalas, useUpdateEscala} from '../configuracion.api'
@@ -52,7 +51,7 @@ const EscalaForm: FC<{
   onClose: () => void
 }> = ({anoLectivoId, escala, onClose}) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const create = useCreateEscala(anoLectivoId)
@@ -228,7 +227,7 @@ const EscalaForm: FC<{
 // Bloque 4: escala valorativa. Lista + crear/editar/eliminar, filtrada por ano lectivo.
 const EscalasCard: FC<Props> = ({anoLectivoId}) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useEscalas(anoLectivoId)

@@ -10,6 +10,7 @@
     "test": "node --test scripts/*.test.mjs",
     "test:ui": "node scripts/browser-smoke.mjs",
     "test:ui:navigation": "node scripts/browser-smoke.mjs --navigation",
+    "test:ui:realtime": "node scripts/browser-smoke.mjs --realtime",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },

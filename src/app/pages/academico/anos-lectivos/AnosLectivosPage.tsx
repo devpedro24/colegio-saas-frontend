@@ -1,6 +1,5 @@
 import {FC, useState} from 'react'
 import {useIntl} from 'react-intl'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
@@ -29,7 +28,7 @@ const toDate = (value: string): string => (value ? value.slice(0, 10) : '')
 
 const AnosLectivosPage: FC = () => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string, values?: Record<string, string | number>) =>
     intl.formatMessage({id}, values)
 

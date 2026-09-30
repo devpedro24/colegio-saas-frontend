@@ -1,8 +1,7 @@
-﻿import {FC, useState} from 'react'
+import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {
@@ -46,7 +45,7 @@ const ModeloForm: FC<{
   onClose: () => void
 }> = ({anoLectivoId, modelo, onClose}) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const create = useCreateModelo(anoLectivoId)
@@ -191,7 +190,7 @@ const Bool: FC<{on: boolean; onLabel: string; offLabel: string}> = ({on, onLabel
 // Bloque 6: modelo pedagogico por nivel. Lista + crear/editar/eliminar, filtrada por ano.
 const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useModelosPedagogicos(anoLectivoId)

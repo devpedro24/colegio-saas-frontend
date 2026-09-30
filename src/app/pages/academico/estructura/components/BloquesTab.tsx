@@ -1,9 +1,8 @@
-﻿import {FC, useState} from 'react'
+import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {useEffect, type FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {formatSchoolTime} from '@/lib/format/schoolTime'
@@ -44,7 +43,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
   onClose,
 }) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data: jornadas} = useJornadas()
@@ -230,7 +229,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
 
 const BloquesTab: FC = () => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data, isLoading, isError} = useBloquesHorarios()

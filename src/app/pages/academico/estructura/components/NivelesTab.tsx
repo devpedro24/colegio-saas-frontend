@@ -1,9 +1,8 @@
-﻿import {FC, useState} from 'react'
+import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {useTenantSync} from '@/app/modules/auth/hooks/useTenantSync'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {AcademicYearCell} from '../../academic-year-context'
@@ -31,7 +30,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
   onClose,
 }) => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const create = useCreateNivel()
@@ -163,7 +162,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
 
 const NivelesTab: FC = () => {
   const intl = useIntl()
-  useTenantSync()
+
   const t = (id: string, values?: Record<string, string | number>) =>
     intl.formatMessage({id}, values)
   const toast = useToast()

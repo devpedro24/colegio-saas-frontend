@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+import {FC, useState, useEffect} from 'react'
 import {FormattedMessage, useIntl} from 'react-intl'
 import * as Yup from 'yup'
 import {useFormik} from 'formik'
@@ -55,6 +55,7 @@ const ProfileDetails: FC = () => {
           onSuccess: (data) => {
             const user = data.user
             if (user) {
+              formik.resetForm({values: {name: user.name, phone: user.phone ?? ''}})
               setCurrentUser((prev) =>
                 prev
                   ? {
@@ -76,6 +77,11 @@ const ProfileDetails: FC = () => {
       )
     },
   })
+
+  const {dirty, resetForm} = formik
+  useEffect(() => {
+    if (!dirty) resetForm({values: {name: currentUser?.name ?? '', phone: currentUser?.phone ?? ''}})
+  }, [currentUser?.name, currentUser?.phone, dirty, resetForm])
 
   return (
     <div className='card mb-5 mb-xl-10'>
