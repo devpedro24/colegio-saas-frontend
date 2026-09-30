@@ -2,27 +2,46 @@
  * Cliente HTTP tipado hacia la API del backend.
  *
  * Todas las llamadas van a `/api`; Vite las redirige al backend Laravel.
- * El cliente inyecta el token de autenticacion y normaliza los errores en una `ApiError`.
+ * La sesión se envía en cookies HttpOnly del mismo origen y los errores se
+ * normalizan en una `ApiError`.
  *
  * Suplantación (superadmin administrando un colegio desde localhost, SIN subdominio):
- * cuando hay una suplantación activa (token + colegio en el store), las peticiones a rutas
- * del COLEGIO usan el token de impersonación y añaden el header 'X-Tenant: <colegio.id>'
- * (asi InitializeTenancyByRequestData resuelve el tenant por header). Las rutas de PLATAFORMA
- * (ver PLATFORM_PATH_PREFIXES) siempre usan el token normal del superadmin y NO llevan X-Tenant.
- * Para un usuario real de colegio no hay suplantación activa -> comportamiento normal.
+ * la cookie de suplantación se aplica en el servidor a rutas del colegio y la
+ * cookie de plataforma a rutas centrales. El navegador nunca lee esas cookies.
  */
 
-import {clearImpersonation, getActiveImpersonation} from '@/app/modules/impersonation/impersonation.store';
+import {clearImpersonation, getImpersonation} from '@/app/modules/impersonation/impersonation.store';
 import {queryClient} from './query-client';
 import {notifyLocalChange, resourceForPath} from '../realtime';
 
-const TOKEN_STORAGE_KEY = 'colegio-saas.auth-token';
+const CSRF_COOKIE = 'school_saas_csrf';
+let sessionGeneration = 0;
+const expiredListeners = new Set<() => void>();
+
+// Captura y borra las credenciales legadas de forma síncrona. La revocación en
+// segundo plano es best effort; no bloquea la nueva sesión con cookie HttpOnly.
+function takeLegacySession(): string | null {
+  try {
+    const platform = localStorage.getItem('colegio-saas.auth-token');
+    localStorage.removeItem('colegio-saas.auth-token');
+    localStorage.removeItem('colegio-saas.impersonation-token');
+    localStorage.removeItem('colegio-saas.active-colegio');
+    return platform;
+  } catch { return null; }
+}
+
+async function revokeLegacySession(platform: string | null) {
+  if (!platform) return;
+  const headers = {Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${platform}`};
+  try { await fetch('/api/logout', {method: 'POST', credentials: 'omit', headers}); }
+  catch { /* La limpieza local ya ocurrió. */ }
+}
+
+void revokeLegacySession(takeLegacySession());
 
 /**
- * Prefijos de rutas de PLATAFORMA: aunque haya un colegio activo, estas siguen con el token
- * normal del superadmin y SIN X-Tenant (incluye entrar/salir de la suplantación en /platform).
- * '/me' es de plataforma: valida SIEMPRE la sesión del superadmin (si fuera tratada como ruta
- * de colegio, llevaría el token de impersonación + X-Tenant y el backend central respondería 401).
+ * Prefijos de rutas de plataforma: se atienden con la cookie de plataforma
+ * aunque el superadministrador tenga una suplantación activa.
  */
 const PLATFORM_PATH_PREFIXES = ['/platform', '/colegios', '/plans', '/planes', '/rbac', '/login', '/logout', '/me', '/account', '/mfa', '/forgot-password', '/reset-password'];
 
@@ -33,17 +52,23 @@ function isPlatformPath(path: string): boolean {
   );
 }
 
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_STORAGE_KEY);
+export function getCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null;
+  const value = document.cookie.split('; ').find(part => part.startsWith(`${CSRF_COOKIE}=`));
+  if (!value) return null;
+  try { return decodeURIComponent(value.slice(CSRF_COOKIE.length + 1)); }
+  catch { return null; }
 }
 
-export function setToken(token: string | null): void {
-  if (token !== getToken()) queryClient.clear();
-  if (token) {
-    localStorage.setItem(TOKEN_STORAGE_KEY, token);
-  } else {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-  }
+/** Invalida respuestas de la sesión anterior y descarta sus datos cacheados. */
+export function advanceSessionGeneration(): void {
+  sessionGeneration += 1;
+  queryClient.clear();
+}
+
+export function onSessionExpired(listener: () => void): () => void {
+  expiredListeners.add(listener);
+  return () => { expiredListeners.delete(listener); };
 }
 
 /** Error de API con el estado HTTP y (si aplica) los errores de validacion por campo. */
@@ -68,21 +93,17 @@ export class ApiError extends Error {
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 async function request<TResponse>(method: HttpMethod, path: string, body?: unknown): Promise<TResponse> {
-  // Suplantación activa (colegio + token). En rutas de plataforma se ignora a propósito.
-  const impersonation = getActiveImpersonation();
-  const useImpersonation = impersonation !== null && !isPlatformPath(path);
-
-  // Token: el de impersonación para rutas del colegio bajo suplantación; el normal en el resto.
-  const authToken = useImpersonation ? impersonation!.token : getToken();
+  const context = getImpersonation();
+  const generation = sessionGeneration;
+  const csrf = method === 'GET' ? null : getCsrfToken();
 
   const response = await fetch(`/api${path}`, {
     method,
+    credentials: 'same-origin',
     headers: {
       Accept: 'application/json',
       ...(body !== undefined && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      // Header que resuelve el tenant por request data (ID/uuid del colegio) sin subdominio.
-      ...(useImpersonation ? { 'X-Tenant': impersonation!.colegioId } : {}),
+      ...(csrf ? {'X-CSRF-Token': csrf} : {}),
     },
     body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });
@@ -91,36 +112,25 @@ async function request<TResponse>(method: HttpMethod, path: string, body?: unkno
   const data = isJson ? await response.json() : null;
 
   // Una respuesta del contexto anterior nunca debe actualizar el colegio nuevo.
-  const activeNow = getActiveImpersonation();
-  if (useImpersonation
-    ? activeNow?.colegioId !== impersonation?.colegioId || activeNow?.token !== authToken
-    : getToken() !== authToken) {
+  if (getImpersonation() !== context || sessionGeneration !== generation) {
     throw new DOMException('Authentication context changed', 'AbortError');
   }
 
   if (!response.ok) {
     const message = (data?.message as string | undefined) ?? `Error ${response.status}`;
 
-    // 401 = token inválido o sesión caducada. Se limpia el estado que lo causó para que
-    // la app pueda volver a autenticarse SIN quedar atascada con tokens muertos:
-    //   - bajo suplantación (ruta de colegio): se sale del colegio pero se conserva la
-    //     sesión de plataforma (el token del superadmin sigue siendo válido);
-    //   - sin suplantación: se invalida el token de autenticación local.
-    // Se excluyen /login y /register porque allí un 401/422 es parte del flujo normal (MFA).
-    if (response.status === 401 && path !== '/login' && path !== '/register') {
-      if (useImpersonation) {
-        clearImpersonation()
-      } else {
-        setToken(null)
-      }
+    if (response.status === 401 && !['/login', '/register', '/me', '/platform/impersonar/estado'].includes(path)) {
+      if (context.activeColegio && !isPlatformPath(path)) clearImpersonation();
+      else expiredListeners.forEach(listener => listener());
     }
 
     throw new ApiError(response.status, message, data?.errors, data);
   }
 
   if (method !== 'GET' && !['/login', '/logout', '/forgot-password', '/broadcasting/auth', '/tenant-broadcasting/auth'].includes(path)) {
-    notifyLocalChange({resource: resourceForPath(path), token: authToken,
-      tenantId: useImpersonation ? impersonation!.colegioId : undefined});
+    notifyLocalChange({resource: resourceForPath(path),
+      scope: isPlatformPath(path) ? 'platform' : 'tenant',
+      tenantKey: context.activeColegio?.slug});
   }
   return data as TResponse;
 }

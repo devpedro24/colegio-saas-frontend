@@ -41,7 +41,7 @@ export function resourceForPath(path: string): string {
     planes: 'plans', account: 'account', mfa: 'account', storage: 'storage'} as Record<string, string>)[root] ?? 'all'
 }
 
-type LocalChange = {resource: string; token: string | null; tenantId?: string}
+type LocalChange = {resource: string; scope: RealtimeScope; tenantKey?: string}
 const listeners = new Set<(change: LocalChange) => void>()
 export function notifyLocalChange(change: LocalChange) {
   listeners.forEach(listener => listener(change))

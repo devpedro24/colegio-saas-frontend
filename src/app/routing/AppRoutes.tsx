@@ -33,7 +33,7 @@ const AppRoutes: FC = () => {
           {currentUser ? (
             <>
               <Route path='/*' element={currentUser.is_platform
-                ? <PrivateRoutes key={`${currentUser.id}:${activeColegio?.id ?? 'account'}`} />
+                ? <PrivateRoutes key={`${currentUser.id}:${activeColegio?.slug ?? 'account'}`} />
                 : <TenantOnboardingGate />} />
               <Route index element={<Navigate to='/dashboard' />} />
             </>
