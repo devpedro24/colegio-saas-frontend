@@ -17,7 +17,7 @@ type Tab = 'jornadas' | 'niveles' | 'grados' | 'grupos' | 'bloques' | 'espacios'
 
 // Pagina de Estructura organizacional (Bloque B / Fase 1). Sub-navegacion por
 // tabs (Jornada > Nivel > Grado > Grupo > Bloques > Espacios). Las sedes se
-// gestionan en Configuración del colegio > Sedes.
+// gestionan en Ajustes institucionales > Sedes.
 const EstructuraPage: FC = () => {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})

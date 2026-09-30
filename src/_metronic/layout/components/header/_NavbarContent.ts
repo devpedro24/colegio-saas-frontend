@@ -6,13 +6,22 @@
 /* eslint-disable */
 import type {IntlShape} from 'react-intl'
 
-export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}) => {
+export const getNavbarHtml = (
+  intl: IntlShape,
+  opts?: {
+    showQuickIcons?: boolean
+    canConfigureInstitution?: boolean
+    canManageCampuses?: boolean
+  }
+) => {
   const t = (id: string) => intl.formatMessage({id})
   const tv = (id: string, values: Record<string, any>) =>
     intl.formatMessage({id}, values)
   // Buscador, notificaciones y accesos rapidos son herramientas de la PLATAFORMA (superadmin
   // sin colegio activo). Para usuarios de colegio (tenant) no aplican y se ocultan.
   const showQuickIcons = opts?.showQuickIcons !== false
+  const showInstitutionalSettings =
+    opts?.canConfigureInstitution === true || opts?.canManageCampuses === true
   return String.raw`
 								<!--begin::Invite-->
 								<div class="align-items-center ms-1 ms-lg-3 d-none d-sm-flex">
@@ -1608,6 +1617,41 @@ export const getNavbarHtml = (intl: IntlShape, opts?: {showQuickIcons?: boolean}
 											<a href="#" class="menu-link px-5">${t('header.user.accountSettings')}</a>
 										</div>
 										<!--end::Menu item-->
+										${showInstitutionalSettings ? String.raw`
+										<!--begin::Institutional settings-->
+										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
+											<a href="#" class="menu-link px-5" data-testid="institutional-settings-trigger">
+												<span class="menu-title">${t('header.user.institutionalSettings')}</span>
+												<span class="menu-arrow"></span>
+											</a>
+											<div class="menu-sub menu-sub-dropdown menu-column menu-rounded institutional-menu w-275px py-3" data-testid="institutional-settings-panel">
+												<div class="institutional-menu__intro px-5 pt-3 pb-2">
+													<span class="institutional-menu__title d-block fw-bold fs-6">${t('header.user.institutionalSettings')}</span>
+													<span class="institutional-menu__description d-block fs-7 text-muted mt-1">${t('header.user.institutionalSettingsHint')}</span>
+												</div>
+												${opts?.canConfigureInstitution ? String.raw`
+												<div class="menu-item">
+													<a href="/ajustes-institucionales/datos" data-kt-nav="/ajustes-institucionales/datos" class="menu-link institutional-menu__item">
+														<span class="institutional-menu__icon" aria-hidden="true"><i class="ki-solid ki-home-2 fs-2"></i></span>
+														<span class="institutional-menu__copy">
+															<span class="institutional-menu__title">${t('academico.config.tab.datos')}</span>
+															<span class="institutional-menu__description">${t('header.user.institutionalDataHint')}</span>
+														</span>
+													</a>
+												</div>` : ''}
+												${opts?.canManageCampuses ? String.raw`
+												<div class="menu-item">
+													<a href="/ajustes-institucionales/sedes" data-kt-nav="/ajustes-institucionales/sedes" class="menu-link institutional-menu__item">
+														<span class="institutional-menu__icon" aria-hidden="true"><i class="ki-solid ki-geolocation fs-2"></i></span>
+														<span class="institutional-menu__copy">
+															<span class="institutional-menu__title">${t('academico.config.tab.sedes')}</span>
+															<span class="institutional-menu__description">${t('header.user.campusesHint')}</span>
+														</span>
+													</a>
+												</div>` : ''}
+											</div>
+										</div>
+										<!--end::Institutional settings-->` : ''}
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
 											<a href="#" data-kt-action="logout" class="menu-link px-5">${t(

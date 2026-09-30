@@ -389,7 +389,7 @@ const tenantStatusBadge = (status: string | null): {cls: string; label: string} 
   }
 }
 
-// Tab Sedes (Configuración del colegio): card + toolbar + modal con provisionamiento
+// Sección Sedes (Ajustes institucionales): card + toolbar + modal con provisionamiento
 // de tenant hijo (slug, coordinador, herencia) + credenciales generadas.
 const SedesConfigTab: FC = () => {
   const intl = useIntl()
@@ -535,7 +535,7 @@ const SedesConfigTab: FC = () => {
                               type='button'
                               className='btn btn-light-primary btn-sm'
                               title={t('academico.sede.open')}
-                              onClick={() => navigate(`/academico/sedes/${s.hashed_id}`)}
+                              onClick={() => navigate(`/ajustes-institucionales/sedes/${s.hashed_id}`)}
                             >
                               {t('academico.sede.open')}
                             </button>

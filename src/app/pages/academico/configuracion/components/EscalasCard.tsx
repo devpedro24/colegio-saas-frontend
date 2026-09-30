@@ -267,20 +267,18 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
     n ? t(`academico.nivel.${n}`) : t('academico.nivel.todos')
 
   return (
-    <div className='card'>
-      <div className='card-header border-0 pt-6'>
-        <div className='card-title flex-column align-items-start'>
-          <h3 className='fw-bold mb-1'>{t('academico.config.escala.title')}</h3>
+    <>
+      <div className='d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4'>
+        <div>
+          <h4 className='fw-bold mb-1'>{t('academico.config.escala.title')}</h4>
           <span className='text-muted fs-7'>{t('academico.config.escala.subtitle')}</span>
         </div>
-        <div className='card-toolbar'>
-          <button type='button' className='btn btn-primary' onClick={openCreate}>
-            <i className='ki-duotone ki-plus fs-2'></i>
-            {t('academico.config.escala.new')}
-          </button>
-        </div>
+        <button type='button' className='btn btn-primary' onClick={openCreate}>
+          <i className='ki-duotone ki-plus fs-2'></i>
+          {t('academico.config.escala.new')}
+        </button>
       </div>
-      <div className='card-body py-4'>
+      <div>
         {isLoading && (
           <div className='d-flex justify-content-center align-items-center py-10'>
             <span className='spinner-border text-primary me-3' role='status'></span>
@@ -401,7 +399,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
         </Modal>,
         modalsRoot
       )}
-    </div>
+    </>
   )
 }
 

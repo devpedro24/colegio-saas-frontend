@@ -25,12 +25,20 @@ const Navbar = () => {
   const lang = useLang()
   const intl = useIntl()
   const {logout} = useAuth()
-  const {isPlatform} = useAuthz()
+  const {isPlatform, hasPermission} = useAuthz()
   const {activeColegio} = useImpersonation()
 
   // Buscador, notificaciones y accesos rapidos son herramientas de PLATAFORMA (superadmin sin
   // colegio activo); para usuarios de colegio (o superadmin suplantando uno) se ocultan.
   const showQuickIcons = isPlatform && !activeColegio
+  // El usuario de plataforma conserva sus permisos centrales (normalmente vacíos)
+  // mientras administra un colegio, pero su token de suplantación tiene acceso total.
+  const schoolContext = !isPlatform || !!activeColegio
+  const superadminInSchool = isPlatform && !!activeColegio
+  const canConfigureInstitution =
+    schoolContext && (superadminInSchool || hasPermission('academico.configurar'))
+  const canManageCampuses =
+    schoolContext && (superadminInSchool || hasPermission('academico.estructura.gestionar'))
 
   useEffect(() => {
     // Modo de tema: init nativo (bindea clicks de [data-kt-element="mode"], aplica el modo
@@ -91,12 +99,16 @@ const Navbar = () => {
     // Fase de CAPTURA: KTMenu hace stopPropagation en algunos .menu-link, asi corremos antes.
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [navigate, lang, logout, intl, showQuickIcons])
+  }, [navigate, lang, logout, intl, showQuickIcons, canConfigureInstitution, canManageCampuses])
 
   return (
     <div
       className='app-navbar flex-shrink-0'
-      dangerouslySetInnerHTML={{__html: withBase(getNavbarHtml(intl, {showQuickIcons}))}}
+      dangerouslySetInnerHTML={{
+        __html: withBase(
+          getNavbarHtml(intl, {showQuickIcons, canConfigureInstitution, canManageCampuses})
+        ),
+      }}
     />
   )
 }

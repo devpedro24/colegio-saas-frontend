@@ -18,7 +18,7 @@ const tenantStatusBadge = (status: string | null): {cls: string; label: string} 
   }
 }
 
-// Pagina propia de una sede (/academico/sedes/:id). Muestra los datos de la sede, su state
+// Pagina propia de una sede (/ajustes-institucionales/sedes/:id). Muestra los datos de la sede, su state
 // de tenant hijo (subdominio, coordinador, tenant id) y permite abrir el subdominio en otra
 // pestaña. Los modulos de la estructura se habilitaran proximamente.
 const SedeDetallePage: FC = () => {
@@ -34,6 +34,9 @@ const SedeDetallePage: FC = () => {
   if (isPlatform && !activeColegio) {
     return <Navigate to='/academico/anos-lectivos' replace />
   }
+  if (sede?.hashed_id && id !== sede.hashed_id) {
+    return <Navigate to={`/ajustes-institucionales/sedes/${sede.hashed_id}`} replace />
+  }
 
   const breadcrumbs: Array<PageLink> = [
     {
@@ -43,8 +46,8 @@ const SedeDetallePage: FC = () => {
       isActive: false,
     },
     {
-      title: t('academico.config.title'),
-      path: '/academico/configuracion?tab=sedes',
+      title: t('academico.institutionSettings.title'),
+      path: '/ajustes-institucionales/sedes',
       isSeparator: false,
       isActive: false,
     },
@@ -83,7 +86,7 @@ const SedeDetallePage: FC = () => {
               </i>
               {t('academico.sede.open')}
             </button>
-            <Link to='/academico/configuracion?tab=sedes' className='btn btn-light btn-sm'>
+            <Link to='/ajustes-institucionales/sedes' className='btn btn-light btn-sm'>
               <i className='ki-duotone ki-arrow-left fs-3 me-1'>
                 <span className='path1'></span>
                 <span className='path2'></span>

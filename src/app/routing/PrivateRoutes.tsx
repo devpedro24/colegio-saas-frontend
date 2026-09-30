@@ -5,16 +5,19 @@ import TopBarProgress from 'react-topbar-progress-indicator'
 import {DashboardWrapper} from '../pages/dashboard/DashboardWrapper'
 import {getCSSVariableValue} from '../../_metronic/assets/ts/_utils'
 import {WithChildren} from '../../_metronic/helpers'
+import {useAuthz} from '../modules/auth/core/authz'
+import {useImpersonation} from '../modules/impersonation/impersonation.store'
 
 const AccountPage = lazy(() => import('../modules/accounts/AccountPage'))
 const ConfigPage = lazy(() => import('../pages/config/ConfigPage'))
 const AcademicoPage = lazy(() => import('../pages/academico/AcademicoPage'))
+const InstitutionalSettingsPage = lazy(() => import('../pages/academico/configuracion/InstitutionalSettingsPage'))
+const SedeDetallePage = lazy(() => import('../pages/academico/sedes/SedeDetallePage'))
 const UsuariosPage = lazy(() => import('../pages/usuarios/UsuariosPage'))
 const ProximamentePage = lazy(() => import('../pages/proximamente/ProximamentePage'))
 const EventosPage = lazy(() => import('../pages/comunicacion/EventosPage'))
 
 const PrivateRoutes = () => {
-
   return (
     <Routes>
       <Route element={<MasterLayout />}>
@@ -47,6 +50,16 @@ const PrivateRoutes = () => {
             </SuspensedView>
           }
         />
+        <Route path='ajustes-institucionales' element={<InstitutionalSettingsIndex />} />
+        <Route
+          path='ajustes-institucionales/datos'
+          element={<SuspensedView><InstitutionalSettingsPage section='datos' /></SuspensedView>}
+        />
+        <Route
+          path='ajustes-institucionales/sedes'
+          element={<SuspensedView><InstitutionalSettingsPage section='sedes' /></SuspensedView>}
+        />
+        <Route path='ajustes-institucionales/sedes/:id' element={<InstitutionalSedeDetalleRoute />} />
         <Route
           path='usuarios'
           element={
@@ -150,6 +163,31 @@ const SuspensedView: FC<WithChildren> = ({children}) => {
 const AcademicAlias = () => {
   const {pathname, search} = useLocation()
   return <Navigate to={`/academico${pathname}${search}`} replace />
+}
+
+const InstitutionalSettingsIndex = () => {
+  const {isPlatform, hasPermission} = useAuthz()
+  const {activeColegio} = useImpersonation()
+  const inSchool = !isPlatform || !!activeColegio
+  const superadminInSchool = isPlatform && !!activeColegio
+
+  if (inSchool && (superadminInSchool || hasPermission('academico.configurar'))) {
+    return <Navigate to='/ajustes-institucionales/datos' replace />
+  }
+  if (inSchool && hasPermission('academico.estructura.gestionar')) {
+    return <Navigate to='/ajustes-institucionales/sedes' replace />
+  }
+  return <Navigate to='/dashboard' replace />
+}
+
+const InstitutionalSedeDetalleRoute = () => {
+  const {isPlatform, hasPermission} = useAuthz()
+  const {activeColegio} = useImpersonation()
+  const allowed = (isPlatform && !!activeColegio) ||
+    (!isPlatform && hasPermission('academico.estructura.gestionar'))
+
+  if (!allowed) return <Navigate to='/dashboard' replace />
+  return <SuspensedView><SedeDetallePage /></SuspensedView>
 }
 
 export {PrivateRoutes}

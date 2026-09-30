@@ -20,9 +20,10 @@ import type {
 export const DATOS_INSTITUCIONALES_KEY = ['config', 'datos-institucionales'] as const
 
 /** GET /config/datos-institucionales — datos institucionales del colegio. */
-export function useDatosInstitucionales() {
+export function useDatosInstitucionales(enabled = true) {
   return useQuery({
     queryKey: DATOS_INSTITUCIONALES_KEY,
+    enabled,
     queryFn: () =>
       api
         .get<{data: DatosInstitucionales}>('/config/datos-institucionales'),

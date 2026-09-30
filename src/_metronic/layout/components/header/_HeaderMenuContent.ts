@@ -43,7 +43,7 @@ export const getHeaderMenuHtml = (
     ['academico.anos.title', '/academico/anos-lectivos', 'calendar-8'],
     ['academico.estructura.title', '/academico/estructura', 'abstract-26'],
     ['academico.planEstudios.title', '/academico/plan-estudios', 'book-open'],
-    ['academico.config.title', '/academico/configuracion', 'setting-2'],
+    ['academico.parameters.title', '/academico/parametros-academicos', 'setting-2'],
     ['siee.title', '/academico/siee', 'notepad'],
     ['evaluacion.title', '/academico/evaluacion/catalogo', 'chart-simple'],
     ['boletines.title', '/academico/boletines', 'document'],
