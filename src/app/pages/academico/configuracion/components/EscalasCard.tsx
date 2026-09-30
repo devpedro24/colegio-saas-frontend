@@ -15,7 +15,7 @@ import type {
 const modalsRoot = document.getElementById('root-modals') || document.body
 const NIVELES: NivelEducativo[] = ['preescolar', 'primaria', 'secundaria', 'media']
 
-type Props = {anoLectivoId: string}
+type Props = {anoLectivoToken: string}
 
 interface FormState {
   nombre: string
@@ -46,16 +46,16 @@ const fromEscala = (e: EscalaValorativa): FormState => ({
 
 // Dialogo interno crear/editar escala (se remonta por escala via key en el padre).
 const EscalaForm: FC<{
-  anoLectivoId: string
+  anoLectivoToken: string
   escala: EscalaValorativa | null
   onClose: () => void
-}> = ({anoLectivoId, escala, onClose}) => {
+}> = ({anoLectivoToken, escala, onClose}) => {
   const intl = useIntl()
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const create = useCreateEscala(anoLectivoId)
-  const update = useUpdateEscala(anoLectivoId)
+  const create = useCreateEscala(anoLectivoToken)
+  const update = useUpdateEscala(anoLectivoToken)
   const isEdit = escala !== null
   const pending = create.isPending || update.isPending
 
@@ -69,7 +69,7 @@ const EscalaForm: FC<{
     ev.preventDefault()
     setError(null)
     const input: EscalaValorativaInput = {
-      ano_lectivo_id: anoLectivoId,
+      ano_lectivo_token: anoLectivoToken,
       nombre: form.nombre.trim(),
       nivel_educativo: (form.nivel_educativo || null) as NivelEducativo | null,
       tipo: form.tipo,
@@ -89,7 +89,7 @@ const EscalaForm: FC<{
 
     if (isEdit && escala) {
       update.mutate(
-        {id: escala.id, input},
+        {id: escala.url_token, input},
         {
           onSuccess: () => {
             toast.success(t('common.toast.updated'))
@@ -225,13 +225,13 @@ const EscalaForm: FC<{
 }
 
 // Bloque 4: escala valorativa. Lista + crear/editar/eliminar, filtrada por ano lectivo.
-const EscalasCard: FC<Props> = ({anoLectivoId}) => {
+const EscalasCard: FC<Props> = ({anoLectivoToken}) => {
   const intl = useIntl()
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data, isLoading, isError} = useEscalas(anoLectivoId)
-  const del = useDeleteEscala(anoLectivoId)
+  const {data, isLoading, isError} = useEscalas(anoLectivoToken)
+  const del = useDeleteEscala(anoLectivoToken)
 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<EscalaValorativa | null>(null)
@@ -252,7 +252,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
   }
 
   const handleDelete = (e: EscalaValorativa) => {
-    del.mutate(e.id, {
+    del.mutate(e.url_token, {
       onSuccess: () => toast.success(t('common.toast.deleted')),
       onError: (err) => {
         const message =
@@ -310,7 +310,7 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
               </thead>
               <tbody className='text-gray-600 fw-semibold'>
                 {escalas.map((e) => (
-                  <tr key={e.id}>
+                  <tr key={e.url_token}>
                     <td className='text-gray-800 fw-bold'>{e.nombre}</td>
                     <td>{nivelLabel(e.nivel_educativo)}</td>
                     <td>{t(`academico.config.escala.tipo.${e.tipo}`)}</td>
@@ -389,8 +389,8 @@ const EscalasCard: FC<Props> = ({anoLectivoId}) => {
           </div>
           {showForm && (
             <EscalaForm
-              key={editing?.id ?? 'new'}
-              anoLectivoId={anoLectivoId}
+              key={editing?.url_token ?? 'new'}
+              anoLectivoToken={anoLectivoToken}
               escala={editing}
               onClose={closeForm}
             />

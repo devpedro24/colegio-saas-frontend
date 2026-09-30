@@ -13,8 +13,9 @@ export type AnoLectivoEstado = 'planificado' | 'en_curso' | 'cerrado' | 'archiva
 
 /** Un ano lectivo tal como lo devuelve el backend. */
 export interface AnoLectivo {
+  /** Alias local del selector público para componentes antiguos; nunca es la PK. */
   id: string
-  /** Selector opaco para la URL; el ID solo se usa dentro de la aplicación. */
+  /** Selector opaco para la URL y la API. */
   url_token: string
   /** Permite migrar enlaces anteriores al selector corto sin cambiar de año. */
   legacy_url_token?: string
@@ -53,8 +54,11 @@ export type PeriodoEstado = 'planificado' | 'abierto' | 'cerrado' | string
 
 /** Un periodo academico de un ano lectivo. */
 export interface Periodo {
+  /** Alias local del selector público; nunca es la PK. */
   id: string
   ano_lectivo_id: string
+  url_token: string
+  ano_lectivo_token: string
   nombre: string
   /** Orden 1..N (RN-PA-003 periodos contiguos). */
   orden: number

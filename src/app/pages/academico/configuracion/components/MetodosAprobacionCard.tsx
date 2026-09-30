@@ -21,7 +21,7 @@ const modalsRoot = document.getElementById('root-modals') || document.body
 const CALCULOS: CalculoNota[] = ['promedio_simple', 'ponderado', 'sumatoria']
 const AMBITOS: AmbitoAprobacion[] = ['materia', 'area', 'promedio_general']
 
-type Props = {anoLectivoId: string}
+type Props = {anoLectivoToken: string}
 
 interface FormState {
   calculo_nota: CalculoNota
@@ -43,16 +43,16 @@ const fromMetodo = (m: MetodoAprobacion): FormState => ({
 
 // Dialogo interno crear/editar metodo de aprobacion.
 const MetodoForm: FC<{
-  anoLectivoId: string
+  anoLectivoToken: string
   metodo: MetodoAprobacion | null
   onClose: () => void
-}> = ({anoLectivoId, metodo, onClose}) => {
+}> = ({anoLectivoToken, metodo, onClose}) => {
   const intl = useIntl()
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const create = useCreateMetodo(anoLectivoId)
-  const update = useUpdateMetodo(anoLectivoId)
+  const create = useCreateMetodo(anoLectivoToken)
+  const update = useUpdateMetodo(anoLectivoToken)
   const isEdit = metodo !== null
   const pending = create.isPending || update.isPending
 
@@ -65,7 +65,7 @@ const MetodoForm: FC<{
     ev.preventDefault()
     setError(null)
     const input: MetodoAprobacionInput = {
-      ano_lectivo_id: anoLectivoId,
+      ano_lectivo_token: anoLectivoToken,
       calculo_nota: form.calculo_nota,
       nota_minima: Number(form.nota_minima) || 0,
       ambito: form.ambito,
@@ -82,7 +82,7 @@ const MetodoForm: FC<{
 
     if (isEdit && metodo) {
       update.mutate(
-        {id: metodo.id, input},
+        {id: metodo.url_token, input},
         {
           onSuccess: () => {
             toast.success(t('common.toast.updated'))
@@ -175,13 +175,13 @@ const MetodoForm: FC<{
 }
 
 // Bloque 5: metodo de aprobacion. Lista + crear/editar/eliminar, filtrada por ano lectivo.
-const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
+const MetodosAprobacionCard: FC<Props> = ({anoLectivoToken}) => {
   const intl = useIntl()
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data, isLoading, isError} = useMetodosAprobacion(anoLectivoId)
-  const del = useDeleteMetodo(anoLectivoId)
+  const {data, isLoading, isError} = useMetodosAprobacion(anoLectivoToken)
+  const del = useDeleteMetodo(anoLectivoToken)
 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<MetodoAprobacion | null>(null)
@@ -202,7 +202,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
   }
 
   const handleDelete = (m: MetodoAprobacion) => {
-    del.mutate(m.id, {
+    del.mutate(m.url_token, {
       onSuccess: () => toast.success(t('common.toast.deleted')),
       onError: (err) => {
         const message =
@@ -256,7 +256,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
               </thead>
               <tbody className='text-gray-600 fw-semibold'>
                 {metodos.map((m) => (
-                  <tr key={m.id}>
+                  <tr key={m.url_token}>
                     <td className='text-gray-800 fw-bold'>
                       {t(`academico.config.metodo.calculo.${m.calculo_nota}`)}
                     </td>
@@ -332,8 +332,8 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoId}) => {
           </div>
           {showForm && (
             <MetodoForm
-              key={editing?.id ?? 'new'}
-              anoLectivoId={anoLectivoId}
+              key={editing?.url_token ?? 'new'}
+              anoLectivoToken={anoLectivoToken}
               metodo={editing}
               onClose={closeForm}
             />

@@ -6,8 +6,8 @@ import {getEstructuraPage} from './estructura.api'
 import {useAcademicYear} from '../academic-year-context'
 
 /**
- * Server-side paging for academic tables. Small lists use successive requests of
- * the selected size behind "Mostrar más"; numbered pages appear above 20 rows.
+ * Server-side paging for academic tables. Lists of up to 20 are shown in full;
+ * numbered pages appear only above that threshold.
  */
 export function useAcademicPagedList<T>(options: {
   key: readonly unknown[]
@@ -17,7 +17,6 @@ export function useAcademicPagedList<T>(options: {
 }) {
   const [pageSize, savePageSize] = usePageSize(options.storageKey)
   const [page, setPage] = useState(1)
-  const [visiblePages, setVisiblePages] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
@@ -25,14 +24,12 @@ export function useAcademicPagedList<T>(options: {
 
   useEffect(() => {
     setPage(1)
-    setVisiblePages(1)
   }, [scope])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (searchInput !== search) {
         setPage(1)
-        setVisiblePages(1)
         setSearch(searchInput)
       }
     }, 300)
@@ -46,7 +43,11 @@ export function useAcademicPagedList<T>(options: {
     queryFn: () => options.fetchPage(page, pageSize, search, filters),
   })
   const total = query.data?.meta?.total ?? 0
-  const extraPages = total <= 20 && page === 1 ? Array.from({length: Math.min(visiblePages - 1, (query.data?.meta?.last_page ?? 1) - 1)}, (_, index) => index + 2) : []
+  // A saved preference of 5 or 10 must not truncate a small list when the API
+  // still responds with multiple pages (for example during a staggered deploy).
+  const extraPages = total <= 20 && page === 1 && (query.data?.data.length ?? 0) < total
+    ? Array.from({length: (query.data?.meta?.last_page ?? 1) - 1}, (_, index) => index + 2)
+    : []
   const extra = useQueries({queries: extraPages.map(nextPage => ({
     queryKey: [...key, nextPage],
     enabled: options.enabled,
@@ -62,12 +63,10 @@ export function useAcademicPagedList<T>(options: {
   const setFilter = (name: string, value: string) => {
     setFilters(current => ({...current, [name]: value}))
     setPage(1)
-    setVisiblePages(1)
   }
   const changePageSize = (size: number) => {
     savePageSize(size)
     setPage(1)
-    setVisiblePages(1)
   }
   return {
     rows, meta, pageSize, page, searchInput, setSearchInput, filters, setFilter,
@@ -76,16 +75,15 @@ export function useAcademicPagedList<T>(options: {
     isFetching: query.isFetching || extra.some(result => result.isFetching),
     onPageChange: setPage,
     onPerPageChange: changePageSize,
-    onLoadMore: () => setVisiblePages(current => Math.min(current + 1, meta?.last_page ?? current)),
   }
 }
 
 export function useEstructuraList<T>(entity: 'jornadas' | 'niveles' | 'grados' | 'grupos' | 'bloques-horarios' | 'espacios-fisicos') {
-  const {yearId} = useAcademicYear()
+  const {yearToken} = useAcademicYear()
   return useAcademicPagedList<T>({
-    key: ['estructura', entity, yearId],
+    key: ['estructura', entity, yearToken],
     storageKey: `estructura.${entity}`,
-    enabled: !!yearId,
-    fetchPage: (page, perPage, search, filters) => getEstructuraPage<T>(entity, yearId, {page, perPage, search, filters}),
+    enabled: !!yearToken,
+    fetchPage: (page, perPage, search, filters) => getEstructuraPage<T>(entity, yearToken, {page, perPage, search, filters}),
   })
 }

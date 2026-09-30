@@ -54,7 +54,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data: sedes} = useSedes(true, true)
+  const {data: sedes} = useSedes(true, true, undefined, true)
   const create = useCreateEspacioFisico()
   const update = useUpdateEspacioFisico()
   const isEdit = espacio !== null
@@ -71,7 +71,8 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
     setError(null)
   }, [show, espacio?.id])
 
-  const fe = (field: string): string | undefined => error?.fieldError(field)
+  const fe = (field: string): string | undefined =>
+    error?.fieldError(field) ?? (field.endsWith('_id') ? error?.fieldError(`${field.slice(0, -3)}_token`) : undefined)
   const set = (patch: Partial<CreateEspacioFisicoInput>) => setForm((prev) => ({...prev, ...patch}))
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -241,7 +242,7 @@ const EspaciosTab: FC = () => {
   const toast = useToast()
   const listQuery = useEstructuraList<EspacioFisico>('espacios-fisicos')
   const {isLoading, isError} = listQuery
-  const {data: sedes} = useSedes(true, true)
+  const {data: sedes} = useSedes(true, true, undefined, true)
   const del = useDeleteEspacioFisico()
 
   const [formOpen, setFormOpen] = useState(false)
@@ -407,7 +408,7 @@ const EspaciosTab: FC = () => {
         </div>
       )}
 
-      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} />
 
       <EspacioFormDialog
         show={formOpen}

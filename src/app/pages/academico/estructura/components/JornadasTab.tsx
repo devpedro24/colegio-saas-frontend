@@ -46,7 +46,7 @@ const JornadaFormDialog: FC<{
 
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
-  const {data: sedes} = useSedes(true, true)
+  const {data: sedes} = useSedes(true, true, undefined, true)
   const create = useCreateJornada()
   const update = useUpdateJornada()
   const isEdit = jornada !== null
@@ -61,7 +61,8 @@ const JornadaFormDialog: FC<{
     setError(null)
   }, [show, jornada])
 
-  const fe = (field: string): string | undefined => error?.fieldError(field)
+  const fe = (field: string): string | undefined =>
+    error?.fieldError(field) ?? (field.endsWith('_id') ? error?.fieldError(`${field.slice(0, -3)}_token`) : undefined)
   const set = (patch: Partial<CreateJornadaInput>) => setForm((prev) => ({...prev, ...patch}))
 
   const handleSubmit = (e: FormEvent) => {
@@ -216,7 +217,7 @@ const JornadasTab: FC = () => {
   const toast = useToast()
   const listQuery = useEstructuraList<Jornada>('jornadas')
   const {isLoading, isError} = listQuery
-  const {data: sedes} = useSedes(true, true)
+  const {data: sedes} = useSedes(true, true, undefined, true)
   const del = useDeleteJornada()
 
   const [formOpen, setFormOpen] = useState(false)
@@ -360,7 +361,7 @@ const JornadasTab: FC = () => {
         </div>
       )}
 
-      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} />
 
       <JornadaFormDialog
         show={formOpen}

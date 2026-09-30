@@ -22,7 +22,7 @@ const InstitutionalSettingsContent: FC<{
   const t = (id: string) => intl.formatMessage({id})
   const {currentUser} = useAuth()
   const {activeColegio} = useImpersonation()
-  const branding = useOnboarding(currentUser?.tenant_id, !currentUser?.is_platform)
+  const branding = useOnboarding(currentUser?.tenant_channel, !currentUser?.is_platform)
   const {data: official} = useDatosInstitucionales(canConfigure)
   const institution = official?.data ?? branding.data?.institution
   const institutionName = institution?.nombre || activeColegio?.name || t('academico.institutionSettings.title')

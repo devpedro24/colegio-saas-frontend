@@ -53,10 +53,10 @@ const GrupoFormDialog: FC<{show: boolean; grupo: Grupo | null; onClose: () => vo
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const {data: anos} = useAnosLectivos()
-  const {yearId, setYearId} = useAcademicYear()
+  const {yearToken, setYearToken} = useAcademicYear()
   const {data: grados} = useGrados()
   const {data: jornadas} = useJornadas()
-  const {data: sedes} = useSedes(true, true)
+  const {data: sedes} = useSedes(true, true, undefined, true)
   const create = useCreateGrupo()
   const update = useUpdateGrupo()
   const isEdit = grupo !== null
@@ -67,11 +67,12 @@ const GrupoFormDialog: FC<{show: boolean; grupo: Grupo | null; onClose: () => vo
 
   useEffect(() => {
     if (!show) return
-    setForm(grupo ? fromGrupo(grupo) : {...emptyForm(), ano_lectivo_id: yearId})
+    setForm(grupo ? fromGrupo(grupo) : {...emptyForm(), ano_lectivo_id: yearToken})
     setError(null)
   }, [show, grupo?.id])
 
-  const fe = (field: string): string | undefined => error?.fieldError(field)
+  const fe = (field: string): string | undefined =>
+    error?.fieldError(field) ?? (field.endsWith('_id') ? error?.fieldError(`${field.slice(0, -3)}_token`) : undefined)
   const set = (patch: Partial<CreateGrupoInput>) => setForm((prev) => ({...prev, ...patch}))
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -143,11 +144,11 @@ const GrupoFormDialog: FC<{show: boolean; grupo: Grupo | null; onClose: () => vo
             <select
               className={`form-select form-select-solid ${fe('ano_lectivo_id') ? 'is-invalid' : ''}`}
               value={form.ano_lectivo_id}
-              onChange={(e) => {setYearId(e.target.value); set({ano_lectivo_id: e.target.value, grado_id: '', jornada_id: null})}}
+              onChange={(e) => {setYearToken(e.target.value); set({ano_lectivo_id: e.target.value, grado_id: '', jornada_id: null})}}
             >
               <option value=''>{t('common.select')}</option>
               {(anos?.data ?? []).map((a) => (
-                <option key={a.id} value={a.id}>
+                <option key={a.url_token} value={a.url_token}>
                   {a.nombre}
                 </option>
               ))}
@@ -419,7 +420,7 @@ const GruposTab: FC = () => {
         </div>
       )}
 
-      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} />
 
       <GrupoFormDialog
         show={formOpen}

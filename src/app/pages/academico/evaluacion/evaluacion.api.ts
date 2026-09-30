@@ -1,5 +1,6 @@
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
+import {fromOpaqueAcademic, toOpaqueAcademic} from '../shared/opaqueAcademic'
 import type {
   EvaluacionCatalogoResponse,
   PlanillaResponse,
@@ -29,10 +30,10 @@ export const useCatalogoEvaluacion = (filters: CatalogoFilters = {}) => {
   return useQuery<EvaluacionCatalogoResponse>({
     queryKey: ['evaluacion', 'catalogo', filters],
     queryFn: () => {
-      const params = new URLSearchParams()
-      if (filters.yearId) params.set('ano_lectivo_id', filters.yearId)
-      if (filters.groupId) params.set('grupo_id', filters.groupId)
-      if (filters.materiaId) params.set('materia_id', filters.materiaId)
+      const params = new URLSearchParams({opaque: '1'})
+      if (filters.yearId) params.set('ano_lectivo_token', filters.yearId)
+      if (filters.groupId) params.set('grupo_token', filters.groupId)
+      if (filters.materiaId) params.set('materia_token', filters.materiaId)
       if (filters.enrollmentStatus) params.set('estado', filters.enrollmentStatus)
       if (filters.search) params.set('search', filters.search)
       if (filters.studentSearch) params.set('student_search', filters.studentSearch)
@@ -43,7 +44,7 @@ export const useCatalogoEvaluacion = (filters: CatalogoFilters = {}) => {
       if (filters.assignmentToken) params.set('asignacion_token', filters.assignmentToken)
       if (filters.enrollmentToken) params.set('matricula_token', filters.enrollmentToken)
       const query = params.toString()
-      return api.get<{data: EvaluacionCatalogoResponse}>(`${EVAL_URL}/catalogo${query ? `?${query}` : ''}`).then((res) => res.data)
+      return api.get<{data: unknown}>(`${EVAL_URL}/catalogo?${query}`).then((res) => fromOpaqueAcademic<EvaluacionCatalogoResponse>(res.data))
     },
   })
 }
@@ -51,44 +52,45 @@ export const useCatalogoEvaluacion = (filters: CatalogoFilters = {}) => {
 export const useMatricular = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: {grupo_id: number; estudiante_id: number}) =>
-      api.post(`${EVAL_URL}/matriculas`, data),
+    mutationFn: (data: {grupo_id: string; estudiante_id: string}) =>
+      api.post(`${EVAL_URL}/matriculas?opaque=1`, toOpaqueAcademic(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
     },
   })
 }
 
-export const usePlanilla = (asignacionId: number, periodoId: number, page: number, perPage: number, search: string) => {
+export const usePlanilla = (asignacionId: string, periodoId: string, page: number, perPage: number, search: string) => {
   return useQuery<PlanillaResponse>({
     queryKey: ['evaluacion', 'planillas', asignacionId, periodoId, {page, perPage, search}],
     queryFn: () =>
       api
-        .get<{data: PlanillaResponse}>(`${EVAL_URL}/planillas/${asignacionId}/${periodoId}?${new URLSearchParams({page: String(page), per_page: String(perPage), ...(search ? {search} : {})})}`)
-        .then((res) => res.data),
+        .get<{data: unknown}>(`${EVAL_URL}/planillas/${encodeURIComponent(asignacionId)}/${encodeURIComponent(periodoId)}?${new URLSearchParams({opaque: '1', page: String(page), per_page: String(perPage), ...(search ? {search} : {})})}`)
+        .then((res) => fromOpaqueAcademic<PlanillaResponse>(res.data)),
     enabled: !!asignacionId && !!periodoId,
   })
 }
 
-export const useGuardarNotas = (asignacionId: number, periodoId: number) => {
+export const useGuardarNotas = (asignacionId: string, periodoId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (notas: NotaUpdate[]) =>
-      api.put(`${EVAL_URL}/planillas/${asignacionId}/${periodoId}`, {notas}),
+      api.put(`${EVAL_URL}/planillas/${encodeURIComponent(asignacionId)}/${encodeURIComponent(periodoId)}?opaque=1`, {notas: notas.map(nota => toOpaqueAcademic(nota))}),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})
     },
   })
 }
 
-export const useGuardarComponente = (asignacionId: number, periodoId: number) => {
+export const useGuardarComponente = (asignacionId: string, periodoId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (data: Partial<ComponenteEvaluacion>) => {
-      if (data.id) {
-        return api.put(`${EVAL_URL}/componentes/${data.id}`, data)
+      const {id, ...payload} = data
+      if (id) {
+        return api.put(`${EVAL_URL}/componentes/${encodeURIComponent(id)}?opaque=1`, toOpaqueAcademic(payload))
       }
-      return api.post(`${EVAL_URL}/componentes`, data)
+      return api.post(`${EVAL_URL}/componentes?opaque=1`, toOpaqueAcademic(payload))
     },
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})
@@ -96,14 +98,15 @@ export const useGuardarComponente = (asignacionId: number, periodoId: number) =>
   })
 }
 
-export const useGuardarActividad = (asignacionId: number, periodoId: number) => {
+export const useGuardarActividad = (asignacionId: string, periodoId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (data: Partial<ActividadEvaluacion>) => {
-      if (data.id) {
-        return api.put(`${EVAL_URL}/actividades/${data.id}`, data)
+      const {id, ...payload} = data
+      if (id) {
+        return api.put(`${EVAL_URL}/actividades/${encodeURIComponent(id)}?opaque=1`, toOpaqueAcademic(payload))
       }
-      return api.post(`${EVAL_URL}/actividades`, data)
+      return api.post(`${EVAL_URL}/actividades?opaque=1`, toOpaqueAcademic(payload))
     },
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})

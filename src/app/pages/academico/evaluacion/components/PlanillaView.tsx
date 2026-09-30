@@ -4,7 +4,7 @@ import {useCatalogoEvaluacion, usePlanilla, useGuardarNotas, useGuardarComponent
 import {KTCard, KTCardBody} from '@/_metronic/helpers'
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
-import type {NotaUpdate, ComponenteEvaluacion, Matricula, Calificacion, ResultadoEstudiante} from '../evaluacion.types'
+import type {NotaUpdate, ComponenteEvaluacion} from '../evaluacion.types'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
 
@@ -16,17 +16,17 @@ export const PlanillaView = () => {
   if (catalog.error || !catalog.data) return <div className='alert alert-danger' role='alert'>{catalog.error?.message || intl.formatMessage({id: 'common.error'})}</div>
 
   const assignment = catalog.data.selected_asignacion ?? catalog.data.asignaciones.find(item => item.url_token === asignacionId)
-  const period = catalog.data.periodos.find(item => item.url_token === periodoId || String(item.id) === periodoId)
+  const period = catalog.data.periodos.find(item => item.url_token === periodoId)
   if (!assignment || !period || assignment.ano_lectivo_id !== period.ano_lectivo_id) {
     return <div className='alert alert-danger' role='alert'>{intl.formatMessage({id: 'common.error'})}</div>
   }
   if (asignacionId !== assignment.url_token || periodoId !== period.url_token) {
     return <Navigate to={`/academico/evaluacion/planillas/${assignment.url_token}/${period.url_token}`} replace />
   }
-  return <PlanillaEditor key={`${assignment.id}:${period.id}`} asignacionId={assignment.id} periodoId={period.id} />
+  return <PlanillaEditor key={`${assignment.url_token}:${period.url_token}`} asignacionId={assignment.url_token} periodoId={period.url_token} />
 }
 
-const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: number; periodoId: number}) => {
+const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: string; periodoId: string}) => {
   const intl = useIntl()
   const toast = useToast()
   const navigate = useNavigate()
@@ -34,20 +34,15 @@ const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: number; period
   const [perPage, setPerPage] = usePageSize('evaluacion-planilla')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [loadedRows, setLoadedRows] = useState<{
-    matriculas: Matricula[]
-    calificaciones: Calificacion[]
-    resultados: ResultadoEstudiante[]
-  }>({matriculas: [], calificaciones: [], resultados: []})
   const {data, isLoading, error, isFetching} = usePlanilla(asignacionId, periodoId, page, perPage, debouncedSearch)
-  const notasMutation = useGuardarNotas(Number(asignacionId), Number(periodoId))
-  const componenteMutation = useGuardarComponente(Number(asignacionId), Number(periodoId))
-  const actividadMutation = useGuardarActividad(Number(asignacionId), Number(periodoId))
+  const notasMutation = useGuardarNotas(asignacionId, periodoId)
+  const componenteMutation = useGuardarComponente(asignacionId, periodoId)
+  const actividadMutation = useGuardarActividad(asignacionId, periodoId)
 
   const [draftNotas, setDraftNotas] = useState<Record<string, Omit<NotaUpdate, 'motivo'>>>({})
   const [motivo, setMotivo] = useState('')
   const [showComponenteForm, setShowComponenteForm] = useState(false)
-  const [showActividadForm, setShowActividadForm] = useState<number | null>(null)
+  const [showActividadForm, setShowActividadForm] = useState<string | null>(null)
   const [componenteForm, setComponenteForm] = useState<{nombre: string; peso: string; modo: ComponenteEvaluacion['modo']}>({nombre: '', peso: '', modo: 'SIMPLE_AVERAGE'})
   const [actividadForm, setActividadForm] = useState({nombre: '', fecha: '', peso: ''})
 
@@ -57,23 +52,6 @@ const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: number; period
     return () => window.clearTimeout(timer)
   }, [search])
   useEffect(() => {
-    if (!data) return
-    const meta = data.pagination?.matriculas
-    if (!meta || meta.total > 20 || page === 1) {
-      setLoadedRows({matriculas: data.matriculas, calificaciones: data.calificaciones, resultados: data.resultados})
-      return
-    }
-    setLoadedRows(previous => {
-      const matriculas = new Map(previous.matriculas.map(item => [item.id, item]))
-      const calificaciones = new Map(previous.calificaciones.map(item => [`${item.actividad_id}:${item.matricula_id}`, item]))
-      const resultados = new Map(previous.resultados.map(item => [item.matricula_id, item]))
-      data.matriculas.forEach(item => matriculas.set(item.id, item))
-      data.calificaciones.forEach(item => calificaciones.set(`${item.actividad_id}:${item.matricula_id}`, item))
-      data.resultados.forEach(item => resultados.set(item.matricula_id, item))
-      return {matriculas: [...matriculas.values()], calificaciones: [...calificaciones.values()], resultados: [...resultados.values()]}
-    })
-  }, [data, page])
-  useEffect(() => {
     if (!dirty) return
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
     window.addEventListener('beforeunload', warn)
@@ -82,8 +60,7 @@ const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: number; period
   if (isLoading) return <div className='text-muted p-5' role='status'>{intl.formatMessage({id: 'siee.cargando'})}</div>
   if (error || !data) return <div className='alert alert-danger' role='alert'>{error?.message || intl.formatMessage({id: 'common.error'})}</div>
 
-  const visibleRows = (data.pagination?.matriculas?.total ?? Infinity) <= 20 && page > 1
-    ? loadedRows : {matriculas: data.matriculas, calificaciones: data.calificaciones, resultados: data.resultados}
+  const visibleRows = {matriculas: data.matriculas, calificaciones: data.calificaciones, resultados: data.resultados}
 
   const allowPageChange = () => {
     if (!dirty) return true
@@ -99,7 +76,7 @@ const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: number; period
     setPage(1)
   }
 
-  const handleNotaChange = (actividadId: number, matriculaId: number, value: string) => {
+  const handleNotaChange = (actividadId: string, matriculaId: string, value: string) => {
     const key = `${actividadId}-${matriculaId}`
     const current = visibleRows.calificaciones.find(c => c.actividad_id === actividadId && c.matricula_id === matriculaId)
     setDraftNotas(prev => ({...prev, [key]: {
@@ -126,8 +103,8 @@ const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: number; period
   const handleCrearComponente = () => {
     componenteMutation.mutate(
       {
-        asignacion_id: Number(asignacionId),
-        periodo_id: Number(periodoId),
+        asignacion_id: asignacionId,
+        periodo_id: periodoId,
         nombre: componenteForm.nombre,
         peso: componenteForm.peso ? Number(componenteForm.peso) : null,
         modo: componenteForm.modo,
@@ -143,7 +120,7 @@ const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: number; period
     )
   }
 
-  const handleCrearActividad = (componenteId: number) => {
+  const handleCrearActividad = (componenteId: string) => {
     actividadMutation.mutate(
       {
         componente_id: componenteId,
@@ -428,8 +405,7 @@ const PlanillaEditor = ({asignacionId, periodoId}: {asignacionId: number; period
               </div>
             )}
             <AcademicPagination meta={data.pagination?.matriculas} visibleCount={visibleRows.matriculas.length}
-              loading={isFetching} onPageChange={changePage} onPerPageChange={changePageSize}
-              onLoadMore={() => setPage(current => current + 1)} />
+              loading={isFetching} onPageChange={changePage} onPerPageChange={changePageSize} />
           </KTCardBody>
         </KTCard>
       </div>

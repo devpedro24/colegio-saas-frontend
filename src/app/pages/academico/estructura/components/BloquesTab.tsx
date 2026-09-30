@@ -63,7 +63,8 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
     setError(null)
   }, [show, bloque])
 
-  const fe = (field: string): string | undefined => error?.fieldError(field)
+  const fe = (field: string): string | undefined =>
+    error?.fieldError(field) ?? (field.endsWith('_id') ? error?.fieldError(`${field.slice(0, -3)}_token`) : undefined)
   const set = (patch: Partial<CreateBloqueHorarioInput>) => setForm((prev) => ({...prev, ...patch}))
 
   const handleSubmit = (e: FormEvent) => {
@@ -394,7 +395,7 @@ const BloquesTab: FC = () => {
         </div>
       )}
 
-      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} onLoadMore={listQuery.onLoadMore} />
+      <AcademicPagination meta={listQuery.meta} visibleCount={list.length} loading={listQuery.isFetching} onPageChange={listQuery.onPageChange} onPerPageChange={listQuery.onPerPageChange} />
 
       <BloqueFormDialog
         show={formOpen}

@@ -5,16 +5,34 @@ import { api } from "@/lib/api/client";
 import type { AcademicPageMeta } from "@/app/shared/components/AcademicPagination";
 
 export type AcademicOption = {
-  id: number;
+  id: string;
   nombre?: string;
   name?: string;
   grado?: { nombre: string };
   sede?: { nombre: string } | null;
-  sede_id?: number | null;
-  nivel_id?: number | null;
+  sede_id?: string | null;
+  nivel_id?: string | null;
+  area_id?: string | null;
+  area?: { id: string; nombre: string } | null;
   estado?: string;
   url_token?: string;
 };
+
+/** Opción pública de los formularios que no deben recibir IDs de la BD. */
+export type OpaqueAcademicOption = {
+  url_token: string;
+  nombre?: string;
+  name?: string;
+  nivel_token?: string | null;
+  area_token?: string | null;
+  area?: { url_token: string; nombre: string } | null;
+  grado?: {nombre: string; nivel_token?: string | null};
+  sede?: {nombre: string} | null;
+  estado?: string;
+};
+
+const optionValue = (option: AcademicOption | OpaqueAcademicOption): string =>
+  'id' in option ? String(option.id) : option.url_token;
 
 type CatalogType =
   | "grados"
@@ -25,25 +43,29 @@ type CatalogType =
   | "docentes"
   | "espacios";
 
-type Props = {
+type Props<T extends AcademicOption | OpaqueAcademicOption> = {
   tipo: CatalogType;
   yearId: string;
   label: string;
   name?: string;
   value: string;
   onChange: (value: string) => void;
-  onSelectOption?: (option: AcademicOption | null) => void;
-  initialOptions: AcademicOption[];
+  onSelectOption?: (option: T | null) => void;
+  initialOptions: T[];
   emptyLabel: string;
   disabled?: boolean;
   required?: boolean;
   selectOnly?: boolean;
   hideLabel?: boolean;
-  formatOption?: (option: AcademicOption) => string;
-  filterOption?: (option: AcademicOption) => boolean;
+  formatOption?: (option: T) => string;
+  filterOption?: (option: T) => boolean;
+  compatibleNivelId?: number | null;
+  compatibleNivelToken?: string | null;
+  /** Solicita el catálogo y envía valores con selectores públicos, sin IDs internos. */
+  opaque?: boolean;
 };
 
-export function AcademicOptionSelect({
+export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOption>({
   tipo,
   yearId,
   label,
@@ -57,9 +79,12 @@ export function AcademicOptionSelect({
   required = false,
   selectOnly = false,
   hideLabel = false,
-  formatOption = (option) => option.nombre ?? option.name ?? String(option.id),
+  formatOption = (option) => option.nombre ?? option.name ?? optionValue(option),
   filterOption,
-}: Props) {
+  compatibleNivelId,
+  compatibleNivelToken,
+  opaque = true,
+}: Props<T>) {
   const intl = useIntl();
   const id = useId();
   const [search, setSearch] = useState("");
@@ -75,18 +100,23 @@ export function AcademicOptionSelect({
   }, [search]);
 
   const selectedMissing =
-    !!value && !initialOptions.some((option) => String(option.id) === value);
+    !!value && !initialOptions.some((option) => optionValue(option) === value);
   const remote = useQuery({
-    queryKey: ["academic-options", tipo, yearId, debouncedSearch, value],
+    queryKey: ["academic-options", tipo, yearId, debouncedSearch, value, compatibleNivelId, compatibleNivelToken, opaque],
     queryFn: () => {
       const params = new URLSearchParams({
         tipo,
-        ano_lectivo_id: yearId,
         per_page: "50",
       });
+      params.set(opaque ? "ano_lectivo_token" : "ano_lectivo_id", yearId);
+      if (opaque) params.set("opaque", "1");
       if (debouncedSearch) params.set("search", debouncedSearch);
-      if (value) params.set("selected_id", value);
-      return api.get<{ data: AcademicOption[]; meta: AcademicPageMeta }>(
+      if (value) params.set(opaque ? "selected_token" : "selected_id", value);
+      if (tipo === "materias") {
+        if (opaque && compatibleNivelToken) params.set("compatible_nivel_token", compatibleNivelToken);
+        else if (!opaque && compatibleNivelId != null) params.set("compatible_nivel_id", String(compatibleNivelId));
+      }
+      return api.get<{ data: T[]; meta: AcademicPageMeta }>(
         `/catalogos-academicos?${params}`,
       );
     },
@@ -97,13 +127,21 @@ export function AcademicOptionSelect({
   // A filter with only a select loads the rest of its options when opened.
   // Requests remain bounded and every option stays reachable without a second search field.
   const allOptions = useInfiniteQuery({
-    queryKey: ["academic-options-all", tipo, yearId],
+    queryKey: ["academic-options-all", tipo, yearId, compatibleNivelId, compatibleNivelToken, opaque],
     enabled: selectOnly && opened && !!yearId,
     initialPageParam: 1,
-    queryFn: ({ pageParam }) =>
-      api.get<{ data: AcademicOption[]; meta: AcademicPageMeta }>(
-        `/catalogos-academicos?${new URLSearchParams({ tipo, ano_lectivo_id: yearId, page: String(pageParam), per_page: "1000" })}`,
-      ),
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ tipo, page: String(pageParam), per_page: "1000" });
+      params.set(opaque ? "ano_lectivo_token" : "ano_lectivo_id", yearId);
+      if (opaque) params.set("opaque", "1");
+      if (tipo === "materias") {
+        if (opaque && compatibleNivelToken) params.set("compatible_nivel_token", compatibleNivelToken);
+        else if (!opaque && compatibleNivelId != null) params.set("compatible_nivel_id", String(compatibleNivelId));
+      }
+      return api.get<{ data: T[]; meta: AcademicPageMeta }>(
+        `/catalogos-academicos?${params}`,
+      );
+    },
     getNextPageParam: (last) =>
       last.meta.current_page < last.meta.last_page
         ? last.meta.current_page + 1
@@ -140,10 +178,10 @@ export function AcademicOptionSelect({
   const selectedOption =
     value &&
     [...initialOptions, ...(remote.data?.data ?? [])].find(
-      (option) => String(option.id) === value && (!filterOption || filterOption(option)),
+      (option) => optionValue(option) === value && (!filterOption || filterOption(option)),
     );
   const merged =
-    selectedOption && !filteredOptions.some((option) => String(option.id) === value)
+    selectedOption && !filteredOptions.some((option) => optionValue(option) === value)
       ? [selectedOption, ...filteredOptions]
       : filteredOptions;
 
@@ -194,7 +232,7 @@ export function AcademicOptionSelect({
           const selectedValue = event.target.value;
           onChange(selectedValue);
           onSelectOption?.(
-            merged.find((option) => String(option.id) === selectedValue) ??
+            merged.find((option) => optionValue(option) === selectedValue) ??
               null,
           );
         }}
@@ -202,7 +240,7 @@ export function AcademicOptionSelect({
       >
         <option value="">{emptyLabel}</option>
         {merged.map((option) => (
-          <option key={option.id} value={option.id}>
+          <option key={optionValue(option)} value={optionValue(option)}>
             {formatOption(option)}
           </option>
         ))}

@@ -7,8 +7,9 @@ import {useSearchParams} from 'react-router-dom'
 import {ApiError, api} from '@/lib/api/client'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {formatSchoolTime} from '@/lib/format/schoolTime'
-import {AcademicOptionSelect, type AcademicOption} from '../../shared/AcademicOptionSelect'
+import {AcademicOptionSelect, type AcademicOption, type OpaqueAcademicOption} from '../../shared/AcademicOptionSelect'
 import {useSchedule, type Assignment, type ScheduleGroup, type Session} from '../horarios.api'
+import {fromOpaqueAcademic, toOpaqueAcademic} from '../../shared/opaqueAcademic'
 import {useAcademicYear} from '../../academic-year-context'
 import {useAcademicPagedList} from '../../estructura/useAcademicPagedList'
 import {layoutSessions, minutes, sessionEnd, sessionStart} from './schedule-layout'
@@ -27,68 +28,74 @@ type ScheduleDrag = {session: Session; pointerId: number; startX: number; startY
 type CardMenu = {session: Session; left: number; top: number}
 const gradeGroupLabel = (item: ScheduleGroup) => `${item.grado?.nombre ?? ''} / (${item.nombre})`
 const groupLabel = (item: ScheduleGroup) => `${gradeGroupLabel(item)}${item.sede?.nombre ? ` · ${item.sede.nombre}` : ''}`
-const groupOptionLabel = (item: AcademicOption) => `${item.grado?.nombre ?? ''} / (${item.nombre ?? ''})${item.sede?.nombre ? ` · ${item.sede.nombre}` : ''}`
+const groupOptionLabel = (item: AcademicOption | OpaqueAcademicOption) => `${item.grado?.nombre ?? ''} / (${item.nombre ?? ''})${item.sede?.nombre ? ` · ${item.sede.nombre}` : ''}`
+const subjectHue = (token: string) => [...token].reduce((value, char) => (value * 33 + char.charCodeAt(0)) % 360, 0)
 
 export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'horarios' | 'resumen'}) {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id}, {name: ''})
-  const {yearId: selectedYear, years, writable: yearWritable} = useAcademicYear()
+  const {yearToken: selectedYear, years, writable: yearWritable} = useAcademicYear()
   const [searchParams, setSearchParams] = useSearchParams()
   const previousYearRef = useRef(selectedYear)
   const changingYear = !!previousYearRef.current && !!selectedYear && previousYearRef.current !== selectedYear
   const requestedGroup = changingYear ? '' : searchParams.get('grupo') ?? ''
   const requestedTeacher = changingYear ? '' : searchParams.get('docente') ?? ''
   const requestedRoom = changingYear ? '' : searchParams.get('espacio') ?? ''
-  // The unfiltered timetable only fetches catalogs. Resolve public URL tokens to
-  // internal IDs before requesting the selected group's sessions.
+  // The unfiltered timetable only fetches catalogs. Keep public selectors in
+  // the URL and use the same selectors for all subsequent requests.
   const catalogQuery = useSchedule(mode, '', true, {group: requestedGroup, teacher: requestedTeacher, room: requestedRoom})
   const catalog = catalogQuery.data
-  const selectedGroup = catalog?.grupos.find(item => String(item.ano_lectivo_id) === selectedYear && (item.url_token === requestedGroup || String(item.id) === requestedGroup))
-  const selectedTeacher = catalog?.docentes.find(item => item.url_token === requestedTeacher || String(item.id) === requestedTeacher)
-  const selectedRoom = catalog?.espacios.find(item => item.url_token === requestedRoom || String(item.id) === requestedRoom)
-  const group = selectedGroup ? String(selectedGroup.id) : ''
-  const teacher = selectedTeacher ? String(selectedTeacher.id) : ''
-  const room = selectedRoom ? String(selectedRoom.id) : ''
+  const selectedGroup = catalog?.grupos.find(item => item.ano_lectivo_id === selectedYear && item.url_token === requestedGroup)
+  const selectedTeacher = catalog?.docentes.find(item => item.url_token === requestedTeacher)
+  const selectedRoom = catalog?.espacios.find(item => item.url_token === requestedRoom)
+  const group = selectedGroup?.url_token ?? ''
+  const teacher = selectedTeacher?.url_token ?? ''
+  const room = selectedRoom?.url_token ?? ''
   const [subjectId, setSubjectId] = useState('')
   const assignmentList = useAcademicPagedList<Assignment>({
     key: ['horarios', 'assignment-page', selectedYear, group, teacher, subjectId],
     storageKey: 'plan.asignaciones',
     enabled: mode === 'asignaciones' && !!selectedYear,
     fetchPage: async (page, perPage) => {
-      const params = new URLSearchParams({ano_lectivo_id: selectedYear, page: String(page), per_page: String(perPage)})
-      if (group) params.set('grupo_id', group)
-      if (teacher) params.set('docente_id', teacher)
-      if (subjectId) params.set('materia_id', subjectId)
-      const response = await api.get<{data: {asignaciones: Assignment[]; pagination?: {asignaciones?: {current_page: number; last_page: number; per_page: number; total: number; from: number | null; to: number | null}}}}>(`/horarios?${params}`)
-      return {data: response.data.asignaciones, meta: response.data.pagination!.asignaciones!}
+      const params = new URLSearchParams({opaque: '1', ano_lectivo_token: selectedYear, page: String(page), per_page: String(perPage)})
+      if (group) params.set('grupo_token', group)
+      if (teacher) params.set('docente_token', teacher)
+      if (subjectId) params.set('materia_token', subjectId)
+      const response = await api.get<{data: {asignaciones: unknown[]; pagination?: {asignaciones?: {current_page: number; last_page: number; per_page: number; total: number; from: number | null; to: number | null}}}}>(`/horarios?${params}`)
+      return {data: fromOpaqueAcademic<Assignment[]>(response.data.asignaciones), meta: response.data.pagination!.asignaciones!}
     },
   })
   const selectedScheduleQuery = useSchedule('horarios', group, mode === 'horarios' && !!group)
   const selectedSummaryQuery = useSchedule('resumen', group, mode === 'resumen' && !!(group || teacher), {}, teacher)
   const query = mode === 'horarios' && group ? selectedScheduleQuery
     : mode === 'resumen' && (group || teacher) ? selectedSummaryQuery : catalogQuery
-  const yearName = (id: number) => years.find(year => String(year.id) === String(id))?.nombre ?? '—'
+  const yearName = (token: string) => years.find(year => year.url_token === token)?.nombre ?? '—'
   const data = query.data
+  const resolveGroupOption = (option: ScheduleGroup | OpaqueAcademicOption | null): ScheduleGroup | null => {
+    if (!option) return null
+    return data?.grupos.find(item => item.url_token === option.url_token)
+      ?? {...fromOpaqueAcademic<ScheduleGroup>(option), ano_lectivo_id: selectedYear, sede: null, jornada: null}
+  }
   const client = useQueryClient()
   const [copySource, setCopySource] = useState<Session | null>(null)
   const [cardMenu, setCardMenu] = useState<CardMenu | null>(null)
   const [dropTarget, setDropTarget] = useState<ScheduleDrop | null>(null)
   const dragTargetRef = useRef<ScheduleDrop | null>(null)
-  const [draggingId, setDraggingId] = useState<number | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
   const dragRef = useRef<ScheduleDrag | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const scrollFrameRef = useRef<number | null>(null)
-  const suppressClickRef = useRef<{id: number; until: number} | null>(null)
+  const suppressClickRef = useRef<{id: string; until: number} | null>(null)
   const [show, setShow] = useState(false)
   const [editing, setEditing] = useState<Session | null>(null)
   const [assignmentEditing, setAssignmentEditing] = useState<Assignment | null>(null)
-  const [deleting, setDeleting] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [sessionDay, setSessionDay] = useState(days[0])
   const [sessionSubjectId, setSessionSubjectId] = useState('')
   const [sessionGroupId, setSessionGroupId] = useState('')
   const [selectedFormGroup, setSelectedFormGroup] = useState<ScheduleGroup | null>(null)
-  const [selectedFormSubject, setSelectedFormSubject] = useState<AcademicOption | null>(null)
+  const [selectedFormSubject, setSelectedFormSubject] = useState<AcademicOption | OpaqueAcademicOption | null>(null)
   const [sessionTeacherId, setSessionTeacherId] = useState('')
   const [sessionSpaceId, setSessionSpaceId] = useState('')
   const [sessionBlockId, setSessionBlockId] = useState('')
@@ -153,9 +160,10 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     document.addEventListener('pointerdown', onPointerDown, true)
     return () => {document.removeEventListener('keydown', onKeyDown); document.removeEventListener('pointerdown', onPointerDown, true)}
   }, [cardMenu, copySource])
-  const mutation = useMutation({mutationFn: async ({path, body, method}: {path: string; body?: unknown; method?: 'put' | 'delete'}) => {
-    if (method === 'delete') return api.delete(path)
-    return method === 'put' ? api.put(path, body) : api.post(path, body)
+  const mutation = useMutation({mutationFn: async ({path, body, method}: {path: string; body?: Record<string, unknown>; method?: 'put' | 'delete'}) => {
+    const url = `${path}?opaque=1`
+    if (method === 'delete') return api.delete(url)
+    return method === 'put' ? api.put(url, toOpaqueAcademic(body ?? {})) : api.post(url, toOpaqueAcademic(body ?? {}))
   }, onSuccess: async () => {await client.invalidateQueries({queryKey: ['horarios']}); setShow(false); setEditing(null); setAssignmentEditing(null); setDeleting(null); setError('')}, onError: e => setError(e instanceof ApiError && e.errors ? Object.values(e.errors).flat()[0] ?? e.message : e.message)})
 
   const writable = data?.can_manage && yearWritable
@@ -256,7 +264,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     setError('')
     setCopySource(null)
     setDropTarget(null)
-    mutation.mutate({path: copy ? '/horarios' : `/horarios/${session.id}`, method: copy ? undefined : 'put', body: {
+    mutation.mutate({path: copy ? '/horarios' : `/horarios/${encodeURIComponent(session.id)}`, method: copy ? undefined : 'put', body: {
       dia: target.day, grupo_id: session.grupo_id, materia_id: session.materia_id,
       docente_id: session.docente_id, espacio_fisico_id: session.espacio_fisico_id,
       bloque_horario_id: block?.id ?? null,
@@ -303,20 +311,20 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     event.preventDefault()
     if (mode === 'asignaciones') {
       const fields = Object.fromEntries(new FormData(event.currentTarget))
-      mutation.mutate({path: assignmentEditing ? `/asignaciones/${assignmentEditing.id}` : '/asignaciones', method: assignmentEditing ? 'put' : undefined, body: {
-        ano_lectivo_id: Number(selectedYear),
-        grupo_id: Number(fields.grupo_id),
-        materia_id: Number(fields.materia_id),
-        docente_id: fields.docente_id ? Number(fields.docente_id) : null,
+      mutation.mutate({path: assignmentEditing ? `/asignaciones/${encodeURIComponent(assignmentEditing.id)}` : '/asignaciones', method: assignmentEditing ? 'put' : undefined, body: {
+        ano_lectivo_id: selectedYear,
+        grupo_id: String(fields.grupo_id),
+        materia_id: String(fields.materia_id),
+        docente_id: fields.docente_id ? String(fields.docente_id) : null,
       }})
       return
     }
     mutation.mutate({
-      path: editing ? `/horarios/${editing.id}` : '/horarios', method: editing ? 'put' : undefined,
+      path: editing ? `/horarios/${encodeURIComponent(editing.id)}` : '/horarios', method: editing ? 'put' : undefined,
       body: {
-        dia: sessionDay, materia_id: Number(sessionSubjectId), grupo_id: Number(sessionGroupId), docente_id: sessionTeacherId ? Number(sessionTeacherId) : null,
-        espacio_fisico_id: sessionSpaceId ? Number(sessionSpaceId) : null,
-        bloque_horario_id: blockMode ? Number(sessionBlockId) : null,
+        dia: sessionDay, materia_id: sessionSubjectId, grupo_id: sessionGroupId, docente_id: sessionTeacherId || null,
+        espacio_fisico_id: sessionSpaceId || null,
+        bloque_horario_id: blockMode ? sessionBlockId : null,
         hora_inicio: blockMode ? null : sessionStartTime, hora_fin: blockMode ? null : sessionEndTime,
       },
     })
@@ -329,10 +337,10 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const needsGroup = mode === 'horarios' && !!data?.can_manage && !group
   return <>
     <div className='d-flex flex-wrap align-items-center gap-3 mb-5 schedule-controls'>
-      <AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('schedule.group')} value={group} onChange={() => undefined} onSelectOption={option => setFilter('grupo', option?.url_token ?? '')} initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []} emptyLabel={mode === 'horarios' && data?.can_manage ? t('schedule.selectGroup') : t('schedule.allGroups')} formatOption={groupOptionLabel} hideLabel selectOnly />
-      {data?.can_manage && <AcademicOptionSelect tipo='docentes' yearId={selectedYear} label={t('schedule.teacher')} value={teacher} onChange={() => undefined} onSelectOption={option => setFilter('docente', option?.url_token ?? '')} initialOptions={data.docentes} emptyLabel={t('schedule.allTeachers')} hideLabel selectOnly />}
-      {mode === 'asignaciones' && <AcademicOptionSelect tipo='materias' yearId={selectedYear} label={t('schedule.subject')} value={subjectId} onChange={setSubjectId} initialOptions={data?.materias ?? []} emptyLabel={t('academic.filter.allSubjects')} hideLabel selectOnly />}
-      {mode === 'horarios' && <AcademicOptionSelect tipo='espacios' yearId={selectedYear} label={t('schedule.room')} value={room} onChange={() => undefined} onSelectOption={option => setFilter('espacio', option?.url_token ?? '')} initialOptions={data?.espacios ?? []} emptyLabel={t('schedule.allRooms')} hideLabel selectOnly />}
+      <AcademicOptionSelect tipo='grupos' yearId={selectedYear} opaque label={t('schedule.group')} value={group} onChange={() => undefined} onSelectOption={option => setFilter('grupo', option?.url_token ?? '')} initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []} emptyLabel={mode === 'horarios' && data?.can_manage ? t('schedule.selectGroup') : t('schedule.allGroups')} formatOption={groupOptionLabel} hideLabel selectOnly />
+      {data?.can_manage && <AcademicOptionSelect tipo='docentes' yearId={selectedYear} opaque label={t('schedule.teacher')} value={teacher} onChange={() => undefined} onSelectOption={option => setFilter('docente', option?.url_token ?? '')} initialOptions={data.docentes} emptyLabel={t('schedule.allTeachers')} hideLabel selectOnly />}
+      {mode === 'asignaciones' && <AcademicOptionSelect tipo='materias' yearId={selectedYear} opaque label={t('schedule.subject')} value={subjectId} onChange={setSubjectId} initialOptions={data?.materias ?? []} emptyLabel={t('academic.filter.allSubjects')} hideLabel selectOnly />}
+      {mode === 'horarios' && <AcademicOptionSelect tipo='espacios' yearId={selectedYear} opaque label={t('schedule.room')} value={room} onChange={() => undefined} onSelectOption={option => setFilter('espacio', option?.url_token ?? '')} initialOptions={data?.espacios ?? []} emptyLabel={t('schedule.allRooms')} hideLabel selectOnly />}
       {writable && mode !== 'resumen' && <button className='btn btn-primary ms-auto' disabled={!selectedYear || needsGroup} onClick={openNew}>+ {t(mode === 'asignaciones' ? 'schedule.newAssignment' : 'schedule.newSession')}</button>}
       {mode === 'horarios' && <button className='btn btn-light' disabled={needsGroup} onClick={() => window.print()}>{t('schedule.print')}</button>}
     </div>
@@ -341,7 +349,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     {copySource && mode === 'horarios' && <div className='alert alert-info d-flex align-items-center justify-content-between gap-3 schedule-copy-banner' data-schedule-copy-banner role='status'><span>{t('schedule.placeCopy')} <strong>{copySource.materia?.nombre} · {gradeGroupLabel(copySource.grupo)}</strong></span><button type='button' className='btn btn-sm btn-light' onClick={() => {setCopySource(null); setDropTarget(null)}}>{t('common.cancel')}</button></div>}
     {error && !show && <div className='alert alert-danger' role='alert'>{error}</div>}
     {mode === 'resumen' && <div className='row g-5'>{[['schedule.subjects', data?.counts?.materias ?? data?.materias.length], ['schedule.assignments', data?.pagination?.asignaciones?.total ?? assignments.length], ['schedule.sessions', data?.counts?.sesiones ?? sessions.length]].map(([label, value]) => <div className='col-md-4' key={label}><div className='bg-light-primary rounded p-8'><div className='fs-2x fw-bold'>{value}</div><div>{t(String(label))}</div></div></div>)}</div>}
-    {mode === 'asignaciones' && <><div className='table-responsive'><table className='table table-row-dashed align-middle'><thead><tr><th>{t('common.field.anoLectivo')}</th>{['teacher', 'subject', 'group', 'actions'].map(item => <th key={item}>{t(`schedule.${item}`)}</th>)}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{yearName(item.ano_lectivo_id)}</td><td>{item.docente?.name ?? t('schedule.noTeacher')}</td><td>{item.materia?.nombre}</td><td>{gradeGroupLabel(item.grupo)}</td><td>{writable && <div className='d-flex gap-2'><button className='btn btn-sm btn-light-primary' onClick={() => openAssignment(item)}>{t('common.edit')}</button><button className='btn btn-sm btn-light-danger' onClick={() => setDeleting(item.id)}>{t('common.delete')}</button></div>}</td></tr>)}</tbody></table>{!assignments.length && <p className='text-muted p-6'>{assignmentList.isLoading ? t('common.pleaseWait') : t('schedule.emptyAssignments')}</p>}</div><AcademicPagination meta={assignmentList.meta} visibleCount={assignments.length} loading={assignmentList.isFetching} onPageChange={assignmentList.onPageChange} onPerPageChange={assignmentList.onPerPageChange} onLoadMore={assignmentList.onLoadMore} /></>}
+    {mode === 'asignaciones' && <><div className='table-responsive'><table className='table table-row-dashed align-middle'><thead><tr><th>{t('common.field.anoLectivo')}</th>{['teacher', 'subject', 'group', 'actions'].map(item => <th key={item}>{t(`schedule.${item}`)}</th>)}</tr></thead><tbody>{assignments.map(item => <tr key={item.id}><td>{yearName(item.ano_lectivo_id)}</td><td>{item.docente?.name ?? t('schedule.noTeacher')}</td><td>{item.materia?.nombre}</td><td>{gradeGroupLabel(item.grupo)}</td><td>{writable && <div className='d-flex gap-2'><button className='btn btn-sm btn-light-primary' onClick={() => openAssignment(item)}>{t('common.edit')}</button><button className='btn btn-sm btn-light-danger' onClick={() => setDeleting(item.id)}>{t('common.delete')}</button></div>}</td></tr>)}</tbody></table>{!assignments.length && <p className='text-muted p-6'>{assignmentList.isLoading ? t('common.pleaseWait') : t('schedule.emptyAssignments')}</p>}</div><AcademicPagination meta={assignmentList.meta} visibleCount={assignments.length} loading={assignmentList.isFetching} onPageChange={assignmentList.onPageChange} onPerPageChange={assignmentList.onPerPageChange} /></>}
     {mode === 'horarios' && !needsGroup && <div className='schedule-scroll' ref={scrollRef}><div className='schedule-week'>
       <div className='schedule-day-label'/>{days.map((day, i) => <div className='schedule-day-label' key={day}>{intl.formatDate(new Date(2026, 8, 21 + i), {weekday: 'long'})}</div>)}
       <div className='schedule-time-axis' style={{height}}>{Array.from({length: endHour - startHour + 1}, (_, index) => <span key={index} style={{top: index * hourHeight}}>{formatSchoolTime(`${String(startHour + index).padStart(2, '0')}:00`)}</span>)}</div>
@@ -359,7 +367,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
         const duration = (minutes(sessionEnd(item)) - minutes(sessionStart(item))) / 60 * hourHeight - 3
         const compact = duration < 70
         return <div key={item.id} className='schedule-card-position' style={{top: (minutes(sessionStart(item)) - startHour * 60) / 60 * hourHeight, height: Math.max(12, duration), left: `calc(${lane / lanes * 100}% + 3px)`, width: `calc(${100 / lanes}% - 6px)`}}>
-        <button className={`schedule-session text-start${compact ? ' schedule-session-compact' : duration >= 100 ? ' schedule-session-roomy' : ''}${writable ? ' schedule-session-draggable' : ''}${draggingId === item.id ? ' schedule-session-dragging' : ''}`} aria-describedby={writable ? 'schedule-drag-hint' : undefined} title={[item.materia?.nombre, groupLabel(item.grupo), item.espacio?.nombre ?? t('schedule.noRoom'), item.docente?.name ?? t('schedule.noTeacher')].filter(Boolean).join(' · ')} style={{borderLeftColor: `hsl(${item.materia_id * 59 % 360} 62% 50%)`}} onPointerDown={event => startDrag(event, item)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={clearDrag} onClick={event => {
+        <button className={`schedule-session text-start${compact ? ' schedule-session-compact' : duration >= 100 ? ' schedule-session-roomy' : ''}${writable ? ' schedule-session-draggable' : ''}${draggingId === item.id ? ' schedule-session-dragging' : ''}`} aria-describedby={writable ? 'schedule-drag-hint' : undefined} title={[item.materia?.nombre, groupLabel(item.grupo), item.espacio?.nombre ?? t('schedule.noRoom'), item.docente?.name ?? t('schedule.noTeacher')].filter(Boolean).join(' · ')} style={{borderLeftColor: `hsl(${subjectHue(item.materia_id)} 62% 50%)`}} onPointerDown={event => startDrag(event, item)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={clearDrag} onClick={event => {
           event.stopPropagation()
           if (suppressClickRef.current?.id === item.id && performance.now() < suppressClickRef.current.until) return
           if (copySource) return
@@ -384,14 +392,14 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
       <form key={assignmentEditing?.id ?? 'new'} onSubmit={save}><Modal.Body>
         {error && <div className='alert alert-danger' role='alert'>{error}</div>}
         {mode === 'asignaciones' ? <div className='vstack gap-5'>
-          <AcademicOptionSelect tipo='docentes' yearId={selectedYear} label={t('schedule.teacherOptional')} name='docente_id' value={sessionTeacherId} onChange={setSessionTeacherId} initialOptions={data?.docentes ?? []} emptyLabel={t('schedule.noTeacher')} selectOnly />
-          <AcademicOptionSelect tipo='materias' yearId={selectedYear} label={t('schedule.subject')} name='materia_id' required value={sessionSubjectId} onChange={setSessionSubjectId} onSelectOption={setSelectedFormSubject} initialOptions={data?.materias.filter(item => item.estado === 'activo') ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSubjectId || item.estado === 'activo'} selectOnly />
-          <AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('schedule.group')} name='grupo_id' required value={sessionGroupId} onChange={setSessionGroupId} onSelectOption={option => setSelectedFormGroup(option as ScheduleGroup | null)} initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []} emptyLabel={t('common.select')} formatOption={groupOptionLabel} selectOnly />
+          <AcademicOptionSelect tipo='docentes' yearId={selectedYear} opaque label={t('schedule.teacherOptional')} name='docente_id' value={sessionTeacherId} onChange={setSessionTeacherId} initialOptions={data?.docentes ?? []} emptyLabel={t('schedule.noTeacher')} selectOnly />
+          <AcademicOptionSelect tipo='materias' yearId={selectedYear} opaque label={t('schedule.subject')} name='materia_id' required value={sessionSubjectId} onChange={setSessionSubjectId} onSelectOption={option => setSelectedFormSubject(option ? fromOpaqueAcademic<AcademicOption>(option) : null)} initialOptions={data?.materias.filter(item => item.estado === 'activo') ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSubjectId || item.estado === 'activo'} selectOnly />
+          <AcademicOptionSelect tipo='grupos' yearId={selectedYear} opaque label={t('schedule.group')} name='grupo_id' required value={sessionGroupId} onChange={setSessionGroupId} onSelectOption={option => setSelectedFormGroup(resolveGroupOption(option))} initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []} emptyLabel={t('common.select')} formatOption={groupOptionLabel} selectOnly />
         </div> : <>
           <label className='form-label required'>{t('schedule.day')}</label><select required name='dia' className='form-select mb-5' value={sessionDay} onChange={e => setSessionDay(e.target.value)}>{days.map((day, i) => <option key={day} value={day}>{intl.formatDate(new Date(2026, 8, 21 + i), {weekday: 'long'})}</option>)}</select>
-          <div className='mb-5'><AcademicOptionSelect tipo='materias' yearId={selectedYear} label={t('schedule.subject')} name='materia_id' required value={sessionSubjectId} onChange={setSessionSubjectId} onSelectOption={setSelectedFormSubject} initialOptions={data?.materias.filter(item => item.estado === 'activo' && (!activeGroup || item.nivel_id == null || item.nivel_id === activeGroup.grado.nivel_id)) ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSubjectId || (item.estado === 'activo' && (!activeGroup || item.nivel_id == null || item.nivel_id === activeGroup.grado.nivel_id))} selectOnly /></div>
-          <div className='mb-5'><AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('schedule.group')} name='grupo_id' required value={sessionGroupId} onChange={value => {setSessionGroupId(value); setSessionBlockId(''); setSessionSpaceId('')}} onSelectOption={option => {
-            const next = option as ScheduleGroup | null
+          <div className='mb-5'><AcademicOptionSelect tipo='materias' yearId={selectedYear} opaque label={t('schedule.subject')} name='materia_id' required value={sessionSubjectId} onChange={setSessionSubjectId} onSelectOption={option => setSelectedFormSubject(option ? fromOpaqueAcademic<AcademicOption>(option) : null)} initialOptions={data?.materias.filter(item => item.estado === 'activo' && (!activeGroup || item.nivel_id == null || item.nivel_id === activeGroup.grado.nivel_id)) ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSubjectId || (item.estado === 'activo' && (!activeGroup || item.nivel_id == null || item.nivel_id === activeGroup.grado.nivel_id))} selectOnly /></div>
+          <div className='mb-5'><AcademicOptionSelect tipo='grupos' yearId={selectedYear} opaque label={t('schedule.group')} name='grupo_id' required value={sessionGroupId} onChange={value => {setSessionGroupId(value); setSessionBlockId(''); setSessionSpaceId('')}} onSelectOption={option => {
+            const next = resolveGroupOption(option)
             const subject = data?.materias.find(item => String(item.id) === sessionSubjectId) ?? selectedFormSubject
             if (subject && 'nivel_id' in subject && subject.nivel_id != null && next && subject.nivel_id !== next.grado.nivel_id) setSessionSubjectId('')
             setSelectedFormGroup(next)
@@ -418,8 +426,8 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
           </div>}
           {activeGroup && visibleBlocks.length === 0 && <p className='text-muted fs-7 mb-4'>{t('schedule.noBlocks')}</p>}
           {!blockMode && <div className='row g-4 mb-5'><div className='col-md-6'><label className='form-label required' htmlFor='schedule-start'>{t('schedule.startTime')}</label><input id='schedule-start' name='hora_inicio' required type='time' step={60} className='form-control' min={activeGroup?.jornada?.hora_inicio?.slice(0,5)} max={activeGroup?.jornada?.hora_fin?.slice(0,5)} value={sessionStartTime} onChange={e => setSessionStartTime(e.target.value)} /></div><div className='col-md-6'><label className='form-label required' htmlFor='schedule-end'>{t('schedule.endTime')}</label><input id='schedule-end' name='hora_fin' required type='time' step={60} className='form-control' min={activeGroup?.jornada?.hora_inicio?.slice(0,5)} max={activeGroup?.jornada?.hora_fin?.slice(0,5)} value={sessionEndTime} onChange={e => setSessionEndTime(e.target.value)} /></div></div>}
-          <div className='mb-5'><AcademicOptionSelect tipo='docentes' yearId={selectedYear} label={t('schedule.teacherOptional')} name='docente_id' value={sessionTeacherId} onChange={setSessionTeacherId} initialOptions={data?.docentes ?? []} emptyLabel={t('schedule.noTeacher')} selectOnly /></div>
-          <AcademicOptionSelect tipo='espacios' yearId={selectedYear} label={t('schedule.room')} value={sessionSpaceId} onChange={setSessionSpaceId} initialOptions={data?.espacios.filter(item => item.sede_id === activeGroup?.sede_id) ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSpaceId || (!!activeGroup && item.sede_id === activeGroup.sede_id && (item.estado == null || item.estado === 'disponible'))} selectOnly />
+          <div className='mb-5'><AcademicOptionSelect tipo='docentes' yearId={selectedYear} opaque label={t('schedule.teacherOptional')} name='docente_id' value={sessionTeacherId} onChange={setSessionTeacherId} initialOptions={data?.docentes ?? []} emptyLabel={t('schedule.noTeacher')} selectOnly /></div>
+          <AcademicOptionSelect tipo='espacios' yearId={selectedYear} opaque label={t('schedule.room')} value={sessionSpaceId} onChange={setSessionSpaceId} initialOptions={data?.espacios.filter(item => item.sede_id === activeGroup?.sede_id) ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSpaceId || (!!activeGroup && item.sede_id === activeGroup.sede_id && (item.estado == null || item.estado === 'disponible'))} selectOnly />
         </>}
       </Modal.Body><Modal.Footer>
         {editing && writable && <button className='btn btn-light-danger me-auto' type='button' onClick={() => {setShow(false); setDeleting(editing.id)}}>{t('common.delete')}</button>}
@@ -427,6 +435,6 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
         {writable && <button className='btn btn-primary' disabled={mutation.isPending}>{t('common.save')}</button>}
       </Modal.Footer></form>
     </Modal>
-    <Modal show={deleting !== null} onHide={() => setDeleting(null)} centered className='schedule-editor-modal'><Modal.Header closeButton><Modal.Title>{t('common.delete')}</Modal.Title></Modal.Header><Modal.Body>{t('schedule.confirmDelete')}{error && <div className='alert alert-danger mt-4'>{error}</div>}</Modal.Body><Modal.Footer><button className='btn btn-light' onClick={() => setDeleting(null)}>{t('common.cancel')}</button><button className='btn btn-danger' disabled={mutation.isPending} onClick={() => mutation.mutate({path: `/${mode === 'asignaciones' ? 'asignaciones' : 'horarios'}/${deleting}`, method: 'delete'})}>{t('common.delete')}</button></Modal.Footer></Modal>
+    <Modal show={deleting !== null} onHide={() => setDeleting(null)} centered className='schedule-editor-modal'><Modal.Header closeButton><Modal.Title>{t('common.delete')}</Modal.Title></Modal.Header><Modal.Body>{t('schedule.confirmDelete')}{error && <div className='alert alert-danger mt-4'>{error}</div>}</Modal.Body><Modal.Footer><button className='btn btn-light' onClick={() => setDeleting(null)}>{t('common.cancel')}</button><button className='btn btn-danger' disabled={mutation.isPending} onClick={() => mutation.mutate({path: `/${mode === 'asignaciones' ? 'asignaciones' : 'horarios'}/${encodeURIComponent(deleting!)}`, method: 'delete'})}>{t('common.delete')}</button></Modal.Footer></Modal>
   </>
 }

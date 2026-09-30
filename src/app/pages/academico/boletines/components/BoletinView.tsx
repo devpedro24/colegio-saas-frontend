@@ -13,13 +13,13 @@ export const BoletinView = () => {
   if (catalog.isLoading) return <div className='card card-body text-muted p-6' role='status'>{intl.formatMessage({id: 'boletines.generando'})}</div>
   if (catalog.error || !catalog.data) return <div className='alert alert-danger' role='alert'>{catalog.error?.message || intl.formatMessage({id: 'common.error'})}</div>
 
-  const enrollment = catalog.data.selected_matricula ?? catalog.data.matriculas.find(item => item.url_token === matriculaId || String(item.id) === matriculaId)
+  const enrollment = catalog.data.selected_matricula ?? catalog.data.matriculas.find(item => item.url_token === matriculaId)
   if (!enrollment) return <div className='alert alert-danger' role='alert'>{intl.formatMessage({id: 'common.error'})}</div>
   if (matriculaId !== enrollment.url_token) return <Navigate to={`/academico/boletines/${enrollment.url_token}`} replace />
-  return <BoletinContent key={enrollment.id} matriculaId={enrollment.id} />
+  return <BoletinContent key={enrollment.url_token} matriculaId={enrollment.url_token} />
 }
 
-const BoletinContent = ({matriculaId}: {matriculaId: number}) => {
+const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
   const navigate = useNavigate()
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})

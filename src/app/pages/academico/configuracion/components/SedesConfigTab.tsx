@@ -19,6 +19,7 @@ import {AcademicListFilters} from '../../estructura/components/AcademicListFilte
 import {useAcademicPagedList} from '../../estructura/useAcademicPagedList'
 import {DeleteConfirmDialog} from '../../estructura/components/DeleteConfirmDialog'
 import {HeredarDialog} from './HeredarDialog'
+import {fromOpaqueAcademic} from '../../shared/opaqueAcademic'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
 
@@ -27,11 +28,9 @@ const emptyForm = (): CreateSedeInput => ({
   slug: '',
   direccion: '',
   telefono: '',
-  responsable: '',
   coordinador_name: '',
   coordinador_email: '',
   heredar: true,
-  es_principal: false,
   estado: 'activa',
 })
 
@@ -40,11 +39,9 @@ const fromSede = (s: Sede): CreateSedeInput => ({
   slug: '',
   direccion: s.direccion ?? '',
   telefono: s.telefono ?? '',
-  responsable: s.responsable ?? '',
   coordinador_name: '',
   coordinador_email: s.coordinador_email ?? '',
   heredar: true,
-  es_principal: s.es_principal,
   estado: s.estado,
 })
 
@@ -147,7 +144,6 @@ const SedeFormDialog: FC<{
           nombre: form.nombre.trim(),
           direccion: form.direccion?.trim() || null,
           telefono: form.telefono?.trim() || null,
-          responsable: form.responsable?.trim() || null,
         }
       : {
           ...form,
@@ -155,11 +151,9 @@ const SedeFormDialog: FC<{
           slug: form.slug?.trim().toLowerCase() || undefined,
           direccion: form.direccion?.trim() || null,
           telefono: form.telefono?.trim() || null,
-          responsable: form.responsable?.trim() || null,
           coordinador_name: form.coordinador_name?.trim() || null,
           coordinador_email: form.coordinador_email?.trim() || null,
           heredar: form.heredar ?? true,
-          es_principal: false,
         }
 
     const onError = (err: unknown) => {
@@ -281,17 +275,6 @@ const SedeFormDialog: FC<{
             </div>
           </div>
 
-          <div className='fv-row mb-7'>
-            <label className='fs-6 fw-semibold mb-2'>{t('academico.estructura.sede.responsable')}</label>
-            <input
-              type='text'
-              className={`form-control form-control-solid ${fe('responsable') ? 'is-invalid' : ''}`}
-              value={form.responsable ?? ''}
-              onChange={(e) => set({responsable: e.target.value})}
-            />
-            {fe('responsable') && <div className='invalid-feedback'>{fe('responsable')}</div>}
-          </div>
-
           {!isEdit && (
             <>
               <div className='separator separator-dashed my-8'></div>
@@ -345,21 +328,6 @@ const SedeFormDialog: FC<{
             </>
           )}
 
-          {isEdit && sede && !sede.es_principal && (
-            <div className='fv-row'>
-              <label className='form-check form-switch form-check-custom form-check-solid'>
-                <input
-                  className='form-check-input'
-                  type='checkbox'
-                  checked={form.es_principal ?? false}
-                  onChange={(e) => set({es_principal: e.target.checked})}
-                />
-                <span className='form-check-label fw-semibold text-gray-700'>
-                  {t('academico.estructura.sede.principal')}
-                </span>
-              </label>
-            </div>
-          )}
         </div>
         <div className='modal-footer'>
           <button type='button' className='btn btn-light' onClick={onClose}>
@@ -401,7 +369,7 @@ const SedesConfigTab: FC = () => {
   const navigate = useNavigate()
   const {
     rows: list, meta, searchInput, setSearchInput, filters, setFilter,
-    isLoading, isError, isFetching, onPageChange, onPerPageChange, onLoadMore,
+    isLoading, isError, isFetching, onPageChange, onPerPageChange,
   } = useAcademicPagedList<Sede>({
     key: ['estructura', 'sedes', 'config'],
     storageKey: 'ajustes-institucionales.sedes',
@@ -410,7 +378,9 @@ const SedesConfigTab: FC = () => {
       const params = new URLSearchParams({page: String(page), per_page: String(perPage)})
       if (search) params.set('search', search)
       if (selectedFilters.estado) params.set('estado', selectedFilters.estado)
+      params.set('opaque', '1')
       return api.get<AcademicPaged<Sede>>(`/estructura/sedes?${params}`)
+        .then(result => ({...result, data: fromOpaqueAcademic<Sede[]>(result.data)}))
     },
   })
   const del = useDeleteSede()
@@ -514,7 +484,7 @@ const SedesConfigTab: FC = () => {
                         <td>
                           <div className='d-flex align-items-center gap-2'>
                             <span className='text-gray-800 fw-bold'>{s.nombre}</span>
-                            {s.es_principal && (
+                            {!s.tenant_slug && (
                               <span className='badge badge-light-primary'>
                                 {t('colegios.sedes.principal')}
                               </span>
@@ -624,7 +594,6 @@ const SedesConfigTab: FC = () => {
               loading={isFetching}
               onPageChange={onPageChange}
               onPerPageChange={onPerPageChange}
-              onLoadMore={onLoadMore}
             />
             </>
           )}

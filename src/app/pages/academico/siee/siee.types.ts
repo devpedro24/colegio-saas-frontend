@@ -8,28 +8,49 @@
   recuperacion: 'REPLACE' | 'AVERAGE' | 'MAX_PASSING_GRADE' | 'MANUAL'
   mostrar_final: boolean
   etiqueta_final: string
-  escala_id: number | null
-  metodo_id: number | null
+  escala_token: string | null
+  metodo_token: string | null
 }
 
 export interface CurriculoItem {
-  ano_lectivo_id: number
-  grado_id: number
-  materia_id: number
-  area_id: number | null
-  peso_area: number | null
+  grado_token: string
+  materia_token: string
+  area_token: string | null
+  peso_area: string | null
   grado_nombre?: string
   materia_nombre?: string
   area_nombre?: string | null
 }
 
+export interface SieeGrade {
+  url_token: string
+  nombre: string
+  nivel_token: string
+  estado?: string
+}
+
+export interface SieeSubject {
+  url_token: string
+  nombre: string
+  nivel_token: string | null
+  area_token: string | null
+  area?: {url_token: string; nombre: string} | null
+  estado?: string
+}
+
+export interface SieeArea {
+  url_token: string
+  nombre: string
+}
+
 export interface SieeResponse {
   editable: boolean
+  curriculo_editable: boolean
   configuracion: SieeConfiguracion
-  escalas: Array<{id: number; nombre: string; tipo: string; valor_min: number; valor_max: number; decimales: number}>
-  metodos: Array<{id: number; calculo_nota: string; nota_minima: number; ambito: string}>
+  escalas: Array<{url_token: string; nombre: string; tipo: string; valor_min: number; valor_max: number; decimales: number}>
+  metodos: Array<{url_token: string; calculo_nota: string; nota_minima: number; ambito: string}>
   curriculo: CurriculoItem[]
-  grados: Array<{id: number; nombre: string}>
-  materias: Array<{id: number; nombre: string}>
-  areas: Array<{id: number; nombre: string}>
+  grados: SieeGrade[]
+  materias: SieeSubject[]
+  areas: SieeArea[]
 }

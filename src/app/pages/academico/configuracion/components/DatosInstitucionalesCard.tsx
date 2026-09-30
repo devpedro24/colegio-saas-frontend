@@ -221,7 +221,7 @@ const LogoEditor: FC = () => {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const queryClient = useQueryClient()
-  const branding = useOnboarding(currentUser?.tenant_id, !!currentUser?.roles?.includes('rector'))
+  const branding = useOnboarding(currentUser?.tenant_channel, !!currentUser?.roles?.includes('rector'))
   const toast = useToast()
   if (!currentUser?.roles?.includes('rector') || currentUser.is_platform) return null
 
@@ -232,7 +232,7 @@ const LogoEditor: FC = () => {
       existingUrl={branding.data?.logo_url}
       saveLabel={t('academico.config.datos.saveLogo')}
       onSaved={async () => {
-        await queryClient.invalidateQueries({queryKey: onboardingKey(currentUser.tenant_id)})
+        await queryClient.invalidateQueries({queryKey: onboardingKey(currentUser.tenant_channel)})
         toast.success(t('academico.config.datos.toast.logoSaved'))
       }}
     />

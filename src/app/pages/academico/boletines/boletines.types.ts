@@ -1,5 +1,5 @@
 ﻿export interface BoletinPeriodoResult {
-  periodo_id: number
+  periodo_id: string
   estado: string
   raw_value?: string
   exact_value?: string
@@ -9,16 +9,16 @@
 }
 
 export interface BoletinAsignatura {
-  materia_id: number
+  materia_id: string
   nombre: string
-  area_id: number | null
+  area_id: string | null
   peso_area: number | null
   periodos: BoletinPeriodoResult[]
   anual: Omit<BoletinPeriodoResult, 'periodo_id'>
 }
 
 export interface BoletinArea {
-  area_id: number
+  area_id: string
   nombre: string
   periodos: BoletinPeriodoResult[]
   anual: Omit<BoletinPeriodoResult, 'periodo_id'>
@@ -28,12 +28,12 @@ export interface BoletinData {
   tipo: string
   generado_en: string
   institucion: string
-  estudiante: {id: number; name: string}
+  estudiante: {id: string; name: string}
   grupo: string
   grado: string
   ano: string
   configuracion: import('../siee/siee.types').SieeConfiguracion
-  periodos: Array<{id: number; nombre: string; peso: number | null; estado: string}>
+  periodos: Array<{id: string; nombre: string; peso: number | null; estado: string}>
   periodo_sumatorio: {orden: number; nombre: string; modo: string} | null
   asignaturas: BoletinAsignatura[]
   areas: BoletinArea[]

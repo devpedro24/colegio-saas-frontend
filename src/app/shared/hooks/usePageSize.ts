@@ -1,7 +1,7 @@
 import {useCallback, useState, useEffect} from 'react'
 
 const STORAGE_KEY = 'colegio-saas.page-size'
-const DEFAULT_PAGE_SIZE = 5
+const DEFAULT_PAGE_SIZE = 20
 const allowed = [5, 10, 20, 50, 100, 1000]
 
 export function usePageSize(listKey?: string): [number, (size: number) => void] {

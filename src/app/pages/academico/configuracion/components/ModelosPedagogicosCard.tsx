@@ -15,7 +15,7 @@ import type {ModeloPedagogico, ModeloPedagogicoInput, NivelEducativo} from '../c
 const modalsRoot = document.getElementById('root-modals') || document.body
 const NIVELES: NivelEducativo[] = ['preescolar', 'primaria', 'secundaria', 'media']
 
-type Props = {anoLectivoId: string}
+type Props = {anoLectivoToken: string}
 
 interface FormState {
   nivel_educativo: NivelEducativo
@@ -40,16 +40,16 @@ const fromModelo = (m: ModeloPedagogico): FormState => ({
 
 // Dialogo interno crear/editar modelo pedagogico.
 const ModeloForm: FC<{
-  anoLectivoId: string
+  anoLectivoToken: string
   modelo: ModeloPedagogico | null
   onClose: () => void
-}> = ({anoLectivoId, modelo, onClose}) => {
+}> = ({anoLectivoToken, modelo, onClose}) => {
   const intl = useIntl()
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const create = useCreateModelo(anoLectivoId)
-  const update = useUpdateModelo(anoLectivoId)
+  const create = useCreateModelo(anoLectivoToken)
+  const update = useUpdateModelo(anoLectivoToken)
   const isEdit = modelo !== null
   const pending = create.isPending || update.isPending
 
@@ -62,7 +62,7 @@ const ModeloForm: FC<{
     ev.preventDefault()
     setError(null)
     const input: ModeloPedagogicoInput = {
-      ano_lectivo_id: anoLectivoId,
+      ano_lectivo_token: anoLectivoToken,
       nivel_educativo: form.nivel_educativo,
       docente_unico: form.docente_unico,
       salon_fijo: form.salon_fijo,
@@ -80,7 +80,7 @@ const ModeloForm: FC<{
 
     if (isEdit && modelo) {
       update.mutate(
-        {id: modelo.id, input},
+        {id: modelo.url_token, input},
         {
           onSuccess: () => {
             toast.success(t('common.toast.updated'))
@@ -188,13 +188,13 @@ const Bool: FC<{on: boolean; onLabel: string; offLabel: string}> = ({on, onLabel
 )
 
 // Bloque 6: modelo pedagogico por nivel. Lista + crear/editar/eliminar, filtrada por ano.
-const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
+const ModelosPedagogicosCard: FC<Props> = ({anoLectivoToken}) => {
   const intl = useIntl()
 
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const {data, isLoading, isError} = useModelosPedagogicos(anoLectivoId)
-  const del = useDeleteModelo(anoLectivoId)
+  const {data, isLoading, isError} = useModelosPedagogicos(anoLectivoToken)
+  const del = useDeleteModelo(anoLectivoToken)
 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<ModeloPedagogico | null>(null)
@@ -215,7 +215,7 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
   }
 
   const handleDelete = (m: ModeloPedagogico) => {
-    del.mutate(m.id, {
+    del.mutate(m.url_token, {
       onSuccess: () => toast.success(t('common.toast.deleted')),
       onError: (err) => {
         const message =
@@ -270,7 +270,7 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
               </thead>
               <tbody className='text-gray-600 fw-semibold'>
                 {modelos.map((m) => (
-                  <tr key={m.id}>
+                  <tr key={m.url_token}>
                     <td className='text-gray-800 fw-bold'>
                       {t(`academico.nivel.${m.nivel_educativo}`)}
                     </td>
@@ -371,8 +371,8 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoId}) => {
           </div>
           {showForm && (
             <ModeloForm
-              key={editing?.id ?? 'new'}
-              anoLectivoId={anoLectivoId}
+              key={editing?.url_token ?? 'new'}
+              anoLectivoToken={anoLectivoToken}
               modelo={editing}
               onClose={closeForm}
             />

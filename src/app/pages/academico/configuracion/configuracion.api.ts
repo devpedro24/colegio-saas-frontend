@@ -1,6 +1,6 @@
-﻿// Capa de datos del feature Configuracion del colegio: funciones sobre el api client
+// Capa de datos del feature Configuracion del colegio: funciones sobre el api client
 // + hooks de TanStack Query. Rutas tenant bajo /api. La escala, el metodo de aprobacion
-// y el modelo pedagogico se consultan filtrados por ?ano_lectivo_id=.
+// y el modelo pedagogico se consultan filtrados por ?ano_lectivo_token=.
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
@@ -44,138 +44,138 @@ export function useUpdateDatosInstitucionales() {
 
 // ------------------------------ Escala valorativa ------------------------------
 
-export const escalasKey = (anoLectivoId: string) => ['config', 'escalas', anoLectivoId] as const
+export const escalasKey = (anoLectivoToken: string) => ['config', 'escalas', anoLectivoToken] as const
 
-/** GET /config/escalas?ano_lectivo_id= — escalas del ano lectivo. */
-export function useEscalas(anoLectivoId: string | null) {
+/** GET /config/escalas?ano_lectivo_token= — escalas del ano lectivo. */
+export function useEscalas(anoLectivoToken: string | null) {
   return useQuery({
-    queryKey: escalasKey(anoLectivoId ?? '_'),
-    enabled: !!anoLectivoId,
+    queryKey: escalasKey(anoLectivoToken ?? '_'),
+    enabled: !!anoLectivoToken,
     queryFn: () =>
       api
-        .get<{data: EscalaValorativa[]}>(`/config/escalas?ano_lectivo_id=${anoLectivoId}`),
+        .get<{data: EscalaValorativa[]}>(`/config/escalas?opaque=1&ano_lectivo_token=${anoLectivoToken}`),
   })
 }
 
 /** POST /config/escalas — crea una escala. */
-export function useCreateEscala(anoLectivoId: string) {
+export function useCreateEscala(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: EscalaValorativaInput) =>
-      api.post<{data: EscalaValorativa}>('/config/escalas', input),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: escalasKey(anoLectivoId)}),
+      api.post<{data: EscalaValorativa}>('/config/escalas?opaque=1', input),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: escalasKey(anoLectivoToken)}),
   })
 }
 
 /** PUT /config/escalas/{id} — actualiza una escala. */
-export function useUpdateEscala(anoLectivoId: string) {
+export function useUpdateEscala(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: EscalaValorativaInput}) =>
-      api.put<{data: EscalaValorativa}>(`/config/escalas/${id}`, input),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: escalasKey(anoLectivoId)}),
+      api.put<{data: EscalaValorativa}>(`/config/escalas/${id}?opaque=1`, input),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: escalasKey(anoLectivoToken)}),
   })
 }
 
 /** DELETE /config/escalas/{id} — elimina una escala. */
-export function useDeleteEscala(anoLectivoId: string) {
+export function useDeleteEscala(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/config/escalas/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: escalasKey(anoLectivoId)}),
+    mutationFn: (id: string) => api.delete<{data: null}>(`/config/escalas/${id}?opaque=1`),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: escalasKey(anoLectivoToken)}),
   })
 }
 
 // ------------------------------ Metodo de aprobacion ------------------------------
 
-export const metodosKey = (anoLectivoId: string) =>
-  ['config', 'metodos-aprobacion', anoLectivoId] as const
+export const metodosKey = (anoLectivoToken: string) =>
+  ['config', 'metodos-aprobacion', anoLectivoToken] as const
 
-/** GET /config/metodos-aprobacion?ano_lectivo_id= — metodos del ano lectivo. */
-export function useMetodosAprobacion(anoLectivoId: string | null) {
+/** GET /config/metodos-aprobacion?ano_lectivo_token= — metodos del ano lectivo. */
+export function useMetodosAprobacion(anoLectivoToken: string | null) {
   return useQuery({
-    queryKey: metodosKey(anoLectivoId ?? '_'),
-    enabled: !!anoLectivoId,
+    queryKey: metodosKey(anoLectivoToken ?? '_'),
+    enabled: !!anoLectivoToken,
     queryFn: () =>
       api
         .get<{data: MetodoAprobacion[]}>(
-          `/config/metodos-aprobacion?ano_lectivo_id=${anoLectivoId}`
+          `/config/metodos-aprobacion?opaque=1&ano_lectivo_token=${anoLectivoToken}`
         ),
   })
 }
 
 /** POST /config/metodos-aprobacion — crea un metodo de aprobacion. */
-export function useCreateMetodo(anoLectivoId: string) {
+export function useCreateMetodo(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: MetodoAprobacionInput) =>
-      api.post<{data: MetodoAprobacion}>('/config/metodos-aprobacion', input),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: metodosKey(anoLectivoId)}),
+      api.post<{data: MetodoAprobacion}>('/config/metodos-aprobacion?opaque=1', input),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: metodosKey(anoLectivoToken)}),
   })
 }
 
 /** PUT /config/metodos-aprobacion/{id} — actualiza un metodo de aprobacion. */
-export function useUpdateMetodo(anoLectivoId: string) {
+export function useUpdateMetodo(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: MetodoAprobacionInput}) =>
-      api.put<{data: MetodoAprobacion}>(`/config/metodos-aprobacion/${id}`, input),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: metodosKey(anoLectivoId)}),
+      api.put<{data: MetodoAprobacion}>(`/config/metodos-aprobacion/${id}?opaque=1`, input),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: metodosKey(anoLectivoToken)}),
   })
 }
 
 /** DELETE /config/metodos-aprobacion/{id} — elimina un metodo de aprobacion. */
-export function useDeleteMetodo(anoLectivoId: string) {
+export function useDeleteMetodo(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/config/metodos-aprobacion/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: metodosKey(anoLectivoId)}),
+    mutationFn: (id: string) => api.delete<{data: null}>(`/config/metodos-aprobacion/${id}?opaque=1`),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: metodosKey(anoLectivoToken)}),
   })
 }
 
 // ------------------------------ Modelo pedagogico ------------------------------
 
-export const modelosKey = (anoLectivoId: string) =>
-  ['config', 'modelos-pedagogicos', anoLectivoId] as const
+export const modelosKey = (anoLectivoToken: string) =>
+  ['config', 'modelos-pedagogicos', anoLectivoToken] as const
 
-/** GET /config/modelos-pedagogicos?ano_lectivo_id= — modelos del ano lectivo. */
-export function useModelosPedagogicos(anoLectivoId: string | null) {
+/** GET /config/modelos-pedagogicos?ano_lectivo_token= — modelos del ano lectivo. */
+export function useModelosPedagogicos(anoLectivoToken: string | null) {
   return useQuery({
-    queryKey: modelosKey(anoLectivoId ?? '_'),
-    enabled: !!anoLectivoId,
+    queryKey: modelosKey(anoLectivoToken ?? '_'),
+    enabled: !!anoLectivoToken,
     queryFn: () =>
       api
         .get<{data: ModeloPedagogico[]}>(
-          `/config/modelos-pedagogicos?ano_lectivo_id=${anoLectivoId}`
+          `/config/modelos-pedagogicos?opaque=1&ano_lectivo_token=${anoLectivoToken}`
         ),
   })
 }
 
 /** POST /config/modelos-pedagogicos — crea un modelo pedagogico. */
-export function useCreateModelo(anoLectivoId: string) {
+export function useCreateModelo(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: ModeloPedagogicoInput) =>
-      api.post<{data: ModeloPedagogico}>('/config/modelos-pedagogicos', input),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: modelosKey(anoLectivoId)}),
+      api.post<{data: ModeloPedagogico}>('/config/modelos-pedagogicos?opaque=1', input),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: modelosKey(anoLectivoToken)}),
   })
 }
 
 /** PUT /config/modelos-pedagogicos/{id} — actualiza un modelo pedagogico. */
-export function useUpdateModelo(anoLectivoId: string) {
+export function useUpdateModelo(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: ModeloPedagogicoInput}) =>
-      api.put<{data: ModeloPedagogico}>(`/config/modelos-pedagogicos/${id}`, input),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: modelosKey(anoLectivoId)}),
+      api.put<{data: ModeloPedagogico}>(`/config/modelos-pedagogicos/${id}?opaque=1`, input),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: modelosKey(anoLectivoToken)}),
   })
 }
 
 /** DELETE /config/modelos-pedagogicos/{id} — elimina un modelo pedagogico. */
-export function useDeleteModelo(anoLectivoId: string) {
+export function useDeleteModelo(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/config/modelos-pedagogicos/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: modelosKey(anoLectivoId)}),
+    mutationFn: (id: string) => api.delete<{data: null}>(`/config/modelos-pedagogicos/${id}?opaque=1`),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: modelosKey(anoLectivoToken)}),
   })
 }

@@ -7,14 +7,59 @@ import type {CurriculoItem, SieeConfiguracion} from '../siee.types'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
 import {AcademicOptionSelect} from '../../shared/AcademicOptionSelect'
+import type {SieeGrade, SieeSubject} from '../siee.types'
 import {AcademicListFilters} from '../../estructura/components/AcademicListFilters'
 
-export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
+const isValidWeight = (value: string) => value === '' || /^(?:100(?:\.0{1,4})?|(?:0|[1-9]\d?)(?:\.\d{1,4})?)$/.test(value)
+
+function CurriculumWeightCell({item, yearId, editable}: {item: CurriculoItem; yearId: string; editable: boolean}) {
+  const intl = useIntl()
+  const toast = useToast()
+  const mutation = useUpdateCurriculo(yearId)
+  const [draft, setDraft] = useState(item.peso_area ?? '')
+  useEffect(() => setDraft(item.peso_area ?? ''), [item.peso_area])
+
+  const save = () => {
+    if (draft === (item.peso_area ?? '')) return
+    if (!isValidWeight(draft)) {
+      toast.error(intl.formatMessage({id: 'siee.weight_invalid'}))
+      setDraft(item.peso_area ?? '')
+      return
+    }
+    mutation.mutate({
+      grado_token: item.grado_token, materia_token: item.materia_token,
+      area_token: null, peso_area: draft || null,
+    }, {
+      onSuccess: () => toast.success(intl.formatMessage({id: 'siee.curriculo_saved'})),
+      onError: error => {
+        toast.error(error.message)
+        setDraft(item.peso_area ?? '')
+      },
+    })
+  }
+
+  return <input
+    type='number' min={0} max={100} step='0.0001' inputMode='decimal'
+    className='form-control form-control-sm text-end ms-auto w-100px'
+    aria-label={`${intl.formatMessage({id: 'siee.peso_area'})}: ${item.grado_nombre ?? item.grado_token}, ${item.materia_nombre ?? item.materia_token}`}
+    value={draft} disabled={!editable || mutation.isPending}
+    onChange={event => setDraft(event.target.value)}
+    onBlur={save}
+    onKeyDown={event => {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        event.currentTarget.blur()
+      }
+    }}
+  />
+}
+
+export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) => {
   const intl = useIntl()
   const toast = useToast()
   const t = (id: string) => intl.formatMessage({id})
 
-  const {data, isLoading, isError, error} = useSiee(anoLectivoId)
+  const {data, isLoading, isError, error} = useSiee(anoLectivoToken)
   const [currPage, setCurrPage] = useState(1)
   const [currPerPage, setCurrPerPage] = usePageSize('siee-curriculo')
   const [currSearch, setCurrSearch] = useState('')
@@ -22,13 +67,12 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
   const [currGrado, setCurrGrado] = useState('')
   const [currMateria, setCurrMateria] = useState('')
   const [currArea, setCurrArea] = useState('')
-  const curriculo = useCurriculo(anoLectivoId, {
+  const curriculo = useCurriculo(anoLectivoToken, {
     page: currPage, perPage: currPerPage, search: debouncedSearch.trim(),
-    gradoId: currGrado, materiaId: currMateria, areaId: currArea,
+    gradoToken: currGrado, materiaToken: currMateria, areaToken: currArea,
   })
-  const [loadedCurriculo, setLoadedCurriculo] = useState<CurriculoItem[]>([])
-  const mutation = useUpdateSiee(anoLectivoId)
-  const curriculoMutation = useUpdateCurriculo(anoLectivoId)
+  const mutation = useUpdateSiee(anoLectivoToken)
+  const curriculoMutation = useUpdateCurriculo(anoLectivoToken)
   const editing = useRef(false)
 
   useEffect(() => {
@@ -36,22 +80,7 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
     return () => window.clearTimeout(timeout)
   }, [currSearch])
 
-  useEffect(() => {
-    if (!curriculo.data) return
-    const pageRows = curriculo.data.data
-    if (curriculo.data.meta.total > 20 || currPage === 1) {
-      setLoadedCurriculo(pageRows)
-      return
-    }
-    setLoadedCurriculo(previous => {
-      const merged = new Map(previous.map(row => [`${row.grado_id}:${row.materia_id}`, row]))
-      pageRows.forEach(row => merged.set(`${row.grado_id}:${row.materia_id}`, row))
-      return [...merged.values()]
-    })
-  }, [curriculo.data, currPage])
-
-  const curriculoRows = curriculo.data?.meta.total !== undefined && curriculo.data.meta.total <= 20 && currPage > 1
-    ? loadedCurriculo : curriculo.data?.data ?? []
+  const curriculoRows = curriculo.data?.data ?? []
 
   const [formData, setFormData] = useState<SieeConfiguracion>({
     usar_areas: false,
@@ -63,23 +92,25 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
     recuperacion: 'REPLACE',
     mostrar_final: true,
     etiqueta_final: '',
-    escala_id: null,
-    metodo_id: null,
+    escala_token: null,
+    metodo_token: null,
   })
 
   const [currForm, setCurrForm] = useState({
-    grado_id: '',
-    materia_id: '',
-    area_id: '',
+    grado_token: '',
+    materia_token: '',
+    area_token: '',
     peso_area: '',
   })
+  const [selectedGrade, setSelectedGrade] = useState<SieeGrade | null>(null)
+  const [selectedSubject, setSelectedSubject] = useState<SieeSubject | null>(null)
 
   useEffect(() => {
     if (data?.configuracion && !editing.current) {
       setFormData({
         ...data.configuracion,
-        escala_id: data.configuracion.escala_id,
-        metodo_id: data.configuracion.metodo_id,
+        escala_token: data.configuracion.escala_token,
+        metodo_token: data.configuracion.metodo_token,
       })
     }
   }, [data?.configuracion])
@@ -102,6 +133,8 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
     )
   }
 
+  const curriculoEditable = data.curriculo_editable ?? data.editable
+
   const handleChange = <K extends keyof SieeConfiguracion>(field: K, value: SieeConfiguracion[K]) => {
     editing.current = true
     setFormData(prev => ({...prev, [field]: value}))
@@ -112,8 +145,8 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
       ...formData,
       modo_area: formData.usar_areas ? formData.modo_area : 'DISABLED',
       precision_calculo: Number(formData.precision_calculo || 4),
-      escala_id: Number(formData.escala_id),
-      metodo_id: Number(formData.metodo_id),
+      escala_token: formData.escala_token,
+      metodo_token: formData.metodo_token,
     }
     mutation.mutate(payload, {
       onSuccess: () => { editing.current = false; toast.success(t('siee.saved')) },
@@ -123,18 +156,24 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
   }
 
   const handleSaveCurriculo = () => {
-    if (!currForm.grado_id || !currForm.materia_id) return
+    if (!currForm.grado_token || !currForm.materia_token) return
+    if (!isValidWeight(currForm.peso_area)) {
+      toast.error(t('siee.weight_invalid'))
+      return
+    }
     curriculoMutation.mutate(
       {
-        grado_id: Number(currForm.grado_id),
-        materia_id: Number(currForm.materia_id),
-        area_id: currForm.area_id ? Number(currForm.area_id) : null,
-        peso_area: currForm.peso_area !== '' ? Number(currForm.peso_area) : null,
+        grado_token: currForm.grado_token,
+        materia_token: currForm.materia_token,
+        area_token: currForm.area_token || null,
+        peso_area: currForm.peso_area || null,
       },
       {
         onSuccess: () => {
           toast.success(t('siee.curriculo_saved'))
-          setCurrForm({grado_id: '', materia_id: '', area_id: '', peso_area: ''})
+          setCurrForm({grado_token: '', materia_token: '', area_token: '', peso_area: ''})
+          setSelectedGrade(null)
+          setSelectedSubject(null)
         },
         onError: (err) => toast.error(err.message),
       }
@@ -167,7 +206,7 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
             <button
               className='btn btn-primary'
               onClick={handleSave}
-              disabled={mutation.isPending || !formData.escala_id || !formData.metodo_id || !formData.etiqueta_final.trim() || !data.editable}
+              disabled={mutation.isPending || !formData.escala_token || !formData.metodo_token || !formData.etiqueta_final.trim() || !data.editable}
             >
               {mutation.isPending
                 ? t('siee.guardando')
@@ -186,12 +225,12 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
               </label>
               <select
                 className='form-select'
-                value={formData.escala_id || ''}
-                onChange={(e) => handleChange('escala_id', Number(e.target.value))}
+                value={formData.escala_token || ''}
+                onChange={(e) => handleChange('escala_token', e.target.value)}
               >
                 <option value=''>{t('siee.select_escala')}</option>
                 {data.escalas?.map((esc) => (
-                  <option key={esc.id} value={esc.id}>
+                  <option key={esc.url_token} value={esc.url_token}>
                     {esc.nombre} ({esc.valor_min} - {esc.valor_max})
                   </option>
                 ))}
@@ -204,12 +243,12 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
               </label>
               <select
                 className='form-select'
-                value={formData.metodo_id || ''}
-                onChange={(e) => handleChange('metodo_id', Number(e.target.value))}
+                value={formData.metodo_token || ''}
+                onChange={(e) => handleChange('metodo_token', e.target.value)}
               >
                 <option value=''>{t('siee.select_metodo')}</option>
                 {data.metodos?.map((m) => (
-                  <option key={m.id} value={m.id}>
+                  <option key={m.url_token} value={m.url_token}>
                     {intl.formatMessage({id: 'siee.minimum'}, {value: m.nota_minima})} ({t(`academico.config.metodo.ambito.${m.ambito}`)})
                   </option>
                 ))}
@@ -406,21 +445,36 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
           </h3>
         </div>
         <KTCardBody>
+          <h4 className='fw-bold fs-5 mb-1'>{t('siee.curriculo_add_title')}</h4>
+          <p className='text-muted fs-7 mb-5'>{t('siee.curriculo_add_help')}</p>
+          {!curriculoEditable && <div className='alert alert-info'>{t('siee.curriculo_locked')}</div>}
           <div className='row g-3 mb-6 align-items-end'>
             <div className='col-md-3'>
-              <AcademicOptionSelect tipo='grados' yearId={anoLectivoId} label={t('siee.grado')}
-                value={currForm.grado_id} onChange={value => setCurrForm(previous => ({...previous, grado_id: value}))}
-                initialOptions={data.grados ?? []} emptyLabel='—' required selectOnly />
+              <AcademicOptionSelect tipo='grados' yearId={anoLectivoToken} opaque label={t('siee.grado')}
+                value={currForm.grado_token} onChange={value => {
+                  setCurrForm(previous => ({...previous, grado_token: value, materia_token: '', area_token: ''}))
+                  setSelectedSubject(null)
+                }} onSelectOption={setSelectedGrade}
+                initialOptions={data.grados ?? []} emptyLabel={t('siee.select_grade')} required selectOnly
+                filterOption={option => option.estado == null || option.estado === 'activo'} />
             </div>
             <div className='col-md-3'>
-              <AcademicOptionSelect tipo='materias' yearId={anoLectivoId} label={t('siee.materia')}
-                value={currForm.materia_id} onChange={value => setCurrForm(previous => ({...previous, materia_id: value}))}
-                initialOptions={data.materias ?? []} emptyLabel='—' required selectOnly />
+              <AcademicOptionSelect tipo='materias' yearId={anoLectivoToken} opaque label={t('siee.materia')}
+                value={currForm.materia_token} onChange={value => setCurrForm(previous => ({...previous, materia_token: value}))}
+                onSelectOption={option => {
+                  setSelectedSubject(option)
+                  setCurrForm(previous => ({...previous, area_token: option?.area_token ?? ''}))
+                }}
+                initialOptions={data.materias ?? []} emptyLabel={t('siee.select_subject')} required selectOnly
+                disabled={!currForm.grado_token} compatibleNivelToken={selectedGrade?.nivel_token}
+                filterOption={option => (option.estado == null || option.estado === 'activo')
+                  && (option.nivel_token == null || option.nivel_token === selectedGrade?.nivel_token)} />
             </div>
             <div className='col-md-3'>
-              <AcademicOptionSelect tipo='areas' yearId={anoLectivoId} label={t('siee.area')}
-                value={currForm.area_id} onChange={value => setCurrForm(previous => ({...previous, area_id: value}))}
-                initialOptions={data.areas ?? []} emptyLabel='—' selectOnly />
+              <label className='form-label' htmlFor='siee-curriculo-area'>{t('siee.area')}</label>
+              <input id='siee-curriculo-area' className='form-control form-control-solid'
+                value={selectedSubject?.area?.nombre ?? data.areas?.find(area => area.url_token === currForm.area_token)?.nombre ?? ''}
+                placeholder='—' readOnly />
             </div>
             <div className='col-md-2'>
               <label className='form-label fs-7'>{t('siee.peso_area')}</label>
@@ -438,7 +492,7 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
               <button
                 className='btn btn-sm btn-primary w-100'
                 onClick={handleSaveCurriculo}
-                disabled={curriculoMutation.isPending || !currForm.grado_id || !currForm.materia_id || !data.editable}
+                disabled={curriculoMutation.isPending || !currForm.grado_token || !currForm.materia_token || !isValidWeight(currForm.peso_area) || !curriculoEditable}
                 aria-label={t('siee.curriculo_save')}
               >
                 +
@@ -446,14 +500,16 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
             </div>
           </div>
 
+          <div className='separator my-6' />
+          <h4 className='fw-bold fs-5 mb-4'>{t('siee.curriculo_filters_title')}</h4>
           <AcademicListFilters id='siee-curriculo-search' search={currSearch} onSearchChange={value => changeCurrFilter(setCurrSearch, value)}>
-            <AcademicOptionSelect tipo='grados' yearId={anoLectivoId} label={t('siee.grado')}
+            <AcademicOptionSelect tipo='grados' yearId={anoLectivoToken} opaque label={t('siee.grado')}
               value={currGrado} onChange={value => changeCurrFilter(setCurrGrado, value)}
               initialOptions={data.grados ?? []} emptyLabel={t('academic.filter.allGrades')} selectOnly hideLabel />
-            <AcademicOptionSelect tipo='materias' yearId={anoLectivoId} label={t('siee.materia')}
+            <AcademicOptionSelect tipo='materias' yearId={anoLectivoToken} opaque label={t('siee.materia')}
               value={currMateria} onChange={value => changeCurrFilter(setCurrMateria, value)}
               initialOptions={data.materias ?? []} emptyLabel={t('academic.filter.allSubjects')} selectOnly hideLabel />
-            <AcademicOptionSelect tipo='areas' yearId={anoLectivoId} label={t('siee.area')}
+            <AcademicOptionSelect tipo='areas' yearId={anoLectivoToken} opaque label={t('siee.area')}
               value={currArea} onChange={value => changeCurrFilter(setCurrArea, value)}
               initialOptions={data.areas ?? []} emptyLabel={t('academic.filter.allAreas')} selectOnly hideLabel />
           </AcademicListFilters>
@@ -470,15 +526,17 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
               </thead>
               <tbody>
                 {curriculoRows.map((c, idx: number) => {
-                  const grado = data.grados?.find((g) => g.id === c.grado_id)
-                  const materia = data.materias?.find((m) => m.id === c.materia_id)
-                  const area = data.areas?.find((a) => a.id === c.area_id)
+                  const grado = data.grados?.find((g) => g.url_token === c.grado_token)
+                  const materia = data.materias?.find((m) => m.url_token === c.materia_token)
+                  const area = data.areas?.find((a) => a.url_token === c.area_token)
                   return (
-                    <tr key={`${c.grado_id}-${c.materia_id}-${idx}`}>
-                      <td className='fw-semibold'>{c.grado_nombre ?? grado?.nombre ?? c.grado_id}</td>
-                      <td>{c.materia_nombre ?? materia?.nombre ?? c.materia_id}</td>
+                    <tr key={`${c.grado_token}-${c.materia_token}-${idx}`}>
+                      <td className='fw-semibold'>{c.grado_nombre ?? grado?.nombre ?? c.grado_token}</td>
+                      <td>{c.materia_nombre ?? materia?.nombre ?? c.materia_token}</td>
                       <td>{c.area_nombre ?? area?.nombre ?? '—'}</td>
-                      <td className='text-end'>{c.peso_area != null ? `${c.peso_area}%` : '—'}</td>
+                      <td className='text-end'>
+                        <CurriculumWeightCell item={c} yearId={anoLectivoToken} editable={curriculoEditable} />
+                      </td>
                     </tr>
                   )
                 })}
@@ -494,8 +552,7 @@ export const SieeConfigPanel = ({anoLectivoId}: {anoLectivoId: string}) => {
             </table>
           </div>
           <AcademicPagination meta={curriculo.data?.meta} visibleCount={curriculoRows.length}
-            loading={curriculo.isFetching} onPageChange={setCurrPage} onPerPageChange={changeCurrSize}
-            onLoadMore={() => setCurrPage(page => page + 1)} />
+            loading={curriculo.isFetching} onPageChange={setCurrPage} onPerPageChange={changeCurrSize} />
         </KTCardBody>
       </KTCard>
     </div>

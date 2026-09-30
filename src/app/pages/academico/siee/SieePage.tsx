@@ -16,15 +16,16 @@ const SieePage: FC = () => {
 
   const {data: anos, isLoading, error} = useAnosLectivos()
   const anosList = useMemo(() => anos?.data ?? [], [anos])
-  const [anoLectivoId, setAnoLectivoId] = useState<string>('')
+  const [anoLectivoToken, setAnoLectivoToken] = useState<string>('')
 
   useEffect(() => {
-    if (anoLectivoId || anosList.length === 0) return
+    if (anoLectivoToken || anosList.length === 0) return
     const enCurso = anosList.find((a) => a.estado === 'en_curso')
-    setAnoLectivoId((enCurso ?? anosList[0]).id)
-  }, [anosList, anoLectivoId])
+    setAnoLectivoToken((enCurso ?? anosList[0]).url_token)
+  }, [anosList, anoLectivoToken])
 
   const noYears = anosList.length === 0
+  const selectedYear = anosList.find((year) => year.url_token === anoLectivoToken)
 
   return (
     <>
@@ -45,12 +46,12 @@ const SieePage: FC = () => {
               <select
                 id='siee-year'
                 className='form-select form-select-solid w-md-250px'
-                value={anoLectivoId}
+                value={anoLectivoToken}
                 disabled={noYears}
-                onChange={(e) => setAnoLectivoId(e.target.value)}
+                onChange={(e) => setAnoLectivoToken(e.target.value)}
               >
                 {anosList.map((a) => (
-                  <option key={a.id} value={a.id}>{a.nombre}</option>
+                  <option key={a.url_token} value={a.url_token}>{a.nombre}</option>
                 ))}
                 {noYears && <option value=''>—</option>}
               </select>
@@ -63,7 +64,8 @@ const SieePage: FC = () => {
             {t('academico.config.noYears')}
           </div>
         ) : (
-          anoLectivoId && <SieeConfigPanel key={anoLectivoId} anoLectivoId={anoLectivoId} />
+          selectedYear && <SieeConfigPanel key={selectedYear.url_token}
+            anoLectivoToken={selectedYear.url_token} />
         )}
       </Content>
     </>

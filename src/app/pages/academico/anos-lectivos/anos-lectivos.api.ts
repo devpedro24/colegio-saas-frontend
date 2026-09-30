@@ -1,5 +1,5 @@
 ﻿// Capa de datos del feature Anos lectivos: funciones sobre el api client + hooks de
-// TanStack Query. Rutas tenant bajo /api (proxied) con auth Bearer (usuario de colegio).
+// TanStack Query. Rutas tenant bajo /api con sesión HttpOnly del mismo origen.
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
@@ -19,11 +19,21 @@ export const ANOS_LECTIVOS_KEY = ['anos-lectivos'] as const
 export const periodosKey = (anoLectivoId: string) =>
   ['anos-lectivos', anoLectivoId, 'periodos'] as const
 
+type PublicYear = Omit<AnoLectivo, 'id'>
+type PublicPeriod = Omit<Periodo, 'id' | 'ano_lectivo_id'>
+const withPublicYearSelector = (year: PublicYear): AnoLectivo => ({...year, id: year.url_token})
+const withPublicPeriodSelector = (period: PublicPeriod): Periodo => ({
+  ...period, id: period.url_token, ano_lectivo_id: period.ano_lectivo_token,
+})
+
 /** GET /anos-lectivos - lista los anos lectivos del colegio. */
 export function useAnosLectivos() {
   return useQuery({
     queryKey: ANOS_LECTIVOS_KEY,
-    queryFn: () => api.get<{data: AnoLectivo[]}>('/anos-lectivos'),
+    queryFn: async () => {
+      const response = await api.get<{data: PublicYear[]}>('/anos-lectivos?opaque=1')
+      return {data: response.data.map(withPublicYearSelector)}
+    },
   })
 }
 
@@ -33,7 +43,7 @@ export function useCreateAnoLectivo() {
 
   return useMutation({
     mutationFn: (input: CreateAnoLectivoInput) =>
-      api.post<{data: AnoLectivo}>('/anos-lectivos', input),
+      api.post<{data: PublicYear}>('/anos-lectivos?opaque=1', input),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
     },
@@ -46,7 +56,7 @@ export function useDuplicarAnoLectivo() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: DuplicarAnoInput}) =>
-      api.post<{data: AnoLectivo}>(`/anos-lectivos/${id}/duplicar`, input),
+      api.post<{data: PublicYear}>(`/anos-lectivos/${id}/duplicar?opaque=1`, input),
     onSuccess: () => queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY}),
   })
 }
@@ -55,15 +65,15 @@ export function useCopiarConfiguracionAno() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({id, origenId, opciones}: {id: string; origenId: string; opciones: Record<string, boolean>}) =>
-      api.post<{data: AnoLectivo}>(`/anos-lectivos/${id}/copiar-configuracion`, {
-        origen_id: origenId, opciones,
+      api.post<{data: PublicYear}>(`/anos-lectivos/${id}/copiar-configuracion?opaque=1`, {
+        origen_token: origenId, opciones,
       }),
     onSuccess: () => queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY}),
   })
 }
 
 export interface EstadoCopiaAno {
-  origen_id: number | null
+  origen_token: string | null
   opciones: Record<string, boolean>
   reemplazable: boolean
 }
@@ -72,7 +82,7 @@ export function useEstadoCopiaAno(id: string) {
   return useQuery({
     queryKey: ['anos-lectivos', id, 'estado-copia'],
     refetchOnMount: 'always',
-    queryFn: () => api.get<{data: EstadoCopiaAno}>(`/anos-lectivos/${id}/estado-copia`),
+    queryFn: () => api.get<{data: EstadoCopiaAno}>(`/anos-lectivos/${id}/estado-copia?opaque=1`),
   })
 }
 
@@ -82,7 +92,7 @@ export function useUpdateAnoLectivo() {
 
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: UpdateAnoLectivoInput}) =>
-      api.put<{data: AnoLectivo}>(`/anos-lectivos/${id}`, input),
+      api.put<{data: PublicYear}>(`/anos-lectivos/${id}?opaque=1`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
     },
@@ -94,7 +104,7 @@ export function useDeleteAnoLectivo() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/anos-lectivos/${id}`),
+    mutationFn: (id: string) => api.delete<{data: null}>(`/anos-lectivos/${id}?opaque=1`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
     },
@@ -106,7 +116,7 @@ export function useIniciarAnoLectivo() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => api.post<{data: AnoLectivo}>(`/anos-lectivos/${id}/iniciar`),
+    mutationFn: (id: string) => api.post<{data: PublicYear}>(`/anos-lectivos/${id}/iniciar?opaque=1`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
     },
@@ -118,7 +128,7 @@ export function useCerrarAnoLectivo() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => api.post<{data: AnoLectivo}>(`/anos-lectivos/${id}/cerrar`),
+    mutationFn: (id: string) => api.post<{data: PublicYear}>(`/anos-lectivos/${id}/cerrar?opaque=1`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
     },
@@ -130,7 +140,7 @@ export function useReabrirAnoLectivo() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => api.post<{data: AnoLectivo}>(`/anos-lectivos/${id}/reabrir`),
+    mutationFn: (id: string) => api.post<{data: PublicYear}>(`/anos-lectivos/${id}/reabrir?opaque=1`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
     },
@@ -142,8 +152,10 @@ export function usePeriodos(anoLectivoId: string | null) {
   return useQuery({
     queryKey: periodosKey(anoLectivoId ?? '_'),
     enabled: !!anoLectivoId,
-    queryFn: () =>
-      api.get<{data: Periodo[]}>(`/anos-lectivos/${anoLectivoId}/periodos`),
+    queryFn: async () => {
+      const response = await api.get<{data: PublicPeriod[]}>(`/anos-lectivos/${anoLectivoId}/periodos?opaque=1`)
+      return {data: response.data.map(withPublicPeriodSelector)}
+    },
   })
 }
 
@@ -153,7 +165,7 @@ export function useCreatePeriodo(anoLectivoId: string) {
 
   return useMutation({
     mutationFn: (input: CreatePeriodoInput) =>
-      api.post<{data: Periodo}>(`/anos-lectivos/${anoLectivoId}/periodos`, input),
+      api.post<{data: PublicPeriod}>(`/anos-lectivos/${anoLectivoId}/periodos?opaque=1`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: periodosKey(anoLectivoId)})
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
@@ -167,7 +179,7 @@ export function useUpdatePeriodo(anoLectivoId: string) {
 
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: UpdatePeriodoInput}) =>
-      api.put<{data: Periodo}>(`/periodos/${id}`, input),
+      api.put<{data: PublicPeriod}>(`/periodos/${id}?opaque=1`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: periodosKey(anoLectivoId)})
     },
@@ -179,7 +191,7 @@ export function useDeletePeriodo(anoLectivoId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => api.delete<{data: null}>(`/periodos/${id}`),
+    mutationFn: (id: string) => api.delete<{data: null}>(`/periodos/${id}?opaque=1`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: periodosKey(anoLectivoId)})
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
@@ -192,7 +204,7 @@ function usePeriodoTransition(anoLectivoId: string, action: 'abrir' | 'cerrar' |
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => api.post<{data: Periodo}>(`/periodos/${id}/${action}`),
+    mutationFn: (id: string) => api.post<{data: PublicPeriod}>(`/periodos/${id}/${action}?opaque=1`),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: periodosKey(anoLectivoId)})
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})

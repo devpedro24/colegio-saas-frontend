@@ -128,7 +128,7 @@ const emptyMateriaForm = (): CreateMateriaInput => ({
   estado: 'activo',
 })
 const fromMateria = (m: Materia): CreateMateriaInput => ({
-  area_id: m.area_id,
+  area_id: m.area_id ?? '',
   nombre: m.nombre,
   intensidad_horaria: m.intensidad_horaria,
   nivel_id: m.nivel_id,
@@ -279,7 +279,7 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; onClose: ()
 
 const AreasMateriasTab: FC = () => {
   const intl = useIntl()
-  const {yearId} = useAcademicYear()
+  const {yearToken} = useAcademicYear()
 
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
@@ -291,12 +291,12 @@ const AreasMateriasTab: FC = () => {
   const filterAreas = allFilterAreas.areas.length ? allFilterAreas.areas : firstFilterAreas
   const areaFilterOptions = selectedAreaFilter ? [selectedAreaFilter, ...filterAreas.filter(area => area.id !== selectedAreaFilter.id)] : filterAreas
   const areaList = useAcademicPagedList<Area>({
-    key: ['plan-estudios', 'areas', yearId], storageKey: 'plan.areas', enabled: !!yearId,
-    fetchPage: (page, perPage, search, filters) => getPlanAreasPage(yearId, {page, perPage, search, filters}),
+    key: ['plan-estudios', 'areas', yearToken], storageKey: 'plan.areas', enabled: !!yearToken,
+    fetchPage: (page, perPage, search, filters) => getPlanAreasPage(yearToken, {page, perPage, search, filters}),
   })
   const materiaList = useAcademicPagedList<Materia>({
-    key: ['plan-estudios', 'materias', yearId], storageKey: 'plan.materias', enabled: !!yearId,
-    fetchPage: (page, perPage, search, filters) => getPlanMateriasPage(yearId, {page, perPage, search, filters}),
+    key: ['plan-estudios', 'materias', yearToken], storageKey: 'plan.materias', enabled: !!yearToken,
+    fetchPage: (page, perPage, search, filters) => getPlanMateriasPage(yearToken, {page, perPage, search, filters}),
   })
   const areas = areaList.rows
   const materias = materiaList.rows
@@ -409,7 +409,7 @@ const AreasMateriasTab: FC = () => {
           </tbody>
         </table>
       </div>
-      <AcademicPagination meta={areaList.meta} visibleCount={areas.length} loading={areaList.isFetching} onPageChange={areaList.onPageChange} onPerPageChange={areaList.onPerPageChange} onLoadMore={areaList.onLoadMore} />
+      <AcademicPagination meta={areaList.meta} visibleCount={areas.length} loading={areaList.isFetching} onPageChange={areaList.onPageChange} onPerPageChange={areaList.onPerPageChange} />
       </section>
 
       <section aria-label={t('academico.planEstudios.materia.title')}>
@@ -519,7 +519,7 @@ const AreasMateriasTab: FC = () => {
           </tbody>
         </table>
       </div>
-      <AcademicPagination meta={materiaList.meta} visibleCount={materias.length} loading={materiaList.isFetching} onPageChange={materiaList.onPageChange} onPerPageChange={materiaList.onPerPageChange} onLoadMore={materiaList.onLoadMore} />
+      <AcademicPagination meta={materiaList.meta} visibleCount={materias.length} loading={materiaList.isFetching} onPageChange={materiaList.onPageChange} onPerPageChange={materiaList.onPerPageChange} />
       </section>
 
       {areaFormOpen && (

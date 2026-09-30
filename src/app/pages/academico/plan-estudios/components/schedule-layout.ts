@@ -1,4 +1,4 @@
-type TimedSession = {id: number} & (
+type TimedSession = {id: string} & (
   {bloque: {hora_inicio: string; hora_fin: string}; hora_inicio: null; hora_fin: null} |
   {bloque: null; hora_inicio: string; hora_fin: string}
 )
@@ -9,7 +9,7 @@ export const sessionEnd = (session: TimedSession): string => session.bloque === 
 
 // Assign columns to overlapping intervals without changing the caller's ordering.
 export function layoutSessions<T extends TimedSession>(sessions: T[]) {
-  const sorted = [...sessions].sort((a, b) => minutes(sessionStart(a)) - minutes(sessionStart(b)) || a.id - b.id)
+  const sorted = [...sessions].sort((a, b) => minutes(sessionStart(a)) - minutes(sessionStart(b)) || a.id.localeCompare(b.id))
   const result: {session: T; lane: number; lanes: number}[] = []
   let cluster: typeof result = []
   let ends: number[] = []

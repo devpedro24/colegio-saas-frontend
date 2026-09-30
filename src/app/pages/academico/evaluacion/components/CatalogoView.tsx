@@ -6,7 +6,6 @@ import {KTCard, KTCardBody} from '@/_metronic/helpers'
 import {useToast} from '@/lib/ui/toast'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
-import type {AsignacionDocente, Matricula} from '../evaluacion.types'
 import {AcademicOptionSelect} from '../../shared/AcademicOptionSelect'
 
 export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => {
@@ -24,8 +23,6 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
   const [debouncedStudentSearch, setDebouncedStudentSearch] = useState('')
   const [assignmentPage, setAssignmentPage] = useState(1)
   const [enrollmentPage, setEnrollmentPage] = useState(1)
-  const [loadedAssignments, setLoadedAssignments] = useState<AsignacionDocente[]>([])
-  const [loadedEnrollments, setLoadedEnrollments] = useState<Matricula[]>([])
   const [assignmentPerPage, setAssignmentPerPage] = usePageSize('evaluacion-asignaciones')
   const [enrollmentPerPage, setEnrollmentPerPage] = usePageSize('evaluacion-matriculas')
   const {data, isLoading, error, isFetching} = useCatalogoEvaluacion({
@@ -42,37 +39,9 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
 
   useEffect(() => {
     if (!year && data?.anos.length) {
-      setYear(String((data.anos.find(ano => ano.estado === 'en_curso') ?? data.anos[0]).id))
+      setYear((data.anos.find(ano => ano.estado === 'en_curso') ?? data.anos[0]).url_token)
     }
   }, [data?.anos, year])
-
-  useEffect(() => {
-    if (!data) return
-    const meta = data.pagination?.asignaciones
-    if (!meta || meta.total > 20 || assignmentPage === 1) {
-      setLoadedAssignments(data.asignaciones)
-      return
-    }
-    setLoadedAssignments(previous => {
-      const merged = new Map(previous.map(item => [item.id, item]))
-      data.asignaciones.forEach(item => merged.set(item.id, item))
-      return [...merged.values()]
-    })
-  }, [data, assignmentPage])
-
-  useEffect(() => {
-    if (!data) return
-    const meta = data.pagination?.matriculas
-    if (!meta || meta.total > 20 || enrollmentPage === 1) {
-      setLoadedEnrollments(data.matriculas)
-      return
-    }
-    setLoadedEnrollments(previous => {
-      const merged = new Map(previous.map(item => [item.id, item]))
-      data.matriculas.forEach(item => merged.set(item.id, item))
-      return [...merged.values()]
-    })
-  }, [data, enrollmentPage])
 
   const resetPages = () => {setAssignmentPage(1); setEnrollmentPage(1)}
   const changeAssignmentSize = (size: number) => {setAssignmentPerPage(size); setAssignmentPage(1)}
@@ -81,15 +50,13 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
   if (isLoading) return <div className='card card-body' role='status'>{t('common.loading')}</div>
   if (error || !data) return <div className='alert alert-danger' role='alert'>{error?.message || t('common.error')}</div>
   if (!year && data.anos.length > 0) return <div className='card card-body' role='status'>{t('common.loading')}</div>
-  const selectedYear = year || String((data.anos.find(a => a.estado === 'en_curso') ?? data.anos[0])?.id ?? '')
-  const periods = data.periodos.filter(p => String(p.ano_lectivo_id) === selectedYear)
-  const selectedPeriod = periods.some(p => String(p.id) === period) ? period : String((periods.find(p => p.estado === 'abierto') ?? periods[0])?.id ?? '')
-  const selectedPeriodToken = periods.find(p => String(p.id) === selectedPeriod)?.url_token
-  const assignments = (data.pagination?.asignaciones?.total ?? Infinity) <= 20 && assignmentPage > 1
-    ? loadedAssignments : data.asignaciones
-  const enrollments = (data.pagination?.matriculas?.total ?? Infinity) <= 20 && enrollmentPage > 1
-    ? loadedEnrollments : data.matriculas
-  const groups = data.grupos.filter(g => String(g.ano_lectivo_id) === selectedYear)
+  const selectedYear = year || (data.anos.find(a => a.estado === 'en_curso') ?? data.anos[0])?.url_token || ''
+  const periods = data.periodos.filter(p => p.ano_lectivo_id === selectedYear)
+  const selectedPeriod = periods.some(p => p.url_token === period) ? period : (periods.find(p => p.estado === 'abierto') ?? periods[0])?.url_token ?? ''
+  const selectedPeriodToken = selectedPeriod
+  const assignments = data.asignaciones
+  const enrollments = data.matriculas
+  const groups = data.grupos.filter(g => g.ano_lectivo_id === selectedYear)
   const students = data.estudiantes_disponibles ?? data.estudiantes.filter(student => !enrollments.some(enrollment => enrollment.estudiante_id === student.id))
   const studentMatches = studentSearch.trim() && !form.estudiante_id
     ? students.filter(student => student.name.toLocaleLowerCase().includes(studentSearch.trim().toLocaleLowerCase())).slice(0, 8)
@@ -101,23 +68,23 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
       <div className='d-flex flex-wrap gap-3'>
         <select className='form-select form-select-solid w-auto' aria-label={t('academico.config.yearLabel')} value={selectedYear} onChange={e => {setYear(e.target.value); setPeriod(''); setGroup(''); setMateria(''); setForm({grupo_id: '', estudiante_id: ''}); setStudentSearch(''); setDebouncedStudentSearch(''); resetPages()}}>
           {!data.anos.length && <option value=''>{t('academico.config.yearLabel')}</option>}
-          {data.anos.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+          {data.anos.map(a => <option key={a.url_token} value={a.url_token}>{a.nombre}</option>)}
         </select>
         {!reportsOnly && <select className='form-select form-select-solid w-auto' aria-label={t('evaluacion.period')} value={selectedPeriod} onChange={e => setPeriod(e.target.value)}>
           {!periods.length && <option value=''>{t('evaluacion.period')}</option>}
-          {periods.map(p => <option key={p.id} value={p.id}>{p.nombre} · {t(`academico.periodos.estado.${p.estado}`)}</option>)}
+          {periods.map(p => <option key={p.url_token} value={p.url_token}>{p.nombre} · {t(`academico.periodos.estado.${p.estado}`)}</option>)}
         </select>}
       </div>
     </div></div>
     <div className='card'><div className='card-body row g-3 align-items-end'>
       <div className='col-12 col-sm-6 col-lg-3'>
-        <AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('evaluacion.matriculas.grupo')}
+        <AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('evaluacion.matriculas.grupo')} opaque
           value={group} onChange={value => {setGroup(value); resetPages()}} initialOptions={groups}
           emptyLabel={t('academic.filter.selectGroup')} selectOnly hideLabel
           formatOption={option => `${option.grado?.nombre ?? ''} / ${option.nombre ?? ''}`} />
       </div>
       {!reportsOnly && <div className='col-12 col-sm-6 col-lg-3'>
-        <AcademicOptionSelect tipo='materias' yearId={selectedYear} label={t('siee.materia')}
+        <AcademicOptionSelect tipo='materias' yearId={selectedYear} label={t('siee.materia')} opaque
           value={materia} onChange={value => {setMateria(value); setAssignmentPage(1)}}
           initialOptions={data.materias ?? []} emptyLabel={t('academic.filter.selectSubject')} selectOnly hideLabel />
       </div>}
@@ -149,8 +116,7 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
         </tbody>
       </table></div>
       <AcademicPagination meta={data.pagination?.asignaciones} visibleCount={assignments.length} loading={isFetching}
-        onPageChange={setAssignmentPage} onPerPageChange={changeAssignmentSize}
-        onLoadMore={() => setAssignmentPage(page => page + 1)} />
+        onPageChange={setAssignmentPage} onPerPageChange={changeAssignmentSize} />
       </KTCardBody>
     </KTCard>}
     {data.can_view_reports && <KTCard>
@@ -158,12 +124,12 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
       <KTCardBody>
         {data.can_manage && !reportsOnly && <form className='row g-4 align-items-end mb-6' onSubmit={e => {
           e.preventDefault()
-          mutation.mutate({grupo_id: Number(form.grupo_id), estudiante_id: Number(form.estudiante_id)}, {
+          mutation.mutate({grupo_id: form.grupo_id, estudiante_id: form.estudiante_id}, {
             onSuccess: () => {toast.success(t('evaluacion.matriculas.saved')); setForm({grupo_id: '', estudiante_id: ''}); setStudentSearch(''); setDebouncedStudentSearch(''); setEnrollmentPage(1)},
             onError: err => toast.error(err.message),
           })
         }}>
-          <div className='col-12 col-md-3'><AcademicOptionSelect tipo='grupos' yearId={selectedYear}
+          <div className='col-12 col-md-3'><AcademicOptionSelect tipo='grupos' yearId={selectedYear} opaque
             label={t('evaluacion.matriculas.grupo')} value={form.grupo_id}
             onChange={value => setForm(previous => ({...previous, grupo_id: value}))}
             initialOptions={groups} emptyLabel={t('academic.filter.selectGroup')} required selectOnly hideLabel
@@ -203,8 +169,7 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
           </tbody>
         </table></div>
         <AcademicPagination meta={data.pagination?.matriculas} visibleCount={enrollments.length} loading={isFetching}
-          onPageChange={setEnrollmentPage} onPerPageChange={changeEnrollmentSize}
-          onLoadMore={() => setEnrollmentPage(page => page + 1)} />
+          onPageChange={setEnrollmentPage} onPerPageChange={changeEnrollmentSize} />
       </KTCardBody>
     </KTCard>}
     {reportsOnly && !data.can_view_reports && <div className='alert alert-info'>{t('boletines.restricted')}</div>}

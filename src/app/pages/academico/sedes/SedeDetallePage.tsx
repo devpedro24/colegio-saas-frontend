@@ -127,7 +127,7 @@ const SedeDetallePage: FC = () => {
                 <div className='card-title flex-column align-items-start'>
                   <div className='d-flex align-items-center gap-3'>
                     <h3 className='fw-bold mb-0'>{sede.nombre}</h3>
-                    {sede.es_principal && (
+                    {!sede.tenant_slug && (
                       <span className='badge badge-light-primary'>
                         {t('colegios.sedes.principal')}
                       </span>
@@ -174,7 +174,7 @@ const SedeDetallePage: FC = () => {
               </div>
             </div>
 
-            {!sede.es_principal && (
+            {sede.tenant_slug && (
               <div className='card mb-6'>
                 <div className='card-header border-0 pt-6'>
                   <div className='card-title flex-column align-items-start'>

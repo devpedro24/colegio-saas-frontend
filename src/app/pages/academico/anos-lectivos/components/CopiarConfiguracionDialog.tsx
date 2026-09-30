@@ -22,12 +22,12 @@ function CopyForm({target, years, onClose}: {
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
   const sources = years.filter(year => year.id !== target.id)
-  const previousSourceId = status.data?.data.origen_id?.toString() ?? ''
+  const previousSourceId = status.data?.data.origen_token ?? ''
   const switchingBlocked = !!previousSourceId && sourceId !== previousSourceId && !status.data?.data.reemplazable
 
   useEffect(() => {
     if (!status.data || status.isFetching || loaded) return
-    setSourceId(status.data.data.origen_id?.toString() ?? '')
+    setSourceId(status.data.data.origen_token ?? '')
     setSelected(status.data.data.opciones)
     setLoaded(true)
   }, [status.data, status.isFetching, loaded])
@@ -38,7 +38,7 @@ function CopyForm({target, years, onClose}: {
     copy.mutate({id: target.id, origenId: sourceId, opciones: selected}, {
       onSuccess: () => {toast.success(t('academico.anos.copyLater.success')); onClose()},
       onError: err => setError(err instanceof ApiError
-        ? err.fieldError('origen_id') ?? err.fieldError('opciones') ?? err.message
+        ? err.fieldError('origen_token') ?? err.fieldError('opciones') ?? err.message
         : t('common.toast.genericError')),
     })
   }

@@ -27,8 +27,8 @@ export type TipoEscala = 'numerica' | 'imagenes'
 
 /** Bloque 4: escala valorativa (puede variar por nivel — RN-CC-003). Por ano lectivo. */
 export interface EscalaValorativa {
-  id: string
-  ano_lectivo_id: string
+  url_token: string
+  ano_lectivo_token: string
   nombre: string
   /** Nivel al que aplica; null = todos los niveles. */
   nivel_educativo: NivelEducativo | null
@@ -41,7 +41,7 @@ export interface EscalaValorativa {
 
 /** Body de POST/PUT /config/escalas. */
 export interface EscalaValorativaInput {
-  ano_lectivo_id: string
+  ano_lectivo_token: string
   nombre: string
   nivel_educativo: NivelEducativo | null
   tipo: TipoEscala
@@ -60,8 +60,8 @@ export type AmbitoAprobacion = 'materia' | 'area' | 'promedio_general'
 
 /** Bloque 5: metodo de aprobacion y nota minima. Por ano lectivo. */
 export interface MetodoAprobacion {
-  id: string
-  ano_lectivo_id: string
+  url_token: string
+  ano_lectivo_token: string
   calculo_nota: CalculoNota
   nota_minima: number
   ambito: AmbitoAprobacion
@@ -70,7 +70,7 @@ export interface MetodoAprobacion {
 
 /** Body de POST/PUT /config/metodos-aprobacion. */
 export interface MetodoAprobacionInput {
-  ano_lectivo_id: string
+  ano_lectivo_token: string
   calculo_nota: CalculoNota
   nota_minima: number
   ambito: AmbitoAprobacion
@@ -80,8 +80,8 @@ export interface MetodoAprobacionInput {
 
 /** Bloque 6: modelo pedagogico por nivel educativo. Por ano lectivo. */
 export interface ModeloPedagogico {
-  id: string
-  ano_lectivo_id: string
+  url_token: string
+  ano_lectivo_token: string
   nivel_educativo: NivelEducativo
   /** Docente unico todo el dia (true) vs rotacion por materia (false). */
   docente_unico: boolean
@@ -93,7 +93,7 @@ export interface ModeloPedagogico {
 
 /** Body de POST/PUT /config/modelos-pedagogicos. */
 export interface ModeloPedagogicoInput {
-  ano_lectivo_id: string
+  ano_lectivo_token: string
   nivel_educativo: NivelEducativo
   docente_unico: boolean
   salon_fijo: boolean

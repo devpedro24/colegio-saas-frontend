@@ -7,17 +7,16 @@
 export interface Sede {
   id: string
   hashed_id: string
+  url_token?: string
   nombre: string
   direccion: string | null
   telefono: string | null
-  responsable: string | null
   coordinador_name: string | null
   coordinador_email: string | null
   tenant_id: string | null
   tenant_slug: string | null
   tenant_domain: string | null
   tenant_status: string | null
-  es_principal: boolean
   estado: string
   created_at: string | null
 }
@@ -27,11 +26,9 @@ export interface CreateSedeInput {
   slug?: string
   direccion?: string | null
   telefono?: string | null
-  responsable?: string | null
   coordinador_email?: string | null
   coordinador_name?: string | null
   heredar?: boolean
-  es_principal?: boolean
   estado?: string
 }
 

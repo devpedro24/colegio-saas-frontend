@@ -20,7 +20,7 @@ const AcademicParametersContent: FC = () => {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const [searchParams] = useSearchParams()
-  const {yearId} = useAcademicYear()
+  const {yearToken} = useAcademicYear()
   const requestedTab = searchParams.get('tab') as Tab | null
   const tab: Tab = requestedTab && tabs.includes(requestedTab) ? requestedTab : 'escala'
 
@@ -53,9 +53,9 @@ const AcademicParametersContent: FC = () => {
         </ul>
 
         <AcademicYearContent>
-          {tab === 'escala' && <EscalasCard anoLectivoId={yearId} />}
-          {tab === 'metodo' && <MetodosAprobacionCard anoLectivoId={yearId} />}
-          {tab === 'modelo' && <ModelosPedagogicosCard anoLectivoId={yearId} />}
+          {tab === 'escala' && <EscalasCard anoLectivoToken={yearToken} />}
+          {tab === 'metodo' && <MetodosAprobacionCard anoLectivoToken={yearToken} />}
+          {tab === 'modelo' && <ModelosPedagogicosCard anoLectivoToken={yearToken} />}
         </AcademicYearContent>
       </div>
     </div>

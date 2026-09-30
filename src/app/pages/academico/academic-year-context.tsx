@@ -5,8 +5,10 @@ import {useAnosLectivos} from './anos-lectivos/anos-lectivos.api'
 
 type AcademicYearContextValue = {
   yearId: string
+  yearToken: string
   years: {id: string; url_token: string; legacy_url_token?: string; nombre: string; estado: string}[]
   setYearId: (id: string) => void
+  setYearToken: (token: string) => void
   writable: boolean
 }
 
@@ -22,6 +24,7 @@ export function AcademicYearProvider({children}: {children: ReactNode}) {
     ?? years.find(item => item.estado === 'planificado')
     ?? years[0]
   const yearId = selected ? String(selected.id) : ''
+  const yearToken = selected?.url_token ?? ''
   useEffect(() => {
     if (!selected || requested === selected.url_token) return
     const next = new URLSearchParams(params)
@@ -35,8 +38,15 @@ export function AcademicYearProvider({children}: {children: ReactNode}) {
     next.set('ano', year.url_token)
     setParams(next)
   }
+  const setYearToken = (token: string) => {
+    const year = years.find(item => item.url_token === token)
+    if (!year) return
+    const next = new URLSearchParams(params)
+    next.set('ano', year.url_token)
+    setParams(next)
+  }
 
-  return <AcademicYearContext.Provider value={{yearId, years, setYearId,
+  return <AcademicYearContext.Provider value={{yearId, yearToken, years, setYearId, setYearToken,
     writable: !!selected && !['cerrado', 'archivado'].includes(selected.estado)}}>{children}</AcademicYearContext.Provider>
 }
 
@@ -49,17 +59,17 @@ export function useAcademicYear() {
 }
 
 export function AcademicYearPicker() {
-  const {yearId, years, setYearId} = useAcademicYear()
+  const {yearToken, years, setYearToken} = useAcademicYear()
   const intl = useIntl()
-  return <select className='form-select form-select-solid w-auto' aria-label={intl.formatMessage({id: 'common.field.anoLectivo'})} value={yearId}
-    onChange={event => setYearId(event.target.value)} disabled={!years.length}>
-    {years.map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+  return <select className='form-select form-select-solid w-auto' aria-label={intl.formatMessage({id: 'common.field.anoLectivo'})} value={yearToken}
+    onChange={event => setYearToken(event.target.value)} disabled={!years.length}>
+    {years.map(item => <option key={item.url_token} value={item.url_token}>{item.nombre}</option>)}
   </select>
 }
 
 export function AcademicYearCell({yearId}: {yearId: string | number | null | undefined}) {
   const {years} = useAcademicYear()
-  const name = years.find(item => String(item.id) === String(yearId))?.nombre
+  const name = years.find(item => String(item.id) === String(yearId) || item.url_token === yearId)?.nombre
   return <td>{name ?? '—'}</td>
 }
 
