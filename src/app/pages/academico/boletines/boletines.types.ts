@@ -6,6 +6,10 @@
   display_value?: string
   aprobado?: boolean
   motivo?: string
+  origen?: 'recuperacion'
+  resultado_original?: Omit<BoletinPeriodoResult, 'periodo_id'>
+  nota_recuperacion?: string
+  politica_recuperacion?: string
 }
 
 export interface BoletinAsignatura {

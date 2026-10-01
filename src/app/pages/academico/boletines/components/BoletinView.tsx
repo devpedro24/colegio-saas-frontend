@@ -5,6 +5,7 @@ import {KTCard, KTCardBody} from '@/_metronic/helpers'
 import type {BoletinData} from '../boletines.types'
 import {useIntl} from 'react-intl'
 import '../boletines.css'
+import {gradeDecimal} from '../../evaluacion/gradeDecimal'
 
 export const BoletinView = () => {
   const {matriculaId} = useParams()
@@ -123,7 +124,7 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
                                   res.aprobado ? 'badge-light-success' : 'badge-light-danger'
                                 }`}
                               >
-                                {res.display_value}
+                                {gradeDecimal(res.display_value)}
                               </span>
                             ) : (
                               '—'
@@ -141,7 +142,7 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
                                   : 'badge-light-danger'
                               }`}
                             >
-                              {area.anual.display_value}
+                              {gradeDecimal(area.anual.display_value)}
                             </span>
                           ) : (
                             '—'
@@ -192,7 +193,8 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
                                 res.aprobado ? 'badge-light-success' : 'badge-light-danger'
                               }`}
                             >
-                              {res.display_value}
+                              {gradeDecimal(res.display_value)}
+                              {res.origen === 'recuperacion' && <span className='ms-1' title={t('boletines.recovered')} aria-label={t('boletines.recovered')}>↗</span>}
                             </span>
                           ) : (
                             '—'
@@ -210,7 +212,8 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
                                 : 'badge-light-danger'
                             }`}
                           >
-                            {asig.anual.display_value}
+                            {gradeDecimal(asig.anual.display_value)}
+                            {asig.anual.origen === 'recuperacion' && <span className='ms-1' title={t('boletines.recovered')} aria-label={t('boletines.recovered')}>↗</span>}
                           </span>
                         ) : (
                           '—'

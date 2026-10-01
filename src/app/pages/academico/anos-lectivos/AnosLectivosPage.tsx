@@ -15,6 +15,7 @@ import {PeriodosDialog} from './components/PeriodosDialog'
 import {DeleteConfirmDialog} from '../estructura/components/DeleteConfirmDialog'
 import {DuplicarAnoLectivoDialog} from './components/DuplicarAnoLectivoDialog'
 import {CopiarConfiguracionDialog} from './components/CopiarConfiguracionDialog'
+import {PromocionesDialog} from './components/PromocionesDialog'
 
 // Estado del ano lectivo -> clase de badge (etiqueta por i18n).
 const STATUS_CLASS: Record<string, string> = {
@@ -49,6 +50,7 @@ const AnosLectivosPage: FC = () => {
   const [eliminando, setEliminando] = useState<AnoLectivo | null>(null)
   const [duplicando, setDuplicando] = useState<AnoLectivo | null>(null)
   const [copiando, setCopiando] = useState<AnoLectivo | null>(null)
+  const [promocionesAno, setPromocionesAno] = useState<AnoLectivo | null>(null)
 
   const toast = useToast()
   const {data, isLoading, isError} = useAnosLectivos()
@@ -256,6 +258,12 @@ const AnosLectivosPage: FC = () => {
                                 </button>
                               )}
                               {canTransitionYear && a.estado === 'en_curso' && (
+                                <button type='button' className='btn btn-light-primary btn-sm'
+                                  onClick={() => setPromocionesAno(a)}>
+                                  {t('academico.promocion.action')}
+                                </button>
+                              )}
+                              {canTransitionYear && a.estado === 'en_curso' && (
                                 <button
                                   type='button'
                                   className='btn btn-light-danger btn-sm'
@@ -300,6 +308,7 @@ const AnosLectivosPage: FC = () => {
       <AnoLectivoFormDialog show={showCreate} ano={formAno} onClose={closeForm} />
       <DuplicarAnoLectivoDialog source={duplicando} onClose={() => setDuplicando(null)} />
       <CopiarConfiguracionDialog target={copiando} years={list} onClose={() => setCopiando(null)} />
+      <PromocionesDialog ano={promocionesAno} onClose={() => setPromocionesAno(null)} />
       <CerrarAnoLectivoDialog
         show={cerrando !== null}
         ano={cerrando}

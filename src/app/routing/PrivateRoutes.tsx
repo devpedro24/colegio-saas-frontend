@@ -16,6 +16,8 @@ const SedeDetallePage = lazy(() => import('../pages/academico/sedes/SedeDetalleP
 const UsuariosPage = lazy(() => import('../pages/usuarios/UsuariosPage'))
 const ProximamentePage = lazy(() => import('../pages/proximamente/ProximamentePage'))
 const EventosPage = lazy(() => import('../pages/comunicacion/EventosPage'))
+const EvaluacionPage = lazy(() => import('../pages/academico/evaluacion/EvaluacionPage'))
+const AdmisionesPage = lazy(() => import('../pages/admisiones/AdmisionesPage'))
 
 const PrivateRoutes = () => {
   return (
@@ -70,10 +72,10 @@ const PrivateRoutes = () => {
         />
         {/* Módulos del roadmap aún sin pantallas reales (placeholder "próximamente") */}
         <Route
-          path='admisiones'
+          path='admisiones/*'
           element={
             <SuspensedView>
-              <ProximamentePage titleId='admisiones.title' />
+              <AdmisionesPage />
             </SuspensedView>
           }
         />
@@ -81,7 +83,7 @@ const PrivateRoutes = () => {
           path='evaluacion/*'
           element={
             <SuspensedView>
-              <AcademicAlias />
+              <EvaluacionPage />
             </SuspensedView>
           }
         />

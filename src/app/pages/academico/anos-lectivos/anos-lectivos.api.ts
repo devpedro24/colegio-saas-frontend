@@ -19,6 +19,29 @@ export const ANOS_LECTIVOS_KEY = ['anos-lectivos'] as const
 export const periodosKey = (anoLectivoId: string) =>
   ['anos-lectivos', anoLectivoId, 'periodos'] as const
 
+export interface RevisionCierreAno {
+  ano_token: string
+  periodos_esperados: number
+  periodos_configurados: number
+  periodos_cerrados: number
+  matriculas: number
+  matriculas_activas: number
+  promociones_aprobadas: number
+  sin_matriculas: boolean
+  solo_retiradas: boolean
+  bloqueos: string[]
+  puede_cerrar: boolean
+}
+
+export function useRevisionCierreAno(id: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['anos-lectivos', id, 'revision-cierre'],
+    enabled: enabled && !!id,
+    staleTime: 0,
+    queryFn: () => api.get<{data: RevisionCierreAno}>(`/anos-lectivos/${id}/revision-cierre?opaque=1`),
+  })
+}
+
 type PublicYear = Omit<AnoLectivo, 'id'>
 type PublicPeriod = Omit<Periodo, 'id' | 'ano_lectivo_id'>
 const withPublicYearSelector = (year: PublicYear): AnoLectivo => ({...year, id: year.url_token})
@@ -123,12 +146,14 @@ export function useIniciarAnoLectivo() {
   })
 }
 
-/** POST /anos-lectivos/{id}/cerrar — en_curso -> cerrado (dispara promocion). */
+/** POST /anos-lectivos/{id}/cerrar — exige revisión y confirmación explícitas. */
 export function useCerrarAnoLectivo() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => api.post<{data: PublicYear}>(`/anos-lectivos/${id}/cerrar?opaque=1`),
+    mutationFn: ({id, sinMatriculas, soloRetiradas}: {id: string; sinMatriculas: boolean; soloRetiradas: boolean}) => api.post<{data: PublicYear}>(`/anos-lectivos/${id}/cerrar?opaque=1`, {
+      [sinMatriculas ? 'confirmar_sin_matriculas' : soloRetiradas ? 'confirmar_solo_retiradas' : 'confirmar_promociones']: true,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ANOS_LECTIVOS_KEY})
     },
