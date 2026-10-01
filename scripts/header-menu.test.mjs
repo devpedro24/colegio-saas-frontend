@@ -11,12 +11,15 @@ const intl = lang => ({formatMessage: ({id}) => {const value = messages(lang)[id
 
 for (const lang of ['es', 'en']) {
   test(`school navigation uses one dropdown structure and valid ${lang} keys`, () => {
-    const html = getHeaderMenuHtml(intl(lang), {isTenantUser: true, canManageUsers: true})
+    const html = getHeaderMenuHtml(intl(lang), {isTenantUser: true, canManageUsers: true, canViewPreinformes: true, canManageEnrollments: true})
     const dictionary = messages(lang)
     const communication = renderHeaderDropdown(dictionary['comunicacion.title'], [{label: dictionary['events.calendar'], path: '/comunicacion/eventos', icon: 'calendar-8'}])
     assert.ok(html.includes(communication))
     assert.ok(html.includes('href="/academico/siee" data-kt-nav="/academico/siee"'))
-    assert.ok(html.includes('href="/academico/evaluacion/catalogo" data-kt-nav="/academico/evaluacion/catalogo"'))
+    assert.ok(html.includes('href="/evaluacion/catalogo" data-kt-nav="/evaluacion/catalogo"'))
+    assert.ok(html.includes('href="/admisiones/matriculas" data-kt-nav="/admisiones/matriculas"'))
+    assert.ok(!getHeaderMenuHtml(intl(lang), {isTenantUser: true}).includes('href="/admisiones/matriculas"'))
+    assert.ok(html.includes('href="/academico/preinformes" data-kt-nav="/academico/preinformes"'))
     assert.ok(html.includes('ki-solid ki-calendar-8'))
     assert.ok(!html.slice(0, html.indexOf(dictionary['header.menu.apps'])).includes('class="menu-bullet"'))
     assert.ok(html.includes('data-kt-nav="/academico/siee"'))

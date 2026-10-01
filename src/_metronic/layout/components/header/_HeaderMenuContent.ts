@@ -22,6 +22,8 @@ export const getHeaderMenuHtml = (
     isTenantUser?: boolean
     activeColegio?: boolean
     canManageUsers?: boolean
+    canViewPreinformes?: boolean
+    canManageEnrollments?: boolean
   }
 ) => {
   const t = (id: string) => intl.formatMessage({id})
@@ -45,14 +47,13 @@ export const getHeaderMenuHtml = (
     ['academico.planEstudios.title', '/academico/plan-estudios', 'book-open'],
     ['academico.parameters.title', '/academico/parametros-academicos', 'setting-2'],
     ['siee.title', '/academico/siee', 'notepad'],
-    ['evaluacion.title', '/academico/evaluacion/catalogo', 'chart-simple'],
-    ['boletines.title', '/academico/boletines', 'document'],
+    ...(opts?.canViewPreinformes ? [['preinformes.title', '/academico/preinformes', 'calendar-8'] as [string, string, string]] : []),
   ]) : ''
 
   const moduleLink = (id: string, path: string) => `<div class="menu-item me-0 me-lg-2"><a class="menu-link" href="${esc(path)}" data-kt-nav="${esc(path)}"><span class="menu-title">${esc(t(id))}</span></a></div>`
   const modulosBlock = colegioMode ? [
-    moduleLink('admisiones.title', '/admisiones'),
-    moduleLink('evaluacion.title', '/academico/evaluacion/catalogo'),
+    ...(opts?.canManageEnrollments ? [dropdown('admisiones.title', [['evaluacion.matriculas.title', '/admisiones/matriculas', 'people']])] : []),
+    dropdown('grading.menu', [['grading.sheets', '/evaluacion/catalogo', 'notepad'], ['boletines.title', '/academico/boletines', 'document']]),
     dropdown('comunicacion.title', [['events.calendar', '/comunicacion/eventos', 'calendar-8']]),
     moduleLink('pagos.title', '/pagos'),
     moduleLink('reportes.title', '/reportes'),

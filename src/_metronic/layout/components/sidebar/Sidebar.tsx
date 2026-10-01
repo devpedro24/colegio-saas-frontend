@@ -278,6 +278,8 @@ const Sidebar = () => {
                   isTenantUser,
                   activeColegio: !!activeColegio,
                   canManageUsers,
+                  canViewPreinformes: hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar'),
+                  canManageEnrollments: hasPermission('academico.matriculas.gestionar'),
                 })
               ),
             }}
