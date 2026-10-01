@@ -27,6 +27,9 @@ test('identity is refreshed for changed roles, profile or access, without refres
   for (const resource of ['rbac', 'users', 'account', 'access']) assert.equal(refreshesIdentity([resource]), true)
   assert.equal(refreshesIdentity(['schedule']), false)
   assert.equal(resourceForPath('/asignaciones/opaque-token?opaque=1'), 'schedule')
+  assert.equal(resourceForPath('/siee/opaque-token/curriculo/masivo'), 'curriculum')
+  assert.equal(resourceForPath('/siee/opaque-token/curriculo?opaque=1'), 'curriculum')
+  assert.equal(resourceForPath('/siee/opaque-token'), 'academic-config')
   assert.equal(shouldRefreshQuery(['anos-lectivos'], ['schedule'], 'tenant'), false)
   for (const root of ['academic-options', 'academic-options-all']) {
     for (const resource of ['academic', 'structure', 'curriculum', 'schedule', 'users']) {

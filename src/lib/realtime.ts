@@ -1,14 +1,14 @@
 /** Shared dependency map for remote broadcasts and successful local writes. */
 export type RealtimeScope = 'tenant' | 'platform'
 const platformRoots = new Set(['colegios', 'plans', 'rbac-catalog', 'audit', 'audit-tenants'])
-const academic = ['anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'siee', 'config', 'evaluacion', 'boletines', 'eventos-catalogo', 'eventos', 'evento', 'onboarding']
+const academic = ['anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'siee', 'preinformes', 'config', 'evaluacion', 'boletines', 'eventos-catalogo', 'eventos', 'evento', 'onboarding']
 const dependencies: Record<string, string[]> = {
   academic,
   structure: ['estructura', 'horarios', 'plan-estudios', 'evaluacion', 'boletines', 'eventos-catalogo', 'eventos', 'evento', 'usuarios'],
   curriculum: ['plan-estudios', 'horarios', 'evaluacion', 'boletines', 'siee'],
   schedule: ['horarios', 'evaluacion', 'boletines', 'eventos', 'evento', 'eventos-catalogo'],
   evaluation: ['evaluacion', 'boletines', 'horarios', 'estructura', 'eventos-catalogo'],
-  'academic-config': ['config', 'siee', 'evaluacion', 'boletines', 'onboarding'],
+  'academic-config': ['config', 'siee', 'preinformes', 'evaluacion', 'boletines', 'onboarding'],
   events: ['eventos', 'evento', 'eventos-catalogo', 'horarios'],
   institution: ['institution-context', 'config', 'onboarding', 'boletines'],
   users: ['usuarios', 'horarios', 'evaluacion', 'boletines', 'eventos-catalogo', 'onboarding', 'account'],
@@ -37,9 +37,10 @@ export function refreshesIdentity(resources: readonly string[]): boolean {
 }
 
 export function resourceForPath(path: string): string {
+  if (/^\/?siee\/[^/]+\/curriculo(?:\/|$|\?)/.test(path)) return 'curriculum'
   const root = path.split('?')[0].split('/').filter(Boolean)[0]
   return ({'anos-lectivos': 'academic', periodos: 'academic', estructura: 'structure', 'plan-estudios': 'curriculum',
-    horarios: 'schedule', asignaciones: 'schedule', evaluacion: 'evaluation', siee: 'academic-config', config: 'academic-config', eventos: 'events',
+    horarios: 'schedule', asignaciones: 'schedule', evaluacion: 'evaluation', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
     onboarding: 'institution', branding: 'institution', usuarios: 'users', rbac: 'rbac', colegios: 'schools', plans: 'plans',
     planes: 'plans', account: 'account', mfa: 'account', storage: 'storage'} as Record<string, string>)[root] ?? 'all'
 }

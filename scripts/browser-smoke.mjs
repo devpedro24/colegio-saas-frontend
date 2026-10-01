@@ -13,6 +13,8 @@ const paginationMode = process.argv.includes('--pagination')
 const platformMode = process.argv.includes('--platform')
 const performanceMode = process.argv.includes('--performance')
 const cacheMode = process.argv.includes('--cache')
+const gradingMode = process.argv.includes('--grading')
+const workflowMode = process.argv.includes('--academic-workflow')
 const apiReads = []
 const detailedReads = []
 const reverbProbe = input => {
@@ -31,18 +33,20 @@ const today = new Date().toLocaleDateString('en-CA')
 const user = {id: 'u'.repeat(24), tenant_channel: 't'.repeat(24), name: 'Rector de prueba', email: 'rector@example.test', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.anos.transicionar', 'academico.periodos.transicionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
 if (platformMode) { user.is_platform = true; user.tenant_channel = null; user.roles = ['superadmin']; user.permissions = [] }
 if (realtimeMode) user.tenant_channel = reverbProbe({action: 'channel'}).token
-const urlTokens = {year: 'a'.repeat(24), nextYear: 'b'.repeat(24), group: 'c'.repeat(24), groupB: 'd'.repeat(24), groupC: 'e'.repeat(24), teacher: 'f'.repeat(24), space: 'g'.repeat(24), assignment: 'h'.repeat(24), period: 'j'.repeat(24), enrollment: 'k'.repeat(24), sede: 'm'.repeat(24), event: 'i'.repeat(24), materia: 'v'.repeat(24)}
+const urlTokens = {year: 'a'.repeat(24), nextYear: 'b'.repeat(24), group: 'c'.repeat(24), groupB: 'd'.repeat(24), groupC: 'e'.repeat(24), groupPre: '7'.repeat(24), teacher: 'f'.repeat(24), space: 'g'.repeat(24), assignment: 'h'.repeat(24), period: 'j'.repeat(24), enrollment: 'k'.repeat(24), sede: 'm'.repeat(24), event: 'i'.repeat(24), materia: 'v'.repeat(24)}
 const sieeTokens = {grade: 'o'.repeat(24), level: 'p'.repeat(24), area: 'q'.repeat(24), scale: 'r'.repeat(24), method: 's'.repeat(24)}
 const sieePath = `/api/siee/${urlTokens.year}`
 const sieeCurriculumPath = `${sieePath}/curriculo`
 const opaquePlanillaPath = `/api/evaluacion/planillas/${urlTokens.assignment}/${urlTokens.period}`
 const opaqueBoletinPath = `/api/evaluacion/boletines/${urlTokens.enrollment}`
+const promotionPath = `/api/anos-lectivos/${urlTokens.year}/promociones`
 const year = {id: 1, url_token: urlTokens.year, nombre: '2026', estado: 'en_curso', tipo_calendario: 'A', fecha_inicio: '2026-01-01', fecha_fin: '2026-12-31', num_periodos: 3, periodo_sumatorio: true}
 const nextYear = {...year, id: 2, url_token: urlTokens.nextYear, legacy_url_token: '2'.repeat(64), nombre: '2027', estado: 'planificado'}
 const group = {id: 1, url_token: urlTokens.group, nombre: 'A', ano_lectivo_id: 1, jornada_id: 1, sede_id: 1, grado: {id: 1, nombre: 'Primero', nivel_id: 1}, sede: {id: 1, nombre: 'Sede Principal'}, jornada: {id: 1, nombre: 'Mañana', hora_inicio: '07:00:00', hora_fin: '12:30:00'}}
 const groupB = {...group, id: 2, url_token: urlTokens.groupB, nombre: 'B'}
 const groupC = {...group, id: 3, url_token: urlTokens.groupC, nombre: 'C', jornada_id: 2, jornada: {id: 2, nombre: 'Tarde', hora_inicio: '13:00:00', hora_fin: '17:00:00'}}
 const extraGroups = Array.from({length: 49}, (_, index) => ({...group, id: index + 4, url_token: `${'n'.repeat(21)}${String(index + 4).padStart(3, '0')}`, nombre: `Grupo ${index + 4}`}))
+const groupPre = {...group, id: 53, url_token: urlTokens.groupPre, grado: {id: 3, nombre: 'Prejardín', nivel_id: 2}}
 const enrollment = {id: 1, url_token: urlTokens.enrollment, estudiante_id: 2, ano_lectivo_id: 1, grupo_id: 1, estado: 'activa', estudiante: {id: 2, name: 'Estudiante de prueba'}, grupo: group}
 const assignment = {id: 1, url_token: urlTokens.assignment, ano_lectivo_id: 1, grupo_id: 1, materia_id: 1, docente_id: 3, grupo: group, materia: {id: 1, nombre: 'Matemáticas'}}
 const period = {id: 1, url_token: urlTokens.period, ano_lectivo_id: 1, nombre: 'Trimestre 1', orden: 1, fecha_inicio: '2026-09-01', fecha_fin: '2026-09-30', peso: 50, estado: 'abierto', es_actual: true, reapertura_manual: false, created_at: null}
@@ -101,6 +105,12 @@ const opaqueEvaluation = (pathname, response) => {
   if (pathname.startsWith('/api/evaluacion/planillas/')) {
     const data = response.data
     return {...response, data: {...data,
+      periodo: opaqueRecord(period, 'periodo'), permisos: {crear: true, editar: true, eliminar: true, configurar: true},
+      usa_preinformes: gradingMode, modo_preinformes: gradingMode ? 'SIMPLE_AVERAGE' : null, estructura_anterior: false,
+      pagination: data.pagination ?? {matriculas: {current_page: 1, per_page: 20, last_page: 1, total: data.matriculas.length}},
+      secciones: data.componentes.map(item => ({componente_token: publicToken('componente', item.id), preinforme_token: gradingMode ? `p${String(item.id).padStart(23, '0')}` : null,
+        nombre: gradingMode ? item.nombre : null, modo: item.modo, peso: item.peso, version: item.version ?? 1,
+        actividades: opaqueRecord(item.actividades ?? [], 'actividad').map(a => ({...a, version: a.version ?? 1}))})),
       componentes: data.componentes.map(item => ({...opaqueRecord(item, 'componente'), actividades: opaqueRecord(item.actividades ?? [], 'actividad')})),
       matriculas: opaqueRecord(data.matriculas, 'matricula'),
       calificaciones: data.calificaciones.map(({id: _id, ...row}) => opaqueRecord(row, 'calificacion')),
@@ -150,6 +160,13 @@ const fixtures = {
   '/api/anos-lectivos': {data: [year, nextYear]},
   '/api/anos-lectivos/1/periodos': {data: [period, nextPeriod]},
   '/api/anos-lectivos/2/estado-copia': {data: {origen_id: 1, opciones: {jornadas: true, periodos: true}, reemplazable: false}},
+  [promotionPath]: {data: [{matricula_token: urlTokens.enrollment, estudiante: 'Mariana Rodríguez Peña',
+    grado: 'Primero', grado_token: sieeTokens.grade, grupo: 'A',
+    propuesta: {estado: 'calculada', resultado: 'promovido', numero_reprobadas: 0,
+      numero_obligatorias_reprobadas: 0, promedio: '4.20', promedio_cumple: true, huella: 'f'.repeat(64)},
+    decision: null}], meta: {current_page: 1, last_page: 1, total: 1}, politica: null,
+    materias: [{token: urlTokens.materia, nombre: 'Matemáticas'}],
+    grados: [{token: sieeTokens.grade, nombre: 'Primero'}, {token: 'u'.repeat(24), nombre: 'Segundo'}]},
   '/api/config/datos-institucionales': {data: {nombre: 'Colegio de prueba', nit: '900123456-7', resolucion_men: '123 de 2026', direccion: 'Calle 1', telefono: '601 123 4567', correo: 'contacto@example.test'}},
   '/api/estructura/sedes': {data: [sede]},
   [`/api/estructura/sedes/${urlTokens.sede}`]: {data: sede},
@@ -158,16 +175,31 @@ const fixtures = {
   '/api/estructura/bloques-horarios': {data: [{...block, ano_lectivo_id: 1, estado: 'activo', es_descanso: false, jornada: {id: 1, nombre: 'Mañana', sede_id: 1}}]},
   '/api/plan-estudios/areas': {data: [{id: 1, ano_lectivo_id: 1, nombre: 'Matemáticas', descripcion: null, estado: 'activo'}]},
   '/api/plan-estudios/materias': {data: [{id: 1, ano_lectivo_id: 1, area_id: 1, nivel_id: null, nombre: 'Matemáticas', intensidad_horaria: 5, estado: 'activo'}]},
-  '/api/horarios': {data: {can_manage: true, anos: [year], grupos: [group, groupB, groupC], docentes: [{id: 3, url_token: urlTokens.teacher, name: 'Docente de prueba'}], areas: [], materias: [{...assignment.materia, estado: 'activo', nivel_id: null}], bloques: [block], espacios: [{id: 1, url_token: urlTokens.space, nombre: 'Aula Primero', sede_id: 1}], asignaciones: [{...assignment, docente_id: null, docente: null}], sesiones: [{id: 1, asignacion_id: 1, grupo_id: 1, materia_id: 1, docente_id: null, grupo: group, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: 1, hora_inicio: null, hora_fin: null, espacio_fisico_id: 1, bloque: block, espacio: {id: 1, nombre: 'Aula Primero'}}, {id: 2, asignacion_id: null, grupo_id: 2, materia_id: 1, docente_id: null, grupo: groupB, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: null, hora_inicio: '08:00:00', hora_fin: '09:15:00', espacio_fisico_id: null, bloque: null, espacio: null}]}},
+  '/api/horarios': {data: {can_manage: true, anos: [year], grupos: [group, groupB, groupC, groupPre], docentes: [{id: 3, url_token: urlTokens.teacher, name: 'Docente de prueba'}], areas: [], materias: [{...assignment.materia, estado: 'activo', nivel_id: null}], bloques: [block], espacios: [{id: 1, url_token: urlTokens.space, nombre: 'Aula Primero', sede_id: 1}], asignaciones: [{...assignment, docente_id: null, docente: null}], sesiones: [{id: 1, asignacion_id: 1, grupo_id: 1, materia_id: 1, docente_id: null, grupo: group, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: 1, hora_inicio: null, hora_fin: null, espacio_fisico_id: 1, bloque: block, espacio: {id: 1, nombre: 'Aula Primero'}}, {id: 2, asignacion_id: null, grupo_id: 2, materia_id: 1, docente_id: null, grupo: groupB, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: null, hora_inicio: '08:00:00', hora_fin: '09:15:00', espacio_fisico_id: null, bloque: null, espacio: null}]}},
   '/api/eventos/catalogo': {data: {es_rector: true, puede_crear: true, docentes_cualquier_grupo: false, grupos: [{url_token: urlTokens.group, nombre: 'A', grado_token: sieeTokens.grade, ano_lectivo_token: urlTokens.year, grado: {url_token: sieeTokens.grade, nombre: 'Primero'}}], materias: [{url_token: urlTokens.materia, nombre: 'Matemáticas'}], asignaciones: [{grupo_token: urlTokens.group, materia_token: urlTokens.materia}]}},
   '/api/eventos': {data: [event], last_page: 1},
   [`/api/eventos/${urlTokens.event}`]: {data: {...event, archivos: [], puede_editar: true}},
   '/api/evaluacion/catalogo': {data: {can_manage: true, can_configure: true, can_view_reports: true, anos: [year, nextYear], periodos: [period, {...period, id: 2, ano_lectivo_id: 2, url_token: 'l'.repeat(24)}], asignaciones: [assignment], matriculas: [enrollment], grupos: [group], estudiantes: []}},
-  '/api/evaluacion/planillas/1/1': {data: {editable: true, configuracion: config, componentes: [{id: 1, asignacion_id: 1, periodo_id: 1, nombre: 'Talleres', modo: 'SIMPLE_AVERAGE', peso: null, actividades: [{id: 1, componente_id: 1, nombre: 'Taller 1', fecha: today, peso: null}]}], matriculas: [enrollment], calificaciones: [], resultados: [{matricula_id: 1, estado: 'pendiente', motivo: 'Faltan notas'}]}},
+  '/api/evaluacion/planillas/1/1': {data: {editable: true, requiere_motivo: true, configuracion: config, componentes: [{id: 1, asignacion_id: 1, periodo_id: 1, nombre: 'Talleres', modo: 'SIMPLE_AVERAGE', peso: null, actividades: [{id: 1, componente_id: 1, nombre: 'Taller 1', fecha: today, peso: null}]}], matriculas: [enrollment], calificaciones: [], resultados: [{matricula_id: 1, estado: 'pendiente', motivo: 'Faltan notas'}]}},
   '/api/evaluacion/boletines/1': {data: {tipo: 'VISTA_PREVIA', generado_en: new Date().toISOString(), institucion: 'Colegio de prueba', estudiante: enrollment.estudiante, grupo: 'A', grado: 'Primero', ano: '2026', configuracion: config, periodos: [period], periodo_sumatorio: {orden: 4, nombre: 'P4', modo: 'SIMPLE_AVERAGE'}, asignaturas: [{materia_id: 1, nombre: 'Matemáticas', peso_area: null, periodos: [{periodo_id: 1, estado: 'pendiente'}], anual: {estado: 'pendiente'}}], areas: [], advertencias: []}},
   [sieePath]: {data: {editable: true, curriculo_editable: true, configuracion: config, escalas: [{url_token: sieeTokens.scale, nombre: 'Numérica', tipo: 'numerica', valor_min: '0', valor_max: '5', decimales: 2}], metodos: [{url_token: sieeTokens.method, calculo_nota: 'promedio_simple', nota_minima: '3', ambito: 'materia'}], curriculo: [], grados: [{url_token: sieeTokens.grade, nombre: 'Primero', nivel_token: sieeTokens.level, estado: 'activo'}], materias: [{url_token: 'v'.repeat(24), nombre: 'Matemáticas', nivel_token: null, area_token: null, estado: 'activo'}], areas: []}},
 }
+fixtures[sieeCurriculumPath] = {data: [], meta: {current_page: 1, per_page: 1000, last_page: 1, total: 0}}
+user.permissions.push('academico.matriculas.gestionar')
+fixtures['/api/evaluacion/catalogo'].data.can_manage_enrollments = true
+fixtures['/api/evaluacion/catalogo'].data.materias = [{id: 1, nombre: 'Matemáticas'}]
+if (workflowMode) {
+  const catalog = fixtures[sieePath].data
+  fixtures['/api/estructura/niveles'] = {data: [{id: 1, ano_lectivo_id: 1, nombre: 'Básica Primaria', nivel_educativo: 'primaria', estado: 'activo'}]}
+  fixtures['/api/plan-estudios/materias'].data.push({id: 2, ano_lectivo_id: 1, area_id: 1, nivel_id: 1, nombre: 'Geometría', intensidad_horaria: 3, estado: 'activo'})
+  catalog.grados.push({url_token: '2'.repeat(24), nombre: 'Segundo', nivel_token: sieeTokens.level, estado: 'activo'},
+    {url_token: '3'.repeat(24), nombre: 'Transición', nivel_token: '4'.repeat(24), estado: 'activo'})
+  catalog.materias.push({url_token: '5'.repeat(24), nombre: 'Lectura inicial', nivel_token: '4'.repeat(24), area_token: sieeTokens.area, estado: 'activo'},
+    {url_token: '6'.repeat(24), nombre: 'Geometría', nivel_token: sieeTokens.level, area_token: sieeTokens.area, estado: 'activo'})
+}
 if (paginationMode) {
+  fixtures[sieePath].data.configuracion.usar_areas = true
+  fixtures[sieePath].data.configuracion.modo_area = 'WEIGHTED_AVERAGE'
   fixtures['/api/plan-estudios/areas'].data = Array.from({length: 25}, (_, index) => ({id: index + 1, ano_lectivo_id: 1, nombre: `Área ${String(index + 1).padStart(2, '0')}`, descripcion: null, estado: 'activo'}))
   fixtures[sieePath].data.editable = false
   fixtures[sieePath].data.areas = [{url_token: sieeTokens.area, nombre: 'Ciencias'}]
@@ -192,6 +224,16 @@ if (paginationMode) {
   fixtures['/api/evaluacion/planillas/1/1'].data.resultados = fixtures['/api/evaluacion/catalogo'].data.matriculas.map(matricula => ({matricula_id: matricula.id, estado: 'pendiente', motivo: 'Faltan notas'}))
 }
 const writes = []
+if (gradingMode) {
+  user.permissions.push('academico.preinformes.ver', 'academico.preinformes.gestionar')
+  const sheet = fixtures['/api/evaluacion/planillas/1/1'].data
+  sheet.componentes[0].nombre = 'Primer avance'
+  sheet.componentes.push({...sheet.componentes[0], id: 2, nombre: 'Segundo avance', actividades: [{id: 2, componente_id: 2, nombre: 'Exposición', fecha: today, peso: null}]})
+  sheet.matriculas = [enrollment, {...enrollment, id: 2, url_token: publicToken('matricula', 2), estudiante: {id: 4, name: 'Santiago López'}}]
+  fixtures['/api/preinformes'] = {data: {anos: [opaqueRecord(year, 'ano_lectivo')], ano: opaqueRecord(year, 'ano_lectivo'), incluido_plan: true, puede_gestionar: true,
+    periodos: [{...opaqueRecord(period, 'periodo'), version: 1, editable: true, configuracion: {usar_preinformes: true, modo: 'SIMPLE_AVERAGE', fechas_estrictas: false},
+      preinformes: [{url_token: 'p'.repeat(24), nombre: 'Primer avance', peso: null, fecha_inicio: null, fecha_fin: null}, {url_token: 'q'.repeat(24), nombre: 'Segundo avance', peso: null, fecha_inicio: null, fecha_fin: null}]}]}}
+}
 const auditReads = []
 const scheduleReads = []
 const pagedReads = []
@@ -234,6 +276,7 @@ try {
       if (url.pathname === opaquePlanillaPath) fixture = fixtures['/api/evaluacion/planillas/1/1']
       if (url.pathname === opaqueBoletinPath) fixture = fixtures['/api/evaluacion/boletines/1']
       if (url.pathname === `/api/anos-lectivos/${urlTokens.year}/periodos`) fixture = fixtures['/api/anos-lectivos/1/periodos']
+      if (url.pathname === promotionPath && req.method === 'GET') fixture = fixtures[promotionPath]
       if (url.pathname === `/api/anos-lectivos/${urlTokens.nextYear}/estado-copia`) {
         const {origen_id: _origin, ...status} = fixtures['/api/anos-lectivos/2/estado-copia'].data
         fixture = {data: {...status, origen_token: urlTokens.year}}
@@ -241,7 +284,7 @@ try {
       if (url.pathname === '/api/catalogos-academicos' && req.method === 'GET') {
         const opaque = url.searchParams.get('opaque') === '1'
         const catalogs = {
-          grupos: opaque ? opaqueRecord([group, groupB, groupC, ...extraGroups], 'grupo') : [group, groupB, groupC, ...extraGroups],
+          grupos: opaque ? opaqueRecord([group, groupB, groupC, ...extraGroups, groupPre], 'grupo') : [group, groupB, groupC, ...extraGroups, groupPre],
           docentes: opaque ? opaqueRecord(fixtures['/api/horarios'].data.docentes, 'usuario') : fixtures['/api/horarios'].data.docentes,
           espacios: opaque ? opaqueRecord(fixtures['/api/horarios'].data.espacios, 'espacio_fisico') : fixtures['/api/horarios'].data.espacios,
           materias: opaque ? fixtures[sieePath].data.materias : fixtures['/api/horarios'].data.materias,
@@ -257,10 +300,14 @@ try {
         const page = Math.max(1, Number(url.searchParams.get('page') || 1))
         const perPage = Math.max(1, Number(url.searchParams.get('per_page') || 5))
         const search = (url.searchParams.get('search') || '').toLocaleLowerCase()
-        const compatibleLevel = opaque ? url.searchParams.get('compatible_nivel_token') : Number(url.searchParams.get('compatible_nivel_id'))
+        const compatibleGroup = [group, groupB, groupC, ...extraGroups, groupPre].find(item => item.url_token === url.searchParams.get('compatible_grupo_token'))
+        const compatibleLevel = compatibleGroup ? (compatibleGroup.grado.nivel_id === 2 ? '4'.repeat(24) : sieeTokens.level) : opaque ? url.searchParams.get('compatible_nivel_token') : Number(url.searchParams.get('compatible_nivel_id'))
+        const curriculumGrade = compatibleGroup?.grado.nivel_id === 2 ? '3'.repeat(24) : sieeTokens.grade
+        const enrolledSubjects = new Set(fixtures[sieeCurriculumPath].data.filter(row => row.grado_token === curriculumGrade).map(row => row.materia_token))
         const rows = (catalogs[url.searchParams.get('tipo')] || []).filter(item =>
           (item.nombre || item.name || '').toLocaleLowerCase().includes(search)
-          && (!compatibleLevel || (opaque ? (item.nivel_token == null || item.nivel_token === compatibleLevel) : (item.nivel_id == null || item.nivel_id === compatibleLevel))))
+          && (!compatibleLevel || (opaque ? (item.nivel_token == null || item.nivel_token === compatibleLevel) : (item.nivel_id == null || item.nivel_id === compatibleLevel)))
+          && (!compatibleGroup || url.searchParams.get('tipo') !== 'materias' || enrolledSubjects.has(item.url_token)))
         const data = rows.slice((page - 1) * perPage, page * perPage)
         const selectedId = opaque ? url.searchParams.get('selected_token') : Number(url.searchParams.get('selected_id'))
         const optionKey = opaque ? 'url_token' : 'id'
@@ -268,6 +315,12 @@ try {
         if (selected && !data.some(item => item[optionKey] === selectedId)) data.push(selected)
         fixture = {data, meta: {current_page: page, per_page: perPage,
           last_page: Math.max(1, Math.ceil(rows.length / perPage)), total: rows.length}}
+      }
+      if (workflowMode && url.pathname === '/api/plan-estudios/materias' && req.method === 'GET' && url.searchParams.get('ano_lectivo_token') === urlTokens.year) {
+        const levelToken = url.searchParams.get('nivel_token')
+        const rows = fixtures[url.pathname].data.filter(item => url.searchParams.get('nivel_general') === '1'
+          ? item.nivel_id === null : levelToken ? publicToken('nivel', item.nivel_id) === levelToken : true)
+        fixture = paged(rows, Number(url.searchParams.get('page') || 1), Number(url.searchParams.get('per_page') || 20))
       }
       if (paginationMode && url.pathname === '/api/plan-estudios/areas' && req.method === 'GET') {
         const page = Math.max(1, Number(url.searchParams.get('page') || 1))
@@ -379,6 +432,19 @@ try {
         if (scheduleRoute) assert.ok(!hasPrivateIdKey(parsed), 'Opaque schedule writes cannot carry private IDs.')
         if (opaqueCalendar) assert.ok(!hasPrivateIdKey(parsed), 'Opaque calendar writes cannot carry private IDs.')
         if (url.pathname === '/api/account/profile') { Object.assign(user, parsed); fixture = {message: 'Perfil actualizado.', user} }
+        if (url.pathname === `${promotionPath}/politica` && req.method === 'PUT') {
+          assert.equal(parsed.version, 0)
+          fixtures[promotionPath].politica = {...parsed, version: 1}
+          fixture = {data: {version: 1}}
+        }
+        if (url.pathname === `${promotionPath}/${urlTokens.enrollment}` && req.method === 'PUT') {
+          assert.equal(parsed.huella, 'f'.repeat(64))
+          assert.equal(parsed.resultado, 'promovido')
+          assert.equal(parsed.grado_destino_token, 'u'.repeat(24))
+          fixtures[promotionPath].data[0].decision = {resultado: 'promovido', grado_destino_token: 'u'.repeat(24),
+            motivo: parsed.motivo, version: 1, vigente: true, aprobada_en: new Date().toISOString()}
+          fixture = {data: {resultado: 'promovido', version: 1}}
+        }
         if (url.pathname === '/api/mfa/setup') fixture = {secret: 'JBSWY3DPEHPK3PXP', otpauth_url: 'otpauth://totp/Colegio%20SaaS:rector%40example.test?secret=JBSWY3DPEHPK3PXP&issuer=Colegio%20SaaS&algorithm=SHA1&digits=6&period=30'}
         if (url.pathname === '/api/mfa/confirm') {user.mfa_enabled = true; fixture = {mfa_enabled: true, recovery_codes: ['aaaaa-bbbbb-ccccc-ddddd','11111-22222-33333-44444']}}
         if (paginationMode && url.pathname === sieeCurriculumPath) {
@@ -389,11 +455,47 @@ try {
           if (row) row.peso_area = parsed.peso_area
           fixture = fixtures[sieePath]
         }
+        if (url.pathname === sieeCurriculumPath + '/masivo') {
+          assert.ok(!hasPrivateIdKey(parsed))
+          for (const item of parsed.items) {
+            const grade = fixtures[sieePath].data.grados.find(g => g.url_token === item.grado_token)
+            const subject = fixtures[sieePath].data.materias.find(m => m.url_token === item.materia_token)
+            const rows = fixtures[sieeCurriculumPath].data
+            const previous = rows.find(r => r.grado_token === item.grado_token && r.materia_token === item.materia_token)
+            const values = {...item, grado_nombre: grade.nombre, materia_nombre: subject.nombre, area_token: subject.area_token, area_nombre: subject.area?.nombre ?? null}
+            if (previous) Object.assign(previous, values); else rows.push(values)
+          }
+          fixture = {data: {guardados: parsed.items.length}}
+        }
         if (realtimeMode && url.pathname === '/api/broadcasting/auth') {
           fixture = reverbProbe({action: 'auth', ...parsed})
         }
         if (url.pathname !== '/api/broadcasting/auth') {
           writes.push({method: req.method, path: url.pathname, body: parsed})
+        }
+        if (gradingMode && url.pathname === opaquePlanillaPath + '/actividades') {
+          const sheet = fixtures['/api/evaluacion/planillas/1/1'].data
+          const component = sheet.componentes.find(c => publicToken('componente', c.id) === parsed.componente_token)
+          assert.ok(component)
+          if (parsed.operacion === 'crear') component.actividades.push({id: 3, componente_id: component.id, version: 1, nombre: parsed.nombre, fecha: parsed.fecha, peso: parsed.peso})
+          else if (parsed.operacion === 'editar') Object.assign(component.actividades.find(a => publicToken('actividad', a.id) === parsed.actividad_token), {nombre: parsed.nombre, fecha: parsed.fecha, peso: parsed.peso, version: 2})
+          else if (parsed.operacion === 'modo') {component.modo = parsed.modo; component.version = (component.version ?? 1) + 1}
+          fixture = {data: {guardado: true}}
+        }
+        if (gradingMode && url.pathname === opaquePlanillaPath && req.method === 'PUT') {
+          assert.ok(parsed.notas.every(n => !('actividad_id' in n) && !('matricula_id' in n) && n.motivo.length >= 3))
+          const sheet = fixtures['/api/evaluacion/planillas/1/1'].data
+          sheet.calificaciones = parsed.notas.map(n => ({actividad_id: sheet.componentes.flatMap(c => c.actividades).find(a => publicToken('actividad', a.id) === n.actividad_token).id,
+            matricula_id: sheet.matriculas.find(m => publicToken('matricula', m.id) === n.matricula_token).id, valor: n.valor, version: 1, observacion: null}))
+          fixture = fixtures['/api/evaluacion/planillas/1/1']
+        }
+        if (gradingMode && url.pathname === `/api/preinformes/${urlTokens.period}` && req.method === 'PUT') {
+          assert.equal(parsed.preinformes.length, 3)
+          assert.equal(parsed.version, 1)
+          const configured = fixtures['/api/preinformes'].data.periodos[0]
+          Object.assign(configured, {version: 2, preinformes: parsed.preinformes,
+            configuracion: {usar_preinformes: parsed.usar_preinformes, modo: parsed.modo, fechas_estrictas: parsed.fechas_estrictas}})
+          fixture = {data: {guardado: true}}
         }
         respond()
       })
@@ -445,7 +547,180 @@ try {
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   const navigate = async (route, text) => { console.log('Checking', route); await command('Page.navigate', {url: `http://127.0.0.1:5197${route}`}); await until(`document.body.innerText.includes(${JSON.stringify(text)})`) }
   const screenshot = async (name, full = false) => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: full}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
-  if (cacheMode) {
+  if (workflowMode) {
+    await navigate('/academico/siee', 'Currículo por Grado')
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Agregar materias a grados')).click()`)
+    await until(`document.querySelectorAll('.curriculum-bulk-modal input[type="checkbox"]').length === 3`)
+    await evaluate(`[...document.querySelectorAll('.curriculum-bulk-modal button')].find(b=>b.textContent.includes('Seleccionar todos los grados')).click()`)
+    await until(`document.querySelectorAll('.curriculum-bulk-modal details').length === 3`)
+    assert.ok(await evaluate(`!document.querySelector('.curriculum-bulk-modal details').innerText.includes('Lectura inicial')`))
+    assert.ok(await evaluate(`document.querySelectorAll('.curriculum-bulk-modal details')[2].innerText.includes('Lectura inicial') && !document.querySelectorAll('.curriculum-bulk-modal details')[2].innerText.includes('Geometría')`))
+    assert.equal(await evaluate(`document.querySelectorAll('.curriculum-bulk-modal input[inputmode="decimal"]').length`), 0)
+    await evaluate(`document.querySelector('.curriculum-bulk-modal section button').click()`)
+    await evaluate(`document.querySelectorAll('.curriculum-bulk-modal details')[2].querySelector('button').click()`)
+    await screenshot('curriculum-bulk-desktop', true)
+    await command('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
+    assert.equal(await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`), true)
+    await screenshot('curriculum-bulk-mobile', true)
+    await command('Emulation.setDeviceMetricsOverride', {width:1440,height:1000,deviceScaleFactor:1,mobile:false})
+    await evaluate(`document.querySelector('.curriculum-bulk-modal .modal-footer .btn-primary').click()`)
+    await until(`!document.querySelector('.modal.show')`)
+    const saved = writes.find(w=>w.path === sieeCurriculumPath + '/masivo')
+    assert.equal(saved.body.items.length, 4)
+    assert.ok(saved.body.items.every(i=>i.peso_area === null))
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Configuración actual')).click()`)
+    await until(`document.querySelectorAll('.curriculum-bulk-modal details').length === 3 && document.querySelectorAll('.curriculum-bulk-modal details input[type="checkbox"]:checked').length >= 4`)
+    assert.ok(await evaluate(`(()=>{const first=document.querySelector('.curriculum-bulk-modal details');const math=[...first.querySelectorAll('label')].find(e=>e.textContent.includes('Matemáticas'))?.querySelector('input[type="checkbox"]');const geometry=[...first.querySelectorAll('label')].find(e=>e.textContent.includes('Geometría'))?.querySelector('input[type="checkbox"]');return math?.checked && math.disabled && geometry && !geometry.checked})()`), 'La configuración actual debe marcar las materias ya inscritas y mostrar las faltantes.')
+    await evaluate(`(()=>{const first=document.querySelector('.curriculum-bulk-modal details');[...first.querySelectorAll('label')].find(e=>e.textContent.includes('Geometría')).querySelector('input[type="checkbox"]').click()})()`)
+    await until(`document.querySelector('.curriculum-bulk-modal .modal-footer')?.innerText.includes('1 relaciones nuevas')`)
+    await evaluate(`document.querySelector('.curriculum-bulk-modal .modal-footer .btn-primary').click()`)
+    await until(`!document.querySelector('.modal.show')`)
+    const updates = writes.filter(w=>w.path === sieeCurriculumPath + '/masivo')
+    assert.equal(updates.length, 2)
+    assert.deepEqual(updates[1].body.items, [{grado_token: sieeTokens.grade, materia_token: '6'.repeat(24), peso_area: null}])
+    assert.equal(fixtures[sieeCurriculumPath].data.length, 5)
+    await navigate('/academico/plan-estudios?tab=areas', 'Nueva materia')
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Nueva materia')).click()`)
+    await until(`!!document.querySelector('.modal.show select:required')`)
+    assert.ok(await evaluate(`(()=>{const select=[...document.querySelectorAll('.modal.show select')].find(e=>e.textContent.includes('Todos los niveles'));return select?.required && select.value==='' && select.options[0].textContent.includes('Selecciona el nivel educativo') && select.options[1].textContent.includes('Todos los niveles')})()`), 'Una materia nueva debe exigir elegir nivel o Todos los niveles explícitamente.')
+    await evaluate(`document.querySelector('.modal.show .modal-header .btn').click()`)
+    await until(`!document.querySelector('.modal.show')`)
+    const subjectLevelFilter = `document.querySelector('section[aria-label="Materias"] select[aria-label="Nivel educativo"]')`
+    await until(`${subjectLevelFilter}?.options.length === 3`)
+    assert.ok(await evaluate(`(()=>{const select=${subjectLevelFilter};return select.value==='' && select.options[0].textContent.includes('Selecciona el nivel educativo') && select.options[1].textContent.includes('Todos los niveles')})()`))
+    await evaluate(`(()=>{const select=${subjectLevelFilter};select.value='__all__';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`(()=>{const rows=document.querySelectorAll('section[aria-label="Materias"] table tbody tr');return rows.length===1 && rows[0].innerText.includes('Matemáticas')})()`)
+    assert.ok(detailedReads.some(read => read.includes('/api/plan-estudios/materias?') && read.includes('nivel_general=1') && !read.includes('nivel_token=')))
+    await evaluate(`(()=>{const select=${subjectLevelFilter};select.value='${sieeTokens.level}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`(()=>{const rows=document.querySelectorAll('section[aria-label="Materias"] table tbody tr');return rows.length===1 && rows[0].innerText.includes('Geometría')})()`)
+    assert.ok(detailedReads.some(read => read.includes('/api/plan-estudios/materias?') && read.includes(`nivel_token=${sieeTokens.level}`) && !read.includes('nivel_general=1')))
+    await evaluate(`(()=>{const select=${subjectLevelFilter};select.value='';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.querySelectorAll('section[aria-label="Materias"] table tbody tr').length===2`)
+    await navigate('/evaluacion/catalogo', 'Mis Asignaciones')
+    assert.equal(await evaluate(`!!document.querySelector('a[href="/admisiones/matriculas"]')`), true, 'Header links to admissions.')
+    assert.equal(await evaluate(`!!document.querySelector('form')`), false, 'Evaluation no longer contains the enrollment form.')
+    const select = async (label, value) => {
+      await until(`!!document.querySelector('select[aria-label="${label}"] option[value="${value}"]')`)
+      await evaluate(`(()=>{const e=document.querySelector('select[aria-label="${label}"]'); e.value='${value}';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    }
+    await select('Grupo', urlTokens.group)
+    await select('Materia', urlTokens.materia)
+    await until(`location.search.includes('grupo=${urlTokens.group}') && location.search.includes('materia=${urlTokens.materia}')`)
+    await until(`[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Ver Planilla')`)
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Ver Planilla').click()`)
+    await until(`!!document.querySelector('.grade-input')`)
+    const dimensions = await evaluate(`(()=>{const input=document.querySelector('.grade-input').getBoundingClientRect(),table=document.querySelector('.grade-sheet-scroll').getBoundingClientRect(),card=document.querySelector('.grade-sheet-scroll').closest('.card').getBoundingClientRect();return {width:input.width,height:input.height,margin:table.x-card.x}})()`)
+    assert.ok(dimensions.width >= 120 && dimensions.height <= 40 && dimensions.margin >= 15, JSON.stringify(dimensions))
+    await evaluate(`[...document.querySelectorAll('a,button')].find(e=>e.textContent.includes('Volver a mis planillas')).click()`)
+    await until(`!!document.querySelector('select[aria-label="Materia"]') && location.search.includes('materia=${urlTokens.materia}')`)
+    await evaluate(`window.workflowReloadPending = true`)
+    await command('Page.reload')
+    await until(`!window.workflowReloadPending && document.readyState === 'complete' && document.querySelector('select[aria-label="Grupo"]')?.value === '${urlTokens.group}' && document.querySelector('select[aria-label="Materia"]')?.value === '${urlTokens.materia}'`)
+    await navigate('/admisiones/matriculas', 'Gestión de Matrículas')
+    await until(`!!document.querySelector('#matricula-estudiante')`)
+    await select('Grupo', urlTokens.group)
+    await until(`location.search.includes('grupo=${urlTokens.group}')`)
+    await evaluate(`window.workflowReloadPending = true`)
+    await command('Page.reload')
+    await until(`!window.workflowReloadPending && document.readyState === 'complete' && document.querySelector('select[aria-label="Grupo"]')?.value === '${urlTokens.group}'`)
+    await screenshot('admissions-desktop')
+    await navigate('/academico/plan-estudios?tab=horarios', 'Agregar clase')
+    await until(`[...document.querySelectorAll('button')].some(b=>b.textContent.includes('Agregar clase'))`)
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Agregar clase')).click()`)
+    await until(`!!document.querySelector('.modal.show select[name="materia_id"]')`)
+    assert.equal(await evaluate(`document.querySelector('.modal.show select[name="materia_id"]').disabled`), true)
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('.modal.show select')].slice(0,3).map(e=>e.name)`), ['dia','grupo_id','materia_id'])
+    await evaluate(`(()=>{const e=document.querySelector('.modal.show select[name="grupo_id"]');e.value='${urlTokens.group}';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.querySelector('.modal.show select[name="materia_id"]').options.length > 1`)
+    assert.ok(await evaluate(`(()=>{const text=document.querySelector('.modal.show select[name="materia_id"]').textContent;return text.includes('Geometría') && text.includes('Matemáticas') && !text.includes('Lectura inicial')})()`), 'Horario de Primaria debe ofrecer su nivel y Todos los niveles, no Preescolar.')
+    await evaluate(`(()=>{const e=document.querySelector('.modal.show select[name="materia_id"]');e.value='${urlTokens.materia}';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await evaluate(`(()=>{const e=document.querySelector('.modal.show select[name="grupo_id"]');e.value='${urlTokens.groupB}';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.querySelector('.modal.show select[name="materia_id"]').value === ''`)
+    await evaluate(`(()=>{const e=document.querySelector('.modal.show select[name="grupo_id"]');e.value='${urlTokens.groupPre}';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.querySelector('.modal.show select[name="materia_id"]').textContent.includes('Lectura inicial')`)
+    assert.ok(await evaluate(`(()=>{const text=document.querySelector('.modal.show select[name="materia_id"]').textContent;return text.includes('Matemáticas') && !text.includes('Geometría')})()`), 'Horario de Prejardín debe ofrecer su nivel y Todos los niveles, no Primaria.')
+    await screenshot('schedule-group-subject', true)
+    await evaluate(`document.querySelector('.modal.show .btn-close').click()`)
+    await until(`!document.querySelector('.modal.show')`)
+    await navigate('/academico/plan-estudios?tab=asignaciones', 'Asignar docente')
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Asignar docente')).click()`)
+    await until(`!!document.querySelector('.modal.show select[name="grupo_id"]')`)
+    await evaluate(`(()=>{const e=document.querySelector('.modal.show select[name="grupo_id"]');e.value='${urlTokens.groupPre}';e.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.querySelector('.modal.show select[name="materia_id"]').textContent.includes('Lectura inicial')`)
+    assert.ok(await evaluate(`(()=>{const text=document.querySelector('.modal.show select[name="materia_id"]').textContent;return text.includes('Matemáticas') && !text.includes('Geometría')})()`), 'Asignación docente de Prejardín debe ofrecer su nivel y Todos los niveles, no Primaria.')
+    assert.deepEqual(errors, [])
+    console.log('PASS: multi-grade curriculum, group-level plus all-level subjects in Horarios and Asignación docente, atomic payload, responsive modal, admissions separation, filter reload/return and compact grade grid.')
+  } else if (gradingMode) {
+    await navigate(`/evaluacion/planillas/${urlTokens.assignment}/${urlTokens.period}`, 'Taller 1')
+    await until(`document.querySelectorAll('.grade-input').length === 4`)
+    await evaluate(`(() => {const data = new DataTransfer(); data.setData('text/plain', '4,5\\t3.5\\n5\\t4'); document.querySelector('.grade-input').dispatchEvent(new ClipboardEvent('paste', {bubbles:true, clipboardData:data}))})()`)
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('.grade-input')].map(i=>i.value)`), ['4.5','3.5','5','4'])
+    await evaluate(`document.querySelector('.grade-input').focus(); document.querySelector('.grade-input').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}))`)
+    assert.equal(await evaluate(`document.activeElement.dataset.gradeRow`), '1')
+    await evaluate(`(() => {const e=document.querySelector('#grade-save-reason'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'Registro de actividades'); e.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Guardar cambios' && !b.closest('.modal')).click()`)
+    await until(`!document.querySelector('#grade-save-reason')`)
+    assert.equal(writes.find(w => w.path === opaquePlanillaPath).body.notas[0].valor, '4.5')
+    await evaluate(`(() => {const e=document.querySelector('.grade-input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'4.2'); e.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await until(`!!document.querySelector('#grade-save-reason')`)
+    assert.equal(await evaluate(`document.querySelector('#grade-save-reason').value`), '', 'Cada guardado debe pedir un motivo nuevo.')
+    await evaluate(`(() => {const e=document.querySelector('#grade-save-reason'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'Corrección posterior'); e.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Guardar cambios' && !b.closest('.modal')).click()`)
+    await until(`!document.querySelector('#grade-save-reason')`)
+    assert.equal(writes.filter(w => w.path === opaquePlanillaPath)[1].body.notas[0].motivo, 'Corrección posterior')
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Actividad').click()`)
+    await until(`!!document.querySelector('#grade-activity-name')`)
+    await evaluate(`(() => {const e=document.querySelector('#grade-activity-name'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'Quiz de lectura'); e.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await evaluate(`document.querySelector('.modal-footer .btn-primary').click()`)
+    await until(`!document.querySelector('.modal.show') && document.body.innerText.includes('Quiz de lectura')`)
+    await evaluate(`[...document.querySelectorAll('th button')].find(b=>b.textContent.includes('Quiz de lectura')).click()`)
+    await until(`!!document.querySelector('#grade-activity-name')`)
+    await evaluate(`(() => {const e=document.querySelector('#grade-activity-name'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'Quiz de comprensión'); e.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await evaluate(`document.querySelector('.modal-footer .btn-primary').click()`)
+    await until(`!document.querySelector('.modal.show') && document.body.innerText.includes('Quiz de comprensión')`)
+    assert.ok(writes.some(w => w.body.operacion === 'editar' && w.body.nombre === 'Quiz de comprensión'))
+    await screenshot('grading-desktop', true)
+    await command('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
+    await screenshot('grading-mobile', true)
+    assert.equal(await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`), true, 'Only the grade grid should scroll horizontally.')
+    await navigate('/academico/preinformes', 'Preinformes')
+    await until(`!!document.querySelector('#pre-name-0')`)
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Agregar preinforme')).click()`)
+    await until(`!!document.querySelector('#pre-name-2')`)
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Guardar cambios').click()`)
+    await until(`document.querySelector('button.btn-primary')?.disabled === true`)
+    assert.ok(writes.some(w => w.path.startsWith('/api/preinformes/') && w.body.preinformes.length === 3))
+    await screenshot('preinformes-mobile', true)
+    assert.equal(await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`), true)
+    await command('Emulation.setDeviceMetricsOverride', {width:1440,height:1000,deviceScaleFactor:1,mobile:false})
+    await screenshot('preinformes-desktop', true)
+    assert.equal(errors.length, 0, JSON.stringify(errors))
+    console.log('PASS: new grading UI, Excel paste, keyboard navigation, canonical decimal save, activity creation/edit, preinformes save and mobile overflow.')
+  } else if (process.argv.includes('--promotion')) {
+    await navigate('/academico/anos-lectivos', 'Años lectivos')
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.trim()==='Promoción').click()`)
+    await until(`document.querySelector('.modal.show')?.innerText.includes('Mariana Rodríguez Peña')`)
+    assert.ok(await evaluate(`document.querySelector('.modal.show').innerText.includes('Política del año')`))
+    await screenshot('promotion-desktop', true)
+    await evaluate(`(()=>{const modal=document.querySelector('.modal.show');modal.querySelector('input[type="checkbox"]').click();[...modal.querySelectorAll('button')].find(button=>button.textContent.trim()==='Guardar política').click()})()`)
+    for (let i = 0; i < 40 && !writes.some(write => write.path === `${promotionPath}/politica`); i++) await sleep(100)
+    assert.ok(writes.some(write => write.path === `${promotionPath}/politica` && write.body.materias_obligatorias[0] === urlTokens.materia))
+    await sleep(500)
+    await evaluate(`(()=>{const modal=document.querySelector('.modal.show');const target=modal.querySelectorAll('select')[1];target.value='${'u'.repeat(24)}';target.dispatchEvent(new Event('change',{bubbles:true}));modal.querySelector('input[maxlength="2000"]').focus()})()`)
+    await command('Input.insertText', {text: 'Resultados anuales revisados por rectoría'})
+    await evaluate(`[...document.querySelectorAll('.modal.show button')].find(button=>button.textContent.trim()==='Aprobar decisión').click()`)
+    for (let i = 0; i < 40 && !writes.some(write => write.path === `${promotionPath}/${urlTokens.enrollment}`); i++) await sleep(100)
+    assert.ok(writes.some(write => write.path === `${promotionPath}/${urlTokens.enrollment}`))
+    await until(`document.querySelector('.modal.show')?.innerText.includes('Decisión vigente')`)
+    for (const width of [390, 320]) {
+      await command('Emulation.setDeviceMetricsOverride', {width, height: 844, deviceScaleFactor: 1, mobile: true})
+      await sleep(250)
+      assert.ok(await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`), 'Promotion modal must fit mobile width.')
+      await screenshot(`promotion-mobile-${width}`, true)
+    }
+    assert.deepEqual(errors, [])
+    console.log('PASS: promotion policy, approval and responsive desktop/mobile layout.')
+  } else if (cacheMode) {
     user.onboarding = fixtures['/api/onboarding/status']
     await navigate('/academico/anos-lectivos', 'Años lectivos')
     await sleep(500)
@@ -663,17 +938,20 @@ try {
     await until(`${curriculoRows}?.length === 20`)
     assert.ok(pagedReads.some(read => read.path === sieeCurriculumPath && read.page === 1 && read.perPage === 20), 'Curriculum defaults to twenty rows.')
     assert.ok(await evaluate(`(()=>{const card=document.querySelector('#siee-curriculo-search').closest('.card');return card.querySelector('table tbody tr input[type="number"]')?.disabled===false && document.querySelector('.card-header button.btn-primary')?.disabled===true})()`), 'An empty closed term must not disable curriculum weights even while SIEE settings are locked.')
-    assert.ok(await evaluate(`document.body.innerText.includes('Agregar materia al grado') && document.body.innerText.includes('Filtros de búsqueda')`))
-    await evaluate(`(()=>{const select=document.querySelector('#siee-curriculo-search').closest('.card').querySelectorAll('select[aria-label="Grado"]')[0];select.value='${sieeTokens.grade}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
-    await until(`document.querySelector('#siee-curriculo-search').closest('.card').querySelectorAll('select[aria-label="Materia"]')[0].options.length > 1`)
-    assert.ok(await evaluate(`(()=>{const options=[...document.querySelector('#siee-curriculo-search').closest('.card').querySelectorAll('select[aria-label="Materia"]')[0].options].map(option=>option.textContent);return options.includes('Materia 01') && options.includes('Materia 02') && !options.includes('Materia 12')})()`), 'Only subjects for the grade level and all levels belong in the add form.')
-    await evaluate(`(()=>{const select=document.querySelector('#siee-curriculo-search').closest('.card').querySelectorAll('select[aria-label="Materia"]')[0];select.value='v${String(1).padStart(23, '0')}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
-    await until(`document.querySelector('#siee-curriculo-area').value === 'Ciencias'`)
-    await evaluate(`document.querySelector('#siee-curriculo-area').closest('.row').querySelector('input[type="number"]').focus()`)
+    assert.ok(await evaluate(`document.body.innerText.includes('Agregar materias a grados') && document.body.innerText.includes('Filtros de búsqueda')`))
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Agregar materias a grados')).click()`)
+    await until(`!!document.querySelector('.curriculum-bulk-modal input[type="checkbox"]')`)
+    await evaluate(`document.querySelector('.curriculum-bulk-modal input[type="checkbox"]').click()`)
+    await until(`!!document.querySelector('.curriculum-bulk-modal details')`)
+    assert.ok(await evaluate(`(()=>{const text=document.querySelector('.curriculum-bulk-modal details').innerText;return text.includes('Materia 01') && text.includes('Materia 02') && !text.includes('Materia 12')})()`))
+    await evaluate(`document.querySelectorAll('.curriculum-bulk-modal details button')[1].click()`)
+    await evaluate(`document.querySelector('.curriculum-bulk-modal details input[type="checkbox"]').click()`)
+    await evaluate(`document.querySelector('.curriculum-bulk-modal input[inputmode="decimal"]').focus()`)
     await command('Input.insertText', {text: '20.5'})
-    await evaluate(`document.querySelector('button[aria-label="Guardar asignación curricular"]').click()`)
+    await evaluate(`document.querySelector('.curriculum-bulk-modal .modal-footer .btn-primary').click()`)
+    await until(`!document.querySelector('.modal.show')`)
     await until(`document.querySelector('#siee-curriculo-search').closest('.card').querySelector('table tbody tr input[type="number"]')?.value === '20.5'`)
-    assert.ok(writes.some(write => write.path === sieeCurriculumPath && write.body.peso_area === '20.5' && write.body.area_token === sieeTokens.area))
+    assert.ok(writes.some(write => write.path === sieeCurriculumPath + '/masivo' && write.body.items[0].peso_area === '20.5'))
     await evaluate(`(()=>{const input=document.querySelector('#siee-curriculo-search').closest('.card').querySelector('table tbody tr input[type="number"]');input.focus();input.select()})()`)
     await command('Input.insertText', {text: '7.25'})
     await command('Input.dispatchKeyEvent', {type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13})
@@ -707,12 +985,14 @@ try {
     assert.equal(await evaluate(`!!document.querySelector('#siee-curriculo-search').closest('.card').querySelector('.pagination')`), false, 'Curriculum with one result hides pagination controls.')
     await navigate('/academico/evaluacion/catalogo', 'Evaluación')
     const assignmentRows = `document.querySelectorAll('table')[0]?.querySelectorAll('tbody tr')`
-    const enrollmentRows = `document.querySelectorAll('table')[1]?.querySelectorAll('tbody tr')`
-    await until(`${assignmentRows}?.length === 12 && ${enrollmentRows}?.length === 12`)
+    const enrollmentRows = `document.querySelectorAll('table')[0]?.querySelectorAll('tbody tr')`
+    await until(`${assignmentRows}?.length === 12`)
     assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.assignmentPage === 1 && read.assignmentPerPage === 20 && read.enrollmentPage === 1 && read.enrollmentPerPage === 20))
     assert.equal(await evaluate(`!!document.querySelector('.pagination') || !!document.querySelector('select[aria-label="Filas por página"]') || document.body.innerText.includes('Mostrar más')`), false, 'Small assignment and enrollment catalogs have no pagination footer.')
-    assert.ok(await evaluate(`!document.querySelector('#evaluacion-search') && document.querySelectorAll('input[type="search"]').length === 1 && !document.querySelector('form select[aria-label="Estudiante"]')`), 'Evaluation needs only one student search, without duplicate filter searches or student select.')
-    assert.ok(await evaluate(`!!document.querySelector('select[aria-label="Grupo"] option[value=""]') && !!document.querySelector('select[aria-label="Materia"] option[value=""]') && !!document.querySelector('select[aria-label="Estado"] option[value=""]')`), 'Group, subject, and status filters must be clear selects.')
+    assert.ok(await evaluate(`!!document.querySelector('select[aria-label="Grupo"] option[value=""]') && !!document.querySelector('select[aria-label="Materia"] option[value=""]') && !document.querySelector('form')`))
+    await navigate('/admisiones/matriculas', 'Gestión de Matrículas')
+    await until(`${enrollmentRows}?.length === 12 && !!document.querySelector('input[role="combobox"]')`)
+    assert.ok(await evaluate(`document.querySelectorAll('input[type="search"]').length === 1 && !document.querySelector('form select[aria-label="Estudiante"]')`))
     await evaluate(`document.querySelector('input[role="combobox"][aria-label="Estudiante"]').focus()`)
     await command('Input.insertText', {text: 'Alumno 12'})
     await until(`!!document.querySelector('#evaluacion-estudiantes-resultados button') && document.querySelector('#evaluacion-estudiantes-resultados').innerText.includes('Alumno 12')`)
@@ -720,7 +1000,7 @@ try {
     assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.studentSearch === 'alumno 12'))
     await evaluate(`document.querySelector('form select[aria-label="Grupo"]').value='${urlTokens.group}';document.querySelector('form select[aria-label="Grupo"]').dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#evaluacion-estudiantes-resultados button').click()`)
     await until(`!document.querySelector('#evaluacion-estudiantes-resultados') && document.querySelector('form button.btn-primary')?.disabled === false`)
-    await navigate(`/academico/evaluacion/planillas/${urlTokens.assignment}/${urlTokens.period}`, 'Planilla')
+    await navigate(`/academico/evaluacion/planillas/${urlTokens.assignment}/${urlTokens.period}`, 'Taller 1')
     const planillaRows = `Array.from(document.querySelectorAll('table')).at(-1)?.querySelectorAll('tbody tr')`
     await until(`${planillaRows}?.length === 12`)
     assert.ok(pagedReads.some(read => read.path === opaquePlanillaPath && read.page === 1 && read.perPage === 20))
@@ -957,7 +1237,7 @@ try {
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   await navigate(`/academico/evaluacion/planillas/${urlTokens.assignment}/${urlTokens.period}`, 'Taller 1')
   await until(`!!document.querySelector('input[aria-label="Estudiante de prueba · Taller 1"]')`)
-  assert.equal(await evaluate(`document.querySelector('input[aria-label="Estudiante de prueba · Taller 1"]').max`), '5')
+  assert.equal(await evaluate(`document.querySelector('input[aria-label="Estudiante de prueba · Taller 1"]').inputMode`), 'decimal')
   await screenshot('gradebook-desktop')
   await navigate(`/academico/boletines/${urlTokens.enrollment}`, 'Informe preliminar')
   assert.ok(await evaluate(`document.querySelector('.grade-report thead')?.innerText.includes('P4')`), 'The summary result must appear as the next numbered column.')
@@ -998,7 +1278,7 @@ try {
   assert.equal(await evaluate(`document.querySelector('.card-toolbar select').value`), urlTokens.nextYear)
   await evaluate(`(()=>{const select=document.querySelector('.card-toolbar select');select.value='${urlTokens.year}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.year}' && document.querySelector('table tbody')?.innerText.includes('Primera')`)
-  assert.ok(await evaluate(`document.querySelector('[data-kt-nav="/academico/evaluacion/catalogo"]')?.getAttribute('href') === '/academico/evaluacion/catalogo'`), 'A header link must open its real route in another tab.')
+  assert.ok(await evaluate(`document.querySelector('[data-kt-nav="/evaluacion/catalogo"]')?.getAttribute('href') === '/evaluacion/catalogo'`), 'A header link must open its real route in another tab.')
   await navigate('/academico/estructura?tab=bloques&ano=1', 'Primera')
   await until(`new URLSearchParams(location.search).get('ano') === '${urlTokens.year}'`)
   await navigate('/academico/plan-estudios?tab=areas', 'Matemáticas')
@@ -1176,7 +1456,12 @@ try {
   const touchVisibility = await evaluate(`(()=>{const card=document.querySelector('.schedule-session'),box=card.getBoundingClientRect(),origin=document.elementFromPoint(box.left+25,box.top+12)?.closest('.schedule-session')===card,destination=document.elementFromPoint(box.left+25,box.top-44)?.closest('.schedule-day')!==null,bottom=box.bottom<window.innerHeight;return {visible:origin&&destination&&bottom,origin,destination,bottom,top:box.top,viewport:window.innerHeight,hit:document.elementFromPoint(box.left+25,box.top+12)?.className,scroll:window.scrollY,body:document.scrollingElement?.scrollHeight}})()`)
   assert.ok(touchVisibility.visible, `Touch origin and destination must be visible inside the calendar: ${JSON.stringify(touchVisibility)}`)
   await command('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [{x: touch.x, y: touch.y, id: 0}]})
-  await command('Input.dispatchTouchEvent', {type: 'touchMove', touchPoints: [{x: touch.x, y: touch.y - 56, id: 0}]})
+  // Exercise a real gesture across frames: a single immediate jump can be
+  // coalesced by Chromium before React processes pointer capture.
+  for (const distance of [14, 28, 42, 56]) {
+    await sleep(50)
+    await command('Input.dispatchTouchEvent', {type: 'touchMove', touchPoints: [{x: touch.x, y: touch.y - distance, id: 0}]})
+  }
   await until(`!!document.querySelector('[data-schedule-day="lunes"] .schedule-drop-preview')`)
   await screenshot('schedule-touch-drag')
   await command('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: []})
@@ -1198,6 +1483,12 @@ try {
   console.log('PASS: navigation, events, reports, SIEE, schedule move/copy by drag and mobile tap, cancellation and responsive actions; screenshots in artifacts/ui-smoke.')
   }
 } finally {
+  // Edge may relaunch under a different PID on Windows. Close the isolated browser
+  // over CDP so old test tabs cannot reconnect to the next Vite run.
+  if (socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({id: 999999, method: 'Browser.close'}))
+    await sleep(250)
+  }
   socket?.close()
   browser?.kill()
   await server?.close()

@@ -4,7 +4,7 @@ import type {AcademicPaged} from '@/app/pages/academico/estructura/estructura.ap
 // Private, tab-local data. Context/logout clears the QueryClient; never persist
 // these responses in browser storage. Realtime changes invalidate dependencies.
 export const academicCacheRoots = [
-  'anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'siee', 'config',
+  'anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'siee', 'preinformes', 'config',
   'academic-options', 'academic-options-all', 'eventos-catalogo',
 ] as const
 
