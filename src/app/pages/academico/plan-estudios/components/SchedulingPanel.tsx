@@ -76,7 +76,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const resolveGroupOption = (option: ScheduleGroup | OpaqueAcademicOption | null): ScheduleGroup | null => {
     if (!option) return null
     return data?.grupos.find(item => item.url_token === option.url_token)
-      ?? {...fromOpaqueAcademic<ScheduleGroup>(option), ano_lectivo_id: selectedYear, sede: null, jornada: null}
+      ?? {...fromOpaqueAcademic<ScheduleGroup>(option), ano_lectivo_id: selectedYear}
   }
   const client = useQueryClient()
   const [copySource, setCopySource] = useState<Session | null>(null)
@@ -97,7 +97,6 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const [sessionSubjectId, setSessionSubjectId] = useState('')
   const [sessionGroupId, setSessionGroupId] = useState('')
   const [selectedFormGroup, setSelectedFormGroup] = useState<ScheduleGroup | null>(null)
-  const [selectedFormSubject, setSelectedFormSubject] = useState<AcademicOption | OpaqueAcademicOption | null>(null)
   const [sessionTeacherId, setSessionTeacherId] = useState('')
   const [sessionSpaceId, setSessionSpaceId] = useState('')
   const [sessionBlockId, setSessionBlockId] = useState('')
@@ -293,13 +292,13 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
 
   function openNew() {
     setEditing(null); setAssignmentEditing(null); setSessionDay(days[0]); setSessionSubjectId(''); setSessionGroupId(group)
-    setSelectedFormGroup(selectedGroup ?? null); setSelectedFormSubject(null)
+    setSelectedFormGroup(selectedGroup ?? null)
     setSessionTeacherId(''); setSessionSpaceId(''); setSessionBlockId('')
     setSessionStartTime(''); setSessionEndTime(''); setUseBlock(false); setError(''); setShow(true)
   }
   function openSession(item: Session) {
     setEditing(item); setSessionDay(item.dia); setSessionSubjectId(String(item.materia_id)); setSessionGroupId(String(item.grupo_id))
-    setSelectedFormGroup(item.grupo); setSelectedFormSubject(item.materia)
+    setSelectedFormGroup(item.grupo)
     setSessionTeacherId(item.docente_id ? String(item.docente_id) : ''); setSessionSpaceId(item.espacio_fisico_id ? String(item.espacio_fisico_id) : '')
     setSessionBlockId(item.bloque_horario_id ? String(item.bloque_horario_id) : '')
     setSessionStartTime(sessionStart(item).slice(0, 5)); setSessionEndTime(sessionEnd(item).slice(0, 5))
@@ -307,7 +306,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   }
   function openAssignment(item: Assignment) {
     setEditing(null); setAssignmentEditing(item); setSessionSubjectId(String(item.materia_id)); setSessionGroupId(String(item.grupo_id)); setSessionTeacherId(item.docente_id ? String(item.docente_id) : '')
-    setSelectedFormGroup(item.grupo); setSelectedFormSubject(item.materia); setError(''); setShow(true)
+    setSelectedFormGroup(item.grupo); setError(''); setShow(true)
   }
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -331,6 +330,15 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
       },
     })
   }
+  const groupField = <AcademicOptionSelect tipo='grupos' yearId={selectedYear} opaque label={t('schedule.group')} name='grupo_id' required
+    value={sessionGroupId} onChange={value => {setSessionGroupId(value); setSessionSubjectId(''); setSessionBlockId(''); setSessionSpaceId('')}}
+    onSelectOption={option => setSelectedFormGroup(resolveGroupOption(option))}
+    initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []}
+    emptyLabel={t('common.select')} formatOption={groupOptionLabel} selectOnly />
+  const subjectField = <AcademicOptionSelect tipo='materias' yearId={selectedYear} opaque label={t('schedule.subject')} name='materia_id' required
+    key={sessionGroupId || 'no-group'} disabled={!sessionGroupId} compatibleGroupToken={sessionGroupId || undefined}
+    value={sessionSubjectId} onChange={setSessionSubjectId} initialOptions={[] as AcademicOption[]}
+    emptyLabel={t(sessionGroupId ? 'common.select' : 'schedule.selectGroupFirst')} selectOnly />
   if (query.isLoading) return <p role='status'>{t('common.pleaseWait')}</p>
   if (query.error) return <div className='alert alert-danger' role='alert'>
     {query.error.message}
@@ -343,7 +351,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
       {data?.can_manage && <AcademicOptionSelect tipo='docentes' yearId={selectedYear} opaque label={t('schedule.teacher')} value={teacher} onChange={() => undefined} onSelectOption={option => setFilter('docente', option?.url_token ?? '')} initialOptions={data.docentes} emptyLabel={t('schedule.allTeachers')} hideLabel selectOnly />}
       {mode === 'asignaciones' && <AcademicOptionSelect tipo='materias' yearId={selectedYear} opaque label={t('schedule.subject')} value={subjectId} onChange={setSubjectId} initialOptions={data?.materias ?? []} emptyLabel={t('academic.filter.allSubjects')} hideLabel selectOnly />}
       {mode === 'horarios' && <AcademicOptionSelect tipo='espacios' yearId={selectedYear} opaque label={t('schedule.room')} value={room} onChange={() => undefined} onSelectOption={option => setFilter('espacio', option?.url_token ?? '')} initialOptions={data?.espacios ?? []} emptyLabel={t('schedule.allRooms')} hideLabel selectOnly />}
-      {writable && mode !== 'resumen' && <button className='btn btn-primary ms-auto' disabled={!selectedYear || needsGroup} onClick={openNew}>+ {t(mode === 'asignaciones' ? 'schedule.newAssignment' : 'schedule.newSession')}</button>}
+      {writable && mode !== 'resumen' && <button className='btn btn-primary ms-auto' disabled={!selectedYear} onClick={openNew}>+ {t(mode === 'asignaciones' ? 'schedule.newAssignment' : 'schedule.newSession')}</button>}
       {mode === 'horarios' && <button className='btn btn-light' disabled={needsGroup} onClick={() => window.print()}>{t('schedule.print')}</button>}
     </div>
     {needsGroup && <div className='alert alert-light-primary mb-5' role='status'>{t('schedule.groupRequired')}</div>}
@@ -394,18 +402,13 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
       <form key={assignmentEditing?.id ?? 'new'} onSubmit={save}><Modal.Body>
         {error && <div className='alert alert-danger' role='alert'>{error}</div>}
         {mode === 'asignaciones' ? <div className='vstack gap-5'>
+          {groupField}
+          {subjectField}
           <AcademicOptionSelect tipo='docentes' yearId={selectedYear} opaque label={t('schedule.teacherOptional')} name='docente_id' value={sessionTeacherId} onChange={setSessionTeacherId} initialOptions={data?.docentes ?? []} emptyLabel={t('schedule.noTeacher')} selectOnly />
-          <AcademicOptionSelect tipo='materias' yearId={selectedYear} opaque label={t('schedule.subject')} name='materia_id' required value={sessionSubjectId} onChange={setSessionSubjectId} onSelectOption={option => setSelectedFormSubject(option ? fromOpaqueAcademic<AcademicOption>(option) : null)} initialOptions={data?.materias.filter(item => item.estado === 'activo') ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSubjectId || item.estado === 'activo'} selectOnly />
-          <AcademicOptionSelect tipo='grupos' yearId={selectedYear} opaque label={t('schedule.group')} name='grupo_id' required value={sessionGroupId} onChange={setSessionGroupId} onSelectOption={option => setSelectedFormGroup(resolveGroupOption(option))} initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []} emptyLabel={t('common.select')} formatOption={groupOptionLabel} selectOnly />
         </div> : <>
           <label className='form-label required'>{t('schedule.day')}</label><select required name='dia' className='form-select mb-5' value={sessionDay} onChange={e => setSessionDay(e.target.value)}>{days.map((day, i) => <option key={day} value={day}>{intl.formatDate(new Date(2026, 8, 21 + i), {weekday: 'long'})}</option>)}</select>
-          <div className='mb-5'><AcademicOptionSelect tipo='materias' yearId={selectedYear} opaque label={t('schedule.subject')} name='materia_id' required value={sessionSubjectId} onChange={setSessionSubjectId} onSelectOption={option => setSelectedFormSubject(option ? fromOpaqueAcademic<AcademicOption>(option) : null)} initialOptions={data?.materias.filter(item => item.estado === 'activo' && (!activeGroup || item.nivel_id == null || item.nivel_id === activeGroup.grado.nivel_id)) ?? []} emptyLabel={t('common.select')} filterOption={item => String(item.id) === sessionSubjectId || (item.estado === 'activo' && (!activeGroup || item.nivel_id == null || item.nivel_id === activeGroup.grado.nivel_id))} selectOnly /></div>
-          <div className='mb-5'><AcademicOptionSelect tipo='grupos' yearId={selectedYear} opaque label={t('schedule.group')} name='grupo_id' required value={sessionGroupId} onChange={value => {setSessionGroupId(value); setSessionBlockId(''); setSessionSpaceId('')}} onSelectOption={option => {
-            const next = resolveGroupOption(option)
-            const subject = data?.materias.find(item => String(item.id) === sessionSubjectId) ?? selectedFormSubject
-            if (subject && 'nivel_id' in subject && subject.nivel_id != null && next && subject.nivel_id !== next.grado.nivel_id) setSessionSubjectId('')
-            setSelectedFormGroup(next)
-          }} initialOptions={data?.grupos.filter(item => String(item.ano_lectivo_id) === selectedYear) ?? []} emptyLabel={t('common.select')} formatOption={groupOptionLabel} selectOnly /></div>
+          <div className='mb-5'>{groupField}</div>
+          <div className='mb-5'>{subjectField}</div>
           {activeGroup && <div className='alert alert-light-primary py-3' role='status'>{activeGroup.jornada ? `${t('schedule.journey')}: ${activeGroup.jornada.nombre} · ${activeGroup.sede?.nombre ?? ''} (${formatSchoolTime(activeGroup.jornada.hora_inicio)}–${formatSchoolTime(activeGroup.jornada.hora_fin)})` : t('schedule.noJourney')}</div>}
           {visibleBlocks.length > 0 && <div className='rounded border p-4 mb-5'>
             <label className='form-check form-switch form-check-custom form-check-solid mb-2'><input className='form-check-input' type='checkbox' checked={blockMode} onChange={e => setUseBlock(e.target.checked)} /><span className='form-check-label fw-semibold'>{t('schedule.useBlock')}</span></label>

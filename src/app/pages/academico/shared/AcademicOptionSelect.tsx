@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import type {InfiniteData} from '@tanstack/react-query';
 import { useIntl } from "react-intl";
 import { api } from "@/lib/api/client";
+import {fromOpaqueAcademic} from './opaqueAcademic';
 import type { AcademicPageMeta } from "@/app/shared/components/AcademicPagination";
 
 export type AcademicOption = {
@@ -62,6 +63,7 @@ type Props<T extends AcademicOption | OpaqueAcademicOption> = {
   filterOption?: (option: T) => boolean;
   compatibleNivelId?: number | null;
   compatibleNivelToken?: string | null;
+  compatibleGroupToken?: string;
   /** Solicita el catálogo y envía valores con selectores públicos, sin IDs internos. */
   opaque?: boolean;
 };
@@ -84,6 +86,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
   filterOption,
   compatibleNivelId,
   compatibleNivelToken,
+  compatibleGroupToken,
   opaque = true,
 }: Props<T>) {
   const intl = useIntl();
@@ -92,7 +95,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [opened, setOpened] = useState(false);
   const client = useQueryClient();
-  const allOptionsKey = ["academic-options-all", tipo, yearId, compatibleNivelId, compatibleNivelToken, opaque];
+  const allOptionsKey = ["academic-options-all", tipo, yearId, compatibleNivelId, compatibleNivelToken, opaque, compatibleGroupToken];
   const cachedOptions = client.getQueryData<InfiniteData<{data: T[]}>>(allOptionsKey)?.pages.flatMap(page => page.data) ?? [];
 
   useEffect(() => {
@@ -106,7 +109,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
   const selectedMissing =
     !!value && ![...initialOptions, ...cachedOptions].some((option) => optionValue(option) === value);
   const remote = useQuery({
-    queryKey: ["academic-options", tipo, yearId, debouncedSearch, value, compatibleNivelId, compatibleNivelToken, opaque],
+    queryKey: ["academic-options", tipo, yearId, debouncedSearch, value, compatibleNivelId, compatibleNivelToken, opaque, compatibleGroupToken],
     queryFn: () => {
       const params = new URLSearchParams({
         tipo,
@@ -117,34 +120,36 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (value) params.set(opaque ? "selected_token" : "selected_id", value);
       if (tipo === "materias") {
+        if (compatibleGroupToken) params.set('compatible_grupo_token', compatibleGroupToken);
         if (opaque && compatibleNivelToken) params.set("compatible_nivel_token", compatibleNivelToken);
         else if (!opaque && compatibleNivelId != null) params.set("compatible_nivel_id", String(compatibleNivelId));
       }
       return api.get<{ data: T[]; meta: AcademicPageMeta }>(
         `/catalogos-academicos?${params}`,
-      );
+      ).then(response => opaque ? fromOpaqueAcademic<typeof response>(response) : response);
     },
     enabled:
-      !disabled && !!yearId && ((!selectOnly && !!debouncedSearch) || selectedMissing),
+      !disabled && !!yearId && !compatibleGroupToken && ((!selectOnly && !!debouncedSearch) || selectedMissing),
   });
 
   // A filter with only a select loads the rest of its options when opened.
   // Requests remain bounded and every option stays reachable without a second search field.
   const allOptions = useInfiniteQuery({
     queryKey: allOptionsKey,
-    enabled: !disabled && selectOnly && opened && !!yearId,
+    enabled: !disabled && selectOnly && (opened || !!compatibleGroupToken) && !!yearId,
     initialPageParam: 1,
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ tipo, page: String(pageParam), per_page: "1000" });
       params.set(opaque ? "ano_lectivo_token" : "ano_lectivo_id", yearId);
       if (opaque) params.set("opaque", "1");
       if (tipo === "materias") {
+        if (compatibleGroupToken) params.set('compatible_grupo_token', compatibleGroupToken);
         if (opaque && compatibleNivelToken) params.set("compatible_nivel_token", compatibleNivelToken);
         else if (!opaque && compatibleNivelId != null) params.set("compatible_nivel_id", String(compatibleNivelId));
       }
       return api.get<{ data: T[]; meta: AcademicPageMeta }>(
         `/catalogos-academicos?${params}`,
-      );
+      ).then(response => opaque ? fromOpaqueAcademic<typeof response>(response) : response);
     },
     getNextPageParam: (last) =>
       last.meta.current_page < last.meta.last_page
@@ -156,7 +161,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
     if (
       selectOnly &&
       !disabled &&
-      opened &&
+      (opened || compatibleGroupToken) &&
       hasNextPage &&
       !isFetchingNextPage
     ) {
@@ -166,6 +171,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
     selectOnly,
     disabled,
     opened,
+    compatibleGroupToken,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -173,7 +179,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
 
   const fetchedOptions =
     allOptions.data?.pages.flatMap((page) => page.data) ?? [];
-  const options = selectOnly
+  const options = compatibleGroupToken ? fetchedOptions : selectOnly
     ? fetchedOptions.length
       ? fetchedOptions
       : initialOptions
@@ -183,7 +189,7 @@ export function AcademicOptionSelect<T extends AcademicOption | OpaqueAcademicOp
   const filteredOptions = filterOption ? options.filter(filterOption) : options;
   const selectedOption =
     value &&
-    [...initialOptions, ...fetchedOptions, ...(remote.data?.data ?? [])].find(
+    [...(compatibleGroupToken ? [] : initialOptions), ...fetchedOptions, ...(remote.data?.data ?? [])].find(
       (option) => optionValue(option) === value && (!filterOption || filterOption(option)),
     );
   const merged =

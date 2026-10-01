@@ -151,11 +151,13 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; onClose: ()
   const areaOptions = [...selectedArea, ...foundAreas.filter(area => area.id !== materia?.area_id)]
   const isEdit = materia !== null
   const [form, setForm] = useState<CreateMateriaInput>(materia ? fromMateria(materia) : emptyMateriaForm())
+  const [levelSelected, setLevelSelected] = useState(isEdit)
   const set = (patch: Partial<CreateMateriaInput>) => setForm((prev) => ({...prev, ...patch}))
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!form.nombre.trim()) return
+    if (!levelSelected) return
       const input: CreateMateriaInput = {
       ...form,
       nombre: form.nombre.trim(),
@@ -244,13 +246,15 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; onClose: ()
               />
             </div>
             <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('academico.planEstudios.materia.nivel')} {t('common.field.optional')}</label>
+              <label className='required fs-6 fw-semibold mb-2'>{t('academico.planEstudios.materia.nivel')}</label>
               <select
+                required
                 className='form-select form-select-solid'
-                value={form.nivel_id ?? ''}
-                onChange={(e) => set({nivel_id: e.target.value || null})}
+                value={levelSelected ? form.nivel_id ?? '__all__' : ''}
+                onChange={(e) => {setLevelSelected(e.target.value !== ''); set({nivel_id: e.target.value === '__all__' ? null : e.target.value})}}
               >
-                <option value=''>{t('academico.nivel.todos')}</option>
+                <option value='' disabled>{t('academico.planEstudios.materia.selectNivel')}</option>
+                <option value='__all__'>{t('academico.nivel.todos')}</option>
                 {(niveles?.data ?? []).map((n) => (
                   <option key={n.id} value={n.id}>
                     {n.nombre}
@@ -436,7 +440,8 @@ const AreasMateriasTab: FC = () => {
 
 
         <select className='form-select form-select-solid w-auto' aria-label={t('academico.planEstudios.materia.nivel')} value={materiaList.filters.nivel_id ?? ''} onChange={event => materiaList.setFilter('nivel_id', event.target.value)}>
-          <option value=''>{t('academico.nivel.todos')}</option>
+          <option value=''>{t('academico.planEstudios.materia.selectNivel')}</option>
+          <option value='__all__'>{t('academico.nivel.todos')}</option>
           {(niveles?.data ?? []).map(nivel => <option key={nivel.id} value={nivel.id}>{nivel.nombre}</option>)}
         </select>
 

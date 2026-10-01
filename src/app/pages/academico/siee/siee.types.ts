@@ -3,7 +3,7 @@
   modo_area: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE' | 'MANUAL' | 'DISABLED'
   modo_asignatura: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE' | 'MANUAL'
   modo_anual: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE' | 'MANUAL'
-  redondeo: 'HALF_UP' | 'TRUNCATE'
+  redondeo: 'HALF_UP' | 'HALF_DOWN' | 'TRUNCATE'
   precision_calculo: number
   recuperacion: 'REPLACE' | 'AVERAGE' | 'MAX_PASSING_GRADE' | 'MANUAL'
   mostrar_final: boolean
@@ -46,6 +46,7 @@ export interface SieeArea {
 export interface SieeResponse {
   editable: boolean
   curriculo_editable: boolean
+  tiene_planillas_anteriores?: boolean
   configuracion: SieeConfiguracion
   escalas: Array<{url_token: string; nombre: string; tipo: string; valor_min: number; valor_max: number; decimales: number}>
   metodos: Array<{url_token: string; calculo_nota: string; nota_minima: number; ambito: string}>

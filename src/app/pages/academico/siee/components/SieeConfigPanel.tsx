@@ -1,5 +1,5 @@
 import {useState, useEffect, useRef} from 'react'
-import {KTCard, KTCardBody} from '@/_metronic/helpers'
+import {KTCard, KTCardBody, KTIcon} from '@/_metronic/helpers'
 import {useSiee, useCurriculo, useUpdateSiee, useUpdateCurriculo} from '../siee.api'
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
@@ -7,7 +7,7 @@ import type {CurriculoItem, SieeConfiguracion} from '../siee.types'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
 import {AcademicOptionSelect} from '../../shared/AcademicOptionSelect'
-import type {SieeGrade, SieeSubject} from '../siee.types'
+import {BulkCurriculumModal} from './BulkCurriculumModal'
 import {AcademicListFilters} from '../../estructura/components/AcademicListFilters'
 
 const isValidWeight = (value: string) => value === '' || /^(?:100(?:\.0{1,4})?|(?:0|[1-9]\d?)(?:\.\d{1,4})?)$/.test(value)
@@ -72,7 +72,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
     gradoToken: currGrado, materiaToken: currMateria, areaToken: currArea,
   })
   const mutation = useUpdateSiee(anoLectivoToken)
-  const curriculoMutation = useUpdateCurriculo(anoLectivoToken)
+  const [bulkMode, setBulkMode] = useState<'add' | 'current' | null>(null)
   const editing = useRef(false)
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
     modo_area: 'SIMPLE_AVERAGE',
     modo_asignatura: 'WEIGHTED_AVERAGE',
     modo_anual: 'SIMPLE_AVERAGE',
-    redondeo: 'HALF_UP',
+    redondeo: 'HALF_DOWN',
     precision_calculo: 8,
     recuperacion: 'REPLACE',
     mostrar_final: true,
@@ -96,14 +96,6 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
     metodo_token: null,
   })
 
-  const [currForm, setCurrForm] = useState({
-    grado_token: '',
-    materia_token: '',
-    area_token: '',
-    peso_area: '',
-  })
-  const [selectedGrade, setSelectedGrade] = useState<SieeGrade | null>(null)
-  const [selectedSubject, setSelectedSubject] = useState<SieeSubject | null>(null)
 
   useEffect(() => {
     if (data?.configuracion && !editing.current) {
@@ -143,6 +135,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
   const handleSave = () => {
     const payload: SieeConfiguracion = {
       ...formData,
+      redondeo: 'HALF_DOWN',
       modo_area: formData.usar_areas ? formData.modo_area : 'DISABLED',
       precision_calculo: Number(formData.precision_calculo || 4),
       escala_token: formData.escala_token,
@@ -153,31 +146,6 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
       onError: (err) =>
         toast.error(err?.message || t('common.error')),
     })
-  }
-
-  const handleSaveCurriculo = () => {
-    if (!currForm.grado_token || !currForm.materia_token) return
-    if (!isValidWeight(currForm.peso_area)) {
-      toast.error(t('siee.weight_invalid'))
-      return
-    }
-    curriculoMutation.mutate(
-      {
-        grado_token: currForm.grado_token,
-        materia_token: currForm.materia_token,
-        area_token: currForm.area_token || null,
-        peso_area: currForm.peso_area || null,
-      },
-      {
-        onSuccess: () => {
-          toast.success(t('siee.curriculo_saved'))
-          setCurrForm({grado_token: '', materia_token: '', area_token: '', peso_area: ''})
-          setSelectedGrade(null)
-          setSelectedSubject(null)
-        },
-        onError: (err) => toast.error(err.message),
-      }
-    )
   }
 
   const changeCurrFilter = (setter: (value: string) => void, value: string) => {
@@ -298,9 +266,9 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
               </select>
             </div>
 
-            <div className='col-md-4'>
+            {data.tiene_planillas_anteriores && <div className='col-md-4'>
               <label className='form-label required'>
-                {t('siee.modo_asignatura')}
+                {t('grading.legacyCalculation')}
               </label>
               <select
                 className='form-select'
@@ -315,7 +283,8 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
                 </option>
                 <option value='MANUAL' disabled>{t('siee.manualPending')}</option>
               </select>
-            </div>
+              <p className='text-muted fs-7 mt-2'>{t('grading.legacyCalculationHelp')}</p>
+            </div>}
 
             <div className='col-md-4'>
               <label className='form-label required'>
@@ -340,18 +309,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
               <label className='form-label required'>
                 {t('siee.redondeo')}
               </label>
-              <select
-                className='form-select'
-                value={formData.redondeo || 'HALF_UP'}
-                onChange={(e) => handleChange('redondeo', e.target.value as SieeConfiguracion['redondeo'])}
-              >
-                <option value='HALF_UP'>
-                  {t('siee.redondeo_half_up')}
-                </option>
-                <option value='TRUNCATE'>
-                  {t('siee.redondeo_truncate')}
-                </option>
-              </select>
+              <input className='form-control' value={t('siee.redondeo_half_down')} readOnly />
             </div>
 
             <div className='col-md-4'>
@@ -445,61 +403,14 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
           </h3>
         </div>
         <KTCardBody>
-          <h4 className='fw-bold fs-5 mb-1'>{t('siee.curriculo_add_title')}</h4>
-          <p className='text-muted fs-7 mb-5'>{t('siee.curriculo_add_help')}</p>
-          {!curriculoEditable && <div className='alert alert-info'>{t('siee.curriculo_locked')}</div>}
-          <div className='row g-3 mb-6 align-items-end'>
-            <div className='col-md-3'>
-              <AcademicOptionSelect tipo='grados' yearId={anoLectivoToken} opaque label={t('siee.grado')}
-                value={currForm.grado_token} onChange={value => {
-                  setCurrForm(previous => ({...previous, grado_token: value, materia_token: '', area_token: ''}))
-                  setSelectedSubject(null)
-                }} onSelectOption={setSelectedGrade}
-                initialOptions={data.grados ?? []} emptyLabel={t('siee.select_grade')} required selectOnly
-                filterOption={option => option.estado == null || option.estado === 'activo'} />
-            </div>
-            <div className='col-md-3'>
-              <AcademicOptionSelect tipo='materias' yearId={anoLectivoToken} opaque label={t('siee.materia')}
-                value={currForm.materia_token} onChange={value => setCurrForm(previous => ({...previous, materia_token: value}))}
-                onSelectOption={option => {
-                  setSelectedSubject(option)
-                  setCurrForm(previous => ({...previous, area_token: option?.area_token ?? ''}))
-                }}
-                initialOptions={data.materias ?? []} emptyLabel={t('siee.select_subject')} required selectOnly
-                disabled={!currForm.grado_token} compatibleNivelToken={selectedGrade?.nivel_token}
-                filterOption={option => (option.estado == null || option.estado === 'activo')
-                  && (option.nivel_token == null || option.nivel_token === selectedGrade?.nivel_token)} />
-            </div>
-            <div className='col-md-3'>
-              <label className='form-label' htmlFor='siee-curriculo-area'>{t('siee.area')}</label>
-              <input id='siee-curriculo-area' className='form-control form-control-solid'
-                value={selectedSubject?.area?.nombre ?? data.areas?.find(area => area.url_token === currForm.area_token)?.nombre ?? ''}
-                placeholder='—' readOnly />
-            </div>
-            <div className='col-md-2'>
-              <label className='form-label fs-7'>{t('siee.peso_area')}</label>
-              <input
-                type='number'
-                min={0}
-                max={100}
-                step='0.1'
-                className='form-control form-control-sm'
-                value={currForm.peso_area}
-                onChange={(e) => setCurrForm((p) => ({...p, peso_area: e.target.value}))}
-              />
-            </div>
-            <div className='col-md-1'>
-              <button
-                className='btn btn-sm btn-primary w-100'
-                onClick={handleSaveCurriculo}
-                disabled={curriculoMutation.isPending || !currForm.grado_token || !currForm.materia_token || !isValidWeight(currForm.peso_area) || !curriculoEditable}
-                aria-label={t('siee.curriculo_save')}
-              >
-                +
-              </button>
+          <div className='d-flex flex-wrap justify-content-between align-items-center gap-3 mb-5'>
+            <p className='text-muted fs-7 mb-0'>{t('curriculum.bulk.help')}</p>
+            <div className='d-flex flex-wrap gap-3'>
+              <button className='btn btn-light-primary' onClick={() => setBulkMode('current')}><KTIcon iconName='setting-2' className='fs-3' />{t('curriculum.bulk.current')}</button>
+              <button className='btn btn-primary' disabled={!curriculoEditable} onClick={() => setBulkMode('add')}><KTIcon iconName='plus' className='fs-3' />{t('curriculum.bulk.add')}</button>
             </div>
           </div>
-
+          {!curriculoEditable && <div className='alert alert-info'>{t('siee.curriculo_locked')}</div>}
           <div className='separator my-6' />
           <h4 className='fw-bold fs-5 mb-4'>{t('siee.curriculo_filters_title')}</h4>
           <AcademicListFilters id='siee-curriculo-search' search={currSearch} onSearchChange={value => changeCurrFilter(setCurrSearch, value)}>
@@ -521,7 +432,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
                   <th>{t('siee.grado')}</th>
                   <th>{t('siee.materia')}</th>
                   <th>{t('siee.area')}</th>
-                  <th className='text-end'>{t('siee.peso_area')}</th>
+                  {data.configuracion.usar_areas && data.configuracion.modo_area === 'WEIGHTED_AVERAGE' && <th className='text-end'>{t('siee.peso_area')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -534,16 +445,16 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
                       <td className='fw-semibold'>{c.grado_nombre ?? grado?.nombre ?? c.grado_token}</td>
                       <td>{c.materia_nombre ?? materia?.nombre ?? c.materia_token}</td>
                       <td>{c.area_nombre ?? area?.nombre ?? '—'}</td>
-                      <td className='text-end'>
+                      {data.configuracion.usar_areas && data.configuracion.modo_area === 'WEIGHTED_AVERAGE' && <td className='text-end'>
                         <CurriculumWeightCell item={c} yearId={anoLectivoToken} editable={curriculoEditable} />
-                      </td>
+                      </td>}
                     </tr>
                   )
                 })}
-                {curriculo.isPending && <tr><td colSpan={4} className='text-center text-muted py-6'>{t('common.loading')}</td></tr>}
+                {curriculo.isPending && <tr><td colSpan={5} className='text-center text-muted py-6'>{t('common.loading')}</td></tr>}
                 {!curriculo.isPending && curriculoRows.length === 0 && (
                   <tr>
-                    <td colSpan={4} className='text-center text-muted py-6'>
+                    <td colSpan={5} className='text-center text-muted py-6'>
                       {t('siee.no_curriculo')}
                     </td>
                   </tr>
@@ -555,6 +466,8 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
             loading={curriculo.isFetching} onPageChange={setCurrPage} onPerPageChange={changeCurrSize} />
         </KTCardBody>
       </KTCard>
+      {bulkMode && <BulkCurriculumModal key={`${anoLectivoToken}:${bulkMode}`} year={anoLectivoToken} mode={bulkMode} editable={curriculoEditable}
+        weighted={data.configuracion.usar_areas && data.configuracion.modo_area === 'WEIGHTED_AVERAGE'} close={() => setBulkMode(null)} />}
     </div>
   )
 }

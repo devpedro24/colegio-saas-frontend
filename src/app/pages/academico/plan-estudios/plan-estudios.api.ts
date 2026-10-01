@@ -14,7 +14,10 @@ type Paged<T> = {data: T[]; meta: AcademicPageMeta}
 function pageUrl(entity: 'areas' | 'materias', yearId: string, params: AcademicListParams) {
   const query = new URLSearchParams({ano_lectivo_id: yearId, page: String(params.page), per_page: String(params.perPage)})
   if (params.search?.trim()) query.set('search', params.search.trim())
-  Object.entries(params.filters ?? {}).forEach(([name, value]) => {if (value) query.set(name, value)})
+  Object.entries(params.filters ?? {}).forEach(([name, value]) => {
+    if (entity === 'materias' && name === 'nivel_id' && value === '__all__') query.set('nivel_general', '1')
+    else if (value) query.set(name, value)
+  })
   return `/plan-estudios/${entity}?${opaqueParams(query)}`
 }
 

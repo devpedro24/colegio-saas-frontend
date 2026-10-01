@@ -23,7 +23,6 @@ interface FormState {
   tipo: TipoEscala
   valor_min: string
   valor_max: string
-  decimales: string
 }
 
 const emptyForm = (): FormState => ({
@@ -32,7 +31,6 @@ const emptyForm = (): FormState => ({
   tipo: 'numerica',
   valor_min: '1',
   valor_max: '5',
-  decimales: '1',
 })
 
 const fromEscala = (e: EscalaValorativa): FormState => ({
@@ -41,7 +39,6 @@ const fromEscala = (e: EscalaValorativa): FormState => ({
   tipo: e.tipo,
   valor_min: e.valor_min === null ? '' : String(e.valor_min),
   valor_max: e.valor_max === null ? '' : String(e.valor_max),
-  decimales: e.decimales === null ? '' : String(e.decimales),
 })
 
 // Dialogo interno crear/editar escala (se remonta por escala via key en el padre).
@@ -75,7 +72,7 @@ const EscalaForm: FC<{
       tipo: form.tipo,
       valor_min: isNumerica && form.valor_min !== '' ? Number(form.valor_min) : null,
       valor_max: isNumerica && form.valor_max !== '' ? Number(form.valor_max) : null,
-      decimales: isNumerica && form.decimales !== '' ? Number(form.decimales) : null,
+      decimales: isNumerica ? 1 : null,
     }
 
     const onError = (err: unknown) => {
@@ -193,11 +190,11 @@ const EscalaForm: FC<{
               </label>
               <input
                 type='number'
-                min={0}
-                max={3}
+                min={1}
+                max={1}
                 className={`form-control form-control-solid ${fe('decimales') ? 'is-invalid' : ''}`}
-                value={form.decimales}
-                onChange={(e) => set({decimales: e.target.value})}
+                value={1}
+                readOnly
               />
               {fe('decimales') && <div className='invalid-feedback'>{fe('decimales')}</div>}
             </div>
