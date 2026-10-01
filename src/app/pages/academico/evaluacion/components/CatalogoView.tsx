@@ -7,17 +7,17 @@ import {useToast} from '@/lib/ui/toast'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
 import {AcademicOptionSelect} from '../../shared/AcademicOptionSelect'
+import {useCatalogFilters} from '../../shared/useCatalogFilters'
 
-export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => {
+export const CatalogoView = ({reportsOnly = false, enrollmentsOnly = false}: {reportsOnly?: boolean; enrollmentsOnly?: boolean}) => {
   const navigate = useNavigate()
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
-  const [year, setYear] = useState('')
+  const [filters, setFilters] = useCatalogFilters(enrollmentsOnly ? 'matriculas' : reportsOnly ? 'boletines' : 'evaluacion')
+  const {ano: year, grupo: group, materia} = filters
   const [period, setPeriod] = useState('')
   const [form, setForm] = useState({grupo_id: '', estudiante_id: ''})
-  const [group, setGroup] = useState('')
-  const [materia, setMateria] = useState('')
   const [status, setStatus] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
   const [debouncedStudentSearch, setDebouncedStudentSearch] = useState('')
@@ -29,6 +29,7 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
     yearId: year, groupId: group, materiaId: materia, enrollmentStatus: status,
     studentSearch: debouncedStudentSearch,
     assignmentPage, assignmentPerPage, enrollmentPage, enrollmentPerPage,
+    view: enrollmentsOnly ? 'matriculas' : reportsOnly ? 'boletines' : 'planillas',
   })
   const mutation = useMatricular()
 
@@ -39,9 +40,9 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
 
   useEffect(() => {
     if (!year && data?.anos.length) {
-      setYear((data.anos.find(ano => ano.estado === 'en_curso') ?? data.anos[0]).url_token)
+      setFilters({ano: (data.anos.find(ano => ano.estado === 'en_curso') ?? data.anos[0]).url_token})
     }
-  }, [data?.anos, year])
+  }, [data?.anos, year, setFilters])
 
   const resetPages = () => {setAssignmentPage(1); setEnrollmentPage(1)}
   const changeAssignmentSize = (size: number) => {setAssignmentPerPage(size); setAssignmentPage(1)}
@@ -56,6 +57,7 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
   const selectedPeriodToken = selectedPeriod
   const assignments = data.asignaciones
   const enrollments = data.matriculas
+  const canEnroll = data.can_manage_enrollments ?? data.can_manage
   const groups = data.grupos.filter(g => g.ano_lectivo_id === selectedYear)
   const students = data.estudiantes_disponibles ?? data.estudiantes.filter(student => !enrollments.some(enrollment => enrollment.estudiante_id === student.id))
   const studentMatches = studentSearch.trim() && !form.estudiante_id
@@ -64,13 +66,13 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
 
   return <div className='d-flex flex-column gap-6'>
     <div className='card'><div className='card-body d-flex flex-wrap align-items-end justify-content-between gap-4 py-6'>
-      <div><h3>{t(reportsOnly ? 'boletines.title' : 'evaluacion.title')}</h3><p className='text-muted mb-0'>{t('evaluacion.catalogo.desc')}</p></div>
+      <div><h3>{t(enrollmentsOnly ? 'admisiones.title' : reportsOnly ? 'boletines.title' : 'evaluacion.title')}</h3><p className='text-muted mb-0'>{t(enrollmentsOnly ? 'admisiones.currentHelp' : 'evaluacion.catalogo.desc')}</p></div>
       <div className='d-flex flex-wrap gap-3'>
-        <select className='form-select form-select-solid w-auto' aria-label={t('academico.config.yearLabel')} value={selectedYear} onChange={e => {setYear(e.target.value); setPeriod(''); setGroup(''); setMateria(''); setForm({grupo_id: '', estudiante_id: ''}); setStudentSearch(''); setDebouncedStudentSearch(''); resetPages()}}>
+        <select className='form-select form-select-solid w-auto' aria-label={t('academico.config.yearLabel')} value={selectedYear} onChange={e => {setFilters({ano: e.target.value, grupo: '', materia: ''}); setPeriod(''); setForm({grupo_id: '', estudiante_id: ''}); setStudentSearch(''); setDebouncedStudentSearch(''); resetPages()}}>
           {!data.anos.length && <option value=''>{t('academico.config.yearLabel')}</option>}
           {data.anos.map(a => <option key={a.url_token} value={a.url_token}>{a.nombre}</option>)}
         </select>
-        {!reportsOnly && <select className='form-select form-select-solid w-auto' aria-label={t('evaluacion.period')} value={selectedPeriod} onChange={e => setPeriod(e.target.value)}>
+        {!reportsOnly && !enrollmentsOnly && <select className='form-select form-select-solid w-auto' aria-label={t('evaluacion.period')} value={selectedPeriod} onChange={e => setPeriod(e.target.value)}>
           {!periods.length && <option value=''>{t('evaluacion.period')}</option>}
           {periods.map(p => <option key={p.url_token} value={p.url_token}>{p.nombre} · {t(`academico.periodos.estado.${p.estado}`)}</option>)}
         </select>}
@@ -79,16 +81,16 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
     <div className='card'><div className='card-body row g-3 align-items-end'>
       <div className='col-12 col-sm-6 col-lg-3'>
         <AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('evaluacion.matriculas.grupo')} opaque
-          value={group} onChange={value => {setGroup(value); resetPages()}} initialOptions={groups}
+          value={group} onChange={value => {setFilters({grupo: value}); resetPages()}} initialOptions={groups}
           emptyLabel={t('academic.filter.selectGroup')} selectOnly hideLabel
           formatOption={option => `${option.grado?.nombre ?? ''} / ${option.nombre ?? ''}`} />
       </div>
-      {!reportsOnly && <div className='col-12 col-sm-6 col-lg-3'>
+      {!reportsOnly && !enrollmentsOnly && <div className='col-12 col-sm-6 col-lg-3'>
         <AcademicOptionSelect tipo='materias' yearId={selectedYear} label={t('siee.materia')} opaque
-          value={materia} onChange={value => {setMateria(value); setAssignmentPage(1)}}
+          value={materia} onChange={value => {setFilters({materia: value}); setAssignmentPage(1)}}
           initialOptions={data.materias ?? []} emptyLabel={t('academic.filter.selectSubject')} selectOnly hideLabel />
       </div>}
-      {data.can_view_reports && <div className='col-12 col-sm-6 col-lg-3'>
+      {(reportsOnly || enrollmentsOnly) && <div className='col-12 col-sm-6 col-lg-3'>
         <select id='evaluacion-status' aria-label={t('evaluacion.matriculas.estado')} className='form-select form-select-solid' value={status}
           onChange={event => {setStatus(event.target.value); setEnrollmentPage(1)}}>
           <option value=''>{t('academic.filter.selectStatus')}</option>
@@ -98,11 +100,11 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
       </div>}
       <div className='col-12 col-sm-6 col-lg-3'>
         <button type='button' className='btn btn-sm btn-light w-100' onClick={() => {
-          setGroup(''); setMateria(''); setStatus(''); resetPages()
+          setFilters({grupo: '', materia: ''}); setStatus(''); resetPages()
         }}>{t('audit.clear')}</button>
       </div>
     </div></div>
-    {!reportsOnly && <KTCard>
+    {!reportsOnly && !enrollmentsOnly && <KTCard>
       <div className='card-header'><h3 className='card-title'>{t('evaluacion.mis_asignaciones')}</h3>
         {data.can_configure && <div className='card-toolbar'><button className='btn btn-light-primary btn-sm' onClick={() => navigate('/academico/siee')}>{t('siee.title')}</button></div>}
       </div>
@@ -110,7 +112,7 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
         <thead><tr className='text-muted fw-bold'><th>{t('siee.materia')}</th><th>{t('evaluacion.matriculas.grupo')}</th><th className='text-end'>{t('evaluacion.catalogo.acciones')}</th></tr></thead>
         <tbody>{assignments.map(a => <tr key={a.id}>
           <td className='fw-semibold'>{a.materia.nombre}</td><td>{a.grupo.grado.nombre} / {a.grupo.nombre}</td>
-          <td className='text-end'><button className='btn btn-light-primary btn-sm' disabled={!selectedPeriodToken || !a.url_token} onClick={() => navigate(`/academico/evaluacion/planillas/${a.url_token}/${selectedPeriodToken}`)}>{t('evaluacion.catalogo.ver_planilla')}</button></td>
+          <td className='text-end'><button className='btn btn-light-primary btn-sm' disabled={!selectedPeriodToken || !a.url_token} onClick={() => navigate(`/evaluacion/planillas/${a.url_token}/${selectedPeriodToken}`)}>{t('evaluacion.catalogo.ver_planilla')}</button></td>
         </tr>)}
         {!assignments.length && <tr><td colSpan={3} className='text-center text-muted py-8'>{t('evaluacion.catalogo.no_asignaturas')}</td></tr>}
         </tbody>
@@ -119,23 +121,24 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
         onPageChange={setAssignmentPage} onPerPageChange={changeAssignmentSize} />
       </KTCardBody>
     </KTCard>}
-    {data.can_view_reports && <KTCard>
-      <div className='card-header'><h3 className='card-title'>{t(data.can_manage ? 'evaluacion.matriculas.title' : 'boletines.title')}</h3></div>
+    {((reportsOnly && data.can_view_reports) || (enrollmentsOnly && canEnroll)) && <KTCard>
+      <div className='card-header'><h3 className='card-title'>{t(enrollmentsOnly ? 'evaluacion.matriculas.title' : 'boletines.title')}</h3></div>
       <KTCardBody>
-        {data.can_manage && !reportsOnly && <form className='row g-4 align-items-end mb-6' onSubmit={e => {
+        {canEnroll && enrollmentsOnly && <form className='row g-4 align-items-end mb-6' onSubmit={e => {
           e.preventDefault()
           mutation.mutate({grupo_id: form.grupo_id, estudiante_id: form.estudiante_id}, {
-            onSuccess: () => {toast.success(t('evaluacion.matriculas.saved')); setForm({grupo_id: '', estudiante_id: ''}); setStudentSearch(''); setDebouncedStudentSearch(''); setEnrollmentPage(1)},
+            onSuccess: () => {toast.success(t('evaluacion.matriculas.saved')); setForm(previous => ({...previous, estudiante_id: ''})); setStudentSearch(''); setDebouncedStudentSearch(''); setEnrollmentPage(1)},
             onError: err => toast.error(err.message),
           })
         }}>
           <div className='col-12 col-md-3'><AcademicOptionSelect tipo='grupos' yearId={selectedYear} opaque
             label={t('evaluacion.matriculas.grupo')} value={form.grupo_id}
             onChange={value => setForm(previous => ({...previous, grupo_id: value}))}
-            initialOptions={groups} emptyLabel={t('academic.filter.selectGroup')} required selectOnly hideLabel
+            initialOptions={groups} emptyLabel={t('academic.filter.selectGroup')} required selectOnly
             formatOption={option => `${option.grado?.nombre ?? ''} / ${option.nombre ?? ''}`} /></div>
           <div className='col-12 col-md-6 position-relative'>
-            <input className={`form-control ${form.estudiante_id ? 'border-success' : ''}`} type='search' maxLength={120}
+            <label className='form-label required' htmlFor='matricula-estudiante'>{t('evaluacion.matriculas.estudiante')}</label>
+            <input id='matricula-estudiante' className={`form-control ${form.estudiante_id ? 'border-success' : ''}`} type='search' maxLength={120}
               role='combobox' aria-label={t('evaluacion.matriculas.estudiante')}
               aria-autocomplete='list' aria-controls='evaluacion-estudiantes-resultados'
               aria-expanded={studentMatches.length > 0} autoComplete='off'
@@ -163,7 +166,10 @@ export const CatalogoView = ({reportsOnly = false}: {reportsOnly?: boolean}) => 
           <thead><tr className='text-muted fw-bold'><th>{t('evaluacion.matriculas.estudiante')}</th><th>{t('evaluacion.matriculas.grupo')}</th><th>{t('evaluacion.matriculas.estado')}</th><th className='text-end'>{t('boletines.title')}</th></tr></thead>
           <tbody>{enrollments.map(m => <tr key={m.id}>
             <td className='fw-semibold'>{m.estudiante.name}</td><td>{m.grupo?.grado.nombre} / {m.grupo?.nombre}</td><td><span className='badge badge-light-success'>{t(`evaluacion.matriculas.estado.${m.estado}`)}</span></td>
-            <td className='text-end'><button className='btn btn-light-primary btn-sm' disabled={!m.url_token} onClick={() => navigate(`/academico/boletines/${m.url_token}`)}>{t('evaluacion.matriculas.ver_boletin')}</button></td>
+            <td className='text-end'><div className='d-flex flex-wrap justify-content-end gap-2'>
+              {data.can_manage && <button className='btn btn-light-info btn-sm' disabled={!m.url_token} onClick={() => navigate(`/evaluacion/recuperaciones/${m.url_token}`)}>{t('evaluacion.recuperaciones.title')}</button>}
+              {data.can_view_reports && <button className='btn btn-light-primary btn-sm' disabled={!m.url_token} onClick={() => navigate(`/academico/boletines/${m.url_token}`)}>{t('evaluacion.matriculas.ver_boletin')}</button>}
+            </div></td>
           </tr>)}
           {!enrollments.length && <tr><td colSpan={4} className='text-muted text-center py-8'>{t('evaluacion.matriculas.empty')}</td></tr>}
           </tbody>

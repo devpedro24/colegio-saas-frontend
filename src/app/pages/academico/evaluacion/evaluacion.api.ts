@@ -12,6 +12,7 @@ import type {
 const EVAL_URL = '/evaluacion'
 
 export type CatalogoFilters = {
+  view?: 'planillas' | 'matriculas' | 'boletines'
   yearId?: string
   groupId?: string
   materiaId?: string
@@ -31,6 +32,7 @@ export const useCatalogoEvaluacion = (filters: CatalogoFilters = {}) => {
     queryKey: ['evaluacion', 'catalogo', filters],
     queryFn: () => {
       const params = new URLSearchParams({opaque: '1'})
+      if (filters.view) params.set('vista', filters.view)
       if (filters.yearId) params.set('ano_lectivo_token', filters.yearId)
       if (filters.groupId) params.set('grupo_token', filters.groupId)
       if (filters.materiaId) params.set('materia_token', filters.materiaId)
@@ -78,8 +80,24 @@ export const useGuardarNotas = (asignacionId: string, periodoId: string) => {
       api.put(`${EVAL_URL}/planillas/${encodeURIComponent(asignacionId)}/${encodeURIComponent(periodoId)}?opaque=1`, {notas: notas.map(nota => toOpaqueAcademic(nota))}),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})
+      queryClient.invalidateQueries({queryKey: ['boletines']})
     },
   })
+}
+
+export type ActividadPlanillaInput = {
+  operacion: 'crear' | 'editar' | 'eliminar' | 'modo'
+  componente_token: string | null; preinforme_token: string | null; actividad_token?: string
+  version: number; nombre?: string; fecha?: string; peso?: string | null
+  modo?: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE'
+}
+export function useActividadPlanilla(asignacion: string, periodo: string) {
+  const cache = useQueryClient()
+  return useMutation({mutationFn: (data: ActividadPlanillaInput) => api.put(`${EVAL_URL}/planillas/${asignacion}/${periodo}/actividades`, data),
+    onSuccess: () => {
+      cache.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacion, periodo]})
+      cache.invalidateQueries({queryKey: ['boletines']})
+    }})
 }
 
 export const useGuardarComponente = (asignacionId: string, periodoId: string) => {

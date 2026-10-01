@@ -1,0 +1,37 @@
+.grade-sheet {
+  --grade-student-width: 260px;
+  --grade-result-width: 112px;
+  .grade-sheet-scroll { overflow: auto; max-height: 72vh; margin: 0 2.25rem 1rem; border: 1px solid var(--bs-gray-200); border-radius: 12px; }
+  .grade-sheet-table {
+    width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; color: var(--bs-gray-800); font-size: 13px;
+    th, td { border-bottom: 1px solid var(--bs-gray-200); border-right: 1px solid var(--bs-gray-200); vertical-align: middle; }
+    thead { position: sticky; top: 0; z-index: 4; }
+    thead th { background: var(--bs-gray-100); padding: 10px 12px; }
+    .grade-section { text-align: center; color: var(--bs-primary); background: var(--bs-primary-light); font-weight: 700; }
+    .grade-student { position: sticky; left: 0; z-index: 2; width: var(--grade-student-width); padding: 8px 12px; background: var(--bs-body-bg); overflow-wrap: anywhere; text-align: left; }
+    thead .grade-student { z-index: 5; background: var(--bs-gray-100); text-align: center; }
+    tbody .grade-student { text-align: left; }
+    .grade-row-number { display: inline-block; min-width: 2.2em; margin-right: 8px; color: var(--bs-gray-600); font-weight: 500; font-variant-numeric: tabular-nums; }
+    .grade-result { position: sticky; right: 0; width: var(--grade-result-width); text-align: center; padding: 6px; background: var(--bs-primary-light); font-weight: 700; }
+    thead .grade-result { z-index: 5; }
+    .grade-provisional { color: var(--bs-primary); font-variant-numeric: tabular-nums; }
+    .grade-provisional small { display: block; font-size: 10px; font-weight: 500; }
+    .grade-activity { min-width: 128px; overflow-wrap: anywhere; text-align: center; }
+    .grade-activity .btn { font-size: 12px; white-space: normal; text-align: center; }
+    .grade-cell { padding: 0; height: 36px; }
+    .grade-input { width: 100%; min-width: 0; height: 36px; border: 0; padding: 4px; text-align: center; color: inherit; background: transparent; border-radius: 0; outline: 0; font-variant-numeric: tabular-nums; }
+    .grade-input:focus { box-shadow: inset 0 0 0 2px var(--bs-primary); background: var(--bs-primary-light); }
+    .grade-input.invalid { box-shadow: inset 0 0 0 2px var(--bs-danger); background: var(--bs-danger-light); }
+    .grade-input:disabled { opacity: 1; }
+    .changed { background: var(--bs-warning-light); }
+    tbody tr:hover .grade-student, tbody tr:hover .grade-cell { background: var(--bs-gray-100); }
+    tbody tr:hover .grade-result { background: var(--bs-primary-light); }
+  }
+  @media (max-width: 767.98px) {
+    --grade-student-width: 170px;
+    .grade-sheet-table .grade-student { padding: 5px 8px; }
+    .grade-sheet-table .grade-input { height: 34px; }
+    .grade-sheet-table .grade-result { position: static; }
+    .grade-sheet-scroll { max-height: 65vh; margin-inline: 1.25rem; }
+  }
+}

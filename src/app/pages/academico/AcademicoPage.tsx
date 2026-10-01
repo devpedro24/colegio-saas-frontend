@@ -10,6 +10,7 @@ const EstructuraPage = lazy(() => import('./estructura/EstructuraPage'))
 const PlanEstudiosPage = lazy(() => import('./plan-estudios/PlanEstudiosPage'))
 const EvaluacionPage = lazy(() => import('./evaluacion/EvaluacionPage'))
 const SieePage = lazy(() => import('./siee/SieePage'))
+const PreinformesPage = lazy(() => import('./preinformes/PreinformesPage'))
 const BoletinesPage = lazy(() => import('./boletines/BoletinesPage'))
 
 // Los enlaces previos siguen funcionando después de separar la configuración.
@@ -58,6 +59,7 @@ const AcademicoPage: FC = () => {
       <Route path='ajustes-institucionales/datos' element={<Navigate to='/ajustes-institucionales/datos' replace />} />
       <Route path='ajustes-institucionales/sedes' element={<Navigate to='/ajustes-institucionales/sedes' replace />} />
       <Route path='siee/*' element={<SieePage />} />
+      <Route path='preinformes' element={platformInSchool || hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar') ? <PreinformesPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='evaluacion/*' element={<EvaluacionPage />} />
       <Route path='boletines/*' element={<BoletinesPage />} />
       <Route path='sedes/:id' element={<LegacySedeDetalleRedirect />} />
