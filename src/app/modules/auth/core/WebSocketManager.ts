@@ -21,6 +21,9 @@ export function WebSocketManager() {
     if (!auth?.authenticated || !userId) return
     let disposed = false
     let timer: ReturnType<typeof setTimeout> | undefined
+    let remoteTimer: ReturnType<typeof setTimeout> | undefined
+    let nextRemoteRefresh = 0
+    const remotePending = new Map<RealtimeScope, {resources: Set<string>; revision: number}>()
     let refreshingUser = false
     let refreshUserAgain = false
     const reads = trackQueryReads(client)
@@ -45,11 +48,11 @@ export function WebSocketManager() {
         if (refreshUserAgain && !disposed) {refreshUserAgain = false; void refreshUser()}
       }
     }
-    const schedule = (scope: RealtimeScope, resources: string[] = ['all']) => {
+    const schedule = (scope: RealtimeScope, resources: string[] = ['all'], revision = reads.checkpoint()) => {
       if (disposed) return
       const batch = pending.get(scope) ?? {resources: new Set<string>(), revision: 0}
       resources.forEach(resource => batch.resources.add(resource))
-      batch.revision = reads.checkpoint()
+      batch.revision = Math.max(batch.revision, revision)
       pending.set(scope, batch)
       if (timer) return
       timer = setTimeout(() => {
@@ -65,6 +68,32 @@ export function WebSocketManager() {
           if ((target === 'platform' || !platform) && refreshesIdentity(resources)) void refreshUser()
         }
       }, 100)
+    }
+    // A bulk import may produce many queued broadcasts. Apply the first one
+    // immediately, then coalesce the rest into a trailing refresh at most once
+    // per five seconds. Keep the event-time checkpoint so fresh reads are not
+    // fetched again just because the trailing timer fired later.
+    const scheduleRemote = (scope: RealtimeScope, resources: string[] = ['all']) => {
+      const revision = reads.checkpoint()
+      const now = Date.now()
+      if (now >= nextRemoteRefresh && !remoteTimer) {
+        nextRemoteRefresh = now + 5000
+        schedule(scope, resources, revision)
+        return
+      }
+      const batch = remotePending.get(scope) ?? {resources: new Set<string>(), revision: 0}
+      resources.forEach(resource => batch.resources.add(resource))
+      batch.revision = Math.max(batch.revision, revision)
+      remotePending.set(scope, batch)
+      if (remoteTimer) return
+      remoteTimer = setTimeout(() => {
+        remoteTimer = undefined
+        nextRemoteRefresh = Date.now() + 5000
+        for (const [target, changed] of remotePending) {
+          schedule(target, [...changed.resources], changed.revision)
+        }
+        remotePending.clear()
+      }, Math.max(0, nextRemoteRefresh - now))
     }
     const unsubscribeLocal = onLocalChange(change => {
       if (change.scope === 'tenant') {
@@ -95,7 +124,7 @@ export function WebSocketManager() {
         echo.private(name)
           .listen('.application.changed', (payload: {resources?: string[]}) => {
             discardPendingReads()
-            schedule(scope, payload.resources)
+            scheduleRemote(scope, payload.resources)
           })
           // The first subscription accompanies the initial load; only reconnects
           // need recovery because Reverb does not replay missed messages.
@@ -120,6 +149,7 @@ export function WebSocketManager() {
     return () => {
       disposed = true
       if (timer) clearTimeout(timer)
+      if (remoteTimer) clearTimeout(remoteTimer)
       clearInterval(recoveryTimer)
       document.removeEventListener('visibilitychange', recover)
       window.removeEventListener('online', recover)
