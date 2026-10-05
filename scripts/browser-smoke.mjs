@@ -182,6 +182,9 @@ const fixtures = {
   '/api/evaluacion/catalogo': {data: {can_manage: true, can_configure: true, can_view_reports: true, anos: [year, nextYear], periodos: [period, {...period, id: 2, ano_lectivo_id: 2, url_token: 'l'.repeat(24)}], asignaciones: [assignment], matriculas: [enrollment], grupos: [group], estudiantes: []}},
   '/api/evaluacion/planillas/1/1': {data: {editable: true, requiere_motivo: true, configuracion: config, componentes: [{id: 1, asignacion_id: 1, periodo_id: 1, nombre: 'Talleres', modo: 'SIMPLE_AVERAGE', peso: null, actividades: [{id: 1, componente_id: 1, nombre: 'Taller 1', fecha: today, peso: null}]}], matriculas: [enrollment], calificaciones: [], resultados: [{matricula_id: 1, estado: 'pendiente', motivo: 'Faltan notas'}]}},
   '/api/evaluacion/boletines/1': {data: {tipo: 'VISTA_PREVIA', generado_en: new Date().toISOString(), institucion: 'Colegio de prueba', estudiante: enrollment.estudiante, grupo: 'A', grado: 'Primero', ano: '2026', configuracion: config, periodos: [period], periodo_sumatorio: {orden: 4, nombre: 'P4', modo: 'SIMPLE_AVERAGE'}, asignaturas: [{materia_id: 1, nombre: 'Matemáticas', peso_area: null, periodos: [{periodo_id: 1, estado: 'pendiente'}], anual: {estado: 'pendiente'}}], areas: [], advertencias: []}},
+  '/api/evaluacion/recuperaciones': {data: [], candidatos: [
+    {asignacion_token: urlTokens.assignment, periodo_token: urlTokens.period, materia: 'Matemáticas', periodo: 'Trimestre 1', valor_original: '2.0', tipo: 'nivelacion', puede_abrir: false},
+  ], can_manage: true, contexto: {estudiante: 'Estudiante reprobado', grado: 'Primero', grupo: 'A', ano_lectivo_token: urlTokens.year}, meta: {current_page: 1, last_page: 1, total: 0}},
   [sieePath]: {data: {editable: true, curriculo_editable: true, configuracion: config, escalas: [{url_token: sieeTokens.scale, nombre: 'Numérica', tipo: 'numerica', valor_min: '0', valor_max: '5', decimales: 2}], metodos: [{url_token: sieeTokens.method, calculo_nota: 'promedio_simple', nota_minima: '3', ambito: 'materia'}], curriculo: [], grados: [{url_token: sieeTokens.grade, nombre: 'Primero', nivel_token: sieeTokens.level, estado: 'activo'}], materias: [{url_token: 'v'.repeat(24), nombre: 'Matemáticas', nivel_token: null, area_token: null, estado: 'activo'}], areas: []}},
 }
 fixtures[sieeCurriculumPath] = {data: [], meta: {current_page: 1, per_page: 1000, last_page: 1, total: 0}}
@@ -351,7 +354,9 @@ try {
         const enrollments = source.matriculas
         const students = source.estudiantes_disponibles.filter(item => item.name.toLocaleLowerCase().includes(studentSearch))
         const assignmentSlice = paged(assignments, assignmentPage, assignmentPerPage)
-        const enrollmentSlice = paged(enrollments, enrollmentPage, enrollmentPerPage)
+        const enrollmentSlice = url.searchParams.get('vista') === 'boletines' && url.searchParams.has('ano_lectivo_token')
+          ? {data: enrollments, meta: {current_page: 1, per_page: enrollments.length, last_page: 1, total: enrollments.length}}
+          : paged(enrollments, enrollmentPage, enrollmentPerPage)
         pagedReads.push({path: url.pathname, assignmentPage, assignmentPerPage, enrollmentPage, enrollmentPerPage, search, studentSearch})
         fixture = {data: {...source,
           asignaciones: assignmentSlice.data,
@@ -364,16 +369,9 @@ try {
       }
       if (paginationMode && (url.pathname === '/api/evaluacion/planillas/1/1' || url.pathname === opaquePlanillaPath) && req.method === 'GET') {
         const source = fixture.data
-        const page = Math.max(1, Number(url.searchParams.get('page') || 1))
-        const perPage = Number(url.searchParams.get('per_page') || 20)
-        const search = (url.searchParams.get('search') || '').toLocaleLowerCase()
-        const enrollments = source.matriculas.filter(item => item.estudiante.name.toLocaleLowerCase().includes(search))
-        const pageData = paged(enrollments, page, perPage)
-        const pageRows = pageData.data
-        pagedReads.push({path: url.pathname, page, perPage, search})
-        fixture = {data: {...source, matriculas: pageRows,
-          resultados: source.resultados.filter(item => pageRows.some(row => row.id === item.matricula_id)),
-          pagination: {matriculas: pageData.meta},
+        pagedReads.push({path: url.pathname, page: url.searchParams.get('page'), perPage: url.searchParams.get('per_page')})
+        fixture = {data: {...source,
+          pagination: {matriculas: {current_page: 1, per_page: source.matriculas.length, last_page: 1, total: source.matriculas.length}},
         }}
       }
       if (url.pathname === '/api/horarios') {
@@ -1000,16 +998,28 @@ try {
     assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.studentSearch === 'alumno 12'))
     await evaluate(`document.querySelector('form select[aria-label="Grupo"]').value='${urlTokens.group}';document.querySelector('form select[aria-label="Grupo"]').dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#evaluacion-estudiantes-resultados button').click()`)
     await until(`!document.querySelector('#evaluacion-estudiantes-resultados') && document.querySelector('form button.btn-primary')?.disabled === false`)
+    const catalogRoster = fixtures['/api/evaluacion/catalogo'].data.matriculas
+    catalogRoster[0].nombre_lista = 'Andrade Anzuate Estudiante 01'
+    catalogRoster[1].nombre_lista = 'Andrade Ortiz Estudiante 02'
+    for (let i = 13; i <= 52; i++) catalogRoster.push({...enrollment, id: i, estudiante_id: i + 1,
+      url_token: `k${String(i).padStart(23, '0')}`,
+      estudiante: {id: i + 1, name: `Estudiante ${String(i).padStart(2, '0')}`},
+      nombre_lista: `Zeta ${String(i).padStart(2, '0')} Estudiante ${String(i).padStart(2, '0')}`})
+    fixtures['/api/evaluacion/planillas/1/1'].data.matriculas = catalogRoster
+    fixtures['/api/evaluacion/planillas/1/1'].data.resultados = catalogRoster.map(matricula => ({matricula_id: matricula.id, estado: 'pendiente', motivo: 'Faltan notas'}))
+    await navigate(`/academico/boletines?ano=${urlTokens.year}`, 'Boletín de Calificaciones')
+    await until(`document.querySelectorAll('table tbody tr').length === 52`)
+    assert.ok(await evaluate(`(()=>{const table=document.querySelector('table');const container=table?.closest('.table-responsive');return table && container && !container.style.maxHeight && table.getBoundingClientRect().height>innerHeight && !document.querySelector('.pagination') && !document.querySelector('select[aria-label="Filas por página"]') && document.querySelector('table tbody tr')?.innerText.includes('Andrade Anzuate Estudiante 01')})()`), 'The bulletin roster shows all students in the normal page flow with surname-first names, without an internal scroll or pagination.')
     await navigate(`/academico/evaluacion/planillas/${urlTokens.assignment}/${urlTokens.period}`, 'Taller 1')
     const planillaRows = `Array.from(document.querySelectorAll('table')).at(-1)?.querySelectorAll('tbody tr')`
-    await until(`${planillaRows}?.length === 12`)
-    assert.ok(pagedReads.some(read => read.path === opaquePlanillaPath && read.page === 1 && read.perPage === 20))
-    assert.equal(await evaluate(`!!document.querySelector('.pagination') || !!document.querySelector('select[aria-label="Filas por página"]') || document.body.innerText.includes('Mostrar más')`), false, 'A gradebook with twelve students has no pagination footer.')
+    await until(`${planillaRows}?.length === 52`)
+    assert.ok(pagedReads.some(read => read.path === opaquePlanillaPath && read.page === null && read.perPage === null))
+    assert.ok(await evaluate(`(()=>{const region=document.querySelector('.grade-sheet-scroll');return region.scrollHeight>region.clientHeight && !document.querySelector('.pagination') && !document.querySelector('select[aria-label="Filas por página"]') && [...region.querySelectorAll('tbody tr')].at(-1)?.innerText.includes('Zeta 52')})()`), 'The gradebook shows all students in one scrollable sheet without pagination.')
     await evaluate(`document.querySelector('input[aria-label="Estudiante 01 · Taller 1"]').focus()`)
     await command('Input.insertText', {text: '4.2'})
     assert.equal(await evaluate(`document.querySelector('input[aria-label="Estudiante 01 · Taller 1"]').value`), '4.2', 'Editing a small gradebook retains the exact draft.')
     assert.deepEqual(errors, [], 'Academic pagination browser errors.')
-    console.log('PASS: areas, SIEE, evaluation catalog and gradebook: 20 default, numbered pages above 20, complete small lists without footer, persisted page size and retained grade drafts.')
+    console.log('PASS: areas and SIEE pagination; admissions pagination retained; bulletin shows all 52 students in page flow and gradebook scrolls its full roster, without pagination.')
   } else if (realtimeMode) {
     user.institution = {name: 'Colegio de prueba', plan: {key: 'esencial', name: 'Esencial'}}
     user.onboarding = fixtures['/api/onboarding/status']
@@ -1020,6 +1030,19 @@ try {
     await sleep(300)
     assert.equal(apiReads.filter(path => path === '/api/me').length, 1, 'Initial WebSocket subscription must not duplicate /me.')
     assert.equal(apiReads.filter(path => path === '/api/onboarding/status').length, 0)
+    const stormPaths = ['/api/estructura/sedes', '/api/horarios', '/api/me']
+    const beforeStorm = new Map(stormPaths.map(path => [path, apiReads.filter(read => read === path).length]))
+    reverbProbe({action: 'publish', count: 20, resources: ['all']})
+    await sleep(600)
+    for (const path of stormPaths) {
+      const count = apiReads.filter(read => read === path).length - beforeStorm.get(path)
+      assert.ok(count <= 1, `${path}: a burst of broadcasts must cause no more than one immediate read (got ${count}).`)
+    }
+    await sleep(5100)
+    for (const path of stormPaths) {
+      const count = apiReads.filter(read => read === path).length - beforeStorm.get(path)
+      assert.ok(count <= 2, `${path}: the trailing refresh must remain bounded even after 20 broadcasts (got ${count}).`)
+    }
     await evaluate(`window.realtimePageSentinel = 'unchanged'`)
     user.institution.plan = {key: 'premium', name: 'Premium'}
     reverbProbe({action: 'publish', resources: ['rbac']})
@@ -1239,6 +1262,21 @@ try {
   await until(`!!document.querySelector('input[aria-label="Estudiante de prueba · Taller 1"]')`)
   assert.equal(await evaluate(`document.querySelector('input[aria-label="Estudiante de prueba · Taller 1"]').inputMode`), 'decimal')
   await screenshot('gradebook-desktop')
+  fixtures['/api/evaluacion/catalogo'].data.matriculas = [
+    {...enrollment, tiene_resultados_reprobados: false},
+    {...enrollment, id: 2, url_token: 'w'.repeat(24), estudiante_id: 4,
+      estudiante: {id: 4, name: 'Estudiante reprobado'}, tiene_resultados_reprobados: true},
+  ]
+  await navigate('/academico/boletines', 'Estudiante reprobado')
+  await until(`document.querySelectorAll('table tbody tr').length === 2`)
+  assert.ok(await evaluate(`(()=>{const rows=[...document.querySelectorAll('table tbody tr')];return rows.every(row=>[...row.querySelectorAll('button')].some(button=>button.textContent.trim()==='Ver Boletín')) && !rows[0].innerText.includes('Nivelaciones y habilitaciones') && rows[1].innerText.includes('Nivelaciones y habilitaciones')})()`), 'Recovery action is visible only for a student with a failing bulletin result; both bulletins remain available.')
+  await evaluate(`[...document.querySelectorAll('table tbody tr')][1].querySelector('button.btn-light-info').click()`)
+  await until(`location.pathname === '/evaluacion/recuperaciones/${'w'.repeat(24)}' && new URLSearchParams(location.search).get('desde') === 'boletines'`)
+  await until(`[...document.querySelectorAll('button')].some(button=>button.textContent.trim()==='Volver')`)
+  assert.ok(await evaluate(`document.body.innerText.includes('Provisional: podrás abrir la nivelación') && [...document.querySelectorAll('button')].find(button=>button.textContent.trim()==='Abrir proceso')?.disabled === true`), 'An open term shows a failing candidate but cannot start the recovery yet.')
+  await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.trim()==='Volver').click()`)
+  await until(`location.pathname === '/academico/boletines' && document.querySelectorAll('table tbody tr').length === 2`)
+  assert.ok(await evaluate(`document.body.innerText.includes('Ver Boletín') && !document.body.innerText.includes('Mis asignaciones')`), 'Back from recovery returns to bulletin list, not gradebooks.')
   await navigate(`/academico/boletines/${urlTokens.enrollment}`, 'Informe preliminar')
   assert.ok(await evaluate(`document.querySelector('.grade-report thead')?.innerText.includes('P4')`), 'The summary result must appear as the next numbered column.')
   await screenshot('report-preview')

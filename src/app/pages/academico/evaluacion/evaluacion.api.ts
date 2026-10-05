@@ -62,12 +62,12 @@ export const useMatricular = () => {
   })
 }
 
-export const usePlanilla = (asignacionId: string, periodoId: string, page: number, perPage: number, search: string) => {
+export const usePlanilla = (asignacionId: string, periodoId: string) => {
   return useQuery<PlanillaResponse>({
-    queryKey: ['evaluacion', 'planillas', asignacionId, periodoId, {page, perPage, search}],
+    queryKey: ['evaluacion', 'planillas', asignacionId, periodoId],
     queryFn: () =>
       api
-        .get<{data: unknown}>(`${EVAL_URL}/planillas/${encodeURIComponent(asignacionId)}/${encodeURIComponent(periodoId)}?${new URLSearchParams({opaque: '1', page: String(page), per_page: String(perPage), ...(search ? {search} : {})})}`)
+        .get<{data: unknown}>(`${EVAL_URL}/planillas/${encodeURIComponent(asignacionId)}/${encodeURIComponent(periodoId)}?opaque=1`)
         .then((res) => fromOpaqueAcademic<PlanillaResponse>(res.data)),
     enabled: !!asignacionId && !!periodoId,
   })
@@ -80,6 +80,7 @@ export const useGuardarNotas = (asignacionId: string, periodoId: string) => {
       api.put(`${EVAL_URL}/planillas/${encodeURIComponent(asignacionId)}/${encodeURIComponent(periodoId)}?opaque=1`, {notas: notas.map(nota => toOpaqueAcademic(nota))}),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})
+      queryClient.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
       queryClient.invalidateQueries({queryKey: ['boletines']})
     },
   })
@@ -96,6 +97,7 @@ export function useActividadPlanilla(asignacion: string, periodo: string) {
   return useMutation({mutationFn: (data: ActividadPlanillaInput) => api.put(`${EVAL_URL}/planillas/${asignacion}/${periodo}/actividades`, data),
     onSuccess: () => {
       cache.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacion, periodo]})
+      cache.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
       cache.invalidateQueries({queryKey: ['boletines']})
     }})
 }
@@ -112,6 +114,8 @@ export const useGuardarComponente = (asignacionId: string, periodoId: string) =>
     },
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})
+      queryClient.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
+      queryClient.invalidateQueries({queryKey: ['boletines']})
     },
   })
 }
@@ -128,6 +132,8 @@ export const useGuardarActividad = (asignacionId: string, periodoId: string) => 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})
+      queryClient.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
+      queryClient.invalidateQueries({queryKey: ['boletines']})
     },
   })
 }

@@ -10,6 +10,7 @@
   resultado_original?: Omit<BoletinPeriodoResult, 'periodo_id'>
   nota_recuperacion?: string
   politica_recuperacion?: string
+  valoracion?: import('../configuracion/configuracion.types').EscalaOpcion
 }
 
 export interface BoletinAsignatura {
@@ -32,11 +33,12 @@ export interface BoletinData {
   tipo: string
   generado_en: string
   institucion: string
-  estudiante: {id: string; name: string}
+  estudiante: {id: string; name: string; nombre_lista?: string}
   grupo: string
   grado: string
   ano: string
   configuracion: import('../siee/siee.types').SieeConfiguracion
+  escala_visual?: {tipo: 'imagenes'; nombre: string; opciones: import('../configuracion/configuracion.types').EscalaOpcion[]} | null
   periodos: Array<{id: string; nombre: string; peso: number | null; estado: string}>
   periodo_sumatorio: {orden: number; nombre: string; modo: string} | null
   asignaturas: BoletinAsignatura[]

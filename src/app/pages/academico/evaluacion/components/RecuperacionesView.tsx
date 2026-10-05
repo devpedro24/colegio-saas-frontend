@@ -1,5 +1,5 @@
 import {useState} from 'react'
-import {useNavigate, useParams} from 'react-router-dom'
+import {useNavigate, useParams, useSearchParams} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 import {KTCard, KTCardBody} from '@/_metronic/helpers'
 import {useToast} from '@/lib/ui/toast'
@@ -11,6 +11,8 @@ import {
 export const RecuperacionesView = () => {
   const {matriculaId = ''} = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const backTo = searchParams.get('desde') === 'boletines' ? '/academico/boletines' : '/evaluacion/catalogo'
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
@@ -31,7 +33,7 @@ export const RecuperacionesView = () => {
         {contexto && <span className='text-muted fs-7'>{contexto.estudiante} · {contexto.grado} / {contexto.grupo}</span>}
       </div>
       <div className='card-toolbar'>
-        <button type='button' className='btn btn-sm btn-light' onClick={() => navigate('/evaluacion/catalogo')}>
+        <button type='button' className='btn btn-sm btn-light' onClick={() => navigate(backTo)}>
           {t('evaluacion.planilla.volver')}
         </button>
       </div>
@@ -46,8 +48,9 @@ export const RecuperacionesView = () => {
             className='border rounded p-4 d-flex flex-wrap gap-3 align-items-center justify-content-between'>
             <div><strong>{candidate.materia}</strong> · {candidate.periodo ?? t('evaluacion.recuperaciones.annual')}
               <div className='text-muted fs-7'>{t('evaluacion.recuperaciones.original')}: {candidate.valor_original}</div>
+              {!candidate.puede_abrir && <div className='text-warning fs-7'>{t('evaluacion.recuperaciones.provisional')}</div>}
             </div>
-            <button type='button' className='btn btn-sm btn-light-primary' disabled={create.isPending}
+            <button type='button' className='btn btn-sm btn-light-primary' disabled={create.isPending || !candidate.puede_abrir}
               onClick={() => create.mutate(candidate, {
                 onSuccess: () => toast.success(t('evaluacion.recuperaciones.opened')),
                 onError: error => toast.error(error.message),

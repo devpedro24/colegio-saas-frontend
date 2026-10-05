@@ -1,13 +1,14 @@
-import {FC, useState} from 'react'
+import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
-import {useCreateEscala, useDeleteEscala, useEscalas, useUpdateEscala} from '../configuracion.api'
+import {useCreateEscala, useDeleteEscala, useEscalas, useSaveEscalaOpciones, useUpdateEscala, useUploadEscalaImagen} from '../configuracion.api'
 import type {
   EscalaValorativa,
   EscalaValorativaInput,
+  EscalaOpcionInput,
   NivelEducativo,
   TipoEscala,
 } from '../configuracion.types'
@@ -33,6 +34,14 @@ const emptyForm = (): FormState => ({
   valor_max: '5',
 })
 
+type ChoiceDraft = EscalaOpcionInput & {imagen_url?: string | null}
+const defaultChoices = (): ChoiceDraft[] => [
+  {nombre: 'Excelente', valor_equivalente: '5', emoji: '😄', aprueba: true},
+  {nombre: 'Bien', valor_equivalente: '4', emoji: '🙂', aprueba: true},
+  {nombre: 'En proceso', valor_equivalente: '2.5', emoji: '😐', aprueba: false},
+  {nombre: 'Necesita apoyo', valor_equivalente: '1.5', emoji: '😟', aprueba: false},
+]
+
 const fromEscala = (e: EscalaValorativa): FormState => ({
   nombre: e.nombre,
   nivel_educativo: e.nivel_educativo ?? '',
@@ -53,16 +62,24 @@ const EscalaForm: FC<{
   const toast = useToast()
   const create = useCreateEscala(anoLectivoToken)
   const update = useUpdateEscala(anoLectivoToken)
+  const saveOptions = useSaveEscalaOpciones(anoLectivoToken)
+  const uploadImage = useUploadEscalaImagen(anoLectivoToken)
   const isEdit = escala !== null
-  const pending = create.isPending || update.isPending
+  const pending = create.isPending || update.isPending || saveOptions.isPending || uploadImage.isPending
 
   const [form, setForm] = useState<FormState>(escala ? fromEscala(escala) : emptyForm())
+  const [choices, setChoices] = useState<ChoiceDraft[]>(escala?.opciones?.length
+    ? escala.opciones.map(o => ({url_token: o.url_token, nombre: o.nombre,
+        valor_equivalente: String(o.valor_equivalente), emoji: o.emoji,
+        aprueba: o.aprueba, imagen_url: o.imagen_url})) : defaultChoices())
   const [error, setError] = useState<ApiError | null>(null)
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<FormState>) => setForm((prev) => ({...prev, ...patch}))
   const isNumerica = form.tipo === 'numerica'
+  const updateChoice = (index: number, patch: Partial<ChoiceDraft>) =>
+    setChoices(previous => previous.map((choice, current) => current === index ? {...choice, ...patch} : choice))
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: FormEvent) => {
     ev.preventDefault()
     setError(null)
     const input: EscalaValorativaInput = {
@@ -84,26 +101,23 @@ const EscalaForm: FC<{
       }
     }
 
-    if (isEdit && escala) {
-      update.mutate(
-        {id: escala.url_token, input},
-        {
-          onSuccess: () => {
-            toast.success(t('common.toast.updated'))
-            onClose()
-          },
-          onError,
-        }
-      )
-    } else {
-      create.mutate(input, {
-        onSuccess: () => {
-          toast.success(t('common.toast.created'))
-          onClose()
-        },
-        onError,
-      })
+    if (!isNumerica && (choices.length < 2 || choices.length > 8 || choices.some(choice => !choice.nombre.trim() || !choice.valor_equivalente))) {
+      toast.error(t('academico.config.escala.opciones.error'))
+      return
     }
+    try {
+      const saved = isEdit && escala
+        ? await update.mutateAsync({id: escala.url_token, input})
+        : await create.mutateAsync(input)
+      if (!isNumerica) {
+        await saveOptions.mutateAsync({escalaToken: saved.data.url_token,
+          opciones: choices.map(choice => ({url_token: choice.url_token,
+            nombre: choice.nombre.trim(), valor_equivalente: choice.valor_equivalente.replace(',', '.'),
+            emoji: choice.emoji, aprueba: choice.aprueba}))})
+      }
+      toast.success(t(isEdit ? 'common.toast.updated' : 'common.toast.created'))
+      onClose()
+    } catch (error) { onError(error) }
   }
 
   return (
@@ -200,6 +214,57 @@ const EscalaForm: FC<{
             </div>
           </div>
         )}
+        {!isNumerica && <div className='mt-5'>
+          <div className='d-flex justify-content-between align-items-center gap-3 mb-3'>
+            <div>
+              <h5 className='fw-bold mb-1'>{t('academico.config.escala.opciones.title')}</h5>
+              <p className='text-muted fs-7 mb-0'>{t('academico.config.escala.opciones.help')}</p>
+            </div>
+            <button type='button' className='btn btn-sm btn-light-primary' disabled={choices.length >= 8 || pending}
+              onClick={() => setChoices(previous => [...previous, {nombre: '', valor_equivalente: '', emoji: '🙂', aprueba: false}])}>
+              {t('academico.config.escala.opciones.add')}
+            </button>
+          </div>
+          {choices.map((choice, index) => <div key={choice.url_token ?? `new-${index}`} className='border rounded-3 p-4 mb-3'>
+            <div className='d-flex align-items-center gap-3 mb-3'>
+              {choice.imagen_url ? <img src={choice.imagen_url} alt='' width={38} height={38} className='rounded-circle object-fit-cover' />
+                : <span aria-hidden='true' style={{fontSize: 28}}>{choice.emoji || '🙂'}</span>}
+              <strong className='flex-grow-1'>{index + 1}. {choice.nombre || t('academico.config.escala.opciones.nueva')}</strong>
+              <button type='button' className='btn btn-sm btn-light-danger' disabled={choices.length <= 2 || pending}
+                onClick={() => setChoices(previous => previous.filter((_, item) => item !== index))}>{t('grading.delete')}</button>
+            </div>
+            <div className='row g-3'>
+              <div className='col-md-5'><label className='form-label required'>{t('academico.config.escala.opciones.nombre')}</label>
+                <input className='form-control' maxLength={80} value={choice.nombre} onChange={event => updateChoice(index, {nombre: event.target.value})} /></div>
+              <div className='col-md-3'><label className='form-label'>{t('academico.config.escala.opciones.emoji')}</label>
+                <input className='form-control' maxLength={16} value={choice.emoji ?? ''} onChange={event => updateChoice(index, {emoji: event.target.value})} /></div>
+              <div className='col-md-4'><label className='form-label required'>{t('academico.config.escala.opciones.valor')}</label>
+                <input className='form-control' inputMode='decimal' value={choice.valor_equivalente}
+                  onChange={event => updateChoice(index, {valor_equivalente: event.target.value})} /></div>
+            </div>
+            <div className='d-flex flex-wrap align-items-center gap-4 mt-3'>
+              <label className='form-check form-check-custom form-check-solid'>
+                <input type='checkbox' className='form-check-input' checked={choice.aprueba}
+                  onChange={event => updateChoice(index, {aprueba: event.target.checked})} />
+                <span className='form-check-label'>{t('academico.config.escala.opciones.aprueba')}</span>
+              </label>
+              {escala && choice.url_token && <label className='btn btn-sm btn-light-primary mb-0'>
+                {t('academico.config.escala.opciones.imagen')}
+                <input type='file' accept='image/png,image/jpeg' className='d-none' disabled={pending}
+                  onChange={event => {
+                    const file = event.target.files?.[0]
+                    if (!file) return
+                    uploadImage.mutate({escalaToken: escala.url_token, opcionToken: choice.url_token!, file}, {
+                      onSuccess: response => {updateChoice(index, {imagen_url: response.data.imagen_url}); toast.success(t('common.toast.updated'))},
+                      onError: error => toast.error(error instanceof ApiError ? error.message : t('common.toast.saveError')),
+                    })
+                    event.target.value = ''
+                  }} />
+              </label>}
+            </div>
+          </div>)}
+          {!escala && <p className='text-muted fs-7'>{t('academico.config.escala.opciones.uploadLater')}</p>}
+        </div>}
       </div>
 
       <div className='modal-footer'>

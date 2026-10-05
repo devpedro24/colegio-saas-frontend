@@ -25,6 +25,20 @@ export type DatosInstitucionalesInput = DatosInstitucionales
 /** Tipo de escala valorativa. */
 export type TipoEscala = 'numerica' | 'imagenes'
 
+export interface EscalaOpcion {
+  url_token: string
+  nombre: string
+  orden: number
+  valor_equivalente: string
+  emoji: string | null
+  imagen_url: string | null
+  aprueba: boolean
+}
+
+export type EscalaOpcionInput = Pick<EscalaOpcion, 'nombre' | 'valor_equivalente' | 'emoji' | 'aprueba'> & {
+  url_token?: string
+}
+
 /** Bloque 4: escala valorativa (puede variar por nivel — RN-CC-003). Por ano lectivo. */
 export interface EscalaValorativa {
   url_token: string
@@ -37,6 +51,7 @@ export interface EscalaValorativa {
   valor_max: number | null
   decimales: number | null
   created_at: string | null
+  opciones?: EscalaOpcion[]
 }
 
 /** Body de POST/PUT /config/escalas. */

@@ -12,6 +12,7 @@
 export interface Matricula {
   id: string
   url_token: string
+  tiene_resultados_reprobados?: boolean
   estudiante_id: string
   grupo_id: string
   ano_lectivo_id: string
@@ -65,13 +66,16 @@ export interface Calificacion {
   actividad_id: string
   matricula_id: string
   valor: string | null
+  escala_opcion_token?: string | null
   observacion: string | null
   version: number
 }
 
 export interface ResultadoEstudiante {
   matricula_id: string
-  secciones?: Array<{componente_token: string; estado: 'calculado' | 'pendiente'; display_value?: string; provisional?: string | null; motivo?: string}>
+  secciones?: Array<{componente_token: string; estado: 'calculado' | 'pendiente'; display_value?: string; provisional?: string | null; motivo?: string;
+    valoracion?: import('../configuracion/configuracion.types').EscalaOpcion;
+    valoracion_provisional?: import('../configuracion/configuracion.types').EscalaOpcion}>
   raw_value?: string
   exact_value?: string
   display_value?: string
@@ -79,6 +83,8 @@ export interface ResultadoEstudiante {
   estado: 'calculado' | 'pendiente'
   motivo?: string
   provisional?: string | null
+  valoracion?: import('../configuracion/configuracion.types').EscalaOpcion
+  valoracion_provisional?: import('../configuracion/configuracion.types').EscalaOpcion
 }
 
 export interface PlanillaResponse {
@@ -91,6 +97,7 @@ export interface PlanillaResponse {
   estructura_anterior: boolean
   periodo: {nombre: string; fecha_inicio: string; fecha_fin: string; estado: string}
   configuracion: import('../siee/siee.types').SieeConfiguracion & {valor_min: string; valor_max: string; decimales: number; nota_minima: string}
+  escala_visual?: {tipo: 'imagenes' | 'numerica'; nombre?: string; opciones: import('../configuracion/configuracion.types').EscalaOpcion[]}
   componentes: ComponenteEvaluacion[]
   matriculas: Matricula[]
   calificaciones: Calificacion[]
@@ -114,6 +121,7 @@ export interface NotaUpdate {
   actividad_id: string
   matricula_id: string
   valor: string | null
+  escala_opcion_token?: string | null
   version: number
   observacion?: string | null
   motivo: string

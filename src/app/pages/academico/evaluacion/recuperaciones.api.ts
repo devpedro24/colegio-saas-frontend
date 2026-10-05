@@ -33,6 +33,7 @@ export type Candidato = {
   periodo: string | null
   valor_original: string
   tipo: 'nivelacion' | 'habilitacion'
+  puede_abrir: boolean
 }
 
 export type RecuperacionesResponse = {
@@ -60,7 +61,10 @@ export const useCrearRecuperacion = (matriculaId: string) => {
       asignacion_id: candidate.asignacion_id,
       periodo_id: candidate.periodo_id,
     })),
-    onSuccess: () => client.invalidateQueries({queryKey: ['evaluacion', 'recuperaciones', matriculaId]}),
+    onSuccess: () => {
+      client.invalidateQueries({queryKey: ['evaluacion', 'recuperaciones', matriculaId]})
+      client.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
+    },
   })
 }
 
@@ -73,6 +77,7 @@ export const useRegistrarRecuperacion = (matriculaId: string) => {
       }),
     onSuccess: () => {
       client.invalidateQueries({queryKey: ['evaluacion', 'recuperaciones', matriculaId]})
+      client.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
       client.invalidateQueries({queryKey: ['boletines', matriculaId]})
     },
   })
@@ -85,6 +90,7 @@ export const useAnularRecuperacion = (matriculaId: string) => {
       api.post(`${base}/${encodeURIComponent(id)}/anular?opaque=1`, {version, motivo: reason}),
     onSuccess: () => {
       client.invalidateQueries({queryKey: ['evaluacion', 'recuperaciones', matriculaId]})
+      client.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
       client.invalidateQueries({queryKey: ['boletines', matriculaId]})
     },
   })

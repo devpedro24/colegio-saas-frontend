@@ -9,6 +9,8 @@ import type {
   DatosInstitucionalesInput,
   EscalaValorativa,
   EscalaValorativaInput,
+  EscalaOpcion,
+  EscalaOpcionInput,
   MetodoAprobacion,
   MetodoAprobacionInput,
   ModeloPedagogico,
@@ -82,6 +84,27 @@ export function useDeleteEscala(anoLectivoToken: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete<{data: null}>(`/config/escalas/${id}?opaque=1`),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: escalasKey(anoLectivoToken)}),
+  })
+}
+
+export function useSaveEscalaOpciones(anoLectivoToken: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({escalaToken, opciones}: {escalaToken: string; opciones: EscalaOpcionInput[]}) =>
+      api.put<{data: EscalaOpcion[]}>(`/config/escalas/${escalaToken}/opciones?opaque=1`, {opciones}),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: escalasKey(anoLectivoToken)}),
+  })
+}
+
+export function useUploadEscalaImagen(anoLectivoToken: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({escalaToken, opcionToken, file}: {escalaToken: string; opcionToken: string; file: File}) => {
+      const body = new FormData()
+      body.append('imagen', file)
+      return api.post<{data: EscalaOpcion}>(`/config/escalas/${escalaToken}/opciones/${opcionToken}/imagen?opaque=1`, body)
+    },
     onSuccess: () => queryClient.invalidateQueries({queryKey: escalasKey(anoLectivoToken)}),
   })
 }

@@ -1,5 +1,6 @@
 ﻿import {Route, Routes, Navigate, Outlet} from 'react-router-dom'
 import {PageLink, PageTitle} from '@/_metronic/layout/core'
+import {useLocation} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 import {CatalogoView} from './components/CatalogoView'
 import {PlanillaView} from './components/PlanillaView'
@@ -8,9 +9,15 @@ import {Content} from '@/_metronic/layout/components/content'
 
 const EvaluacionPage = () => {
   const intl = useIntl()
+  const location = useLocation()
+  const fromBulletins = location.pathname.includes('/recuperaciones/')
+    && new URLSearchParams(location.search).get('desde') === 'boletines'
   const evaluacionBreadcrumbs: Array<PageLink> = [
     {title: intl.formatMessage({id: 'grading.menu'}), path: '/evaluacion/catalogo', isSeparator: false, isActive: false},
   ]
+  const recoveryBreadcrumbs: Array<PageLink> = fromBulletins
+    ? [{title: intl.formatMessage({id: 'boletines.title'}), path: '/academico/boletines', isSeparator: false, isActive: false}]
+    : evaluacionBreadcrumbs
 
   return (
     <Routes>
@@ -41,7 +48,7 @@ const EvaluacionPage = () => {
           path='recuperaciones/:matriculaId'
           element={
             <>
-              <PageTitle breadcrumbs={evaluacionBreadcrumbs}>
+              <PageTitle breadcrumbs={recoveryBreadcrumbs}>
                 {intl.formatMessage({id: 'evaluacion.recuperaciones.title'})}
               </PageTitle>
               <RecuperacionesView />

@@ -28,7 +28,9 @@ export const CatalogoView = ({reportsOnly = false, enrollmentsOnly = false}: {re
   const {data, isLoading, error, isFetching} = useCatalogoEvaluacion({
     yearId: year, groupId: group, materiaId: materia, enrollmentStatus: status,
     studentSearch: debouncedStudentSearch,
-    assignmentPage, assignmentPerPage, enrollmentPage, enrollmentPerPage,
+    assignmentPage, assignmentPerPage,
+    enrollmentPage: reportsOnly ? undefined : enrollmentPage,
+    enrollmentPerPage: reportsOnly ? undefined : enrollmentPerPage,
     view: enrollmentsOnly ? 'matriculas' : reportsOnly ? 'boletines' : 'planillas',
   })
   const mutation = useMatricular()
@@ -165,17 +167,18 @@ export const CatalogoView = ({reportsOnly = false, enrollmentsOnly = false}: {re
         <div className='table-responsive' aria-busy={isFetching}><table className='table table-row-dashed align-middle gy-4'>
           <thead><tr className='text-muted fw-bold'><th>{t('evaluacion.matriculas.estudiante')}</th><th>{t('evaluacion.matriculas.grupo')}</th><th>{t('evaluacion.matriculas.estado')}</th><th className='text-end'>{t('boletines.title')}</th></tr></thead>
           <tbody>{enrollments.map(m => <tr key={m.id}>
-            <td className='fw-semibold'>{m.estudiante.name}</td><td>{m.grupo?.grado.nombre} / {m.grupo?.nombre}</td><td><span className='badge badge-light-success'>{t(`evaluacion.matriculas.estado.${m.estado}`)}</span></td>
+            <td className='fw-semibold'>{m.nombre_lista ?? m.estudiante.name}</td><td>{m.grupo?.grado.nombre} / {m.grupo?.nombre}</td><td><span className='badge badge-light-success'>{t(`evaluacion.matriculas.estado.${m.estado}`)}</span></td>
             <td className='text-end'><div className='d-flex flex-wrap justify-content-end gap-2'>
-              {data.can_manage && <button className='btn btn-light-info btn-sm' disabled={!m.url_token} onClick={() => navigate(`/evaluacion/recuperaciones/${m.url_token}`)}>{t('evaluacion.recuperaciones.title')}</button>}
+              {data.can_manage && (!reportsOnly || m.tiene_resultados_reprobados) && <button className='btn btn-light-info btn-sm' disabled={!m.url_token}
+                onClick={() => navigate(`/evaluacion/recuperaciones/${m.url_token}${reportsOnly ? '?desde=boletines' : ''}`)}>{t('evaluacion.recuperaciones.title')}</button>}
               {data.can_view_reports && <button className='btn btn-light-primary btn-sm' disabled={!m.url_token} onClick={() => navigate(`/academico/boletines/${m.url_token}`)}>{t('evaluacion.matriculas.ver_boletin')}</button>}
             </div></td>
           </tr>)}
           {!enrollments.length && <tr><td colSpan={4} className='text-muted text-center py-8'>{t('evaluacion.matriculas.empty')}</td></tr>}
           </tbody>
         </table></div>
-        <AcademicPagination meta={data.pagination?.matriculas} visibleCount={enrollments.length} loading={isFetching}
-          onPageChange={setEnrollmentPage} onPerPageChange={changeEnrollmentSize} />
+        {!reportsOnly && <AcademicPagination meta={data.pagination?.matriculas} visibleCount={enrollments.length} loading={isFetching}
+          onPageChange={setEnrollmentPage} onPerPageChange={changeEnrollmentSize} />}
       </KTCardBody>
     </KTCard>}
     {reportsOnly && !data.can_view_reports && <div className='alert alert-info'>{t('boletines.restricted')}</div>}

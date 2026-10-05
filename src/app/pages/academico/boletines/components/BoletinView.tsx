@@ -2,10 +2,11 @@ import {useParams, useNavigate, Navigate} from 'react-router-dom'
 import {useBoletin} from '../boletines.api'
 import {useCatalogoEvaluacion} from '../../evaluacion/evaluacion.api'
 import {KTCard, KTCardBody} from '@/_metronic/helpers'
-import type {BoletinData} from '../boletines.types'
+import type {BoletinData, BoletinPeriodoResult} from '../boletines.types'
 import {useIntl} from 'react-intl'
 import '../boletines.css'
 import {gradeDecimal} from '../../evaluacion/gradeDecimal'
+import {VisualChoice} from '../../evaluacion/components/VisualChoice'
 
 export const BoletinView = () => {
   const {matriculaId} = useParams()
@@ -49,6 +50,15 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
   const mostrarFinal = !!boletin.periodo_sumatorio || boletin.configuracion?.mostrar_final !== false
   const etiquetaFinal = boletin.periodo_sumatorio?.nombre ?? boletin.configuracion.etiqueta_final
   const tituloFinal = boletin.periodo_sumatorio ? t('boletines.sumatorioHelp') : undefined
+  const visual = boletin.escala_visual?.tipo === 'imagenes'
+  const renderValue = (result?: Omit<BoletinPeriodoResult, 'periodo_id'>) => {
+    if (visual) return result?.valoracion ? <VisualChoice compact choice={result.valoracion} /> : '—'
+    if (!result?.display_value) return '—'
+    return <span className={`badge ${result.aprobado ? 'badge-light-success' : 'badge-light-danger'}`}>
+      {gradeDecimal(result.display_value)}
+      {result.origen === 'recuperacion' && <span className='ms-1' title={t('boletines.recovered')} aria-label={t('boletines.recovered')}>↗</span>}
+    </span>
+  }
 
   return (
     <KTCard className='grade-report'>
@@ -59,7 +69,7 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
           </span>
           <span className='text-muted mt-1 fw-semibold fs-7'>
             {t('boletines.institucion')} {boletin.institucion} ·{' '}
-            {boletin.estudiante?.name} · {boletin.grado} / {boletin.grupo} ({boletin.ano})
+            {boletin.estudiante?.nombre_lista ?? boletin.estudiante?.name} · {boletin.grado} / {boletin.grupo} ({boletin.ano})
           </span>
         </h3>
         <div className='card-toolbar d-flex gap-2 d-print-none'>
@@ -118,35 +128,13 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
                         const res = area.periodos.find((ap) => ap.periodo_id === p.id)
                         return (
                           <td key={p.id} className='text-center'>
-                            {res?.display_value ? (
-                              <span
-                                className={`badge ${
-                                  res.aprobado ? 'badge-light-success' : 'badge-light-danger'
-                                }`}
-                              >
-                                {gradeDecimal(res.display_value)}
-                              </span>
-                            ) : (
-                              '—'
-                            )}
+                            {renderValue(res)}
                           </td>
                         )
                       })}
                       {mostrarFinal && (
                         <td className='text-center fw-bold'>
-                          {area.anual?.display_value ? (
-                            <span
-                              className={`badge ${
-                                area.anual.aprobado
-                                  ? 'badge-light-success'
-                                  : 'badge-light-danger'
-                              }`}
-                            >
-                              {gradeDecimal(area.anual.display_value)}
-                            </span>
-                          ) : (
-                            '—'
-                          )}
+                          {renderValue(area.anual)}
                         </td>
                       )}
                     </tr>
@@ -187,37 +175,13 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
                       const res = asig.periodos.find((ap) => ap.periodo_id === p.id)
                       return (
                         <td key={p.id} className='text-center'>
-                          {res?.display_value ? (
-                            <span
-                              className={`badge ${
-                                res.aprobado ? 'badge-light-success' : 'badge-light-danger'
-                              }`}
-                            >
-                              {gradeDecimal(res.display_value)}
-                              {res.origen === 'recuperacion' && <span className='ms-1' title={t('boletines.recovered')} aria-label={t('boletines.recovered')}>↗</span>}
-                            </span>
-                          ) : (
-                            '—'
-                          )}
+                          {renderValue(res)}
                         </td>
                       )
                     })}
                     {mostrarFinal && (
                       <td className='text-center fw-bold'>
-                        {asig.anual?.display_value ? (
-                          <span
-                            className={`badge ${
-                              asig.anual.aprobado
-                                ? 'badge-light-success'
-                                : 'badge-light-danger'
-                            }`}
-                          >
-                            {gradeDecimal(asig.anual.display_value)}
-                            {asig.anual.origen === 'recuperacion' && <span className='ms-1' title={t('boletines.recovered')} aria-label={t('boletines.recovered')}>↗</span>}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
+                        {renderValue(asig.anual)}
                       </td>
                     )}
                   </tr>
