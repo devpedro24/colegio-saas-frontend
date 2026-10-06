@@ -1601,6 +1601,16 @@ ${plan ? `<span class="badge badge-light-primary align-self-start mt-2 text-wrap
 														</span>
 													</a>
 												</div>` : ''}
+												${opts?.canConfigureInstitution ? String.raw`
+												<div class="menu-item">
+													<a href="/ajustes-institucionales/horario" data-kt-nav="/ajustes-institucionales/horario" class="menu-link institutional-menu__item">
+													<span class="institutional-menu__icon" aria-hidden="true"><i class="ki-solid ki-time fs-2"></i></span>
+													<span class="institutional-menu__copy">
+														<span class="institutional-menu__title">${t('academico.config.tab.horario')}</span>
+														<span class="institutional-menu__description">${t('header.user.timezoneHint')}</span>
+													</span>
+												</a>
+												</div>` : ''}
 												${opts?.canManageCampuses ? String.raw`
 												<div class="menu-item">
 													<a href="/ajustes-institucionales/sedes" data-kt-nav="/ajustes-institucionales/sedes" class="menu-link institutional-menu__item">

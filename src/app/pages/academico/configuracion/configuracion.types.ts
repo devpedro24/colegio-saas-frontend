@@ -51,6 +51,8 @@ export interface EscalaValorativa {
   valor_max: number | null
   decimales: number | null
   created_at: string | null
+  /** Historical grades prevent retroactive changes to category values and approval. */
+  opciones_bloqueadas?: boolean
   opciones?: EscalaOpcion[]
 }
 

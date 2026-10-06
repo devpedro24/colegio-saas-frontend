@@ -10,8 +10,9 @@ import {useOnboarding} from '../../../modules/onboarding/onboarding.api'
 import {useDatosInstitucionales} from './configuracion.api'
 import {DatosInstitucionalesCard} from './components/DatosInstitucionalesCard'
 import {SedesConfigTab} from './components/SedesConfigTab'
+import {ZonaHorariaCard} from './components/ZonaHorariaCard'
 
-type Section = 'datos' | 'sedes'
+type Section = 'datos' | 'sedes' | 'horario'
 
 const InstitutionalSettingsContent: FC<{
   section: Section
@@ -35,6 +36,7 @@ const InstitutionalSettingsContent: FC<{
 
   const tabs: Array<{key: Section; allowed: boolean}> = [
     {key: 'datos', allowed: canConfigure},
+    {key: 'horario', allowed: canConfigure},
     {key: 'sedes', allowed: canManageCampuses},
   ]
 
@@ -77,12 +79,12 @@ const InstitutionalSettingsContent: FC<{
                 </div>
               </div>
             </div>
-            <nav className='nav nav-stretch nav-line-tabs nav-line-tabs-2x border-transparent fs-5 fw-bold institutional-settings__tabs' aria-label={t('academico.institutionSettings.title')}>
+            <nav className='nav nav-line-tabs nav-line-tabs-2x border-transparent d-flex flex-wrap gap-2 fs-6 fw-bold institutional-settings__tabs' aria-label={t('academico.institutionSettings.title')}>
               {tabs.filter(({allowed}) => allowed).map(({key}) => (
                 <NavLink
                   key={key}
                   to={`/ajustes-institucionales/${key}`}
-                  className={({isActive}) => `nav-link text-active-primary me-10 py-5${isActive ? ' active' : ''}`}
+                  className={({isActive}) => `nav-link text-active-primary me-2 px-3 py-3${isActive ? ' active' : ''}`}
                 >
                   {t(`academico.config.tab.${key}`)}
                 </NavLink>
@@ -90,7 +92,7 @@ const InstitutionalSettingsContent: FC<{
             </nav>
           </div>
         </div>
-        {section === 'datos' ? <DatosInstitucionalesCard /> : <SedesConfigTab />}
+        {section === 'datos' ? <DatosInstitucionalesCard /> : section === 'horario' ? <ZonaHorariaCard /> : <SedesConfigTab />}
       </Content>
     </>
   )
@@ -104,7 +106,7 @@ const InstitutionalSettingsPage: FC<{section: Section}> = ({section}) => {
   const canConfigure = inSchool && (superadminInSchool || hasPermission('academico.configurar'))
   const canManageCampuses = inSchool && (superadminInSchool || hasPermission('academico.estructura.gestionar'))
 
-  if (section === 'datos' && !canConfigure) return <Navigate to='/dashboard' replace />
+  if ((section === 'datos' || section === 'horario') && !canConfigure) return <Navigate to='/dashboard' replace />
   if (section === 'sedes' && !canManageCampuses) return <Navigate to='/dashboard' replace />
 
   return <InstitutionalSettingsContent section={section} canConfigure={canConfigure} canManageCampuses={canManageCampuses} />

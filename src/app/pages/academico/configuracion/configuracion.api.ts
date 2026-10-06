@@ -20,6 +20,23 @@ import type {
 // ------------------------------ Datos institucionales ------------------------------
 
 export const DATOS_INSTITUCIONALES_KEY = ['config', 'datos-institucionales'] as const
+export const ZONA_HORARIA_KEY = ['config', 'zona-horaria'] as const
+export type ZonaHoraria = {id: string; offset: string}
+
+export function useZonaHorariaInstitucional(enabled = true) {
+  return useQuery({queryKey: ZONA_HORARIA_KEY, enabled,
+    queryFn: () => api.get<{data: {zona_horaria: string; zonas: ZonaHoraria[]}}>('/config/zona-horaria?opaque=1')})
+}
+
+export function useGuardarZonaHorariaInstitucional() {
+  const queryClient = useQueryClient()
+  return useMutation({mutationFn: (zona_horaria: string) => api.put('/config/zona-horaria?opaque=1', {zona_horaria}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({queryKey: ZONA_HORARIA_KEY})
+      void queryClient.invalidateQueries({queryKey: ['aula']})
+    },
+  })
+}
 
 /** GET /config/datos-institucionales — datos institucionales del colegio. */
 export function useDatosInstitucionales(enabled = true) {
