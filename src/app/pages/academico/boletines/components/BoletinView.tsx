@@ -51,6 +51,9 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
   const etiquetaFinal = boletin.periodo_sumatorio?.nombre ?? boletin.configuracion.etiqueta_final
   const tituloFinal = boletin.periodo_sumatorio ? t('boletines.sumatorioHelp') : undefined
   const visual = boletin.escala_visual?.tipo === 'imagenes'
+  const weightedAreas = boletin.configuracion.usar_areas && boletin.configuracion.modo_area === 'WEIGHTED_AVERAGE'
+  const periodHeading = (period: BoletinData['periodos'][number]) =>
+    `${period.nombre}${period.peso == null ? '' : ` · ${Number(period.peso)} %`}`
   const renderValue = (result?: Omit<BoletinPeriodoResult, 'periodo_id'>) => {
     if (visual) return result?.valoracion ? <VisualChoice compact choice={result.valoracion} /> : '—'
     if (!result?.display_value) return '—'
@@ -112,7 +115,7 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
                     <th className='min-w-200px'>{t('boletines.areas')}</th>
                     {boletin.periodos.map((p) => (
                       <th key={p.id} className='min-w-100px text-center'>
-                        {p.nombre}
+                        {periodHeading(p)}
                       </th>
                     ))}
                     {mostrarFinal && (
@@ -154,7 +157,7 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
                   <th className='min-w-200px'>{t('boletines.asignaturas')}</th>
                   {boletin.periodos.map((p) => (
                     <th key={p.id} className='min-w-100px text-center'>
-                      {p.nombre}
+                      {periodHeading(p)}
                     </th>
                   ))}
                   {mostrarFinal && (
@@ -167,7 +170,7 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
                   <tr key={asig.materia_id}>
                     <td className='fw-semibold'>
                       {asig.nombre}
-                      {asig.peso_area != null && (
+                      {weightedAreas && asig.peso_area != null && (
                         <span className='text-muted fs-8 ms-2'>({asig.peso_area}%)</span>
                       )}
                     </td>
