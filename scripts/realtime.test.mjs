@@ -50,3 +50,12 @@ test('local successful mutations use the same topics and unsubscribe on logout',
   notifyLocalChange({resource: 'academic', token: 'old-session'})
   assert.deepEqual(received, [{resource: 'academic', token: 'session'}])
 })
+
+test('autosaving an exam does not refetch every classroom or gradebook', () => {
+  for (const suffix of ['respuestas', 'pagina', 'incidentes']) {
+    assert.equal(resourceForPath(`/aula/intentos/opaque/${suffix}?opaque=1`), 'aula-attempt')
+    assert.equal(shouldRefreshQuery(['aula', 'catalogo'], ['aula-attempt'], 'tenant'), false)
+    assert.equal(shouldRefreshQuery(['evaluacion', 'planillas'], ['aula-attempt'], 'tenant'), false)
+  }
+  assert.equal(resourceForPath('/aula/intentos/opaque/finalizar?opaque=1'), 'aula')
+})

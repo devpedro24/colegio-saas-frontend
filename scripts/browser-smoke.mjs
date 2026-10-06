@@ -15,6 +15,7 @@ const performanceMode = process.argv.includes('--performance')
 const cacheMode = process.argv.includes('--cache')
 const gradingMode = process.argv.includes('--grading')
 const workflowMode = process.argv.includes('--academic-workflow')
+const aulaMode = process.argv.includes('--aula')
 const apiReads = []
 const detailedReads = []
 const reverbProbe = input => {
@@ -168,6 +169,9 @@ const fixtures = {
     materias: [{token: urlTokens.materia, nombre: 'Matemáticas'}],
     grados: [{token: sieeTokens.grade, nombre: 'Primero'}, {token: 'u'.repeat(24), nombre: 'Segundo'}]},
   '/api/config/datos-institucionales': {data: {nombre: 'Colegio de prueba', nit: '900123456-7', resolucion_men: '123 de 2026', direccion: 'Calle 1', telefono: '601 123 4567', correo: 'contacto@example.test'}},
+  '/api/config/zona-horaria': {data: {zona_horaria: 'America/Bogota', zonas: [
+    {id: 'America/Bogota', offset: 'UTC-05:00'}, {id: 'Pacific/Auckland', offset: 'UTC+13:00'},
+  ]}},
   '/api/estructura/sedes': {data: [sede]},
   [`/api/estructura/sedes/${urlTokens.sede}`]: {data: sede},
   '/api/estructura/sedes/opaque-sede-one': {data: sede},
@@ -191,6 +195,30 @@ fixtures[sieeCurriculumPath] = {data: [], meta: {current_page: 1, per_page: 1000
 user.permissions.push('academico.matriculas.gestionar')
 fixtures['/api/evaluacion/catalogo'].data.can_manage_enrollments = true
 fixtures['/api/evaluacion/catalogo'].data.materias = [{id: 1, nombre: 'Matemáticas'}]
+if (aulaMode) {
+  user.permissions.push('aula.ver_todas', 'aula.recursos.gestionar')
+  const aulaToken = 'y'.repeat(24), resourceToken = 'z'.repeat(24)
+  fixtures['/api/aula/catalogo'] = {data: {anos: [{token: urlTokens.year, nombre: '2026', estado: 'en_curso'}],
+    ano_token: urlTokens.year, grupos: [{token: urlTokens.group, nombre: '01A', grado: 'Primero', etiqueta: 'Primero / 01A'}],
+    requiere_grupo: true, grupo_seleccionado: null,
+    aulas: [{aula_token: aulaToken, grupo_token: urlTokens.group, grupo: 'Primero / 01A',
+      materia_token: urlTokens.materia, materia: 'Matemáticas', docente: 'Docente de prueba', portada_token: null}],
+    puede_gestionar: true}}
+  fixtures[`/api/aula/${aulaToken}`] = {data: {token: aulaToken, grupo: 'Primero / 01A', materia: 'Matemáticas',
+    portada_token: null, estudiante: false, puede_gestionar: true,
+    periodos: [{token: urlTokens.period, nombre: 'Primer período', estado: 'abierto', preinformes: []}],
+    secciones: [{token: 's'.repeat(24), titulo: 'Semana 1', periodo: 'Primer período', periodo_token: urlTokens.period,
+      preinforme_token: null, visible_estudiantes: true, orden: 1,
+      recursos: [{token: resourceToken, tipo: 'texto', titulo: 'Guía de lectura', estado: 'publicado',
+        visible_estudiantes: true, calificable: false, llevar_planilla: false, actividad_token: null}]}]}}
+  fixtures[`/api/aula/recursos/${resourceToken}`] = {data: {token: resourceToken, tipo: 'texto',
+    titulo: 'Guía de lectura', contenido: {bloques: [{tipo: 'tarjeta', texto: 'Lee con atención.'},
+      {tipo: 'enlace', texto: 'Biblioteca', url: 'https://example.org/biblioteca'}]}, estado: 'publicado',
+    visible_estudiantes: true, calificable: false, llevar_planilla: false, actividad_token: null, peso: null,
+    disponible_desde: null, disponible_hasta: null, fecha_limite: null, zona_publicacion: 'America/Bogota',
+    version: 1, adjuntos: [], estudiante: false, puede_gestionar: true, puede_calificar: false,
+    puede_evaluar: false, puede_interactuar: false}}
+}
 if (workflowMode) {
   const catalog = fixtures[sieePath].data
   fixtures['/api/estructura/niveles'] = {data: [{id: 1, ano_lectivo_id: 1, nombre: 'Básica Primaria', nivel_educativo: 'primaria', estado: 'activo'}]}
@@ -366,6 +394,11 @@ try {
           estudiantes_disponibles: students,
           pagination: {asignaciones: assignmentSlice.meta, matriculas: enrollmentSlice.meta},
         }}
+      }
+      if (aulaMode && url.pathname === '/api/aula/catalogo' && req.method === 'GET') {
+        const chosen = url.searchParams.get('grupo_token')
+        fixture = {data: {...fixture.data, grupo_seleccionado: chosen,
+          aulas: chosen === urlTokens.group ? fixture.data.aulas : []}}
       }
       if (paginationMode && (url.pathname === '/api/evaluacion/planillas/1/1' || url.pathname === opaquePlanillaPath) && req.method === 'GET') {
         const source = fixture.data
@@ -545,7 +578,25 @@ try {
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   const navigate = async (route, text) => { console.log('Checking', route); await command('Page.navigate', {url: `http://127.0.0.1:5197${route}`}); await until(`document.body.innerText.includes(${JSON.stringify(text)})`) }
   const screenshot = async (name, full = false) => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: full}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
-  if (workflowMode) {
+  if (aulaMode) {
+    await navigate('/evaluacion/aula', 'Selecciona un grupo académico')
+    assert.ok(await evaluate(`!document.body.innerText.includes('Docente de prueba')`), 'No debe cargar las aulas antes de elegir grupo.')
+    await evaluate(`(()=>{const select=[...document.querySelectorAll('select')].find(e=>e.textContent.includes('Primero / 01A'));select.value='${urlTokens.group}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.body.innerText.includes('Docente de prueba')`)
+    assert.ok(await evaluate(`document.body.innerText.includes('Matemáticas')`))
+    assert.ok(await evaluate(`document.body.innerText.includes('Docente de prueba')`))
+    await screenshot('aula-catalogo-desktop')
+    await navigate('/evaluacion/aula/' + 'y'.repeat(24), 'Semana 1')
+    assert.ok(await evaluate(`document.body.innerText.includes('Guía de lectura')`))
+    await screenshot('aula-detalle-desktop')
+    await navigate('/evaluacion/aula/recursos/' + 'z'.repeat(24), 'Lee con atención.')
+    assert.ok(await evaluate(`document.querySelector('a[href="https://example.org/biblioteca"]')?.textContent === 'Biblioteca'`))
+    await command('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
+    assert.ok(await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`), 'Aula mobile viewport overflows.')
+    await screenshot('aula-recurso-mobile', true)
+    assert.deepEqual(errors, [], 'Uncaught browser errors in Aula.')
+    console.log('PASS: Aula catalog, section, safe content and mobile layout with isolated fixtures.')
+  } else if (workflowMode) {
     await navigate('/academico/siee', 'Currículo por Grado')
     await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Agregar materias a grados')).click()`)
     await until(`document.querySelectorAll('.curriculum-bulk-modal input[type="checkbox"]').length === 3`)
@@ -1160,13 +1211,19 @@ try {
       await until(`document.querySelector('[data-testid="institutional-settings-panel"]')?.classList.contains('show')`)
     }
     await openInstitutionalMenu()
-    assert.ok(await evaluate(`(() => {const trigger=document.querySelector('[data-testid="institutional-settings-trigger"]'),panel=document.querySelector('[data-testid="institutional-settings-panel"]');return !!trigger && !!panel && trigger.parentElement===panel.parentElement && panel.classList.contains('menu-sub-dropdown') && trigger.parentElement.getAttribute('data-kt-menu-placement')?.includes('left-start') && [...panel.querySelectorAll('a[data-kt-nav]')].map(a=>a.getAttribute('data-kt-nav')).join(',') === '/ajustes-institucionales/datos,/ajustes-institucionales/sedes'})()`), 'Institutional settings must open a separate flyout with Datos and Sedes.')
+    assert.ok(await evaluate(`(() => {const trigger=document.querySelector('[data-testid="institutional-settings-trigger"]'),panel=document.querySelector('[data-testid="institutional-settings-panel"]');return !!trigger && !!panel && trigger.parentElement===panel.parentElement && panel.classList.contains('menu-sub-dropdown') && trigger.parentElement.getAttribute('data-kt-menu-placement')?.includes('left-start') && [...panel.querySelectorAll('a[data-kt-nav]')].map(a=>a.getAttribute('data-kt-nav')).join(',') === '/ajustes-institucionales/datos,/ajustes-institucionales/horario,/ajustes-institucionales/sedes'})()`), 'Institutional settings must open a separate flyout with Datos, Horario and Sedes.')
     await sleep(350)
     await screenshot('institutional-menu-mobile')
     await evaluate(`document.querySelector('[data-testid="institutional-settings-panel"] a[data-kt-nav="/ajustes-institucionales/datos"]').click()`)
     await until(`location.pathname === '/ajustes-institucionales/datos' && !!document.querySelector('.institutional-settings__header') && document.body.innerText.includes('Datos institucionales')`)
     assert.ok(await evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`), 'Institutional data page overflows on mobile.')
     await screenshot('institutional-data-mobile')
+    await openInstitutionalMenu()
+    await evaluate(`document.querySelector('[data-testid="institutional-settings-panel"] a[data-kt-nav="/ajustes-institucionales/horario"]').click()`)
+    await until(`location.pathname === '/ajustes-institucionales/horario' && !!document.querySelector('#institution-zone option[value="Pacific/Auckland"]')`)
+    assert.ok(await evaluate(`document.querySelector('#institution-zone').value === 'America/Bogota'`))
+    assert.ok(await evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`), 'Institutional time zone page overflows on mobile.')
+    await screenshot('institutional-timezone-mobile')
     await openInstitutionalMenu()
     await evaluate(`document.querySelector('[data-testid="institutional-settings-panel"] a[data-kt-nav="/ajustes-institucionales/sedes"]').click()`)
     await until(`location.pathname === '/ajustes-institucionales/sedes' && document.querySelector('table tbody')?.innerText.includes('Sede Norte')`)
@@ -1191,7 +1248,7 @@ try {
         assert.equal(await evaluate(`new URLSearchParams(location.search).get('tab')`), legacy, `Legacy ${legacy} tab must be preserved.`)
       }
     }
-    for (const section of ['datos', 'sedes']) {
+    for (const section of ['datos', 'horario', 'sedes']) {
       await command('Page.navigate', {url: `http://127.0.0.1:5197/academico/ajustes-institucionales/${section}`})
       await until(`location.pathname === '/ajustes-institucionales/${section}' && !!document.querySelector('.institutional-settings__header')`)
     }
@@ -1203,6 +1260,8 @@ try {
     await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
     await navigate('/ajustes-institucionales/datos', 'Datos institucionales')
     await screenshot('institutional-data-desktop')
+    await navigate('/ajustes-institucionales/horario', 'Configuración horaria')
+    await screenshot('institutional-timezone-desktop')
     await navigate('/ajustes-institucionales/sedes', 'Sede Norte')
     await screenshot('institutional-campuses-desktop')
     await navigate('/academico/parametros-academicos?tab=escala', 'Parámetros académicos')

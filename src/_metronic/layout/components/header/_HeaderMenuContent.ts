@@ -25,6 +25,7 @@ export const getHeaderMenuHtml = (
     canViewPreinformes?: boolean
     canManageEnrollments?: boolean
     canViewAttendance?: boolean
+    canViewAula?: boolean
   }
 ) => {
   const t = (id: string) => intl.formatMessage({id})
@@ -57,6 +58,7 @@ export const getHeaderMenuHtml = (
     dropdown('grading.menu', [
       ['grading.sheets', '/evaluacion/catalogo', 'notepad'],
       ['boletines.title', '/academico/boletines', 'document'],
+      ...(opts?.canViewAula ? [['aula.title', '/evaluacion/aula', 'book-open'] as [string, string, string]] : []),
       ...(opts?.canViewAttendance ? [['attendance.title', '/academico/asistencia', 'calendar-tick'] as [string, string, string]] : []),
     ]),
     dropdown('comunicacion.title', [['events.calendar', '/comunicacion/eventos', 'calendar-8']]),

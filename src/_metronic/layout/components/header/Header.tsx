@@ -46,7 +46,10 @@ const Header: FC = () => {
             canManageUsers,
             canViewPreinformes: hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar'),
             canManageEnrollments: hasPermission('academico.matriculas.gestionar'),
+            canViewAula: hasPermission('aula.ver_todas') || hasPermission('aula.ver_asignadas') || hasPermission('aula.ver_propias'),
             canViewAttendance: hasPermission('asistencia.registrar_clases') ||
+              hasPermission('asistencia.justificar_propia') || hasPermission('asistencia.correccion.aprobar') ||
+              hasPermission('asistencia.correccion.solicitar') ||
               (hasPermission('asistencia.consultar_grupo') &&
                 (hasRole('rector') || hasRole('coord_academico') || hasRole('coord_combinado') || isPlatform)),
           })

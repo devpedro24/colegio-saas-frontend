@@ -58,12 +58,15 @@ const AcademicoPage: FC = () => {
       <Route path='parametros-academicos' element={canConfigure ? <ConfiguracionColegioPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='ajustes-institucionales' element={<Navigate to={canConfigure ? '/ajustes-institucionales/datos' : canManageCampuses ? '/ajustes-institucionales/sedes' : '/dashboard'} replace />} />
       <Route path='ajustes-institucionales/datos' element={<Navigate to='/ajustes-institucionales/datos' replace />} />
+      <Route path='ajustes-institucionales/horario' element={<Navigate to='/ajustes-institucionales/horario' replace />} />
       <Route path='ajustes-institucionales/sedes' element={<Navigate to='/ajustes-institucionales/sedes' replace />} />
       <Route path='siee/*' element={<SieePage />} />
       <Route path='preinformes' element={platformInSchool || hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar') ? <PreinformesPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='evaluacion/*' element={<EvaluacionPage />} />
       <Route path='boletines/*' element={<BoletinesPage />} />
       <Route path='asistencia' element={platformInSchool || hasPermission('asistencia.registrar_clases') ||
+        hasPermission('asistencia.justificar_propia') || hasPermission('asistencia.correccion.aprobar') ||
+        hasPermission('asistencia.correccion.solicitar') ||
         (hasPermission('asistencia.consultar_grupo') &&
           (hasRole('rector') || hasRole('coord_academico') || hasRole('coord_combinado')))
         ? <AsistenciaPage /> : <Navigate to='/dashboard' replace />} />

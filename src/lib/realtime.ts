@@ -1,23 +1,25 @@
 /** Shared dependency map for remote broadcasts and successful local writes. */
 export type RealtimeScope = 'tenant' | 'platform'
 const platformRoots = new Set(['colegios', 'plans', 'rbac-catalog', 'audit', 'audit-tenants'])
-const academic = ['anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'asistencias', 'siee', 'preinformes', 'config', 'evaluacion', 'boletines', 'eventos-catalogo', 'eventos', 'evento', 'onboarding']
+const academic = ['anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'asistencias', 'siee', 'preinformes', 'config', 'evaluacion', 'boletines', 'aula', 'eventos-catalogo', 'eventos', 'evento', 'onboarding']
 const dependencies: Record<string, string[]> = {
   academic,
-  structure: ['estructura', 'horarios', 'asistencias', 'plan-estudios', 'evaluacion', 'boletines', 'eventos-catalogo', 'eventos', 'evento', 'usuarios'],
-  curriculum: ['plan-estudios', 'horarios', 'asistencias', 'evaluacion', 'boletines', 'siee'],
+  structure: ['estructura', 'horarios', 'asistencias', 'plan-estudios', 'evaluacion', 'boletines', 'aula', 'eventos-catalogo', 'eventos', 'evento', 'usuarios'],
+  curriculum: ['plan-estudios', 'horarios', 'asistencias', 'evaluacion', 'boletines', 'siee', 'aula'],
   schedule: ['horarios', 'asistencias', 'evaluacion', 'boletines', 'eventos', 'evento', 'eventos-catalogo'],
   attendance: ['asistencias'],
-  evaluation: ['evaluacion', 'boletines', 'horarios', 'estructura', 'eventos-catalogo'],
+  evaluation: ['evaluacion', 'boletines', 'horarios', 'estructura', 'aula', 'eventos-catalogo'],
+  aula: ['aula', 'evaluacion'],
+  'aula-attempt': [],
   'academic-config': ['config', 'siee', 'preinformes', 'evaluacion', 'boletines', 'onboarding'],
   events: ['eventos', 'evento', 'eventos-catalogo', 'horarios'],
   institution: ['institution-context', 'config', 'onboarding', 'boletines'],
-  users: ['usuarios', 'horarios', 'asistencias', 'evaluacion', 'boletines', 'eventos-catalogo', 'onboarding', 'account'],
+  users: ['usuarios', 'horarios', 'asistencias', 'evaluacion', 'boletines', 'aula', 'eventos-catalogo', 'onboarding', 'account'],
   rbac: ['rbac-catalog', 'roles'],
   schools: ['institution-context', 'colegios', 'audit-tenants'],
-  plans: ['institution-context', 'plans', 'colegios', 'rbac-catalog'],
+  plans: ['institution-context', 'plans', 'colegios', 'rbac-catalog', 'aula'],
   account: ['account', 'onboarding'],
-  storage: ['storage', 'eventos', 'evento'],
+  storage: ['storage', 'eventos', 'evento', 'aula'],
   audit: ['audit'],
 }
 
@@ -39,9 +41,12 @@ export function refreshesIdentity(resources: readonly string[]): boolean {
 
 export function resourceForPath(path: string): string {
   if (/^\/?siee\/[^/]+\/curriculo(?:\/|$|\?)/.test(path)) return 'curriculum'
+  // El autosalvado y la navegación de un examen actualizan su estado local;
+  // invalidar todo el Aula en cada escritura multiplicaría las consultas.
+  if (/^\/?aula\/intentos\/[^/]+\/(?:respuestas|pagina|incidentes)(?:\/|$|\?)/.test(path)) return 'aula-attempt'
   const root = path.split('?')[0].split('/').filter(Boolean)[0]
   return ({'anos-lectivos': 'academic', periodos: 'academic', estructura: 'structure', 'plan-estudios': 'curriculum',
-    horarios: 'schedule', asignaciones: 'schedule', asistencias: 'attendance', evaluacion: 'evaluation', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
+    horarios: 'schedule', asignaciones: 'schedule', asistencias: 'attendance', evaluacion: 'evaluation', aula: 'aula', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
     onboarding: 'institution', branding: 'institution', usuarios: 'users', rbac: 'rbac', colegios: 'schools', plans: 'plans',
     planes: 'plans', account: 'account', mfa: 'account', storage: 'storage'} as Record<string, string>)[root] ?? 'all'
 }

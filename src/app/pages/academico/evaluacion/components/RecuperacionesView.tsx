@@ -22,7 +22,7 @@ export const RecuperacionesView = () => {
   const save = useRegistrarRecuperacion(matriculaId)
   const cancel = useAnularRecuperacion(matriculaId)
 
-  if (query.isLoading) return <div className='card card-body' role='status'>{t('common.loading')}</div>
+  if (query.isLoading) return <div className='card card-body' role='status'>{t('common.pleaseWait')}</div>
   if (query.error || !query.data) return <div className='alert alert-danger' role='alert'>{query.error?.message || t('common.error')}</div>
   const {data, candidatos, contexto, can_manage: canManage, meta} = query.data
 

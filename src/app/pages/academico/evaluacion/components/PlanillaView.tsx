@@ -41,7 +41,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
     window.addEventListener('beforeunload', unload); document.addEventListener('click', link, true)
     return () => {window.removeEventListener('beforeunload', unload); document.removeEventListener('click', link, true)}
   }, [intl])
-  if (query.isPending) return <div role='status' className='p-6'>{t('common.loading')}</div>
+  if (query.isPending) return <div role='status' className='p-6'>{t('common.pleaseWait')}</div>
   if (query.error || !data) return <div role='alert' className='alert alert-danger'>{query.error?.message ?? t('common.error')}</div>
 
   const allSections = data.secciones ?? []
