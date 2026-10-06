@@ -78,14 +78,15 @@ export const PromocionesDialog: FC<Props> = ({ano, onClose}) => {
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const [page, setPage] = useState(1)
+  const [group, setGroup] = useState('')
   const [maxFailed, setMaxFailed] = useState(0)
   const [minimum, setMinimum] = useState('')
   const [mandatory, setMandatory] = useState<string[]>([])
   const [configuredVersion, setConfiguredVersion] = useState<number | null>(null)
-  const summary = usePromociones(ano?.id ?? null, page)
+  const summary = usePromociones(ano?.id ?? null, page, group)
   const save = useGuardarPolitica(ano?.id ?? '')
 
-  useEffect(() => {setConfiguredVersion(null); setPage(1)}, [ano?.id])
+  useEffect(() => {setConfiguredVersion(null); setPage(1); setGroup('')}, [ano?.id])
 
   useEffect(() => {
     if (!summary.data || !ano) return
@@ -124,20 +125,39 @@ export const PromocionesDialog: FC<Props> = ({ano, onClose}) => {
               <input type='number' step='0.01' className='form-control' value={minimum} onChange={(e) => setMinimum(e.target.value)} />
             </div>
           </div>
-          <div className='form-label mt-3'>{t('academico.promocion.mandatory')} ({t('academico.promocion.optional')})</div>
-          <div className='d-flex gap-3 flex-wrap'>
-            {summary.data.materias.map((subject) => <label key={subject.token} className='form-check form-check-inline'>
-              <input className='form-check-input' type='checkbox' checked={mandatory.includes(subject.token)}
-                onChange={(event) => setMandatory((current) => event.target.checked
-                  ? [...current, subject.token] : current.filter((token) => token !== subject.token))} />
-              <span className='form-check-label'>{subject.nombre}</span>
-            </label>)}
+          <div className='d-flex justify-content-between align-items-center gap-3 flex-wrap mt-3'>
+            <div className='form-label mb-0'>{t('academico.promocion.mandatory')} ({t('academico.promocion.optional')})</div>
+            <label className='form-check form-check-inline mb-0'>
+              <input className='form-check-input' type='checkbox' aria-label={t('academico.promocion.selectAll')}
+                checked={summary.data.materias.length > 0 && summary.data.materias.every(item => mandatory.includes(item.token))}
+                onChange={event => setMandatory(event.target.checked ? summary.data!.materias.map(item => item.token) : [])} />
+              <span className='form-check-label'>{t('academico.promocion.selectAll')}</span>
+            </label>
+          </div>
+          <div className='table-responsive border rounded mt-3' style={{maxHeight: 260, overflowY: 'auto'}}>
+            <table className='table table-row-dashed align-middle mb-0'>
+              <thead className='bg-light position-sticky top-0'><tr><th>{t('academico.promocion.subject')}</th><th className='text-center'>{t('academico.promocion.mustPass')}</th></tr></thead>
+              <tbody>{summary.data.materias.map(subject => <tr key={subject.token}>
+                <td><label htmlFor={`mandatory-${subject.token}`} className='fw-semibold cursor-pointer'>{subject.nombre}</label></td>
+                <td className='text-center'><input id={`mandatory-${subject.token}`} type='checkbox' className='form-check-input'
+                  checked={mandatory.includes(subject.token)} onChange={event => setMandatory(current => event.target.checked
+                    ? [...current, subject.token] : current.filter(token => token !== subject.token))} /></td>
+              </tr>)}</tbody>
+            </table>
           </div>
           <button className='btn btn-primary btn-sm mt-4' type='button' disabled={save.isPending || maxFailed < 0 || maxFailed > 12} onClick={savePolicy}>
             {t('academico.promocion.savePolicy')}
           </button>
         </div>
-        <h4>{t('academico.promocion.students')} ({summary.data.meta.total})</h4>
+        <div className='d-flex justify-content-between align-items-end flex-wrap gap-3 mb-3'>
+          <h4 className='mb-0'>{t('academico.promocion.students')} ({summary.data.meta.total})</h4>
+          <div><label className='form-label' htmlFor='promotion-group'>{t('academico.promocion.group')}</label>
+            <select id='promotion-group' className='form-select' value={group} onChange={event => {setGroup(event.target.value); setPage(1)}}>
+              <option value=''>{t('academico.promocion.allGroups')}</option>
+              {summary.data.grupos.map(item => <option key={item.token} value={item.token}>{item.nombre}</option>)}
+            </select>
+          </div>
+        </div>
         {summary.data.data.length === 0 && <p className='text-muted'>{t('academico.promocion.empty')}</p>}
         {summary.data.data.map((row) => <DecisionRow key={`${row.matricula_token}-${row.propuesta.huella ?? ''}-${row.decision?.version ?? 0}`}
           row={row} summary={summary.data!} ano={ano!.id} />)}

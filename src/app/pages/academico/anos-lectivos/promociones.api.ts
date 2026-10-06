@@ -40,15 +40,16 @@ export interface PromocionResumen {
   }
   materias: {token: string; nombre: string}[]
   grados: {token: string; nombre: string}[]
+  grupos: {token: string; nombre: string}[]
 }
 
-const key = (ano: string, page: number) => ['anos-lectivos', ano, 'promociones', page] as const
+const key = (ano: string, page: number, group: string) => ['anos-lectivos', ano, 'promociones', page, group] as const
 
-export function usePromociones(ano: string | null, page: number) {
+export function usePromociones(ano: string | null, page: number, group = '') {
   return useQuery({
-    queryKey: key(ano ?? '', page),
+    queryKey: key(ano ?? '', page, group),
     enabled: !!ano,
-    queryFn: () => api.get<PromocionResumen>(`/anos-lectivos/${ano}/promociones?opaque=1&page=${page}`),
+    queryFn: () => api.get<PromocionResumen>(`/anos-lectivos/${ano}/promociones?opaque=1&page=${page}${group ? `&grupo_token=${encodeURIComponent(group)}` : ''}`),
   })
 }
 
