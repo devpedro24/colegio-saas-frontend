@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import type {FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
@@ -56,7 +57,7 @@ const PermForm: FC<{
     return id ? intl.formatMessage({id}) : fkey
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
 
@@ -198,7 +199,7 @@ const PermForm: FC<{
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : isEdit ? (
-            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.permiso'})})
+            intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.permiso'})})
           ) : (
             t('rbac.perm.create')
           )}

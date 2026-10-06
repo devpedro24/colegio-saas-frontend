@@ -82,7 +82,7 @@ const PlanesPage: FC = () => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})}</span>
+            <span>{intl.formatMessage({id: 'common.loadError'}, {name: intl.formatMessage({id: 'entity.plan'})})}</span>
           </div>
         )}
 
@@ -91,7 +91,7 @@ const PlanesPage: FC = () => {
           <div className='row g-6 g-xl-9'>
             {planes.length === 0 && (
               <div className='col-12'>
-                <div className='text-center text-muted py-20'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})}</div>
+                <div className='text-center text-muted py-20'>{intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.plan'})})}</div>
               </div>
             )}
             {planes.map((plan) => {
@@ -183,7 +183,7 @@ const PlanesPage: FC = () => {
                           <span className='path1'></span>
                           <span className='path2'></span>
                         </i>
-                        {intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})}
+                        {intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.plan'})})}
                       </button>
                     </div>
                   </div>

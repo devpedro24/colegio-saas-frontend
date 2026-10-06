@@ -178,7 +178,7 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.colegio'})})
+            intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.colegio'})})
           )}
         </button>
       </div>

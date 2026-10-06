@@ -203,7 +203,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}</span>
+            <span>{intl.formatMessage({id: 'common.loadError'}, {name: intl.formatMessage({id: 'entity.sede'})})}</span>
           </div>
         )}
 
@@ -280,7 +280,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                             <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
                           </span>
                         ) : (
-                          intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})
+                          intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.sede'})})
                         )}
                       </button>
                     </div>
@@ -299,7 +299,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
 
             {/* Lista */}
             {sedes.length === 0 ? (
-              <div className='text-center text-muted py-10 fs-6'>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}</div>
+              <div className='text-center text-muted py-10 fs-6'>{intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.sede'})})}</div>
             ) : (
               <div className='table-responsive'>
                 <table className='table table-row-dashed align-middle gs-0 gy-4'>
@@ -359,7 +359,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                                 disabled={remove.isPending}
                                 onClick={() => handleDelete(sede)}
                               >
-                                {intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}
+                                {intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.sede'})})}
                               </button>
                             </div>
                           ) : (
@@ -378,7 +378,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
                               <button
                                 type='button'
                                 className='btn btn-icon btn-light btn-sm'
-                                title={intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.sede'})})}
+                                title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.sede'})})}
                                 onClick={() => setDeleteId(sede.url_token)}
                               >
                                 <i className='ki-duotone ki-trash fs-5'>

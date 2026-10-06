@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import type {FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
@@ -68,7 +69,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
   const toggleFeature = (fkey: string) =>
     setSelected((prev) => (prev.includes(fkey) ? prev.filter((k) => k !== fkey) : [...prev, fkey]))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
 
@@ -314,10 +315,8 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
               {t('common.pleaseWait')}
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
-          ) : isEdit ? (
-            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})
           ) : (
-            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.plan'})})
+            intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.plan'})})
           )}
         </button>
       </div>

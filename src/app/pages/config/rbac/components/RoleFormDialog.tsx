@@ -1,5 +1,6 @@
 ﻿import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
+import type {FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
@@ -42,7 +43,7 @@ const RoleForm: FC<{role: RbacRole | null; onClose: () => void}> = ({role, onClo
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
 
@@ -132,7 +133,7 @@ const RoleForm: FC<{role: RbacRole | null; onClose: () => void}> = ({role, onClo
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : isEdit ? (
-            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.rol'})})
+            intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.rol'})})
           ) : (
             t('rbac.role.create')
           )}
