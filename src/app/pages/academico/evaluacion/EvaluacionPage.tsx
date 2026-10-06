@@ -6,6 +6,9 @@ import {CatalogoView} from './components/CatalogoView'
 import {PlanillaView} from './components/PlanillaView'
 import {RecuperacionesView} from './components/RecuperacionesView'
 import {Content} from '@/_metronic/layout/components/content'
+import {AulaCatalogoView} from './aula/AulaCatalogoView'
+import {AulaDetalleView} from './aula/AulaDetalleView'
+import {AulaRecursoView} from './aula/AulaRecursoView'
 
 const EvaluacionPage = () => {
   const intl = useIntl()
@@ -55,6 +58,9 @@ const EvaluacionPage = () => {
             </>
           }
         />
+        <Route path='aula' element={<><PageTitle breadcrumbs={evaluacionBreadcrumbs}>Aula</PageTitle><AulaCatalogoView /></>} />
+        <Route path='aula/recursos/:recursoToken' element={<><PageTitle breadcrumbs={evaluacionBreadcrumbs}>Recurso del Aula</PageTitle><AulaRecursoView /></>} />
+        <Route path='aula/:aulaToken' element={<><PageTitle breadcrumbs={evaluacionBreadcrumbs}>Aula</PageTitle><AulaDetalleView /></>} />
         <Route index element={<Navigate to='catalogo' replace />} />
       </Route>
     </Routes>
