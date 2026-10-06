@@ -69,7 +69,7 @@ export function BulkCurriculumModal({year, weighted, mode, editable, close}: {ye
     <Modal.Header closeButton><Modal.Title>{t(mode === 'current' ? 'curriculum.bulk.current' : 'curriculum.bulk.title')}</Modal.Title></Modal.Header>
     <Modal.Body>
       <p className='text-muted'>{t(mode === 'current' ? 'curriculum.bulk.currentHelp' : 'curriculum.bulk.help')}</p>
-      {catalog.isPending && <p role='status'>{t('common.loading')}</p>}
+      {catalog.isPending && <p role='status'>{t('common.pleaseWait')}</p>}
       {catalog.error && <div className='alert alert-danger' role='alert'>{catalog.error.message}</div>}
       {save.error && <div className='alert alert-danger' role='alert'>{save.error.message}</div>}
       {!catalog.isPending && !catalog.error && <fieldset disabled={save.isPending || !editable}>

@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -61,7 +61,7 @@ const MetodoForm: FC<{
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<FormState>) => setForm((prev) => ({...prev, ...patch}))
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = (ev: FormEvent) => {
     ev.preventDefault()
     setError(null)
     const input: MetodoAprobacionInput = {
@@ -166,7 +166,7 @@ const MetodoForm: FC<{
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.metodo'})})
+            intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.metodo'})})
           )}
         </button>
       </div>
@@ -239,7 +239,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoToken}) => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.metodo'})})}</span>
+            <span>{intl.formatMessage({id: 'common.loadError'}, {name: intl.formatMessage({id: 'entity.metodo'})})}</span>
           </div>
         )}
 

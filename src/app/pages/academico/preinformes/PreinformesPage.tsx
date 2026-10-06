@@ -25,12 +25,14 @@ export default function PreinformesPage() {
           {query.data?.anos.map(y => <option key={y.url_token} value={y.url_token}>{y.nombre}</option>)}
         </select>
       </div>
-      {query.isPending && <p role='status'>{t('common.loading')}</p>}
+      {query.isPending && <p role='status'>{t('common.pleaseWait')}</p>}
       {query.error && <div className='alert alert-danger' role='alert'>{query.error.message}</div>}
       {query.data && !query.data.incluido_plan && <div className='alert alert-info'><KTIcon iconName='lock' className='fs-3 me-2' />{t('preinformes.plan')}</div>}
       {query.data && !periods.length && <div className='alert alert-light'>{t('preinformes.noPeriods')}</div>}
-      <div className='nav nav-tabs nav-line-tabs mb-6 gap-4'>{periods.map(p => <button key={p.url_token}
-        className={`nav-link ${p === period ? 'active' : ''}`} onClick={() => {if (leave()) {setDirty(false); setSelected(p.url_token)}}}>{p.nombre}</button>)}</div>
+      <div className='nav nav-tabs nav-line-tabs nav-line-tabs-2x border-0 fs-6 fw-semibold mb-6 gap-4'>{periods.map(p => <button key={p.url_token}
+        type='button' aria-current={p === period ? 'page' : undefined}
+        className={`nav-link pb-2 ${p === period ? 'active text-primary' : 'text-muted'}`}
+        onClick={() => {if (leave()) {setDirty(false); setSelected(p.url_token)}}}>{p.nombre}</button>)}</div>
       {period && <PeriodEditor key={period.url_token} period={period} periods={periods}
         canEdit={!!query.data?.puede_gestionar && period.editable} onDirty={setDirty} />}
     </div></div>

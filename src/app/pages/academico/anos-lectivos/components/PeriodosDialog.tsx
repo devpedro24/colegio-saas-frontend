@@ -212,7 +212,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.periodo'})})}</span>
+          <span>{intl.formatMessage({id: 'common.loadError'}, {name: intl.formatMessage({id: 'entity.periodo'})})}</span>
         </div>
       )}
 

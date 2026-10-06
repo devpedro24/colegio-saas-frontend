@@ -451,7 +451,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
                     </tr>
                   )
                 })}
-                {curriculo.isPending && <tr><td colSpan={5} className='text-center text-muted py-6'>{t('common.loading')}</td></tr>}
+                {curriculo.isPending && <tr><td colSpan={5} className='text-center text-muted py-6'>{t('common.pleaseWait')}</td></tr>}
                 {!curriculo.isPending && curriculoRows.length === 0 && (
                   <tr>
                     <td colSpan={5} className='text-center text-muted py-6'>

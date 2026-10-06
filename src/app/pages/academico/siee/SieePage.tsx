@@ -59,7 +59,7 @@ const SieePage: FC = () => {
           </div>
         </div>
 
-        {isLoading ? <div role='status'>{t('common.loading')}</div> : error ? <div className='alert alert-danger' role='alert'>{error.message}</div> : noYears ? (
+        {isLoading ? <div role='status'>{t('common.pleaseWait')}</div> : error ? <div className='alert alert-danger' role='alert'>{error.message}</div> : noYears ? (
           <div className='alert alert-warning'>
             {t('academico.config.noYears')}
           </div>

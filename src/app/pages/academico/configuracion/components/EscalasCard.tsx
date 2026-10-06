@@ -76,6 +76,7 @@ const EscalaForm: FC<{
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<FormState>) => setForm((prev) => ({...prev, ...patch}))
   const isNumerica = form.tipo === 'numerica'
+  const choicesLocked = !!escala?.opciones_bloqueadas
   const updateChoice = (index: number, patch: Partial<ChoiceDraft>) =>
     setChoices(previous => previous.map((choice, current) => current === index ? {...choice, ...patch} : choice))
 
@@ -95,7 +96,7 @@ const EscalaForm: FC<{
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
         setError(err)
-        if (!err.errors) toast.error(err.message)
+        toast.error(err.fieldError('opciones') ?? err.message)
       } else {
         toast.error(t('common.toast.saveError'))
       }
@@ -123,6 +124,9 @@ const EscalaForm: FC<{
   return (
     <form onSubmit={handleSubmit}>
       <div className='modal-body py-lg-8 px-lg-8'>
+        {error && <div className='alert alert-danger' role='alert'>
+          {fe('opciones') ?? error.message}
+        </div>}
         <div className='fv-row mb-6'>
           <label className='required fs-6 fw-semibold mb-2'>
             {t('academico.config.escala.field.nombre')}
@@ -215,12 +219,15 @@ const EscalaForm: FC<{
           </div>
         )}
         {!isNumerica && <div className='mt-5'>
+          {choicesLocked && <div className='alert alert-info' role='status'>
+            {t('academico.config.escala.opciones.locked')}
+          </div>}
           <div className='d-flex justify-content-between align-items-center gap-3 mb-3'>
             <div>
               <h5 className='fw-bold mb-1'>{t('academico.config.escala.opciones.title')}</h5>
               <p className='text-muted fs-7 mb-0'>{t('academico.config.escala.opciones.help')}</p>
             </div>
-            <button type='button' className='btn btn-sm btn-light-primary' disabled={choices.length >= 8 || pending}
+            <button type='button' className='btn btn-sm btn-light-primary' disabled={choicesLocked || choices.length >= 8 || pending}
               onClick={() => setChoices(previous => [...previous, {nombre: '', valor_equivalente: '', emoji: '🙂', aprueba: false}])}>
               {t('academico.config.escala.opciones.add')}
             </button>
@@ -230,7 +237,7 @@ const EscalaForm: FC<{
               {choice.imagen_url ? <img src={choice.imagen_url} alt='' width={38} height={38} className='rounded-circle object-fit-cover' />
                 : <span aria-hidden='true' style={{fontSize: 28}}>{choice.emoji || '🙂'}</span>}
               <strong className='flex-grow-1'>{index + 1}. {choice.nombre || t('academico.config.escala.opciones.nueva')}</strong>
-              <button type='button' className='btn btn-sm btn-light-danger' disabled={choices.length <= 2 || pending}
+              <button type='button' className='btn btn-sm btn-light-danger' disabled={choicesLocked || choices.length <= 2 || pending}
                 onClick={() => setChoices(previous => previous.filter((_, item) => item !== index))}>{t('grading.delete')}</button>
             </div>
             <div className='row g-3'>
@@ -239,12 +246,12 @@ const EscalaForm: FC<{
               <div className='col-md-3'><label className='form-label'>{t('academico.config.escala.opciones.emoji')}</label>
                 <input className='form-control' maxLength={16} value={choice.emoji ?? ''} onChange={event => updateChoice(index, {emoji: event.target.value})} /></div>
               <div className='col-md-4'><label className='form-label required'>{t('academico.config.escala.opciones.valor')}</label>
-                <input className='form-control' inputMode='decimal' value={choice.valor_equivalente}
+                <input className='form-control' inputMode='decimal' disabled={choicesLocked} value={choice.valor_equivalente}
                   onChange={event => updateChoice(index, {valor_equivalente: event.target.value})} /></div>
             </div>
             <div className='d-flex flex-wrap align-items-center gap-4 mt-3'>
               <label className='form-check form-check-custom form-check-solid'>
-                <input type='checkbox' className='form-check-input' checked={choice.aprueba}
+                <input type='checkbox' className='form-check-input' disabled={choicesLocked} checked={choice.aprueba}
                   onChange={event => updateChoice(index, {aprueba: event.target.checked})} />
                 <span className='form-check-label'>{t('academico.config.escala.opciones.aprueba')}</span>
               </label>
@@ -262,6 +269,7 @@ const EscalaForm: FC<{
                   }} />
               </label>}
             </div>
+            <p className='text-muted fs-7 mt-2 mb-0'>{t('academico.config.escala.opciones.apruebaHelp')}</p>
           </div>)}
           {!escala && <p className='text-muted fs-7'>{t('academico.config.escala.opciones.uploadLater')}</p>}
         </div>}
@@ -278,7 +286,7 @@ const EscalaForm: FC<{
               <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
             </span>
           ) : (
-            intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.escala'})})
+            intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.escala'})})
           )}
         </button>
       </div>
@@ -354,7 +362,7 @@ const EscalasCard: FC<Props> = ({anoLectivoToken}) => {
               <span className='path2'></span>
               <span className='path3'></span>
             </i>
-            <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.escala'})})}</span>
+            <span>{intl.formatMessage({id: 'common.loadError'}, {name: intl.formatMessage({id: 'entity.escala'})})}</span>
           </div>
         )}
 

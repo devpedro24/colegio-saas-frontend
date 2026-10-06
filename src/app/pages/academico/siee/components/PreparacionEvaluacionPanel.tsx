@@ -85,10 +85,10 @@ export function PreparacionEvaluacionPanel({yearToken, curriculum, subjectMode, 
         }}>
         {(periods.data?.data ?? []).map(item => <option key={item.url_token} value={item.url_token}>{item.nombre}</option>)}
       </select>
-      {periods.isPending && <div role='status'>{t('common.loading')}</div>}
+      {periods.isPending && <div role='status'>{t('common.pleaseWait')}</div>}
       {!periods.isPending && !periods.data?.data.length && <div className='alert alert-info'>{t('siee.preparacion.noPeriods')}</div>}
       {periods.error && <div className='alert alert-danger' role='alert'>{periods.error.message}</div>}
-      {preparation.isPending && periodToken && <div role='status'>{t('common.loading')}</div>}
+      {preparation.isPending && periodToken && <div role='status'>{t('common.pleaseWait')}</div>}
       {preparation.error && <div className='alert alert-danger' role='alert'>{preparation.error.message}</div>}
       {details && <>
         {details.aplicada && <div className='alert alert-info'>{t('siee.preparacion.applied')}</div>}
