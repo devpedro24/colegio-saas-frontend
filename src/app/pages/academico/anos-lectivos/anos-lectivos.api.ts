@@ -84,6 +84,13 @@ export function useDuplicarAnoLectivo() {
   })
 }
 
+export function useResumenDuplicacionAno(id: string) {
+  return useQuery({queryKey: ['anos-lectivos', id, 'resumen-duplicacion'], enabled: !!id,
+    queryFn: () => api.get<{data: {politica_asistencia: boolean; aulas: number; secciones: number;
+      recursos: number; adjuntos_apoyo: number; preguntas: number}}>(
+      `/anos-lectivos/${id}/resumen-duplicacion?opaque=1`).then(r => r.data)})
+}
+
 export function useCopiarConfiguracionAno() {
   const queryClient = useQueryClient()
   return useMutation({

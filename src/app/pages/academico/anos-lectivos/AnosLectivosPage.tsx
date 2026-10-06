@@ -142,7 +142,7 @@ const AnosLectivosPage: FC = () => {
                   <span className='path2'></span>
                   <span className='path3'></span>
                 </i>
-                <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})}</span>
+                <span>{intl.formatMessage({id: 'common.loadError'}, {name: intl.formatMessage({id: 'entity.anoLectivo'})})}</span>
               </div>
             )}
 

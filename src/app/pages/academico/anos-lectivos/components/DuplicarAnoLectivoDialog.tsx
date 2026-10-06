@@ -3,12 +3,12 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
-import {useDuplicarAnoLectivo} from '../anos-lectivos.api'
+import {useDuplicarAnoLectivo, useResumenDuplicacionAno} from '../anos-lectivos.api'
 import type {AnoLectivo} from '../anos-lectivos.types'
 import './year-dialog.css'
 
 export const options = ['jornadas', 'niveles', 'grados', 'grupos', 'bloques', 'espacios', 'areas',
-  'materias', 'escalas', 'metodos', 'modelos', 'siee', 'curriculo', 'periodos'] as const
+  'materias', 'escalas', 'metodos', 'modelos', 'siee', 'curriculo', 'periodos', 'asistencia', 'aulas'] as const
 
 const nextDate = (value: string) => {
   const [year, month, day] = value.slice(0, 10).split('-').map(Number)
@@ -22,6 +22,7 @@ function DuplicarForm({source, onClose}: {source: AnoLectivo; onClose: () => voi
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const duplicate = useDuplicarAnoLectivo()
+  const preview = useResumenDuplicacionAno(source.id)
   const [name, setName] = useState(source.tipo_calendario === 'A'
     ? String(Number(source.nombre) + 1)
     : source.nombre.split('-').map(part => String(Number(part) + 1)).join('-'))
@@ -29,7 +30,7 @@ function DuplicarForm({source, onClose}: {source: AnoLectivo; onClose: () => voi
   const [start, setStart] = useState(nextDate(source.fecha_inicio))
   const [end, setEnd] = useState(nextDate(source.fecha_fin))
   const [selected, setSelected] = useState<Record<string, boolean>>(
-    Object.fromEntries(options.map(key => [key, true])))
+    Object.fromEntries(options.map(key => [key, key !== 'aulas'])))
   const [error, setError] = useState('')
 
   const submit = (event: FormEvent) => {
@@ -71,6 +72,14 @@ function DuplicarForm({source, onClose}: {source: AnoLectivo; onClose: () => voi
       </div>
       <p className='text-muted fs-7 mt-5 mb-0'>{t('academico.anos.duplicate.dependencies')}</p>
       <p className='text-muted fs-7'>{t('academico.anos.duplicate.excluded')}</p>
+      {preview.data && <div className='alert alert-light-info mt-5' role='status'>
+        <strong>Contenido reutilizable del año origen</strong><br />
+        Política de asistencia: {preview.data.politica_asistencia ? 'configurada' : 'sin configurar'}.
+        {' '}Aulas: {preview.data.aulas}; secciones: {preview.data.secciones}; recursos: {preview.data.recursos};
+        {' '}preguntas: {preview.data.preguntas}; archivos de apoyo: {preview.data.adjuntos_apoyo}.
+        <div className='mt-2'>Solo se copiarán los apartados seleccionados. No se trasladan matrículas,
+          entregas, intentos, asistencias ni notas; los recursos copiados quedarán ocultos para estudiantes.</div>
+      </div>}
     </Modal.Body>
     <Modal.Footer>
       <button type='button' className='btn btn-light' onClick={onClose}>{t('common.cancel')}</button>
