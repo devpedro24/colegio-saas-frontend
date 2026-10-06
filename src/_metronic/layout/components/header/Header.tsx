@@ -16,7 +16,7 @@ const Header: FC = () => {
   const {config} = useLayout()
   const intl = useIntl()
   const {currentUser} = useAuth()
-  const {hasPermission} = useAuthz()
+  const {hasPermission, hasRole} = useAuthz()
   const {activeColegio} = useImpersonation()
 
   const isPlatform = currentUser?.is_platform === true
@@ -46,6 +46,9 @@ const Header: FC = () => {
             canManageUsers,
             canViewPreinformes: hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar'),
             canManageEnrollments: hasPermission('academico.matriculas.gestionar'),
+            canViewAttendance: hasPermission('asistencia.registrar_clases') ||
+              (hasPermission('asistencia.consultar_grupo') &&
+                (hasRole('rector') || hasRole('coord_academico') || hasRole('coord_combinado') || isPlatform)),
           })
         ),
       }}

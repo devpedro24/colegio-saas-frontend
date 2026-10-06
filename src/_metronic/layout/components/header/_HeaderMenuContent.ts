@@ -24,6 +24,7 @@ export const getHeaderMenuHtml = (
     canManageUsers?: boolean
     canViewPreinformes?: boolean
     canManageEnrollments?: boolean
+    canViewAttendance?: boolean
   }
 ) => {
   const t = (id: string) => intl.formatMessage({id})
@@ -53,7 +54,11 @@ export const getHeaderMenuHtml = (
   const moduleLink = (id: string, path: string) => `<div class="menu-item me-0 me-lg-2"><a class="menu-link" href="${esc(path)}" data-kt-nav="${esc(path)}"><span class="menu-title">${esc(t(id))}</span></a></div>`
   const modulosBlock = colegioMode ? [
     ...(opts?.canManageEnrollments ? [dropdown('admisiones.title', [['evaluacion.matriculas.title', '/admisiones/matriculas', 'people']])] : []),
-    dropdown('grading.menu', [['grading.sheets', '/evaluacion/catalogo', 'notepad'], ['boletines.title', '/academico/boletines', 'document']]),
+    dropdown('grading.menu', [
+      ['grading.sheets', '/evaluacion/catalogo', 'notepad'],
+      ['boletines.title', '/academico/boletines', 'document'],
+      ...(opts?.canViewAttendance ? [['attendance.title', '/academico/asistencia', 'calendar-tick'] as [string, string, string]] : []),
+    ]),
     dropdown('comunicacion.title', [['events.calendar', '/comunicacion/eventos', 'calendar-8']]),
     moduleLink('pagos.title', '/pagos'),
     moduleLink('reportes.title', '/reportes'),

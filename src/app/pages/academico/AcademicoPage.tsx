@@ -12,6 +12,7 @@ const EvaluacionPage = lazy(() => import('./evaluacion/EvaluacionPage'))
 const SieePage = lazy(() => import('./siee/SieePage'))
 const PreinformesPage = lazy(() => import('./preinformes/PreinformesPage'))
 const BoletinesPage = lazy(() => import('./boletines/BoletinesPage'))
+const AsistenciaPage = lazy(() => import('./asistencia/AsistenciaPage'))
 
 // Los enlaces previos siguen funcionando después de separar la configuración.
 const LegacyConfiguracionRedirect: FC = () => {
@@ -35,7 +36,7 @@ const LegacySedeDetalleRedirect: FC = () => {
 // Router anidado del modulo Academico. Cada pagina trae su propio <PageTitle> +
 // <Content>, por eso aqui NO se envuelve con ToolbarWrapper/Content.
 const AcademicoPage: FC = () => {
-  const {isPlatform, hasPermission} = useAuthz()
+  const {isPlatform, hasPermission, hasRole} = useAuthz()
   const {activeColegio} = useImpersonation()
   const platformInSchool = isPlatform && !!activeColegio
   const canConfigure = platformInSchool || hasPermission('academico.configurar')
@@ -62,6 +63,10 @@ const AcademicoPage: FC = () => {
       <Route path='preinformes' element={platformInSchool || hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar') ? <PreinformesPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='evaluacion/*' element={<EvaluacionPage />} />
       <Route path='boletines/*' element={<BoletinesPage />} />
+      <Route path='asistencia' element={platformInSchool || hasPermission('asistencia.registrar_clases') ||
+        (hasPermission('asistencia.consultar_grupo') &&
+          (hasRole('rector') || hasRole('coord_academico') || hasRole('coord_combinado')))
+        ? <AsistenciaPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='sedes/:id' element={<LegacySedeDetalleRedirect />} />
       <Route index element={<Navigate to='/academico/anos-lectivos' />} />
     </Routes>
