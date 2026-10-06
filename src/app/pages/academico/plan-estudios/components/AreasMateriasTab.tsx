@@ -108,7 +108,7 @@ const AreaFormDialog: FC<{show: boolean; area: Area | null; onClose: () => void}
             {t('common.cancel')}
           </button>
           <button type='submit' className='btn btn-primary' disabled={create.isPending || update.isPending}>
-            {intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.area'})})}
+            {create.isPending || update.isPending ? t('common.pleaseWait') : intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.area'})})}
           </button>
         </div>
       </form>
@@ -269,7 +269,7 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; onClose: ()
             {t('common.cancel')}
           </button>
           <button type='submit' className='btn btn-primary' disabled={create.isPending || update.isPending}>
-            {intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.materia'})})}
+            {create.isPending || update.isPending ? t('common.pleaseWait') : intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.materia'})})}
           </button>
         </div>
       </form>

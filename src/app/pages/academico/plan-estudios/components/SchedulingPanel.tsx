@@ -443,7 +443,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
       </Modal.Body><Modal.Footer>
         {editing && writable && <button className='btn btn-light-danger me-auto' type='button' onClick={() => {setShow(false); setDeleting(editing.id)}}>{t('common.delete')}</button>}
         <button type='button' className='btn btn-light' onClick={() => setShow(false)}>{t('common.close')}</button>
-        {writable && <button className='btn btn-primary' disabled={mutation.isPending}>{t('common.save')}</button>}
+        {writable && <button className='btn btn-primary' disabled={mutation.isPending}>{mutation.isPending ? t('common.pleaseWait') : intl.formatMessage({id: 'common.save'}, {name: t(mode === 'asignaciones' ? 'entity.asignacionDocente' : 'entity.sesionHorario')})}</button>}
       </Modal.Footer></form>
     </Modal>
     <Modal show={deleting !== null} onHide={() => setDeleting(null)} centered className='schedule-editor-modal'><Modal.Header closeButton><Modal.Title>{t('common.delete')}</Modal.Title></Modal.Header><Modal.Body>{t('schedule.confirmDelete')}{error && <div className='alert alert-danger mt-4'>{error}</div>}</Modal.Body><Modal.Footer><button className='btn btn-light' onClick={() => setDeleting(null)}>{t('common.cancel')}</button><button className='btn btn-danger' disabled={mutation.isPending} onClick={() => mutation.mutate({path: `/${mode === 'asignaciones' ? 'asignaciones' : 'horarios'}/${encodeURIComponent(deleting!)}`, method: 'delete'})}>{t('common.delete')}</button></Modal.Footer></Modal>

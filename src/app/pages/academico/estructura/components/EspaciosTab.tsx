@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
@@ -75,7 +75,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
     error?.fieldError(field) ?? (field.endsWith('_id') ? error?.fieldError(`${field.slice(0, -3)}_token`) : undefined)
   const set = (patch: Partial<CreateEspacioFisicoInput>) => setForm((prev) => ({...prev, ...patch}))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     const input: CreateEspacioFisicoInput = {
@@ -225,7 +225,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
             {pending ? (
               <span className='spinner-border spinner-border-sm align-middle'></span>
             ) : (
-              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})
+              intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})
             )}
           </button>
         </div>
@@ -319,7 +319,7 @@ const EspaciosTab: FC = () => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})}</span>
+          <span>{intl.formatMessage({id: 'common.loadError'}, {name: intl.formatMessage({id: 'entity.espacioFisico'})})}</span>
         </div>
       )}
 

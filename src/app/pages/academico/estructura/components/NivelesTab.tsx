@@ -1,4 +1,4 @@
-import {FC, useState} from 'react'
+import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {useEffect} from 'react'
 import {Modal} from 'react-bootstrap'
@@ -54,7 +54,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
     error?.fieldError(field) ?? (field.endsWith('_id') ? error?.fieldError(`${field.slice(0, -3)}_token`) : undefined)
   const set = (patch: Partial<CreateNivelInput>) => setForm((prev) => ({...prev, ...patch}))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     const input: CreateNivelInput = {
@@ -154,7 +154,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
             {pending ? (
               <span className='spinner-border spinner-border-sm align-middle'></span>
             ) : (
-              intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.nivel'})})
+              intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.nivel'})})
             )}
           </button>
         </div>
@@ -216,7 +216,7 @@ const NivelesTab: FC = () => {
             <span className='path2'></span>
             <span className='path3'></span>
           </i>
-          <span>{intl.formatMessage({id: 'common.loading'}, {name: intl.formatMessage({id: 'entity.nivel'})})}</span>
+          <span>{intl.formatMessage({id: 'common.loadError'}, {name: intl.formatMessage({id: 'entity.nivel'})})}</span>
         </div>
       )}
 
