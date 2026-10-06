@@ -29,8 +29,8 @@ export const CatalogoView = ({reportsOnly = false, enrollmentsOnly = false}: {re
     yearId: year, groupId: group, materiaId: materia, enrollmentStatus: status,
     studentSearch: debouncedStudentSearch,
     assignmentPage, assignmentPerPage,
-    enrollmentPage: reportsOnly ? undefined : enrollmentPage,
-    enrollmentPerPage: reportsOnly ? undefined : enrollmentPerPage,
+    enrollmentPage: reportsOnly && group ? undefined : enrollmentPage,
+    enrollmentPerPage: reportsOnly && group ? undefined : enrollmentPerPage,
     view: enrollmentsOnly ? 'matriculas' : reportsOnly ? 'boletines' : 'planillas',
   })
   const mutation = useMatricular()
@@ -50,9 +50,9 @@ export const CatalogoView = ({reportsOnly = false, enrollmentsOnly = false}: {re
   const changeAssignmentSize = (size: number) => {setAssignmentPerPage(size); setAssignmentPage(1)}
   const changeEnrollmentSize = (size: number) => {setEnrollmentPerPage(size); setEnrollmentPage(1)}
 
-  if (isLoading) return <div className='card card-body' role='status'>{t('common.loading')}</div>
+  if (isLoading) return <div className='card card-body' role='status'>{t('common.pleaseWait')}</div>
   if (error || !data) return <div className='alert alert-danger' role='alert'>{error?.message || t('common.error')}</div>
-  if (!year && data.anos.length > 0) return <div className='card card-body' role='status'>{t('common.loading')}</div>
+  if (!year && data.anos.length > 0) return <div className='card card-body' role='status'>{t('common.pleaseWait')}</div>
   const selectedYear = year || (data.anos.find(a => a.estado === 'en_curso') ?? data.anos[0])?.url_token || ''
   const periods = data.periodos.filter(p => p.ano_lectivo_id === selectedYear)
   const selectedPeriod = periods.some(p => p.url_token === period) ? period : (periods.find(p => p.estado === 'abierto') ?? periods[0])?.url_token ?? ''
@@ -177,7 +177,7 @@ export const CatalogoView = ({reportsOnly = false, enrollmentsOnly = false}: {re
           {!enrollments.length && <tr><td colSpan={4} className='text-muted text-center py-8'>{t('evaluacion.matriculas.empty')}</td></tr>}
           </tbody>
         </table></div>
-        {!reportsOnly && <AcademicPagination meta={data.pagination?.matriculas} visibleCount={enrollments.length} loading={isFetching}
+        {(!reportsOnly || !group) && <AcademicPagination meta={data.pagination?.matriculas} visibleCount={enrollments.length} loading={isFetching}
           onPageChange={setEnrollmentPage} onPerPageChange={changeEnrollmentSize} />}
       </KTCardBody>
     </KTCard>}
