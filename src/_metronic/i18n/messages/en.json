@@ -1365,6 +1365,8 @@
     "plan.f.aula": "Aula",
     "aula.title": "Aula",
     "plan.f.aula.desc": "Materials, assignments and assessments that can link to the gradebook; available from Standard.",
+    "plan.f.aulaColores": "Aula colors",
+    "plan.f.aulaColores.desc": "Customize period and progress-report colors in the Aula hierarchy; available from Standard.",
     "plan.f.multiPasarela":  "Multiple payment gateways",
     "plan.f.multiPasarela.desc":  "More than one payment gateway.",
     "plan.f.multiSede":  "Multi-campus management",

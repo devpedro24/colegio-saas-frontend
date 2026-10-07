@@ -17,7 +17,22 @@ const gradingMode = process.argv.includes('--grading')
 const workflowMode = process.argv.includes('--academic-workflow')
 const aulaMode = process.argv.includes('--aula')
 const apiReads = []
+const apiWrites = []
 const detailedReads = []
+const samplePdf = () => {
+  const stream = 'BT /F1 22 Tf 60 720 Td (Vista previa del archivo) Tj ET'
+  const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
+  let pdf = '%PDF-1.4\n'
+  const offsets = []
+  objects.forEach((object, index) => {offsets.push(Buffer.byteLength(pdf)); pdf += `${index + 1} 0 obj\n${object}\nendobj\n`})
+  const start = Buffer.byteLength(pdf)
+  pdf += `xref\n0 6\n0000000000 65535 f \n${offsets.map(offset => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}`
+  pdf += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${start}\n%%EOF`
+  return Buffer.from(pdf)
+}
 const reverbProbe = input => {
   const result = spawnSync('php', [path.join(root, '../colegio-saas-backend/tests/Support/reverb-probe.php')], {
     input: JSON.stringify(input), encoding: 'utf8', windowsHide: true,
@@ -197,27 +212,60 @@ fixtures['/api/evaluacion/catalogo'].data.can_manage_enrollments = true
 fixtures['/api/evaluacion/catalogo'].data.materias = [{id: 1, nombre: 'Matemáticas'}]
 if (aulaMode) {
   user.permissions.push('aula.ver_todas', 'aula.recursos.gestionar')
-  const aulaToken = 'y'.repeat(24), resourceToken = 'z'.repeat(24)
+  const aulaToken = 'y'.repeat(24), resourceToken = 'z'.repeat(24), quizToken = 'q'.repeat(24)
+  const preOne = 'p'.repeat(24), preTwo = 'r'.repeat(24)
+  const attachments = [{token: 'f'.repeat(24), nombre: 'Guía de lectura.docx',
+    mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', es_imagen: false},
+  {token: 'g'.repeat(24), nombre: 'Presentación de clase.pptx',
+    mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', es_imagen: false}]
   fixtures['/api/aula/catalogo'] = {data: {anos: [{token: urlTokens.year, nombre: '2026', estado: 'en_curso'}],
     ano_token: urlTokens.year, grupos: [{token: urlTokens.group, nombre: '01A', grado: 'Primero', etiqueta: 'Primero / 01A'}],
     requiere_grupo: true, grupo_seleccionado: null,
     aulas: [{aula_token: aulaToken, grupo_token: urlTokens.group, grupo: 'Primero / 01A',
       materia_token: urlTokens.materia, materia: 'Matemáticas', docente: 'Docente de prueba', portada_token: null}],
-    puede_gestionar: true}}
+     puede_gestionar: true, puede_configurar: true}}
+   fixtures['/api/aula/configuracion'] = {data: {permitir_edicion_periodos_cerrados: true,
+     colores_periodos: {'1': '#2563eb', '2': '#0891b2', '3': '#7c3aed', '4': '#d97706'},
+     color_preinforme: '#64748b', puede_configurar_colores: true,
+     periodos_configurables: [{orden: 1, nombre: 'Primer período'}, {orden: 2, nombre: 'Período cerrado'}]}}
   fixtures[`/api/aula/${aulaToken}`] = {data: {token: aulaToken, grupo: 'Primero / 01A', materia: 'Matemáticas',
-    portada_token: null, estudiante: false, puede_gestionar: true,
-    periodos: [{token: urlTokens.period, nombre: 'Primer período', estado: 'abierto', preinformes: []}],
+     portada_token: null, estudiante: false, puede_gestionar: true, limite_archivo_bytes: 26214400,
+     permitir_edicion_periodos_cerrados: true,
+     colores_periodos: {'1': '#2563eb', '2': '#0891b2', '3': '#7c3aed', '4': '#d97706'},
+     color_preinforme: '#64748b',
+    permisos: {crear: true, editar: true, publicar: true, archivar: true, eliminar: true, evaluaciones: true},
+    periodos: [{token: urlTokens.period, nombre: 'Primer período', orden: 1, estado: 'abierto',
+      preinformes: [{token: preOne, nombre: 'Primer preinforme'}, {token: preTwo, nombre: 'Segundo preinforme'}]},
+    {token: 'c'.repeat(24), nombre: 'Período cerrado', orden: 2, estado: 'cerrado', preinformes: []}],
     secciones: [{token: 's'.repeat(24), titulo: 'Semana 1', periodo: 'Primer período', periodo_token: urlTokens.period,
-      preinforme_token: null, visible_estudiantes: true, orden: 1,
+      preinforme_token: preOne, visible_estudiantes: true, orden: 1,
       recursos: [{token: resourceToken, tipo: 'texto', titulo: 'Guía de lectura', estado: 'publicado',
-        visible_estudiantes: true, calificable: false, llevar_planilla: false, actividad_token: null}]}]}}
+        visible_estudiantes: true, calificable: false, llevar_planilla: false, actividad_token: null,
+        contenido: {bloques: [{tipo: 'tarjeta', texto: 'Lee con atención.'},
+          {tipo: 'enlace', texto: 'Biblioteca', url: 'https://example.org/biblioteca'}]},
+        version: 1, seccion_token: 's'.repeat(24), adjuntos: attachments},
+      {token: quizToken, tipo: 'cuestionario', titulo: 'Evaluación de lectura', estado: 'publicado',
+        visible_estudiantes: true, calificable: true, llevar_planilla: false, actividad_token: null}]},
+    {token: 't'.repeat(24), titulo: 'Semana 2 sin recursos', periodo: 'Primer período', periodo_token: urlTokens.period,
+      preinforme_token: preTwo, visible_estudiantes: true, orden: 2, recursos: []}]}}
+  fixtures['/api/aula/secciones/' + 's'.repeat(24) + '/planilla'] = {data: {componentes: [], requiere_preinforme: false}}
   fixtures[`/api/aula/recursos/${resourceToken}`] = {data: {token: resourceToken, tipo: 'texto',
+    aula_token: aulaToken, seccion_token: 's'.repeat(24),
     titulo: 'Guía de lectura', contenido: {bloques: [{tipo: 'tarjeta', texto: 'Lee con atención.'},
       {tipo: 'enlace', texto: 'Biblioteca', url: 'https://example.org/biblioteca'}]}, estado: 'publicado',
     visible_estudiantes: true, calificable: false, llevar_planilla: false, actividad_token: null, peso: null,
     disponible_desde: null, disponible_hasta: null, fecha_limite: null, zona_publicacion: 'America/Bogota',
-    version: 1, adjuntos: [], estudiante: false, puede_gestionar: true, puede_calificar: false,
+    version: 1, adjuntos: attachments, estudiante: false, puede_gestionar: true, puede_adjuntar: true, puede_calificar: false,
     puede_evaluar: false, puede_interactuar: false}}
+  fixtures[`/api/aula/recursos/${quizToken}`] = {data: {token: quizToken, aula_token: aulaToken,
+    seccion_token: 's'.repeat(24), tipo: 'cuestionario', titulo: 'Evaluación de lectura',
+    contenido: {bloques: []}, estado: 'publicado', visible_estudiantes: true, calificable: true,
+    llevar_planilla: false, actividad_token: null, peso: null, disponible_desde: null, disponible_hasta: null,
+    fecha_limite: null, zona_publicacion: 'America/Bogota', version: 1, adjuntos: [], estudiante: false,
+    puede_gestionar: true, puede_calificar: true, puede_evaluar: true, puede_interactuar: false,
+    preguntas: [{token: 'p'.repeat(24), tipo: 'unica', enunciado: '¿Cuál es la idea principal del texto?',
+      opciones: ['La naturaleza', 'La amistad'], respuesta_correcta: {valor: 'La amistad'}, puntos: '2'}]}}
+  fixtures[`/api/aula/recursos/${quizToken}/intentos`] = {data: []}
 }
 if (workflowMode) {
   const catalog = fixtures[sieePath].data
@@ -280,10 +328,28 @@ try {
   server = await createServer({root, logLevel: 'error', server: {host: '127.0.0.1', port: 5197, strictPort: true}, plugins: [{name: 'smoke-api', configureServer(vite) {
     vite.middlewares.use((req, res, next) => {
       const url = new URL(req.url, 'http://localhost')
+      if (aulaMode && url.pathname === '/office/web-apps/apps/api/documents/api.js') {
+        res.setHeader('Content-Type', 'application/javascript')
+        res.end(`window.DocsAPI={DocEditor:class{constructor(id,config){const place=document.getElementById(id);const frame=document.createElement('iframe');frame.title=config.document.title;frame.srcdoc='<main style="font-family:sans-serif;padding:2rem">Vista de '+config.document.title+'</main>';place.replaceWith(frame);this.frame=frame}destroyEditor(){this.frame?.remove()}}}`)
+        return
+      }
       if (!url.pathname.startsWith('/api')) return next()
       if (req.method === 'GET') {
         apiReads.push(url.pathname)
         detailedReads.push(url.pathname + url.search)
+      } else apiWrites.push(url.pathname)
+      if (aulaMode && req.method === 'GET' && /^\/api\/aula\/adjuntos\/[A-Za-z0-9_-]{24}\/vista-oficina$/.test(url.pathname)) {
+        const pptx = url.pathname.includes('/' + 'g'.repeat(24) + '/')
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({data: {script_url: 'http://127.0.0.1:5197/office/web-apps/apps/api/documents/api.js',
+          config: {token: 'signed-test-config', documentType: pptx ? 'slide' : 'word',
+            document: {fileType: pptx ? 'pptx' : 'docx', title: pptx ? 'Presentación de clase.pptx' : 'Guía de lectura.docx'}}}}))
+        return
+      }
+      if (aulaMode && req.method === 'GET' && /^\/api\/aula\/adjuntos\/[A-Za-z0-9_-]{24}\/medio$/.test(url.pathname)) {
+        res.setHeader('Content-Type', 'application/pdf')
+        res.end(samplePdf())
+        return
       }
       const opaqueAcademic = url.searchParams.get('opaque') === '1' && (url.pathname.startsWith('/api/estructura/') || url.pathname.startsWith('/api/plan-estudios/'))
       const opaqueEval = url.searchParams.get('opaque') === '1' && url.pathname.startsWith('/api/evaluacion/')
@@ -458,6 +524,30 @@ try {
       req.on('data', chunk => {body += chunk})
       req.on('end', () => {
         const parsed = req.headers['content-type']?.includes('application/json') ? JSON.parse(body || '{}') : Object.fromEntries(new URLSearchParams(body))
+         if (aulaMode && url.pathname === `/api/aula/recursos/${'z'.repeat(24)}/abrir`) {
+          fixtures[`/api/aula/recursos/${'z'.repeat(24)}`].data.progreso = 'completado'
+          fixture = {data: {progreso: 'completado', aula_token: 'y'.repeat(24),
+            resumen: {completados: 1, total: 2, porcentaje: 50}}}
+         }
+         if (aulaMode && url.pathname === '/api/aula/configuracion' && req.method === 'PUT') {
+           fixtures['/api/aula/configuracion'].data = {...fixtures['/api/aula/configuracion'].data, ...parsed}
+           fixtures[`/api/aula/${'y'.repeat(24)}`].data.permitir_edicion_periodos_cerrados = parsed.permitir_edicion_periodos_cerrados
+           fixtures[`/api/aula/${'y'.repeat(24)}`].data.colores_periodos = parsed.colores_periodos
+           fixtures[`/api/aula/${'y'.repeat(24)}`].data.color_preinforme = parsed.color_preinforme
+           fixture = {data: parsed}
+         }
+        if (aulaMode && url.pathname === `/api/aula/recursos/${'z'.repeat(24)}/adjuntos` && req.method === 'POST') {
+          const attachment = {token: 'n'.repeat(24), nombre: 'Material adicional.pdf', mime: 'application/pdf', es_imagen: false}
+          fixtures[`/api/aula/recursos/${'z'.repeat(24)}`].data.adjuntos.push(attachment)
+          fixture = {data: attachment}
+        }
+        if (aulaMode && url.pathname === `/api/aula/recursos/${'z'.repeat(24)}` && req.method === 'PUT') {
+          const resource = fixtures[`/api/aula/recursos/${'z'.repeat(24)}`].data
+          Object.assign(resource, parsed, {version: resource.version + 1})
+          const summary = fixtures[`/api/aula/${'y'.repeat(24)}`].data.secciones[0].recursos[0]
+          Object.assign(summary, resource)
+          fixture = {data: resource}
+        }
         if (opaqueAcademic) assert.ok(!Object.keys(parsed).some(key => key.endsWith('_id')), 'Opaque academic writes cannot carry numeric foreign keys.')
         if (opaqueEval) assert.ok(!hasPrivateIdKey(parsed), 'Opaque evaluation writes cannot carry private IDs.')
         if (scheduleRoute) assert.ok(!hasPrivateIdKey(parsed), 'Opaque schedule writes cannot carry private IDs.')
@@ -586,14 +676,248 @@ try {
     assert.ok(await evaluate(`document.body.innerText.includes('Matemáticas')`))
     assert.ok(await evaluate(`document.body.innerText.includes('Docente de prueba')`))
     await screenshot('aula-catalogo-desktop')
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Configuración')).click()`)
+    await until(`!!document.querySelector('.modal.show input[type=checkbox]')`)
+    assert.ok(await evaluate(`document.body.innerText.includes('Permitir preparar contenido en períodos cerrados')`))
+    assert.ok(await evaluate(`document.querySelectorAll('.modal.show input[type=color]').length === 3`),
+      'El rector debe poder configurar dos períodos y los preinformes.')
+    await screenshot('aula-configuracion-colores')
+    await evaluate(`document.querySelector('.modal.show input[type=checkbox]').click()`)
+    await evaluate(`[...document.querySelectorAll('.modal.show button')].find(button => button.textContent.includes('Guardar cambios')).click()`)
+    await until(`!document.querySelector('.modal.show')`)
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Configuración')).click()`)
+    await until(`document.querySelector('.modal.show input[type=checkbox]').checked === false`)
+    await evaluate(`document.querySelector('.modal.show button.btn-close').click()`)
+    await until(`!document.querySelector('.modal.show')`)
+    const navigationReads = apiReads.length
+    await evaluate(`[...document.querySelectorAll('.aula-card button')].find(button => button.textContent.includes('Entrar al aula')).click()`)
+    await until(`document.body.innerText.includes('Semana 1') && !!document.querySelector('.aula-sidebar')`)
+    assert.deepEqual(apiReads.slice(navigationReads).filter(path =>
+      ['/api/me', '/api/onboarding/status', '/api/estructura/sedes', '/api/usuarios', '/api/aula/catalogo'].includes(path)), [],
+    'Navegar del catálogo al aula no debe recargar identidad, onboarding, sedes, usuarios ni catálogo.')
     await navigate('/evaluacion/aula/' + 'y'.repeat(24), 'Semana 1')
     assert.ok(await evaluate(`document.body.innerText.includes('Guía de lectura')`))
+    assert.ok(await evaluate(`!!document.querySelector('.aula-sidebar') && !!document.querySelector('.aula-main')`),
+      'El Aula debe mostrar navegación lateral y contenido por secciones.')
+    assert.ok(await evaluate(`document.querySelectorAll('.aula-nav-preinforme').length === 2 &&
+      document.querySelectorAll('.aula-preinforme-heading').length === 2 &&
+      !document.querySelectorAll('.aula-nav-section-toggle')[1].hasAttribute('aria-expanded') &&
+      !document.querySelectorAll('.aula-section-toggle')[1].hasAttribute('aria-expanded')`),
+    'Los preinformes deben agruparse y las secciones vacías no deben mostrar acordeón.')
+    assert.ok(await evaluate(`document.querySelector('.aula-nav-period').style.getPropertyValue('--aula-period-accent') === '#2563eb' &&
+      document.querySelector('.aula-period-heading').style.getPropertyValue('--aula-period-accent') === '#2563eb' &&
+      document.querySelector('.aula-nav-preinforme').style.getPropertyValue('--aula-preinforme-accent') === '#64748b' &&
+      document.querySelector('.aula-preinforme-heading').style.getPropertyValue('--aula-preinforme-accent') === '#64748b'`),
+    'Los mismos colores configurados deben aparecer a izquierda y derecha.')
+    await evaluate(`document.querySelector('.aula-nav-section-toggle').click()`)
+    await until(`document.querySelector('.aula-nav-section-toggle').getAttribute('aria-expanded') === 'false'`)
+    await evaluate(`document.querySelector('.aula-nav-section-toggle').click()`)
+    await until(`document.querySelector('.aula-nav-section-toggle').getAttribute('aria-expanded') === 'true'`)
+    await evaluate(`document.querySelector('.aula-section-toggle').click()`)
+    await until(`document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'false'`)
+    await evaluate(`document.querySelector('.aula-section-toggle').click()`)
+    await until(`document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'true'`)
     await screenshot('aula-detalle-desktop')
+    await command('Emulation.setDeviceMetricsOverride', {width: 2200, height: 1000, deviceScaleFactor: 1, mobile: false})
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Nueva sección')).click()`)
+    await until(`!!document.querySelector('.aula-editor-page .aula-inline-form')`)
+    assert.ok(await evaluate(`(() => {
+      const period = [...document.querySelectorAll('.aula-editor-page select')].find(select =>
+        select.closest('label')?.textContent.includes('Período'))
+       return !!period && period.required && period.value === '' &&
+         !!period.querySelector('option[value="${'c'.repeat(24)}"]:disabled') &&
+         !!document.querySelector('.aula-editor-page input[required]')
+    })()`), 'Crear sección debe exigir nombre y selección explícita de período.')
+    assert.ok(await evaluate(`(() => {
+      const main = document.querySelector('.aula-main'), style = getComputedStyle(main)
+      const available = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      return main.clientWidth > 1400 && document.querySelector('.aula-editor-page form').getBoundingClientRect().width >= available * .98
+    })()`), 'El formulario de sección debe ocupar todo el ancho útil del panel derecho.')
+    await evaluate(`document.querySelector('.aula-editor-page > button').click()`)
+    await until(`!!document.querySelector('.aula-section')`)
+    await evaluate(`document.querySelector('.aula-section-actions button[aria-label^="Editar sección"]').click()`)
+    await until(`!!document.querySelector('.aula-editor-page')`)
+    assert.ok(await evaluate(`!![...document.querySelectorAll('.aula-editor-page select')].find(select =>
+      select.closest('label')?.textContent.includes('Período'))`),
+      'Editar sección debe permitir corregir el período.')
+    await evaluate(`document.querySelector('.aula-editor-page > button').click()`)
+    await until(`!!document.querySelector('.aula-section')`)
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Agregar recurso')).click()`)
+    await until(`document.body.innerText.includes('Tipo de contenido')`)
+    assert.ok(await evaluate(`(() => {
+      const main = document.querySelector('.aula-main'), style = getComputedStyle(main)
+      const available = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      return document.querySelector('.aula-resource-form').getBoundingClientRect().width >= available * .98 &&
+        document.querySelector('.aula-rich-editor').getBoundingClientRect().width >= available * .98
+    })()`), 'El compositor y su editor deben ocupar todo el ancho útil del panel derecho.')
+    const composerState = await evaluate(`({sidebar: !!document.querySelector('.aula-sidebar'),
+      editor: !!document.querySelector('.aula-rich-editor'), modals: [...document.querySelectorAll('.modal.show')].map(el => el.className)})`)
+    assert.ok(composerState.sidebar && composerState.editor && composerState.modals.length === 0,
+      `La edición debe ocupar el panel derecho y conservar el menú lateral: ${JSON.stringify(composerState)}`)
+    assert.ok(await evaluate(`!document.body.innerText.includes('Fecha límite') && !document.body.innerText.includes('+ Bloque')`),
+      'El compositor no debe pedir una segunda fecha límite ni obligar a editar bloques.')
+    assert.ok(await evaluate(`(() => {
+      const icons = [...document.querySelectorAll('.aula-kind-option .aula-kind-icon')]
+      return icons.length === 4 && new Set(icons.map(icon => getComputedStyle(icon).color)).size === 4
+    })()`), 'Lectura, material, tarea y cuestionario deben distinguirse por color.')
+    await evaluate(`[...document.querySelectorAll('.aula-kind-option')].find(button => button.textContent.includes('Tarea')).click()`)
+    assert.ok(await evaluate(`document.body.innerText.includes('La disponibilidad hasta es también el plazo de entrega.')`))
+    await sleep(500)
+    await screenshot('aula-compositor-desktop')
     await navigate('/evaluacion/aula/recursos/' + 'z'.repeat(24), 'Lee con atención.')
+    assert.ok(await evaluate(`(() => {
+      const main = document.querySelector('.aula-main'), blocks = document.querySelector('.aula-blocks')
+      const style = getComputedStyle(main), available = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      return !!blocks && blocks.getBoundingClientRect().width >= available * .98
+    })()`), 'El contenido de un recurso debe ocupar todo el ancho útil del panel derecho.')
+    await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
     assert.ok(await evaluate(`document.querySelector('a[href="https://example.org/biblioteca"]')?.textContent === 'Biblioteca'`))
+    assert.ok(await evaluate(`!!document.querySelector('.aula-sidebar .aula-nav-resource.is-active')`),
+      'El recurso debe conservar la navegación lateral del aula.')
+    assert.ok(await evaluate(`document.querySelectorAll('.aula-resource-fact').length === 2 &&
+      document.body.innerText.includes('Disponible sin límite de fecha') && document.querySelectorAll('.aula-material').length === 2 &&
+      document.querySelectorAll('.aula-material-actions button').length === 2`),
+    'El recurso debe mostrar evaluación, disponibilidad y tarjetas con opción de quitar.')
+    assert.ok(await evaluate(`!!document.querySelector('.aula-material-thumb-word .bi-file-earmark-word-fill') &&
+      !!document.querySelector('.aula-material-thumb-powerpoint .bi-file-earmark-ppt-fill')`),
+    'Las tarjetas múltiples deben mostrar íconos reconocibles de Word y PowerPoint.')
+    assert.ok(await evaluate(`(() => {
+      const download = getComputedStyle(document.querySelector('.aula-material-actions .aula-download-button')).backgroundColor
+      const edit = getComputedStyle(document.querySelector('.aula-resource-page .btn-light-warning')).backgroundColor
+      const type = getComputedStyle(document.querySelector('.aula-resource-kind')).backgroundColor
+      const primary = getComputedStyle(document.documentElement).getPropertyValue('--bs-primary').trim()
+      return download === 'rgb(23, 198, 83)' && primary.toLowerCase() === '#17c653' && edit !== download && type !== download
+    })()`), 'Descargar debe ser verde sin colorear Editar recurso ni el tipo de contenido.')
+    await evaluate(`document.querySelector('.aula-material-open').click()`)
+    await until(`!!document.querySelector('.aula-preview-modal.show')`)
+    assert.ok(await evaluate(`document.querySelector('.aula-preview-modal').innerText.includes('Archivo 1 de 2') &&
+      !!document.querySelector('.aula-preview-navigation')`), 'El visor amplio debe permitir recorrer adjuntos.')
+    await until(`!!document.querySelector('.aula-preview-modal iframe')`)
+    await evaluate(`document.querySelectorAll('.aula-preview-navigation button')[1].click()`)
+    await until(`document.querySelector('.aula-preview-header strong')?.textContent.includes('.pptx') &&
+      !!document.querySelector('.aula-preview-modal iframe')`)
+    assert.equal(await evaluate(`document.querySelector('.aula-preview-modal iframe')?.title`), 'Presentación de clase.pptx')
+    assert.equal(apiReads.filter(path => path.endsWith('/vista-oficina')).length, 2,
+      'Cada Office se configura una vez al abrirlo; no se descarga un PDF.')
+    await sleep(450)
+    await screenshot('aula-adjuntos-visor-desktop')
+    await evaluate(`document.querySelector('.aula-preview-modal .btn-close').click()`)
+    await until(`!document.querySelector('.aula-preview-modal.show')`)
+    const beforeUploadReads = apiReads.length
+    const beforeUploadWrites = apiWrites.length
+    await evaluate(`(() => {
+      const input = document.querySelector('.aula-resource-page input[type="file"]')
+      const transfer = new DataTransfer()
+      transfer.items.add(new File(['%PDF-1.4'], 'Material adicional.pdf', {type:'application/pdf'}))
+      input.files = transfer.files
+      input.dispatchEvent(new Event('change', {bubbles:true}))
+    })()`)
+    await until(`document.querySelectorAll('.aula-material').length === 3`)
+    assert.ok(await evaluate(`!!document.querySelector('.aula-material-thumb-pdf .bi-file-earmark-pdf-fill') &&
+      document.querySelectorAll('.aula-material-file-icon').length === 3`),
+    'Al agregar un PDF, las tres tarjetas deben conservar su ícono de formato.')
+    await screenshot('aula-adjuntos-iconos-desktop')
+    await command('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
+    await screenshot('aula-adjuntos-iconos-mobile', true)
+    const mobileAttachmentLayout = await evaluate(`({width: innerWidth, scroll: document.documentElement.scrollWidth,
+      icons: [...document.querySelectorAll('.aula-material-file-icon')].map(icon => ({width: icon.getBoundingClientRect().width,
+        fontSize: getComputedStyle(icon).fontSize, color: getComputedStyle(icon).color}))})`)
+    assert.ok(mobileAttachmentLayout.scroll <= mobileAttachmentLayout.width + 1 &&
+      mobileAttachmentLayout.icons.every(icon => icon.width > 20),
+    `Los íconos de los adjuntos deben seguir visibles sin desbordamiento en móvil: ${JSON.stringify(mobileAttachmentLayout)}`)
+    await command('Emulation.setDeviceMetricsOverride', {width:1440,height:1000,deviceScaleFactor:1,mobile:false})
+    await sleep(350)
+    assert.deepEqual(apiWrites.slice(beforeUploadWrites), [`/api/aula/recursos/${'z'.repeat(24)}/adjuntos`],
+      'Subir un archivo debe enviar una sola escritura.')
+    const uploadReads = apiReads.slice(beforeUploadReads)
+    for (const path of [`/api/aula/recursos/${'z'.repeat(24)}`, `/api/aula/${'y'.repeat(24)}`,
+      `/api/aula/recursos/${'z'.repeat(24)}/entregas`]) {
+      assert.equal(uploadReads.filter(read => read === path).length, 0,
+        `La subida ya recibió el adjunto y no debe volver a consultar ${path}.`)
+    }
+    assert.deepEqual(uploadReads.filter(path => ['/api/me', '/api/onboarding/status', '/api/estructura/sedes',
+      '/api/anos-lectivos', '/api/horarios', '/api/siee', '/api/aula/catalogo'].includes(path)), [],
+    'Adjuntar un archivo no debe recargar identidad ni catálogos académicos.')
+    const beforeRemovalReads = apiReads.length
+    const beforeRemovalWrites = apiWrites.length
+    await evaluate(`(() => {
+      window.confirm = () => true
+      const file = [...document.querySelectorAll('.aula-material')].find(item => item.textContent.includes('Material adicional.pdf'))
+      file.querySelector('.aula-material-actions button:last-child').click()
+    })()`)
+    await until(`document.querySelectorAll('.aula-material').length === 2`)
+    await sleep(350)
+    assert.deepEqual(apiWrites.slice(beforeRemovalWrites), [`/api/aula/adjuntos/${'n'.repeat(24)}`],
+      'Quitar un adjunto debe enviar una sola escritura.')
+    assert.deepEqual(apiReads.slice(beforeRemovalReads).filter(path => path.startsWith('/api/aula/')), [],
+      'Quitar un adjunto debe actualizar la caché sin releer el aula, recurso ni entregas.')
+    fixtures['/api/aula/recursos/' + 'z'.repeat(24)].data.adjuntos = [
+      {token: 'h'.repeat(24), nombre: 'Guía en PDF.pdf', mime: 'application/pdf', es_imagen: false}]
+    await command('Page.reload')
+    await until(`!!document.querySelector('.aula-material-grid.is-single .aula-material-inline iframe')`)
+    assert.ok(await evaluate(`document.querySelectorAll('.aula-material-grid.is-single .aula-material').length === 1`),
+      'Un solo archivo debe conservar su vista previa dentro del recurso.')
+    await screenshot('aula-adjunto-unico-desktop')
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Editar recurso')).click()`)
+    await until(`document.body.innerText.includes('Tipo de contenido') && !!document.querySelector('.aula-resource-form select')`)
+    assert.ok(await evaluate(`!!document.querySelector('.aula-sidebar') && !!document.querySelector('.aula-resource-form')`),
+      'Editar desde el recurso debe abrir el formulario en el panel derecho para poder cambiar de sección.')
+    const beforeEditReads = apiReads.length
+    const beforeEditWrites = apiWrites.length
+    await evaluate(`(() => {
+      const input = document.querySelector('.aula-resource-form input[required]')
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+      setter.call(input, 'Guía de lectura actualizada')
+      input.dispatchEvent(new Event('input', {bubbles: true}))
+      document.querySelector('.aula-resource-form .aula-form-actions button:last-child').click()
+    })()`)
+    await until(`!!document.querySelector('.aula-resource-page')`)
+    await sleep(350)
+    assert.ok(await evaluate(`document.body.innerText.includes('Guía de lectura actualizada')`),
+      'La edición debe reflejar el título actualizado en la vista del recurso.')
+    assert.deepEqual(apiWrites.slice(beforeEditWrites), [`/api/aula/recursos/${'z'.repeat(24)}`],
+      'Editar un recurso debe enviar una sola escritura.')
+    assert.deepEqual(apiReads.slice(beforeEditReads).filter(path => [
+      `/api/aula/recursos/${'z'.repeat(24)}`, `/api/aula/${'y'.repeat(24)}`,
+      `/api/aula/recursos/${'z'.repeat(24)}/entregas`,
+    ].includes(path)), [],
+      'La edición debe usar la respuesta de la API sin repetir GET de aula ni recurso.')
+    await navigate('/evaluacion/aula/recursos/' + 'q'.repeat(24), 'Preguntas del cuestionario')
+    assert.ok(await evaluate(`!!document.querySelector('.aula-question-layout') && !!document.querySelector('.aula-sidebar .aula-nav-resource.is-active')`),
+      'El editor de preguntas debe tener navegación propia y conservar el menú del aula.')
+    await evaluate(`[...document.querySelectorAll('.aula-question-header button')].find(button => button.textContent.includes('Agregar pregunta')).click()`)
+    assert.ok(await evaluate(`document.querySelectorAll('.aula-question-index>button').length === 2 && document.querySelector('.aula-question-stage textarea')?.offsetWidth > 300`),
+      'El editor debe agregar preguntas y sus campos deben aprovechar el ancho del panel.')
+    await screenshot('aula-cuestionario-desktop')
     await command('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
     assert.ok(await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`), 'Aula mobile viewport overflows.')
     await screenshot('aula-recurso-mobile', true)
+    await navigate('/evaluacion/aula/' + 'y'.repeat(24), 'Semana 1')
+    assert.ok(await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`), 'Aula detail mobile viewport overflows.')
+    await screenshot('aula-detalle-mobile', true)
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Agregar recurso')).click()`)
+    await until(`!!document.querySelector('.aula-resource-form .aula-kind-grid')`)
+    await sleep(500)
+    assert.ok(await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1 && !!document.querySelector('.aula-resource-form .aula-form-actions button:last-child')`),
+      'El compositor y su botón de guardar deben ser accesibles en móvil.')
+    await screenshot('aula-compositor-mobile')
+    const reading = fixtures[`/api/aula/recursos/${'z'.repeat(24)}`].data
+    Object.assign(reading, {estudiante: true, progreso: 'sin_iniciar', completar_al: 'abrir', puede_gestionar: false})
+    const openingsBefore = apiWrites.filter(path => path.endsWith('/abrir')).length
+    await navigate('/evaluacion/aula/recursos/' + 'z'.repeat(24), 'Lee con atención.')
+    await until(`document.body.innerText.includes('Lee con atención.')`)
+    for (let i = 0; i < 30 && apiWrites.filter(path => path.endsWith('/abrir')).length === openingsBefore; i++) await sleep(100)
+    assert.equal(apiWrites.filter(path => path.endsWith('/abrir')).length - openingsBefore, 1,
+      'La primera lectura debe registrar una sola apertura.')
+    await sleep(400)
+    assert.equal(apiWrites.filter(path => path.endsWith('/abrir')).length - openingsBefore, 1,
+      'Ni los cambios de progreso ni los re-renderizados deben repetir la apertura.')
+    await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Contenido del aula')).click()`)
+    await until(`!!document.querySelector('.aula-sidebar') && document.body.innerText.includes('Semana 1')`)
+    await evaluate(`document.querySelector('.aula-sidebar .aula-nav-resource').click()`)
+    await until(`document.body.innerText.includes('Lee con atención.')`)
+    assert.equal(apiWrites.filter(path => path.endsWith('/abrir')).length - openingsBefore, 1,
+      'Volver por navegación interna a un recurso completado no debe repetir la apertura.')
     assert.deepEqual(errors, [], 'Uncaught browser errors in Aula.')
     console.log('PASS: Aula catalog, section, safe content and mobile layout with isolated fixtures.')
   } else if (workflowMode) {
@@ -865,6 +1189,8 @@ try {
     console.log('PASS: startup and F5: 1 /me, 0 /onboarding/status; no uncaught errors.')
   } else if (platformMode) {
     await navigate('/configuracion/colegios', 'Colegio de prueba')
+    assert.equal(apiReads.filter(path => path === '/api/estructura/sedes').length, 0,
+      'La plataforma sin suplantación no necesita cargar sedes del colegio en la barra lateral.')
     assert.equal(await evaluate(`localStorage.getItem('colegio-saas.auth-token')`), null)
     await evaluate(`document.querySelector('table tbody tr td:last-child button:nth-of-type(3)').click()`)
     await until(`document.querySelector('#kt_modal_colegio_sedes')?.innerText.includes('Sede Norte')`)
@@ -1081,6 +1407,24 @@ try {
     await sleep(300)
     assert.equal(apiReads.filter(path => path === '/api/me').length, 1, 'Initial WebSocket subscription must not duplicate /me.')
     assert.equal(apiReads.filter(path => path === '/api/onboarding/status').length, 0)
+    const hiddenReadsBefore = scheduleReads.length
+    const canDeferHiddenTab = await evaluate(`(() => {
+      Object.defineProperty(document, 'visibilityState', {configurable: true, value: 'hidden'})
+      return document.visibilityState === 'hidden'
+    })()`)
+    assert.equal(canDeferHiddenTab, true, 'The test must be able to model a hidden browser tab.')
+    fixtures['/api/horarios'].data.sesiones[0].materia = {id: 1, nombre: 'Clase recibida con pestaña oculta'}
+    reverbProbe({action: 'publish', resources: ['schedule']})
+    await sleep(600)
+    assert.equal(scheduleReads.length, hiddenReadsBefore,
+      'A hidden tab must defer remote API reads until it becomes visible.')
+    await evaluate(`(() => {
+      Object.defineProperty(document, 'visibilityState', {configurable: true, value: 'visible'})
+      document.dispatchEvent(new Event('visibilitychange'))
+    })()`)
+    await until(`document.body.innerText.includes('Clase recibida con pestaña oculta')`)
+    assert.equal(scheduleReads.length, hiddenReadsBefore + 1,
+      'Returning to the tab should refresh the affected schedule once.')
     const stormPaths = ['/api/estructura/sedes', '/api/horarios', '/api/me']
     const beforeStorm = new Map(stormPaths.map(path => [path, apiReads.filter(read => read === path).length]))
     reverbProbe({action: 'publish', count: 20, resources: ['all']})

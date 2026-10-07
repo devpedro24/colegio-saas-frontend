@@ -1358,6 +1358,8 @@
     "plan.f.aula": "Aula",
     "aula.title": "Aula",
     "plan.f.aula.desc": "Materiales, tareas y evaluaciones vinculables a la planilla; disponible desde Estándar.",
+    "plan.f.aulaColores": "Colores del Aula",
+    "plan.f.aulaColores.desc": "Personalizar los colores de períodos y preinformes en la jerarquía del Aula; disponible desde Estándar.",
     "plan.f.multiPasarela":  "Multiples pasarelas de pago",
     "plan.f.multiPasarela.desc":  "Más de una pasarela de pago.",
     "plan.f.multiSede":  "Gestión multi-sede",
