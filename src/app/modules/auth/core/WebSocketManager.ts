@@ -5,7 +5,7 @@ import {getCurrentUser} from './_requests'
 import {ApiError, discardPendingReads} from '@/lib/api/client'
 import {trackQueryReads} from '@/lib/api/academic-cache'
 import {initializeEcho, disconnectEcho} from '@/lib/echo'
-import {onLocalChange, refreshesIdentity, shouldRefreshQuery, type RealtimeScope} from '@/lib/realtime'
+import {isOwnChange, onLocalChange, refreshesIdentity, shouldRefreshQuery, type RealtimeScope} from '@/lib/realtime'
 import {clearImpersonation, useImpersonation} from '../../impersonation/impersonation.store'
 
 /** Owns the socket for the entire authenticated session, independent of the page. */
@@ -28,6 +28,8 @@ export function WebSocketManager() {
     let refreshUserAgain = false
     const reads = trackQueryReads(client)
     const pending = new Map<RealtimeScope, {resources: Set<string>; revision: number}>()
+    const deferred = new Map<string, number>()
+    let deferredIdentity = false
     let hasLiveUpdates = () => false
     let lastRecovery = Date.now()
     const refreshUser = async () => {
@@ -62,12 +64,31 @@ export function WebSocketManager() {
         for (const [target, changed] of batches) {
           const resources = [...changed.resources]
           // Mark inactive views stale; fetch only visible queries, preserving filters/forms.
-          void client.invalidateQueries({predicate: query =>
-            shouldRefreshQuery(query.queryKey, resources, target) && reads.needsRefresh(query, changed.revision),
-          })
-          if ((target === 'platform' || !platform) && refreshesIdentity(resources)) void refreshUser()
+          const matches = (query: Parameters<typeof reads.needsRefresh>[0]) =>
+            shouldRefreshQuery(query.queryKey, resources, target) && reads.needsRefresh(query, changed.revision)
+          if (document.visibilityState === 'hidden') {
+            for (const query of client.getQueryCache().findAll({predicate: matches})) {
+              deferred.set(query.queryHash, Math.max(deferred.get(query.queryHash) ?? 0, changed.revision))
+            }
+            void client.invalidateQueries({predicate: matches, refetchType: 'none'})
+          } else void client.invalidateQueries({predicate: matches})
+          if ((target === 'platform' || !platform) && refreshesIdentity(resources)) {
+            if (document.visibilityState === 'hidden') deferredIdentity = true
+            else void refreshUser()
+          }
         }
       }, 100)
+    }
+    const resumeDeferred = () => {
+      if (document.visibilityState !== 'visible') return
+      if (deferredIdentity) {deferredIdentity = false; void refreshUser()}
+      if (!deferred.size) return
+      const pendingReads = new Map(deferred)
+      deferred.clear()
+      void client.invalidateQueries({predicate: query => {
+        const revision = pendingReads.get(query.queryHash)
+        return revision !== undefined && reads.needsRefresh(query, revision)
+      }})
     }
     // A bulk import may produce many queued broadcasts. Apply the first one
     // immediately, then coalesce the rest into a trailing refresh at most once
@@ -113,6 +134,7 @@ export function WebSocketManager() {
     }
     const recoveryTimer = setInterval(recover, 60_000)
     document.addEventListener('visibilitychange', recover)
+    document.addEventListener('visibilitychange', resumeDeferred)
     window.addEventListener('online', recover)
     try {
       const echo = initializeEcho(tenantChannel, platform)
@@ -122,7 +144,8 @@ export function WebSocketManager() {
       const subscribe = (name: string, scope: RealtimeScope) => {
         let subscribed = false
         echo.private(name)
-          .listen('.application.changed', (payload: {resources?: string[]}) => {
+          .listen('.application.changed', (payload: {resources?: string[]; change_id?: string}) => {
+            if (isOwnChange(payload.change_id)) return
             discardPendingReads()
             scheduleRemote(scope, payload.resources)
           })
@@ -152,6 +175,7 @@ export function WebSocketManager() {
       if (remoteTimer) clearTimeout(remoteTimer)
       clearInterval(recoveryTimer)
       document.removeEventListener('visibilitychange', recover)
+      document.removeEventListener('visibilitychange', resumeDeferred)
       window.removeEventListener('online', recover)
       reads.unsubscribe()
       unsubscribeLocal()

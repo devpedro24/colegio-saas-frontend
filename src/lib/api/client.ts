@@ -12,7 +12,7 @@
 
 import {clearImpersonation, getImpersonation} from '@/app/modules/impersonation/impersonation.store';
 import {queryClient} from './query-client';
-import {notifyLocalChange, resourceForPath} from '../realtime';
+import {notifyLocalChange, rememberOwnChange, resourceForPath} from '../realtime';
 
 const CSRF_COOKIE = 'school_saas_csrf';
 let sessionGeneration = 0;
@@ -102,12 +102,13 @@ export class ApiError extends Error {
 }
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+type MutationOptions = {notifyLocalChange?: boolean};
 
-function request<TResponse>(method: HttpMethod, path: string, body?: unknown): Promise<TResponse> {
+function request<TResponse>(method: HttpMethod, path: string, body?: unknown, options?: MutationOptions): Promise<TResponse> {
   if (method !== 'GET') {
     // A read started before a write must not be reused by the post-save refresh.
     pendingReads.clear();
-    return performRequest<TResponse>(method, path, body).finally(() => pendingReads.clear());
+    return performRequest<TResponse>(method, path, body, options).finally(() => pendingReads.clear());
   }
   const key = `${sessionGeneration}:${path}`;
   const context = getImpersonation();
@@ -120,11 +121,14 @@ function request<TResponse>(method: HttpMethod, path: string, body?: unknown): P
   return promise;
 }
 
-async function performRequest<TResponse>(method: HttpMethod, path: string, body?: unknown): Promise<TResponse> {
+async function performRequest<TResponse>(method: HttpMethod, path: string, body?: unknown,
+  options?: MutationOptions): Promise<TResponse> {
   const context = getImpersonation();
   const generation = sessionGeneration;
   const csrf = method === 'GET' ? null : getCsrfToken();
   const socketId = method === 'GET' ? undefined : socketIdProvider();
+  const changeId = method === 'GET' ? undefined : globalThis.crypto?.randomUUID?.();
+  if (changeId) rememberOwnChange(changeId);
 
   const response = await fetch(`/api${path}`, {
     method,
@@ -134,6 +138,7 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
       ...(body !== undefined && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...(csrf ? {'X-CSRF-Token': csrf} : {}),
       ...(socketId ? {'X-Socket-ID': socketId} : {}),
+      ...(changeId ? {'X-Client-Change-ID': changeId} : {}),
     },
     body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });
@@ -157,7 +162,8 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
     throw new ApiError(response.status, message, data?.errors, data);
   }
 
-  if (method !== 'GET' && !['/login', '/logout', '/forgot-password', '/broadcasting/auth', '/tenant-broadcasting/auth'].includes(path)) {
+  if (method !== 'GET' && options?.notifyLocalChange !== false
+    && !['/login', '/logout', '/forgot-password', '/broadcasting/auth', '/tenant-broadcasting/auth'].includes(path)) {
     notifyLocalChange({resource: resourceForPath(path),
       scope: isPlatformPath(path) ? 'platform' : 'tenant',
       tenantKey: context.activeColegio?.slug});
@@ -167,8 +173,8 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
 
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
-  put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
-  patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
-  delete: <T>(path: string) => request<T>('DELETE', path),
+  post: <T>(path: string, body?: unknown, options?: MutationOptions) => request<T>('POST', path, body, options),
+  put: <T>(path: string, body?: unknown, options?: MutationOptions) => request<T>('PUT', path, body, options),
+  patch: <T>(path: string, body?: unknown, options?: MutationOptions) => request<T>('PATCH', path, body, options),
+  delete: <T>(path: string, options?: MutationOptions) => request<T>('DELETE', path, undefined, options),
 };

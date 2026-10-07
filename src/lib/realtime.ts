@@ -9,7 +9,10 @@ const dependencies: Record<string, string[]> = {
   schedule: ['horarios', 'asistencias', 'evaluacion', 'boletines', 'eventos', 'evento', 'eventos-catalogo'],
   attendance: ['asistencias'],
   evaluation: ['evaluacion', 'boletines', 'horarios', 'estructura', 'aula', 'eventos-catalogo'],
-  aula: ['aula', 'evaluacion'],
+  aula: ['aula'],
+  'aula-grade': ['aula', 'evaluacion'],
+  'aula-content': [],
+  'aula-progress': [],
   'aula-attempt': [],
   'academic-config': ['config', 'siee', 'preinformes', 'evaluacion', 'boletines', 'onboarding'],
   events: ['eventos', 'evento', 'eventos-catalogo', 'horarios'],
@@ -32,6 +35,10 @@ export function shouldRefreshQuery(key: readonly unknown[], resources: readonly 
   if (root === 'academic-options' || root === 'academic-options-all') {
     return resources.some(resource => ['academic', 'structure', 'curriculum', 'schedule', 'users'].includes(resource))
   }
+  if (root === 'aula' && resources.includes('aula-content')) {
+    const detail = String(key[1] ?? '')
+    if ((key.length === 2 && detail !== 'catalogo') || ['recurso', 'entregas'].includes(detail)) return true
+  }
   return resources.some(resource => dependencies[resource].includes(root))
 }
 
@@ -44,6 +51,9 @@ export function resourceForPath(path: string): string {
   // El autosalvado y la navegación de un examen actualizan su estado local;
   // invalidar todo el Aula en cada escritura multiplicaría las consultas.
   if (/^\/?aula\/intentos\/[^/]+\/(?:respuestas|pagina|incidentes)(?:\/|$|\?)/.test(path)) return 'aula-attempt'
+  if (/^\/?aula\/recursos\/[^/]+\/abrir(?:\/|$|\?)/.test(path)) return 'aula-progress'
+  if (/^\/?aula\/(?:(?:recursos|entregas)\/[^/]+\/adjuntos|adjuntos\/[^/]+)(?:\/|$|\?)/.test(path)) return 'aula-content'
+  if (/^\/?aula\/(?:secciones\/[^/]+\/recursos|recursos\/[^/]+|entregas\/[^/]+\/calificar|intentos\/[^/]+\/(?:finalizar|calificar))(?:$|\?)/.test(path)) return 'aula-grade'
   const root = path.split('?')[0].split('/').filter(Boolean)[0]
   return ({'anos-lectivos': 'academic', periodos: 'academic', estructura: 'structure', 'plan-estudios': 'curriculum',
     horarios: 'schedule', asignaciones: 'schedule', asistencias: 'attendance', evaluacion: 'evaluation', aula: 'aula', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
@@ -53,6 +63,21 @@ export function resourceForPath(path: string): string {
 
 type LocalChange = {resource: string; scope: RealtimeScope; tenantKey?: string}
 const listeners = new Set<(change: LocalChange) => void>()
+const ownChanges = new Map<string, number>()
+const ownChangeTtl = 2 * 60_000
+function pruneOwnChanges(now: number) {
+  for (const [id, createdAt] of ownChanges) if (now - createdAt > ownChangeTtl) ownChanges.delete(id)
+}
+export function rememberOwnChange(id: string) {
+  const now = Date.now()
+  pruneOwnChanges(now)
+  ownChanges.set(id, now)
+}
+export function isOwnChange(id?: string): boolean {
+  if (!id) return false
+  pruneOwnChanges(Date.now())
+  return ownChanges.has(id)
+}
 export function notifyLocalChange(change: LocalChange) {
   listeners.forEach(listener => listener(change))
 }

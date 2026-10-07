@@ -5,7 +5,16 @@ import ts from 'typescript'
 
 const source = fs.readFileSync(new URL('../src/lib/realtime.ts', import.meta.url), 'utf8')
 const js = ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022}}).outputText
-const {shouldRefreshQuery, refreshesIdentity, onLocalChange, notifyLocalChange, resourceForPath} = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'))
+const {shouldRefreshQuery, refreshesIdentity, onLocalChange, notifyLocalChange, resourceForPath,
+  rememberOwnChange, isOwnChange} = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'))
+
+test('the originating tab recognizes its own broadcast without hiding another tab change', () => {
+  const own = '3e0aa476-d27c-4d85-8720-83dc8dd2f21c'
+  rememberOwnChange(own)
+  assert.equal(isOwnChange(own), true)
+  assert.equal(isOwnChange('d1a029e1-d178-412b-b947-009340769a4e'), false)
+  assert.equal(isOwnChange(undefined), false)
+})
 
 test('a school year change refreshes selectors and dependent academic views', () => {
   for (const root of ['anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'siee', 'evaluacion', 'boletines']) {
@@ -57,5 +66,40 @@ test('autosaving an exam does not refetch every classroom or gradebook', () => {
     assert.equal(shouldRefreshQuery(['aula', 'catalogo'], ['aula-attempt'], 'tenant'), false)
     assert.equal(shouldRefreshQuery(['evaluacion', 'planillas'], ['aula-attempt'], 'tenant'), false)
   }
-  assert.equal(resourceForPath('/aula/intentos/opaque/finalizar?opaque=1'), 'aula')
+  assert.equal(resourceForPath('/aula/intentos/opaque/finalizar?opaque=1'), 'aula-grade')
+})
+
+test('opening a classroom resource updates only private progress', () => {
+  assert.equal(resourceForPath('/aula/recursos/opaque/abrir?opaque=1'), 'aula-progress')
+  for (const root of ['aula', 'evaluacion', 'usuarios', 'estructura', 'onboarding']) {
+    assert.equal(shouldRefreshQuery([root], ['aula-progress'], 'tenant'), false, root)
+  }
+  assert.equal(refreshesIdentity(['aula-progress']), false)
+  assert.equal(resourceForPath('/aula/recursos/opaque/archivar?opaque=1'), 'aula')
+  assert.equal(shouldRefreshQuery(['estructura', 'sedes'], ['aula'], 'tenant'), false)
+  assert.equal(shouldRefreshQuery(['usuarios'], ['aula'], 'tenant'), false)
+  assert.equal(shouldRefreshQuery(['onboarding'], ['aula'], 'tenant'), false)
+  assert.equal(shouldRefreshQuery(['aula', 'catalogo'], ['aula'], 'tenant'), true)
+  assert.equal(shouldRefreshQuery(['evaluacion', 'planillas'], ['aula'], 'tenant'), false)
+  assert.equal(shouldRefreshQuery(['evaluacion', 'planillas'], ['aula-grade'], 'tenant'), true)
+  assert.equal(resourceForPath('/aula/secciones/opaque/recursos?opaque=1'), 'aula-grade')
+  assert.equal(resourceForPath('/aula/recursos/opaque?opaque=1'), 'aula-grade')
+  assert.equal(resourceForPath('/aula/recursos/opaque/archivar?opaque=1'), 'aula')
+})
+
+test('attachment uploads refresh only the visible classroom content', () => {
+  for (const path of ['/aula/recursos/opaque/adjuntos?opaque=1', '/aula/entregas/opaque/adjuntos?opaque=1',
+    '/aula/adjuntos/opaque?opaque=1']) {
+    assert.equal(resourceForPath(path), 'aula-content')
+  }
+  for (const key of [['aula', 'classroom-token'], ['aula', 'recurso', 'resource-token'],
+    ['aula', 'entregas', 'resource-token']]) {
+    assert.equal(shouldRefreshQuery(key, ['aula-content', 'audit'], 'tenant'), true, key.join('/'))
+  }
+  for (const key of [['aula', 'catalogo', 'year-token', 'group-token'], ['aula', 'planilla-destino', 'section-token'],
+    ['aula', 'mi-intento', 'resource-token'], ['onboarding'], ['estructura', 'sedes'], ['anos-lectivos'],
+    ['horarios'], ['siee', 'token'], ['evaluacion', 'planillas']]) {
+    assert.equal(shouldRefreshQuery(key, ['aula-content', 'audit'], 'tenant'), false, key.join('/'))
+  }
+  assert.equal(refreshesIdentity(['aula-content', 'audit']), false)
 })

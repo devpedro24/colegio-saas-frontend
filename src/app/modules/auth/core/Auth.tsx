@@ -91,8 +91,14 @@ export const AuthInit: FC<WithChildren> = ({children}) => {
         if (!disposed) setReady(true)
       }
     }
-    void rehydrate()
-    return () => { disposed = true }
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      document.removeEventListener('visibilitychange', onVisible)
+      void rehydrate()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    onVisible()
+    return () => { disposed = true; document.removeEventListener('visibilitychange', onVisible) }
     // Session bootstrap runs once per tab. Subsequent state changes use the provider.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

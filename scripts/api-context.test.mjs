@@ -40,6 +40,7 @@ let js = ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.ESN
 js = js.replaceAll('@/app/modules/impersonation/impersonation.store', impersonationModule)
   .replaceAll('./query-client', queryModule).replaceAll('../realtime', realtimeModule)
 const {api, onSessionExpired, advanceSessionGeneration, setSocketIdProvider} = await import(moduleUrl(js))
+const {onLocalChange, isOwnChange} = await import(realtimeModule)
 await new Promise(resolve => setTimeout(resolve, 0))
 
 test('legacy credentials are removed immediately and revoked without new cookies', () => {
@@ -126,6 +127,25 @@ test('writes retain CSRF and socket identity and invalidate pending read reuse',
   calls[2].resolve(new Response('{}'))
   await Promise.all([before, after])
   setSocketIdProvider(() => undefined)
+})
+
+test('a locally patched write carries a correlation ID and does not invalidate itself twice', async () => {
+  const calls = []
+  const changes = []
+  const stop = onLocalChange(change => changes.push(change))
+  globalThis.fetch = async (url, options) => {
+    calls.push({url, options})
+    return new Response('{}', {headers: {'Content-Type': 'application/json'}})
+  }
+  try {
+    await api.put('/aula/recursos/opaque?opaque=1', {titulo: 'Actualizado'}, {notifyLocalChange: false})
+    const id = calls[0].options.headers['X-Client-Change-ID']
+    assert.match(id, /^[a-f0-9-]{36}$/i)
+    assert.equal(isOwnChange(id), true)
+    assert.deepEqual(changes, [])
+    await api.post('/aula/secciones/opaque/recursos?opaque=1', {titulo: 'Nuevo'})
+    assert.equal(changes.length, 1)
+  } finally { stop() }
 })
 
 test('failed shared reads can be retried with a new network request', async () => {

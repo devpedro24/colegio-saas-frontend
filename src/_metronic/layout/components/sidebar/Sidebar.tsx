@@ -175,10 +175,9 @@ const Sidebar = () => {
   const {currentUser} = useAuth()
   const {hasPermission} = useAuthz()
   const {activeColegio} = useImpersonation()
-  const {data: sedesForRail, isLoading: sedesLoading} = useSedes(true)
-
   const isPlatform = currentUser?.is_platform === true
   const isTenantUser = !!currentUser && currentUser.is_platform !== true
+  const {data: sedesForRail, isLoading: sedesLoading} = useSedes(!!currentUser && (!isPlatform || !!activeColegio))
   const canManageUsers = hasPermission('usuarios.gestionar')
 
   // La rail desktop solo se muestra si hay sedes adicionales navegables (no
