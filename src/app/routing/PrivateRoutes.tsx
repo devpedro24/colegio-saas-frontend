@@ -53,6 +53,7 @@ const PrivateRoutes = () => {
           }
         />
         <Route path='ajustes-institucionales' element={<InstitutionalSettingsIndex />} />
+        <Route path='ajustes-institucionales/correo' element={<SuspensedView><InstitutionalSettingsPage section='correo' /></SuspensedView>} />
         <Route
           path='ajustes-institucionales/datos'
           element={<SuspensedView><InstitutionalSettingsPage section='datos' /></SuspensedView>}

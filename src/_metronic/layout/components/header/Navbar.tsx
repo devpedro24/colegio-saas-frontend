@@ -10,6 +10,8 @@ import {useAuth} from '../../../../app/modules/auth'
 import {useAuthz} from '../../../../app/modules/auth/core/authz'
 import {useImpersonation} from '../../../../app/modules/impersonation/impersonation.store'
 import {useToast} from '@/lib/ui/toast'
+import {SchoolMailRequestsNotification} from './SchoolMailRequestsNotification'
+import {canAccessSchoolMail} from '@/app/modules/auth/core/schoolMailAccess'
 
 // Idiomas soportados (badge del trigger + estado activo). El submenu de demo46 se recorto a
 // English + Spanish, cada item con data-kt-lang. El nombre visible se traduce con i18n.
@@ -44,6 +46,7 @@ const Navbar = () => {
     schoolContext && (superadminInSchool || hasPermission('academico.configurar'))
   const canManageCampuses =
     schoolContext && (superadminInSchool || hasPermission('academico.estructura.gestionar'))
+  const canConfigureMail = canAccessSchoolMail(currentUser, !!activeColegio)
 
   useEffect(() => {
     // Modo de tema: init nativo (bindea clicks de [data-kt-element="mode"], aplica el modo
@@ -110,17 +113,20 @@ const Navbar = () => {
     // Fase de CAPTURA: KTMenu hace stopPropagation en algunos .menu-link, asi corremos antes.
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [navigate, lang, logout, toast, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, currentUser?.name, currentUser?.email, planLabel])
+  }, [navigate, lang, logout, toast, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, currentUser?.name, currentUser?.email, planLabel])
 
   return (
+    <div className='app-navbar flex-shrink-0'>
+    <SchoolMailRequestsNotification />
     <div
       className='app-navbar flex-shrink-0'
       dangerouslySetInnerHTML={{
         __html: withBase(
-          getNavbarHtml(intl, {showQuickIcons, canConfigureInstitution, canManageCampuses, userName: currentUser?.name, userEmail: currentUser?.email, planLabel})
+          getNavbarHtml(intl, {showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, userName: currentUser?.name, userEmail: currentUser?.email, planLabel})
         ),
       }}
     />
+    </div>
   )
 }
 

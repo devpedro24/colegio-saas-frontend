@@ -16,6 +16,7 @@ export const getNavbarHtml = (
     showQuickIcons?: boolean
     canConfigureInstitution?: boolean
     canManageCampuses?: boolean
+    canConfigureMail?: boolean
   }
 ) => {
   const t = (id: string) => intl.formatMessage({id})
@@ -25,7 +26,7 @@ export const getNavbarHtml = (
   // sin colegio activo). Para usuarios de colegio (tenant) no aplican y se ocultan.
   const showQuickIcons = opts?.showQuickIcons !== false
   const showInstitutionalSettings =
-    opts?.canConfigureInstitution === true || opts?.canManageCampuses === true
+    opts?.canConfigureInstitution === true || opts?.canManageCampuses === true || opts?.canConfigureMail === true
   const name = escapeUserHtml(opts?.userName || t('account.user'))
   const email = escapeUserHtml(opts?.userEmail || '')
   const plan = escapeUserHtml(opts?.planLabel || '')
@@ -1611,6 +1612,16 @@ ${plan ? `<span class="badge badge-light-primary align-self-start mt-2 text-wrap
 													</span>
 												</a>
 												</div>` : ''}
+												${opts?.canConfigureMail ? String.raw`
+                        <div class="menu-item">
+                          <a href="/ajustes-institucionales/correo" data-kt-nav="/ajustes-institucionales/correo" class="menu-link institutional-menu__item">
+                            <span class="institutional-menu__icon" aria-hidden="true"><i class="ki-solid ki-sms fs-2"></i></span>
+                            <span class="institutional-menu__copy">
+                              <span class="institutional-menu__title">${t('intake.ui.emailConnection')}</span>
+                              <span class="institutional-menu__description">${t('schoolMail.menuDescription')}</span>
+                            </span>
+                          </a>
+                        </div>` : ''}
 												${opts?.canManageCampuses ? String.raw`
 												<div class="menu-item">
 													<a href="/ajustes-institucionales/sedes" data-kt-nav="/ajustes-institucionales/sedes" class="menu-link institutional-menu__item">

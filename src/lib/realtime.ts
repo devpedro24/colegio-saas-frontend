@@ -1,6 +1,6 @@
 /** Shared dependency map for remote broadcasts and successful local writes. */
 export type RealtimeScope = 'tenant' | 'platform'
-const platformRoots = new Set(['colegios', 'plans', 'rbac-catalog', 'audit', 'audit-tenants'])
+const platformRoots = new Set(['colegios', 'plans', 'rbac-catalog', 'audit', 'audit-tenants', 'school-mail-requests'])
 const academic = ['anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'asistencias', 'siee', 'preinformes', 'config', 'evaluacion', 'boletines', 'aula', 'eventos-catalogo', 'eventos', 'evento', 'onboarding']
 const dependencies: Record<string, string[]> = {
   academic,
@@ -10,6 +10,9 @@ const dependencies: Record<string, string[]> = {
   attendance: ['asistencias'],
   evaluation: ['evaluacion', 'boletines', 'horarios', 'estructura', 'aula', 'eventos-catalogo'],
   aula: ['aula'],
+  'enrollment-intake': ['ingreso'],
+  'school-mail': ['school-mail', 'ingreso'],
+  'school-mail-requests': ['school-mail-requests', 'school-mail'],
   'aula-grade': ['aula', 'evaluacion'],
   'aula-content': [],
   'aula-progress': [],
@@ -47,6 +50,7 @@ export function refreshesIdentity(resources: readonly string[]): boolean {
 }
 
 export function resourceForPath(path: string): string {
+  if (/^\/?(?:platform\/correo-solicitudes|correo-institucional\/solicitudes)(?:\/|$|\?)/.test(path)) return 'school-mail-requests'
   if (/^\/?siee\/[^/]+\/curriculo(?:\/|$|\?)/.test(path)) return 'curriculum'
   // El autosalvado y la navegación de un examen actualizan su estado local;
   // invalidar todo el Aula en cada escritura multiplicaría las consultas.
@@ -56,6 +60,8 @@ export function resourceForPath(path: string): string {
   if (/^\/?aula\/(?:secciones\/[^/]+\/recursos|recursos\/[^/]+|entregas\/[^/]+\/calificar|intentos\/[^/]+\/(?:finalizar|calificar))(?:$|\?)/.test(path)) return 'aula-grade'
   const root = path.split('?')[0].split('/').filter(Boolean)[0]
   return ({'anos-lectivos': 'academic', periodos: 'academic', estructura: 'structure', 'plan-estudios': 'curriculum',
+    ingreso: 'enrollment-intake', 'ingreso-publico': 'enrollment-intake',
+    'correo-institucional': 'school-mail',
     horarios: 'schedule', asignaciones: 'schedule', asistencias: 'attendance', evaluacion: 'evaluation', aula: 'aula', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
     onboarding: 'institution', branding: 'institution', usuarios: 'users', rbac: 'rbac', colegios: 'schools', plans: 'plans',
     planes: 'plans', account: 'account', mfa: 'account', storage: 'storage'} as Record<string, string>)[root] ?? 'all'

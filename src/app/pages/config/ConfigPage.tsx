@@ -5,6 +5,7 @@ import ColegiosPage from './colegios/ColegiosPage'
 import PlanesPage from './planes/PlanesPage'
 import RbacPage from './rbac/RbacPage'
 import AuditoriaPage from './auditoria/AuditoriaPage'
+import SchoolMailRequestsPage from './correo/SchoolMailRequestsPage'
 
 // Router anidado del modulo Configuracion. Cada pagina ya trae su propio
 // <PageTitle> + <Content>, por eso aqui NO se envuelve con ToolbarWrapper/Content.
@@ -23,6 +24,7 @@ const ConfigPage: FC = () => {
       <Route path='planes' element={<PlanesPage />} />
       <Route path='roles-permisos' element={<RbacPage />} />
       <Route path='auditoria' element={<AuditoriaPage />} />
+      <Route path='correo-solicitudes' element={<SchoolMailRequestsPage />} />
       <Route index element={<Navigate to='/configuracion/colegios' />} />
     </Routes>
   )

@@ -11,14 +11,17 @@ import {useDatosInstitucionales} from './configuracion.api'
 import {DatosInstitucionalesCard} from './components/DatosInstitucionalesCard'
 import {SedesConfigTab} from './components/SedesConfigTab'
 import {ZonaHorariaCard} from './components/ZonaHorariaCard'
+import {SchoolMailCard} from './components/SchoolMailCard'
+import {canAccessSchoolMail} from '@/app/modules/auth/core/schoolMailAccess'
 
-type Section = 'datos' | 'sedes' | 'horario'
+type Section = 'datos' | 'sedes' | 'horario' | 'correo'
 
 const InstitutionalSettingsContent: FC<{
   section: Section
   canConfigure: boolean
   canManageCampuses: boolean
-}> = ({section, canConfigure, canManageCampuses}) => {
+  canConfigureMail: boolean
+}> = ({section, canConfigure, canManageCampuses, canConfigureMail}) => {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const {currentUser} = useAuth()
@@ -38,11 +41,12 @@ const InstitutionalSettingsContent: FC<{
     {key: 'datos', allowed: canConfigure},
     {key: 'horario', allowed: canConfigure},
     {key: 'sedes', allowed: canManageCampuses},
+    {key: 'correo', allowed: canConfigureMail},
   ]
 
   return (
     <>
-      <PageTitle breadcrumbs={breadcrumbs}>{t(`academico.config.tab.${section}`)}</PageTitle>
+      <PageTitle breadcrumbs={breadcrumbs}>{section === 'correo' ? t('intake.ui.emailConnection') : t(`academico.config.tab.${section}`)}</PageTitle>
       <Content>
         <div className='card mb-5 mb-xl-10 institutional-settings__header'>
           <div className='card-body pt-9 pb-0'>
@@ -86,13 +90,13 @@ const InstitutionalSettingsContent: FC<{
                   to={`/ajustes-institucionales/${key}`}
                   className={({isActive}) => `nav-link text-active-primary me-2 px-3 py-3${isActive ? ' active' : ''}`}
                 >
-                  {t(`academico.config.tab.${key}`)}
+                  {key === 'correo' ? t('intake.ui.emailConnection') : t(`academico.config.tab.${key}`)}
                 </NavLink>
               ))}
             </nav>
           </div>
         </div>
-        {section === 'datos' ? <DatosInstitucionalesCard /> : section === 'horario' ? <ZonaHorariaCard /> : <SedesConfigTab />}
+        {section === 'correo' ? <SchoolMailCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'datos' ? <DatosInstitucionalesCard /> : section === 'horario' ? <ZonaHorariaCard /> : <SedesConfigTab />}
       </Content>
     </>
   )
@@ -100,16 +104,19 @@ const InstitutionalSettingsContent: FC<{
 
 const InstitutionalSettingsPage: FC<{section: Section}> = ({section}) => {
   const {isPlatform, hasPermission} = useAuthz()
+  const {currentUser} = useAuth()
   const {activeColegio} = useImpersonation()
   const inSchool = !isPlatform || !!activeColegio
   const superadminInSchool = isPlatform && !!activeColegio
   const canConfigure = inSchool && (superadminInSchool || hasPermission('academico.configurar'))
   const canManageCampuses = inSchool && (superadminInSchool || hasPermission('academico.estructura.gestionar'))
+  const canConfigureMail = canAccessSchoolMail(currentUser, !!activeColegio)
+  if (section === 'correo' && !canConfigureMail) return <Navigate to='/dashboard' replace />
 
   if ((section === 'datos' || section === 'horario') && !canConfigure) return <Navigate to='/dashboard' replace />
   if (section === 'sedes' && !canManageCampuses) return <Navigate to='/dashboard' replace />
 
-  return <InstitutionalSettingsContent section={section} canConfigure={canConfigure} canManageCampuses={canManageCampuses} />
+  return <InstitutionalSettingsContent section={section} canConfigure={canConfigure} canManageCampuses={canManageCampuses} canConfigureMail={canConfigureMail} />
 }
 
 export default InstitutionalSettingsPage

@@ -58,6 +58,8 @@ export interface UserModel {
   must_change_password: boolean
   /** Roles asignados (slugs), ej: ['rector']. */
   roles: string[]
+  /** Rol principal, cuando la respuesta de sesión lo incluye. */
+  role?: string
   /** Permisos efectivos del usuario. */
   permissions: string[]
   /** true si es usuario de PLATAFORMA (superadministrador). */
