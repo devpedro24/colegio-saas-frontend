@@ -2,6 +2,8 @@
 
 Resumen de los módulos entregados y sus límites: [docs/ENTREGAS_2026-09.md](docs/ENTREGAS_2026-09.md).
 
+Ingreso estudiantil: [portal, permisos y prueba de navegador](docs/INGRESO_ESTUDIANTIL.md). Matrículas por enlace sin pagos ni cuentas de acudiente.
+
 ## Actualizaciones con Reverb
 
 `WebSocketManager` mantiene una conexión durante toda la sesión, con canales
