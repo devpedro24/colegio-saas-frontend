@@ -36,7 +36,7 @@ const CellBadge: FC<{state: CellState}> = ({state}) => {
     return (
       <span
         className='badge badge-light-primary'
-        title={`${intl.formatMessage({id: 'rbac.cellType.structural'})} Â· ${level}`}
+        title={`${intl.formatMessage({id: 'rbac.cellType.structural'})} · ${level}`}
       >
         <LockIcon className='fs-8 me-1' />
         {level}

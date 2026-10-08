@@ -175,7 +175,7 @@ export default function AuditoriaPage() {
                               </div>
                             )}
                           </td>
-                          <td>{entry.actor_rol || "â€”"}</td>
+                          <td>{entry.actor_rol || "—"}</td>
                           <td>
                             <span className="badge badge-light-primary">
                               {entry.accion}

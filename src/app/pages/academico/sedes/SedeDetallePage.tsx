@@ -167,7 +167,7 @@ const SedeDetallePage: FC = () => {
                       {t('academico.sede.detail.coordinador')}
                     </div>
                     <div className='text-gray-800 fw-semibold'>
-                      {sede.coordinador_name ? `${sede.coordinador_name} Â· ${sede.coordinador_email}` : (sede.coordinador_email ?? '—')}
+                      {sede.coordinador_name ? `${sede.coordinador_name} · ${sede.coordinador_email}` : (sede.coordinador_email ?? '—')}
                     </div>
                   </div>
                 </div>

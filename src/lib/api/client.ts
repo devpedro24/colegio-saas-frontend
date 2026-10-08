@@ -15,6 +15,8 @@ import {queryClient} from './query-client';
 import {notifyLocalChange, rememberOwnChange, resourceForPath} from '../realtime';
 
 const CSRF_COOKIE = 'school_saas_csrf';
+let apiLocale: 'en' | 'es' = 'en';
+export function setApiLocale(locale: string) { apiLocale = locale === 'es' ? 'es' : 'en'; }
 let sessionGeneration = 0;
 const pendingReads = new Map<string, {context: ReturnType<typeof getImpersonation>; promise: Promise<unknown>}>();
 const expiredListeners = new Set<() => void>();
@@ -62,11 +64,11 @@ function isPlatformPath(path: string): boolean {
   );
 }
 
-export function getCsrfToken(): string | null {
+export function getCsrfToken(cookieName = CSRF_COOKIE): string | null {
   if (typeof document === 'undefined') return null;
-  const value = document.cookie.split('; ').find(part => part.startsWith(`${CSRF_COOKIE}=`));
+  const value = document.cookie.split('; ').find(part => part.startsWith(`${cookieName}=`));
   if (!value) return null;
-  try { return decodeURIComponent(value.slice(CSRF_COOKIE.length + 1)); }
+  try { return decodeURIComponent(value.slice(cookieName.length + 1)); }
   catch { return null; }
 }
 
@@ -125,7 +127,8 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
   options?: MutationOptions): Promise<TResponse> {
   const context = getImpersonation();
   const generation = sessionGeneration;
-  const csrf = method === 'GET' ? null : getCsrfToken();
+  const intakePublic = path.startsWith('/ingreso-publico/');
+  const csrf = method === 'GET' ? null : getCsrfToken(intakePublic ? 'ingreso_csrf' : CSRF_COOKIE);
   const socketId = method === 'GET' ? undefined : socketIdProvider();
   const changeId = method === 'GET' ? undefined : globalThis.crypto?.randomUUID?.();
   if (changeId) rememberOwnChange(changeId);
@@ -135,6 +138,7 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
     credentials: 'same-origin',
     headers: {
       Accept: 'application/json',
+      'Accept-Language': apiLocale,
       ...(body !== undefined && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...(csrf ? {'X-CSRF-Token': csrf} : {}),
       ...(socketId ? {'X-Socket-ID': socketId} : {}),
@@ -154,7 +158,7 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
   if (!response.ok) {
     const message = (data?.message as string | undefined) ?? `Error ${response.status}`;
 
-    if (response.status === 401 && !['/login', '/register', '/me', '/platform/impersonar/estado'].includes(path)) {
+    if (response.status === 401 && !intakePublic && !['/login', '/register', '/me', '/platform/impersonar/estado'].includes(path)) {
       if (context.activeColegio && !isPlatformPath(path)) clearImpersonation();
       else expiredListeners.forEach(listener => listener());
     }
@@ -162,7 +166,7 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
     throw new ApiError(response.status, message, data?.errors, data);
   }
 
-  if (method !== 'GET' && options?.notifyLocalChange !== false
+  if (method !== 'GET' && !intakePublic && options?.notifyLocalChange !== false
     && !['/login', '/logout', '/forgot-password', '/broadcasting/auth', '/tenant-broadcasting/auth'].includes(path)) {
     notifyLocalChange({resource: resourceForPath(path),
       scope: isPlatformPath(path) ? 'platform' : 'tenant',
