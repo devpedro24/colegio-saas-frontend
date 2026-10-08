@@ -2,6 +2,7 @@ import {useState, type ReactNode} from 'react'
 import {useNavigate} from 'react-router-dom'
 import {aulaPortadaUrl, useSubirPortadaAula, type AulaDetail, type AulaResource} from './aula.api'
 import {periodAccent, preinformeAccent} from './aula.colors'
+import {useAulaAccordionState} from './useAulaAccordionState'
 
 const icons: Record<AulaResource['tipo'], string> = {texto: '▤', archivo: '▣', tarea: '✓', cuestionario: '☷'}
 
@@ -9,7 +10,7 @@ export function AulaWorkspace({aula, activeResource, children}: {aula: AulaDetai
   const navigate = useNavigate()
   const upload = useSubirPortadaAula()
   const [error, setError] = useState('')
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
+  const {values: expandedSections, toggle: toggleSidebarSection} = useAulaAccordionState(aula.token, 'sidebar')
   const count = aula.secciones.reduce((total, section) => total + section.recursos.filter(resource => !resource.eliminado).length, 0)
 
   return <div className='aula-workspace'>
@@ -43,7 +44,7 @@ export function AulaWorkspace({aula, activeResource, children}: {aula: AulaDetai
               ?.preinformes.find(pre => pre.token === section.preinforme_token)?.nombre}</div>}
           <button className='aula-nav-title aula-nav-section-toggle' aria-expanded={hasResources ? expanded : undefined}
             aria-controls={hasResources ? `aula-nav-resources-${section.token}` : undefined}
-            onClick={() => hasResources ? setExpandedSections(current => ({...current, [section.token]: !expanded}))
+            onClick={() => hasResources ? toggleSidebarSection(section.token, index === 0 || section.recursos.some(resource => resource.token === activeResource))
               : navigate(`/evaluacion/aula/${aula.token}#section-${section.token}`)}>
             {hasResources && <span className='aula-nav-chevron' aria-hidden='true'>{expanded ? '⌄' : '›'}</span>}
             <span>{section.titulo}{section.eliminado ? ' · Eliminada' : ''}</span>

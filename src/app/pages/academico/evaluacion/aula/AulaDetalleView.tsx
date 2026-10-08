@@ -1,6 +1,7 @@
 import {Fragment, useEffect, useState, type FormEvent} from 'react'
 import {useLocation, useNavigate, useParams, useSearchParams} from 'react-router-dom'
 import {AulaWorkspace} from './AulaWorkspace'
+import {useAulaAccordionState} from './useAulaAccordionState'
 import {periodAccent, preinformeAccent} from './aula.colors'
 import {AulaResourceComposer} from './AulaResourceComposer'
 import {useToast} from '@/lib/ui/toast'
@@ -28,7 +29,7 @@ export function AulaDetalleView() {
   const toast = useToast()
   const [editor, setEditor] = useState<Editor>(null)
   const [sectionForm, setSectionForm] = useState<SectionForm>({titulo: '', periodo_token: '', preinforme_token: '', visible_estudiantes: true})
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const {values: expandedSections, toggle: toggleContentSection} = useAulaAccordionState(aulaToken, 'content')
   const requestedEdit = searchParams.get('editar')
   useEffect(() => {
     if (!requestedEdit || !data) return
@@ -134,7 +135,7 @@ export function AulaDetalleView() {
         </div>
         {data.secciones.length ? <div className='aula-section-stack'>
           {data.secciones.map((section, index) => {
-            const isCollapsed = collapsed[section.token] ?? index !== 0
+            const isCollapsed = !(expandedSections[section.token] ?? index === 0)
             const hasResources = section.recursos.length > 0
             const periodLocked = data.periodos.find(period => period.token === section.periodo_token)?.estado === 'cerrado'
               && !data.permitir_edicion_periodos_cerrados
@@ -149,7 +150,7 @@ export function AulaDetalleView() {
             <div className='aula-section-heading'><button type='button' className='aula-section-toggle'
               disabled={!hasResources} aria-expanded={hasResources ? !isCollapsed : undefined}
               aria-controls={hasResources ? `aula-section-resources-${section.token}` : undefined}
-              onClick={() => setCollapsed(previous => ({...previous, [section.token]: !isCollapsed}))}>
+              onClick={() => toggleContentSection(section.token, index === 0)}>
               {hasResources && <span className={`aula-section-chevron ${isCollapsed ? 'is-collapsed' : ''}`} aria-hidden='true'>⌄</span>}
               <span><strong>{section.titulo}</strong><small>{section.periodo} · {section.recursos.length} recursos</small></span></button>
               {data.puede_gestionar && <span className={`aula-section-visibility ${section.eliminado ? '' : section.visible_estudiantes ? 'is-visible' : 'is-hidden'}`}>

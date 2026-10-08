@@ -717,6 +717,21 @@ try {
     await until(`document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'false'`)
     await evaluate(`document.querySelector('.aula-section-toggle').click()`)
     await until(`document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'true'`)
+    await evaluate(`document.querySelector('.aula-nav-section-toggle').click();document.querySelector('.aula-section-toggle').click()`)
+    await until(`document.querySelector('.aula-nav-section-toggle').getAttribute('aria-expanded') === 'false' &&
+      document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'false'`)
+    await command('Page.reload')
+    await until(`!!document.querySelector('.aula-section-toggle') &&
+      document.querySelector('.aula-nav-section-toggle').getAttribute('aria-expanded') === 'false' &&
+      document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'false'`)
+    await navigate('/evaluacion/aula/recursos/' + 'z'.repeat(24), 'Lee con atención.')
+    await navigate('/evaluacion/aula/' + 'y'.repeat(24), 'Semana 1')
+    assert.ok(await evaluate(`document.querySelector('.aula-nav-section-toggle').getAttribute('aria-expanded') === 'false' &&
+      document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'false'`),
+    'Ambos acordeones deben recordar su estado tras F5 y después de salir del aula.')
+    await evaluate(`document.querySelector('.aula-nav-section-toggle').click();document.querySelector('.aula-section-toggle').click()`)
+    await until(`document.querySelector('.aula-nav-section-toggle').getAttribute('aria-expanded') === 'true' &&
+      document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'true'`)
     await screenshot('aula-detalle-desktop')
     await command('Emulation.setDeviceMetricsOverride', {width: 2200, height: 1000, deviceScaleFactor: 1, mobile: false})
     await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.includes('Nueva sección')).click()`)
