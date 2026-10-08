@@ -65,7 +65,9 @@ export function OnboardingPage({status, refresh}: Props) {
 
   const activeStep = status.password_required ? 1 : step === 'logo' ? 2 : 3
 
-  const stepLabels = [t('onboarding.password'), t('onboarding.logo'), t('onboarding.institution')]
+  const stepLabels = status.institution_required
+    ? [t('onboarding.password'), t('onboarding.logo'), t('onboarding.institution')]
+    : [t('onboarding.password')]
 
   return (
     <main className='onboarding-page'>
@@ -87,7 +89,7 @@ export function OnboardingPage({status, refresh}: Props) {
               <i className='bi bi-building-check' />
             </div>
             <h1>{t('onboarding.title')}</h1>
-            <p>{t('onboarding.subtitle')}</p>
+            <p>{status.institution_required ? t('onboarding.subtitle') : t('onboarding.studentPassword')}</p>
           </div>
 
           <ol className='onboarding-steps' aria-label={t('onboarding.title')}>
@@ -111,16 +113,16 @@ export function OnboardingPage({status, refresh}: Props) {
 
         <section className='onboarding-content'>
           <div className='onboarding-content-top'>
-            <span>{intl.formatMessage({id: 'onboarding.progress'}, {current: activeStep})}</span>
+            <span>{status.institution_required ? intl.formatMessage({id: 'onboarding.progress'}, {current: activeStep}) : t('onboarding.singleStep')}</span>
             <div
               className='onboarding-progress-track'
               role='progressbar'
               aria-valuenow={activeStep}
               aria-valuemin={1}
-              aria-valuemax={3}
+              aria-valuemax={stepLabels.length}
               aria-label={t('onboarding.title')}
             >
-              <span style={{width: String(activeStep / 3 * 100) + '%'}} />
+              <span style={{width: String(activeStep / stepLabels.length * 100) + '%'}} />
             </div>
           </div>
 

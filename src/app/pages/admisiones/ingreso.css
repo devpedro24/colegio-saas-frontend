@@ -1,0 +1,26 @@
+.ingreso { color: var(--bs-gray-900, #172b36); }
+.ingreso-public { min-height: 100vh; padding: 32px 18px; background: #f3f7f5; }
+.ingreso-shell { max-width: 1080px; margin: auto; }
+.ingreso-hero { background: #123e34; color: white; padding: 30px; border-radius: 20px; margin-bottom: 24px; }
+.ingreso-hero h1, .ingreso-hero h2 { color: white; }
+.ingreso-hero p { color: #d9ebe4; margin: 0; }
+.ingreso-card { background: var(--bs-body-bg, white); border: 1px solid var(--bs-border-color, #d9e5df); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+.ingreso-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.ingreso label { display: block; font-weight: 600; margin-bottom: 6px; }
+.ingreso .form-check label { margin-bottom: 0; }
+.ingreso-help { color: var(--bs-gray-700, #4a6257); font-size: 13px; }
+.ingreso-row { padding: 16px 0; border-bottom: 1px solid var(--bs-border-color, #d9e5df); }
+.ingreso-status { display: inline-block; padding: 5px 12px; border-radius: 12px; background: #e2f5e9; color: #155a39; font-weight: 600; }
+.ingreso-status[data-status='rechazado'], .ingreso-status[data-status='correcciones'], .ingreso-status[data-status='rechazada'] { background: #fff0d6; color: #744d08; }
+.ingreso-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; }
+.ingreso-document { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 20px 0; border-bottom: 1px solid var(--bs-border-color, #d9e5df); }
+.ingreso aside { border-left: 4px solid #0d9e60; padding: 12px 18px; background: #edf8f0; color: #193d2c; }
+.ingreso button:disabled { cursor: not-allowed; }
+.ingreso-modal .modal-content > form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.ingreso-modal label.form-check { display: inline-flex; align-items: center; gap: 8px; padding-left: 0; margin-bottom: 0; }
+.ingreso-modal label.form-check .form-check-input { float: none; margin: 0; flex-shrink: 0; }
+.ingreso-modal .campaign-grades { column-gap: 32px; row-gap: 0; }
+.ingreso-modal .campaign-field-options { align-self: end; min-height: 44px; }
+.ingreso-table { overflow-x: auto; }
+.ingreso-table td, .ingreso-table th { padding: 12px; }
+@media(max-width: 700px) { .ingreso-grid, .ingreso-document { grid-template-columns: 1fr; } .ingreso-card, .ingreso-hero { padding: 18px; } }

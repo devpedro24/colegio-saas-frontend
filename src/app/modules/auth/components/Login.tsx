@@ -291,6 +291,8 @@ export function Login() {
       </div>
       {/* end::Action */}
 
+      <div className='text-center mb-6'><Link to='/ingreso' className='link-primary'><FormattedMessage id='intake.loginLink' /></Link></div>
+
       <div className='text-gray-500 text-center fw-semibold fs-6'>
         <FormattedMessage id='auth.login.noAccount' />{' '}
         <Link to='/auth/registration' className='link-primary'>

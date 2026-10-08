@@ -7,6 +7,7 @@ import {Content} from '../../../_metronic/layout/components/content'
 import {DASHBOARD_HTML} from './_DashboardContent'
 import {initDashboardCharts} from './_dashboardCharts'
 import type ApexCharts from 'apexcharts'
+import {StudentEnrollmentStatus} from '../admisiones/StudentEnrollmentStatus'
 
 const dashboardBreadcrumbs: Array<PageLink> = [
   {title: 'Dashboards', path: '/dashboard', isSeparator: false, isActive: false},
@@ -29,7 +30,7 @@ const DashboardPage: FC = () => {
       tabEls.forEach((el) => {
         try {
           Tab.getOrCreateInstance(el)
-        } catch (e) {
+        } catch {
           /* noop */
         }
         el.addEventListener('shown.bs.tab', onShown)
@@ -44,7 +45,7 @@ const DashboardPage: FC = () => {
       charts.forEach((c) => {
         try {
           c.destroy()
-        } catch (e) {
+        } catch {
           /* noop */
         }
       })
@@ -56,6 +57,7 @@ const DashboardPage: FC = () => {
     <>
       <ToolbarWrapper />
       <Content>
+        <StudentEnrollmentStatus />
         <div dangerouslySetInnerHTML={{__html: withBase(DASHBOARD_HTML)}} />
       </Content>
     </>

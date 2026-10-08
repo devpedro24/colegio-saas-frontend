@@ -24,6 +24,7 @@ export const getHeaderMenuHtml = (
     canManageUsers?: boolean
     canViewPreinformes?: boolean
     canManageEnrollments?: boolean
+    canManageIntake?: boolean
     canViewAttendance?: boolean
     canViewAula?: boolean
   }
@@ -54,7 +55,10 @@ export const getHeaderMenuHtml = (
 
   const moduleLink = (id: string, path: string) => `<div class="menu-item me-0 me-lg-2"><a class="menu-link" href="${esc(path)}" data-kt-nav="${esc(path)}"><span class="menu-title">${esc(t(id))}</span></a></div>`
   const modulosBlock = colegioMode ? [
-    ...(opts?.canManageEnrollments ? [dropdown('admisiones.title', [['evaluacion.matriculas.title', '/admisiones/matriculas', 'people']])] : []),
+    ...(opts?.canManageEnrollments || opts?.canManageIntake ? [renderHeaderDropdown(t('intake.menu'), [
+      ...(opts?.canManageIntake ? [{label: t('intake.ui.enrollmentByLink'), path: '/admisiones/solicitudes', icon: 'document'}, {label: t('intake.ui.admissions'), path: '/admisiones/seleccion', icon: 'user-tick'}] : []),
+      ...(opts?.canManageEnrollments ? [{label: t('evaluacion.matriculas.title'), path: '/admisiones/matriculas', icon: 'address-book'}] : []),
+    ])] : []),
     dropdown('grading.menu', [
       ['grading.sheets', '/evaluacion/catalogo', 'notepad'],
       ['boletines.title', '/academico/boletines', 'document'],

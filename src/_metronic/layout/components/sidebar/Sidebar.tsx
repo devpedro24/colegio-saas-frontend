@@ -279,6 +279,7 @@ const Sidebar = () => {
                   canManageUsers,
                   canViewPreinformes: hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar'),
                   canManageEnrollments: hasPermission('academico.matriculas.gestionar'),
+                  canManageIntake: ['ingreso.ver', 'ingreso.configurar', 'ingreso.revisar', 'ingreso.decidir', 'ingreso.asignar'].some(hasPermission),
                 })
               ),
             }}

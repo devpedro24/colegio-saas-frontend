@@ -5,6 +5,7 @@ import {useCatalogoEvaluacion, useMatricular} from '../evaluacion.api'
 import {KTCard, KTCardBody} from '@/_metronic/helpers'
 import {useToast} from '@/lib/ui/toast'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
+import {AcademicPageHeader} from '@/app/shared/components/AcademicPageHeader'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
 import {AcademicOptionSelect} from '../../shared/AcademicOptionSelect'
 import {useCatalogFilters} from '../../shared/useCatalogFilters'
@@ -67,8 +68,8 @@ export const CatalogoView = ({reportsOnly = false, enrollmentsOnly = false}: {re
     : []
 
   return <div className='d-flex flex-column gap-6'>
-    <div className='card'><div className='card-body d-flex flex-wrap align-items-end justify-content-between gap-4 py-6'>
-      <div><h3>{t(enrollmentsOnly ? 'admisiones.title' : reportsOnly ? 'boletines.title' : 'evaluacion.title')}</h3><p className='text-muted mb-0'>{t(enrollmentsOnly ? 'admisiones.currentHelp' : 'evaluacion.catalogo.desc')}</p></div>
+    <AcademicPageHeader title={t(enrollmentsOnly ? 'admisiones.title' : reportsOnly ? 'boletines.title' : 'evaluacion.title')}
+      description={t(enrollmentsOnly ? 'admisiones.currentHelp' : 'evaluacion.catalogo.desc')}>
       <div className='d-flex flex-wrap gap-3'>
         <select className='form-select form-select-solid w-auto' aria-label={t('academico.config.yearLabel')} value={selectedYear} onChange={e => {setFilters({ano: e.target.value, grupo: '', materia: ''}); setPeriod(''); setForm({grupo_id: '', estudiante_id: ''}); setStudentSearch(''); setDebouncedStudentSearch(''); resetPages()}}>
           {!data.anos.length && <option value=''>{t('academico.config.yearLabel')}</option>}
@@ -79,7 +80,7 @@ export const CatalogoView = ({reportsOnly = false, enrollmentsOnly = false}: {re
           {periods.map(p => <option key={p.url_token} value={p.url_token}>{p.nombre} · {t(`academico.periodos.estado.${p.estado}`)}</option>)}
         </select>}
       </div>
-    </div></div>
+    </AcademicPageHeader>
     <div className='card'><div className='card-body row g-3 align-items-end'>
       <div className='col-12 col-sm-6 col-lg-3'>
         <AcademicOptionSelect tipo='grupos' yearId={selectedYear} label={t('evaluacion.matriculas.grupo')} opaque
