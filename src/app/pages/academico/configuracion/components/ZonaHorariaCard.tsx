@@ -8,13 +8,10 @@ export function ZonaHorariaCard() {
   const {data, isLoading, error} = useZonaHorariaInstitucional()
   const save = useGuardarZonaHorariaInstitucional()
   const [choice, setChoice] = useState('')
-  const [search, setSearch] = useState('')
   const [message, setMessage] = useState('')
   const selected = choice || data?.data.zona_horaria || 'America/Bogota'
   const zones = data?.data.zonas ?? []
-  const term = search.trim().toLocaleLowerCase()
-  const visible = zones.filter(zone => zone.id === selected || `${zone.offset} ${zone.id}`.toLocaleLowerCase().includes(term))
-  const byOffset = visible.reduce<Record<string, typeof visible>>((result, zone) => {
+  const byOffset = zones.reduce<Record<string, typeof zones>>((result, zone) => {
     ;(result[zone.offset] ??= []).push(zone)
     return result
   }, {})
@@ -31,10 +28,7 @@ export function ZonaHorariaCard() {
     </div>
     {isLoading ? <p>{t('academico.timezone.loading')}</p> : error ? <div className='alert alert-danger' role='alert'>{error.message}</div> : <>
       <div className='row g-4 align-items-end'>
-        <div className='col-12 col-lg-6'><label className='form-label fw-semibold' htmlFor='institution-zone-search'>{t('academico.timezone.search')}</label>
-          <input id='institution-zone-search' className='form-control' type='search' value={search}
-            onChange={event => setSearch(event.target.value)} placeholder='Bogota, UTC-05:00, Europe…' /></div>
-        <div className='col-12 col-lg-6'><label className='form-label fw-semibold' htmlFor='institution-zone'>{t('academico.timezone.select')}</label>
+        <div className='col-12'><label className='form-label fw-semibold' htmlFor='institution-zone'>{t('academico.timezone.select')}</label>
           <select id='institution-zone' className='form-select' value={selected} onChange={event => setChoice(event.target.value)}>
             {Object.entries(byOffset).map(([offset, entries]) => <optgroup key={offset} label={offset}>
               {entries.map(zone => <option key={zone.id} value={zone.id}>
