@@ -9,6 +9,20 @@ const js = ts.transpileModule(source, {
   compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022},
 }).outputText
 const {getNavbarHtml} = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'))
+const accessSource = fs.readFileSync(new URL('../src/app/modules/auth/core/schoolMailAccess.ts', import.meta.url), 'utf8')
+const accessJs = ts.transpileModule(accessSource, {compilerOptions: {module: ts.ModuleKind.ESNext}}).outputText
+const {canAccessSchoolMail} = await import('data:text/javascript;base64,' + Buffer.from(accessJs).toString('base64'))
+
+test('mail link, tab and route require rector role plus permission, outside platform and impersonation', () => {
+  const rector = {role: 'rector', roles: ['rector'], permissions: ['config.correo'], is_platform: false}
+  assert.equal(canAccessSchoolMail(rector, false), true)
+  assert.equal(canAccessSchoolMail({...rector, role: undefined}, false), true, 'Current sessions may expose only roles')
+  for (const changes of [{role: 'secretaria'}, {roles: ['secretaria']}, {permissions: []}, {is_platform: true}, {is_superadmin: true}]) {
+    assert.equal(canAccessSchoolMail({...rector, ...changes}, false), false)
+  }
+  assert.equal(canAccessSchoolMail(rector, true), false)
+  assert.equal(canAccessSchoolMail(undefined, false), false)
+})
 
 for (const lang of ['es', 'en']) {
   const messages = JSON.parse(fs.readFileSync(new URL(`../src/_metronic/i18n/messages/${lang}.json`, import.meta.url), 'utf8').replace(/^\uFEFF/, ''))
@@ -25,6 +39,14 @@ for (const lang of ['es', 'en']) {
     assert.ok(dataOnly.includes('data-testid="institutional-settings-panel"'))
     assert.ok(dataOnly.includes('data-kt-nav="/ajustes-institucionales/datos"'))
     assert.ok(!dataOnly.includes('data-kt-nav="/ajustes-institucionales/sedes"'))
+    assert.ok(!dataOnly.includes('data-kt-nav="/ajustes-institucionales/correo"'))
+
+    const mailOnly = getNavbarHtml(intl, {showQuickIcons: false, canConfigureMail: true})
+    assert.ok(mailOnly.includes('data-testid="institutional-settings-panel"'))
+    assert.ok(mailOnly.includes('data-kt-nav="/ajustes-institucionales/correo"'))
+    assert.ok(mailOnly.includes(messages['intake.ui.emailConnection']))
+    assert.match(mailOnly, /institutional-menu__icon[^<]*<i class="ki-solid ki-sms fs-2"/)
+    assert.ok(!mailOnly.includes('data-kt-nav="/ajustes-institucionales/datos"'))
 
     const campusesOnly = getNavbarHtml(intl, {showQuickIcons: false, canManageCampuses: true})
     assert.ok(!campusesOnly.includes('data-kt-nav="/ajustes-institucionales/datos"'))

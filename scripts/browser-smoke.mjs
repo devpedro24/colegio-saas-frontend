@@ -6,6 +6,7 @@ import {spawn, spawnSync} from 'node:child_process'
 import {once} from 'node:events'
 import assert from 'node:assert/strict'
 import {createServer} from 'vite'
+import {enrollmentFixture, runEnrollmentSmoke} from './enrollment-smoke.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
 const realtimeMode = process.argv.includes('--realtime')
@@ -16,6 +17,7 @@ const cacheMode = process.argv.includes('--cache')
 const gradingMode = process.argv.includes('--grading')
 const workflowMode = process.argv.includes('--academic-workflow')
 const aulaMode = process.argv.includes('--aula')
+const intakeMode = process.argv.includes('--ingreso')
 const apiReads = []
 const apiWrites = []
 const detailedReads = []
@@ -48,6 +50,8 @@ fs.mkdirSync(artifacts, {recursive: true})
 const today = new Date().toLocaleDateString('en-CA')
 const user = {id: 'u'.repeat(24), tenant_channel: 't'.repeat(24), name: 'Rector de prueba', email: 'rector@example.test', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.anos.transicionar', 'academico.periodos.transicionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
 if (platformMode) { user.is_platform = true; user.tenant_channel = null; user.roles = ['superadmin']; user.permissions = [] }
+const intakeFixture = intakeMode ? enrollmentFixture(user) : null
+if (process.argv.includes('--institutional')) user.permissions.push('config.correo')
 if (realtimeMode) user.tenant_channel = reverbProbe({action: 'channel'}).token
 const urlTokens = {year: 'a'.repeat(24), nextYear: 'b'.repeat(24), group: 'c'.repeat(24), groupB: 'd'.repeat(24), groupC: 'e'.repeat(24), groupPre: '7'.repeat(24), teacher: 'f'.repeat(24), space: 'g'.repeat(24), assignment: 'h'.repeat(24), period: 'j'.repeat(24), enrollment: 'k'.repeat(24), sede: 'm'.repeat(24), event: 'i'.repeat(24), materia: 'v'.repeat(24)}
 const sieeTokens = {grade: 'o'.repeat(24), level: 'p'.repeat(24), area: 'q'.repeat(24), scale: 'r'.repeat(24), method: 's'.repeat(24)}
@@ -326,6 +330,7 @@ let server, browser, socket
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 try {
   server = await createServer({root, logLevel: 'error', server: {host: '127.0.0.1', port: 5197, strictPort: true}, plugins: [{name: 'smoke-api', configureServer(vite) {
+    if (intakeFixture) vite.middlewares.use(intakeFixture.middleware)
     vite.middlewares.use((req, res, next) => {
       const url = new URL(req.url, 'http://localhost')
       if (aulaMode && url.pathname === '/office/web-apps/apps/api/documents/api.js') {
@@ -668,7 +673,9 @@ try {
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   const navigate = async (route, text) => { console.log('Checking', route); await command('Page.navigate', {url: `http://127.0.0.1:5197${route}`}); await until(`document.body.innerText.includes(${JSON.stringify(text)})`) }
   const screenshot = async (name, full = false) => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: full}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
-  if (aulaMode) {
+  if (intakeMode) {
+    await runEnrollmentSmoke({navigate, evaluate, until, screenshot, command, fixture: intakeFixture, errors, apiReads})
+  } else if (aulaMode) {
     await navigate('/evaluacion/aula', 'Selecciona un grupo académico')
     assert.ok(await evaluate(`!document.body.innerText.includes('Docente de prueba')`), 'No debe cargar las aulas antes de elegir grupo.')
     await evaluate(`(()=>{const select=[...document.querySelectorAll('select')].find(e=>e.textContent.includes('Primero / 01A'));select.value='${urlTokens.group}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
@@ -1570,7 +1577,7 @@ try {
       await until(`document.querySelector('[data-testid="institutional-settings-panel"]')?.classList.contains('show')`)
     }
     await openInstitutionalMenu()
-    assert.ok(await evaluate(`(() => {const trigger=document.querySelector('[data-testid="institutional-settings-trigger"]'),panel=document.querySelector('[data-testid="institutional-settings-panel"]');return !!trigger && !!panel && trigger.parentElement===panel.parentElement && panel.classList.contains('menu-sub-dropdown') && trigger.parentElement.getAttribute('data-kt-menu-placement')?.includes('left-start') && [...panel.querySelectorAll('a[data-kt-nav]')].map(a=>a.getAttribute('data-kt-nav')).join(',') === '/ajustes-institucionales/datos,/ajustes-institucionales/horario,/ajustes-institucionales/sedes'})()`), 'Institutional settings must open a separate flyout with Datos, Horario and Sedes.')
+    assert.ok(await evaluate(`(() => {const trigger=document.querySelector('[data-testid="institutional-settings-trigger"]'),panel=document.querySelector('[data-testid="institutional-settings-panel"]');return !!trigger && !!panel && trigger.parentElement===panel.parentElement && panel.classList.contains('menu-sub-dropdown') && trigger.parentElement.getAttribute('data-kt-menu-placement')?.includes('left-start') && [...panel.querySelectorAll('a[data-kt-nav]')].map(a=>a.getAttribute('data-kt-nav')).join(',') === '/ajustes-institucionales/datos,/ajustes-institucionales/horario,/ajustes-institucionales/correo,/ajustes-institucionales/sedes'})()`), 'Institutional settings must open a separate flyout with Datos, Horario, Conexión de correo electrónico and Sedes.')
     await sleep(350)
     await screenshot('institutional-menu-mobile')
     await evaluate(`document.querySelector('[data-testid="institutional-settings-panel"] a[data-kt-nav="/ajustes-institucionales/datos"]').click()`)
@@ -1581,6 +1588,7 @@ try {
     await evaluate(`document.querySelector('[data-testid="institutional-settings-panel"] a[data-kt-nav="/ajustes-institucionales/horario"]').click()`)
     await until(`location.pathname === '/ajustes-institucionales/horario' && !!document.querySelector('#institution-zone option[value="Pacific/Auckland"]')`)
     assert.ok(await evaluate(`document.querySelector('#institution-zone').value === 'America/Bogota'`))
+    assert.equal(await evaluate(`!!document.querySelector('#institution-zone-search')`), false, 'Select the institutional time zone directly, without a city search field.')
     assert.ok(await evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`), 'Institutional time zone page overflows on mobile.')
     await screenshot('institutional-timezone-mobile')
     await openInstitutionalMenu()
@@ -1620,6 +1628,8 @@ try {
     await navigate('/ajustes-institucionales/datos', 'Datos institucionales')
     await screenshot('institutional-data-desktop')
     await navigate('/ajustes-institucionales/horario', 'Configuración horaria')
+    await until(`!!document.querySelector('#institution-zone option[value="Pacific/Auckland"]')`)
+    assert.equal(await evaluate(`!!document.querySelector('#institution-zone-search')`), false)
     await screenshot('institutional-timezone-desktop')
     await navigate('/ajustes-institucionales/sedes', 'Sede Norte')
     await screenshot('institutional-campuses-desktop')

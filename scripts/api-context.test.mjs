@@ -39,7 +39,7 @@ const source = fs.readFileSync(new URL('../src/lib/api/client.ts', import.meta.u
 let js = ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022}}).outputText
 js = js.replaceAll('@/app/modules/impersonation/impersonation.store', impersonationModule)
   .replaceAll('./query-client', queryModule).replaceAll('../realtime', realtimeModule)
-const {api, onSessionExpired, advanceSessionGeneration, setSocketIdProvider} = await import(moduleUrl(js))
+const {api, onSessionExpired, advanceSessionGeneration, setSocketIdProvider, setApiLocale} = await import(moduleUrl(js))
 const {onLocalChange, isOwnChange} = await import(realtimeModule)
 await new Promise(resolve => setTimeout(resolve, 0))
 
@@ -96,6 +96,19 @@ test('concurrent GETs share one request but resolved results are not retained', 
   assert.equal(calls, 2)
   finish(new Response('{}'))
   await next
+})
+
+test('public enrollment uses its own CSRF and never expires a staff session', async () => {
+  globalThis.smokeContext.state = {activeColegio: null}
+  globalThis.document.cookie = 'school_saas_csrf=staff; ingreso_csrf=visitor'
+  let sent, expired = 0
+  const unsubscribe = onSessionExpired(() => expired++)
+  globalThis.fetch = async (_url, options) => {sent=options; return new Response('{}',{status:401,headers:{'Content-Type':'application/json'}})}
+  await assert.rejects(api.put('/ingreso-publico/solicitud',{}), {status:401})
+  assert.equal(sent.headers['X-CSRF-Token'],'visitor')
+  assert.equal(expired,0)
+  unsubscribe()
+  globalThis.document.cookie = 'school_saas_csrf=csrf-value'
 })
 
 test('session changes reject shared reads and never reuse them in the next session', async () => {
@@ -162,4 +175,15 @@ test.after(() => {
   globalThis.localStorage = originalStorage
   globalThis.document = originalDocument
   delete globalThis.smokeContext
+})
+
+test('API requests send the selected supported language without changing request data', async () => {
+  const calls = []
+  globalThis.fetch = async (_url, options) => {calls.push(options); return new Response('{}', {headers: {'Content-Type': 'application/json'}})}
+  for (const locale of ['es', 'en', 'invalid']) {
+    setApiLocale(locale)
+    await api.post('/ingreso/campanas', {nombre: 'Matrículas de Inmaculada'}, {notifyLocalChange: false})
+    assert.equal(calls.at(-1).headers['Accept-Language'], locale === 'es' ? 'es' : 'en')
+    assert.equal(JSON.parse(calls.at(-1).body).nombre, 'Matrículas de Inmaculada')
+  }
 })

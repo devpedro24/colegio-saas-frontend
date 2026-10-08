@@ -87,6 +87,35 @@ test('opening a classroom resource updates only private progress', () => {
   assert.equal(resourceForPath('/aula/recursos/opaque/archivar?opaque=1'), 'aula')
 })
 
+test('enrollment documents and sender settings refresh their own module only', () => {
+  assert.equal(resourceForPath('/ingreso-publico/documentos/identidad'), 'enrollment-intake')
+  assert.equal(resourceForPath('/correo-institucional'), 'school-mail')
+  assert.equal(shouldRefreshQuery(['ingreso','tenant'], ['enrollment-intake'], 'tenant'), true)
+  assert.equal(shouldRefreshQuery(['ingreso','tenant'], ['school-mail'], 'tenant'), true)
+  for (const resource of ['enrollment-intake','school-mail']) {
+    for (const root of ['onboarding','estructura','anos-lectivos','horarios','siee','aula']) assert.equal(shouldRefreshQuery([root], [resource], 'tenant'), false)
+    assert.equal(refreshesIdentity([resource]), false)
+  }
+})
+
+test('mail approval events refresh only the matching scope and never identity or academic modules', () => {
+  for (const path of ['/platform/correo-solicitudes/TOKEN/resolver', '/platform/correo-solicitudes?estado=pendiente', '/correo-institucional/solicitudes']) {
+    assert.equal(resourceForPath(path), 'school-mail-requests')
+  }
+  assert.equal(resourceForPath('/platform/correo-solicitudes-other'), 'all')
+  assert.equal(shouldRefreshQuery(['school-mail-requests', 'summary'], ['school-mail-requests'], 'platform'), true)
+  assert.equal(shouldRefreshQuery(['school-mail-requests', 'list', 'pendiente', 1], ['school-mail-requests'], 'platform'), true)
+  assert.equal(shouldRefreshQuery(['school-mail'], ['school-mail-requests'], 'tenant'), true)
+  assert.equal(shouldRefreshQuery(['school-mail'], ['school-mail-requests'], 'platform'), false)
+  assert.equal(shouldRefreshQuery(['school-mail-requests'], ['school-mail-requests'], 'tenant'), false)
+  for (const scope of ['tenant', 'platform']) {
+    for (const root of ['ingreso', 'onboarding', 'estructura', 'anos-lectivos', 'colegios', 'horarios', 'account']) {
+      assert.equal(shouldRefreshQuery([root], ['school-mail-requests'], scope), false, `${scope}/${root}`)
+    }
+  }
+  assert.equal(refreshesIdentity(['school-mail-requests']), false)
+})
+
 test('attachment uploads refresh only the visible classroom content', () => {
   for (const path of ['/aula/recursos/opaque/adjuntos?opaque=1', '/aula/entregas/opaque/adjuntos?opaque=1',
     '/aula/adjuntos/opaque?opaque=1']) {
