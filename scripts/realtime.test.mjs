@@ -24,6 +24,13 @@ test('a school year change refreshes selectors and dependent academic views', ()
   assert.equal(shouldRefreshQuery(['evaluacion', 'planillas'], ['schedule'], 'tenant'), true)
 })
 
+test('publishing or moving Aula resources refreshes the calendar without opening event permissions', () => {
+  assert.equal(shouldRefreshQuery(['eventos', '2026-10-01', 'group-token'], ['aula'], 'tenant'), true)
+  assert.equal(shouldRefreshQuery(['eventos', '2026-10-01'], ['aula-grade'], 'tenant'), true)
+  assert.equal(shouldRefreshQuery(['eventos'], ['aula-progress'], 'tenant'), false)
+  assert.equal(shouldRefreshQuery(['evento', 'event-token'], ['aula-grade'], 'tenant'), false)
+})
+
 test('platform events do not refresh another active school, and tenant events do not touch the central cache', () => {
   assert.equal(shouldRefreshQuery(['horarios'], ['all'], 'platform'), false)
   assert.equal(shouldRefreshQuery(['colegios'], ['all'], 'tenant'), false)
