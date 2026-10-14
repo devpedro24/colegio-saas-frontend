@@ -19,6 +19,8 @@ export type AulaResource = {token: string; tipo: 'texto' | 'archivo' | 'tarea' |
   calificable: boolean; llevar_planilla: boolean; actividad_token: string | null; peso: string | null;
   estado_vinculo_planilla?: 'no_solicitado' | 'vinculado' | 'pendiente_apertura' | 'pendiente_configuracion';
   disponible_desde: string | null; disponible_hasta: string | null; fecha_limite: string | null;
+  publicado_en?: string | null;
+  publicacion_estimada?: boolean;
   zona_publicacion: string | null; version: number; configuracion?: Record<string, unknown>;
   preguntas?: Question[]; cantidad_preguntas?: number; tiene_intentos?: boolean; adjuntos?: AulaAttachment[];
   escala?: AulaScale; requiere_motivo?: boolean; puede_interactuar?: boolean;

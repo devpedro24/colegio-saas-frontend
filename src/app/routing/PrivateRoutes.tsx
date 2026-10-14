@@ -1,6 +1,7 @@
 import {lazy, FC, Suspense} from 'react'
 import {Route, Routes, Navigate, useLocation} from 'react-router-dom'
 import {MasterLayout} from '../../_metronic/layout/MasterLayout'
+import {EventLoginRedirect} from './EventLoginRedirect'
 import TopBarProgress from 'react-topbar-progress-indicator'
 import {DashboardWrapper} from '../pages/dashboard/DashboardWrapper'
 import {getCSSVariableValue} from '../../_metronic/assets/ts/_utils'
@@ -24,7 +25,7 @@ const PrivateRoutes = () => {
     <Routes>
       <Route element={<MasterLayout />}>
         {/* Redirect to Dashboard after success login/registartion */}
-        <Route path='auth/*' element={<Navigate to='/dashboard' />} />
+        <Route path='auth/*' element={<EventLoginRedirect authenticated />} />
         {/* Pages */}
         <Route path='dashboard' element={<DashboardWrapper />} />
         {/* Lazy Modules */}

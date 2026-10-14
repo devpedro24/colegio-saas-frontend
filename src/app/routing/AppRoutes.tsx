@@ -8,6 +8,7 @@
 import {FC, lazy, Suspense} from 'react'
 import {Routes, Route, BrowserRouter, Navigate} from 'react-router-dom'
 import {PrivateRoutes} from './PrivateRoutes'
+import {EventLoginRedirect} from './EventLoginRedirect'
 import {ErrorsPage} from '../modules/errors/ErrorsPage'
 import {Logout, AuthPage, useAuth} from '../modules/auth'
 import {App} from '../App'
@@ -42,7 +43,7 @@ const AppRoutes: FC = () => {
           ) : (
             <>
               <Route path='auth/*' element={<AuthPage />} />
-              <Route path='*' element={<Navigate to='/auth' />} />
+              <Route path='*' element={<EventLoginRedirect />} />
             </>
           )}
         </Route>

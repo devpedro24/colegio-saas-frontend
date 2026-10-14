@@ -7,6 +7,7 @@ import {once} from 'node:events'
 import assert from 'node:assert/strict'
 import {createServer} from 'vite'
 import {enrollmentFixture, runEnrollmentSmoke} from './enrollment-smoke.mjs'
+import {eventsFixture, runEventsSmoke} from './events-smoke.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
 const realtimeMode = process.argv.includes('--realtime')
@@ -17,6 +18,7 @@ const cacheMode = process.argv.includes('--cache')
 const gradingMode = process.argv.includes('--grading')
 const workflowMode = process.argv.includes('--academic-workflow')
 const aulaMode = process.argv.includes('--aula')
+const eventsMode = process.argv.includes('--events')
 const intakeMode = process.argv.includes('--ingreso')
 const apiReads = []
 const apiWrites = []
@@ -201,6 +203,7 @@ const fixtures = {
   '/api/horarios': {data: {can_manage: true, anos: [year], grupos: [group, groupB, groupC, groupPre], docentes: [{id: 3, url_token: urlTokens.teacher, name: 'Docente de prueba'}], areas: [], materias: [{...assignment.materia, estado: 'activo', nivel_id: null}], bloques: [block], espacios: [{id: 1, url_token: urlTokens.space, nombre: 'Aula Primero', sede_id: 1}], asignaciones: [{...assignment, docente_id: null, docente: null}], sesiones: [{id: 1, asignacion_id: 1, grupo_id: 1, materia_id: 1, docente_id: null, grupo: group, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: 1, hora_inicio: null, hora_fin: null, espacio_fisico_id: 1, bloque: block, espacio: {id: 1, nombre: 'Aula Primero'}}, {id: 2, asignacion_id: null, grupo_id: 2, materia_id: 1, docente_id: null, grupo: groupB, materia: assignment.materia, docente: null, dia: 'lunes', bloque_horario_id: null, hora_inicio: '08:00:00', hora_fin: '09:15:00', espacio_fisico_id: null, bloque: null, espacio: null}]}},
   '/api/eventos/catalogo': {data: {es_rector: true, puede_crear: true, docentes_cualquier_grupo: false, grupos: [{url_token: urlTokens.group, nombre: 'A', grado_token: sieeTokens.grade, ano_lectivo_token: urlTokens.year, grado: {url_token: sieeTokens.grade, nombre: 'Primero'}}], materias: [{url_token: urlTokens.materia, nombre: 'Matemáticas'}], asignaciones: [{grupo_token: urlTokens.group, materia_token: urlTokens.materia}]}},
   '/api/eventos': {data: [event], last_page: 1},
+  '/api/eventos/tareas': {data: [], last_page: 1},
   [`/api/eventos/${urlTokens.event}`]: {data: {...event, archivos: [], puede_editar: true}},
   '/api/evaluacion/catalogo': {data: {can_manage: true, can_configure: true, can_view_reports: true, anos: [year, nextYear], periodos: [period, {...period, id: 2, ano_lectivo_id: 2, url_token: 'l'.repeat(24)}], asignaciones: [assignment], matriculas: [enrollment], grupos: [group], estudiantes: []}},
   '/api/evaluacion/planillas/1/1': {data: {editable: true, requiere_motivo: true, configuracion: config, componentes: [{id: 1, asignacion_id: 1, periodo_id: 1, nombre: 'Talleres', modo: 'SIMPLE_AVERAGE', peso: null, actividades: [{id: 1, componente_id: 1, nombre: 'Taller 1', fecha: today, peso: null}]}], matriculas: [enrollment], calificaciones: [], resultados: [{matricula_id: 1, estado: 'pendiente', motivo: 'Faltan notas'}]}},
@@ -214,7 +217,7 @@ fixtures[sieeCurriculumPath] = {data: [], meta: {current_page: 1, per_page: 1000
 user.permissions.push('academico.matriculas.gestionar')
 fixtures['/api/evaluacion/catalogo'].data.can_manage_enrollments = true
 fixtures['/api/evaluacion/catalogo'].data.materias = [{id: 1, nombre: 'Matemáticas'}]
-if (aulaMode) {
+if (aulaMode || eventsMode) {
   user.permissions.push('aula.ver_todas', 'aula.recursos.gestionar')
   const aulaToken = 'y'.repeat(24), resourceToken = 'z'.repeat(24), quizToken = 'q'.repeat(24)
   const preOne = 'p'.repeat(24), preTwo = 'r'.repeat(24)
@@ -327,10 +330,12 @@ const paged = (rows, requestedPage, requestedPerPage) => {
     meta: {current_page: page, per_page: perPage, last_page: Math.max(1, Math.ceil(rows.length / perPage)), total: rows.length}}
 }
 let server, browser, socket
+const eventFixture = eventsMode ? eventsFixture(event, fixtures['/api/eventos/catalogo'].data, today) : null
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 try {
   server = await createServer({root, logLevel: 'error', server: {host: '127.0.0.1', port: 5197, strictPort: true}, plugins: [{name: 'smoke-api', configureServer(vite) {
     if (intakeFixture) vite.middlewares.use(intakeFixture.middleware)
+    if (eventFixture) vite.middlewares.use(eventFixture.middleware)
     vite.middlewares.use((req, res, next) => {
       const url = new URL(req.url, 'http://localhost')
       if (aulaMode && url.pathname === '/office/web-apps/apps/api/documents/api.js') {
@@ -673,7 +678,9 @@ try {
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   const navigate = async (route, text) => { console.log('Checking', route); await command('Page.navigate', {url: `http://127.0.0.1:5197${route}`}); await until(`document.body.innerText.includes(${JSON.stringify(text)})`) }
   const screenshot = async (name, full = false) => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: full}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
-  if (intakeMode) {
+  if (eventsMode) {
+    await runEventsSmoke({navigate, evaluate, until, screenshot, command, fixture: eventFixture, errors})
+  } else if (intakeMode) {
     await runEnrollmentSmoke({navigate, evaluate, until, screenshot, command, fixture: intakeFixture, errors, apiReads})
   } else if (aulaMode) {
     await navigate('/evaluacion/aula', 'Selecciona un grupo académico')

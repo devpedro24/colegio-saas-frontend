@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState, type FormEvent} from 'react'
 import {useNavigate, useParams} from 'react-router-dom'
+import {useIntl} from 'react-intl'
 import {AulaWorkspace} from './AulaWorkspace'
 import {AulaQuestionBuilder} from './AulaQuestionBuilder'
 import {AulaAttachmentGallery} from './AulaAttachmentGallery'
@@ -462,6 +463,7 @@ function QuizPanel({token, canEdit, canGrade, canReactivate, canLinkGradebook, h
 }
 
 export function AulaRecursoView() {
+  const intl = useIntl()
   const {recursoToken = ''} = useParams()
   const navigate = useNavigate()
   const {data, isLoading, error} = useAulaRecurso(recursoToken)
@@ -497,6 +499,8 @@ export function AulaRecursoView() {
       {canManage && <button className='btn btn-light-warning' onClick={() => navigate(`/evaluacion/aula/${data.aula_token}?editar=${recursoToken}`)}>
         Editar recurso</button>}</div>
     <div className='aula-resource-facts'>
+      {data.publicado_en && <div className='aula-resource-fact'><span>{intl.formatMessage({id: new Date(data.publicado_en) > new Date() ? 'events.scheduledPublication' : data.publicacion_estimada ? 'events.estimatedPublication' : 'events.publishedOn'})}</span>
+        <strong>{intl.formatDate(data.publicado_en, {timeZone: data.zona_publicacion || 'America/Bogota', dateStyle: 'medium', timeStyle: 'short'})}</strong></div>}
       <div className='aula-resource-fact'><span>Evaluación</span><strong>{data.calificable ? 'Calificable' : 'No calificable'}</strong>
         {data.estado_vinculo_planilla === 'vinculado' && <small>Vinculado a la planilla</small>}
         {data.estado_vinculo_planilla === 'pendiente_apertura' && <small>Vínculo pendiente: el período aún no está abierto.</small>}
