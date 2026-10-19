@@ -15,7 +15,7 @@ const makeForgotPasswordSchema = (intl: IntlShape) =>
     email: Yup.string()
       .email(intl.formatMessage({id: 'auth.validation.emailInvalid'}))
       .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .max(255, intl.formatMessage({id: 'auth.validation.max'}, {max: 255}))
       .required(intl.formatMessage({id: 'auth.validation.emailRequired'})),
   })
 

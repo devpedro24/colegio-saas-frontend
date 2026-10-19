@@ -15,7 +15,7 @@ const makeLoginSchema = (intl: IntlShape, mfaRequired: boolean) =>
     email: Yup.string()
       .email(intl.formatMessage({id: 'auth.validation.emailInvalid'}))
       .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
-      .max(50, intl.formatMessage({id: 'auth.validation.max'}, {max: 50}))
+      .max(255, intl.formatMessage({id: 'auth.validation.max'}, {max: 255}))
       .required(intl.formatMessage({id: 'auth.validation.emailRequired'})),
     password: Yup.string().required(intl.formatMessage({id: 'auth.validation.passwordRequired'})),
     // El codigo TOTP solo se valida cuando el backend ya exigio MFA.
@@ -105,7 +105,7 @@ export function Login() {
       {/* begin::Login options */}
       <div className='row g-3 mb-9'>
         {/* begin::Col */}
-        <div className='col-md-6'>
+        <div className='col-12'>
           {/* begin::Google link */}
           <a
             href='#'
@@ -122,28 +122,6 @@ export function Login() {
         </div>
         {/* end::Col */}
 
-        {/* begin::Col */}
-        <div className='col-md-6'>
-          {/* begin::Google link */}
-          <a
-            href='#'
-            className='btn btn-flex btn-outline btn-text-gray-700 btn-active-color-primary bg-state-light flex-center text-nowrap w-100'
-          >
-            <img
-              alt='Logo'
-              src={toAbsoluteUrl('media/svg/brand-logos/apple-black.svg')}
-              className='theme-light-show h-15px me-3'
-            />
-            <img
-              alt='Logo'
-              src={toAbsoluteUrl('media/svg/brand-logos/apple-black-dark.svg')}
-              className='theme-dark-show h-15px me-3'
-            />
-            <FormattedMessage id='auth.social.apple' />
-          </a>
-          {/* end::Google link */}
-        </div>
-        {/* end::Col */}
       </div>
       {/* end::Login options */}
 
@@ -291,14 +269,6 @@ export function Login() {
       </div>
       {/* end::Action */}
 
-      <div className='text-center mb-6'><Link to='/ingreso' className='link-primary'><FormattedMessage id='intake.loginLink' /></Link></div>
-
-      <div className='text-gray-500 text-center fw-semibold fs-6'>
-        <FormattedMessage id='auth.login.noAccount' />{' '}
-        <Link to='/auth/registration' className='link-primary'>
-          <FormattedMessage id='auth.login.signUp' />
-        </Link>
-      </div>
     </form>
   )
 }
