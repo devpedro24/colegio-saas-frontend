@@ -4,6 +4,8 @@ import {useLocation} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 import {CatalogoView} from './components/CatalogoView'
 import {PlanillaView} from './components/PlanillaView'
+import {ManualAreaView} from './components/ManualAreaView'
+import {ManualAnnualView} from './components/ManualAnnualView'
 import {RecuperacionesView} from './components/RecuperacionesView'
 import {Content} from '@/_metronic/layout/components/content'
 import {AulaCatalogoView} from './aula/AulaCatalogoView'
@@ -47,6 +49,8 @@ const EvaluacionPage = () => {
             </>
           }
         />
+        <Route path='areas/manual' element={<><PageTitle breadcrumbs={evaluacionBreadcrumbs}>{intl.formatMessage({id: 'grading.manualAreaTitle'})}</PageTitle><ManualAreaView /></>} />
+        <Route path='anuales/manual' element={<><PageTitle breadcrumbs={evaluacionBreadcrumbs}>{intl.formatMessage({id: 'grading.manualAnnualTitle'})}</PageTitle><ManualAnnualView /></>} />
         <Route
           path='recuperaciones/:matriculaId'
           element={

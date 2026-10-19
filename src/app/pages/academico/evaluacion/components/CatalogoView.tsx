@@ -109,7 +109,13 @@ export const CatalogoView = ({reportsOnly = false, enrollmentsOnly = false}: {re
     </div></div>
     {!reportsOnly && !enrollmentsOnly && <KTCard>
       <div className='card-header'><h3 className='card-title'>{t('evaluacion.mis_asignaciones')}</h3>
-        {data.can_configure && <div className='card-toolbar'><button className='btn btn-light-primary btn-sm' onClick={() => navigate('/academico/siee')}>{t('siee.title')}</button></div>}
+        <div className='card-toolbar d-flex gap-2'>
+          {data.can_manage_manual_areas && data.anos.find(item => item.url_token === selectedYear)?.area_manual && <button className='btn btn-light-primary btn-sm' disabled={!selectedPeriodToken}
+            onClick={() => navigate(`/evaluacion/areas/manual?ano=${encodeURIComponent(selectedYear)}&grupo=${encodeURIComponent(group)}&periodo=${encodeURIComponent(selectedPeriodToken)}`)}>{t('grading.manualAreaTitle')}</button>}
+          {data.can_manage_manual_annuals && data.anos.find(item => item.url_token === selectedYear)?.anual_manual && <button className='btn btn-light-primary btn-sm'
+            onClick={() => navigate(`/evaluacion/anuales/manual?ano=${encodeURIComponent(selectedYear)}&grupo=${encodeURIComponent(group)}`)}>{t('grading.manualAnnualTitle')}</button>}
+          {data.can_configure && <button className='btn btn-light-primary btn-sm' onClick={() => navigate('/academico/siee')}>{t('siee.title')}</button>}
+        </div>
       </div>
       <KTCardBody><div className='table-responsive' aria-busy={isFetching}><table className='table table-row-dashed align-middle gy-4'>
         <thead><tr className='text-muted fw-bold'><th>{t('siee.materia')}</th><th>{t('evaluacion.matriculas.grupo')}</th><th className='text-end'>{t('evaluacion.catalogo.acciones')}</th></tr></thead>

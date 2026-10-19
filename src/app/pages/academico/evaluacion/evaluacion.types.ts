@@ -29,7 +29,9 @@ export interface EvaluacionCatalogoResponse {
   can_manage: boolean
   can_configure: boolean
   can_view_reports: boolean
-  anos: Array<{id: string; url_token: string; nombre: string; estado: string}>
+  can_manage_manual_areas?: boolean
+  can_manage_manual_annuals?: boolean
+  anos: Array<{id: string; url_token: string; nombre: string; estado: string; area_manual?: boolean; anual_manual?: boolean; anual_areas?: boolean}>
   periodos: Array<{id: string; url_token: string; ano_lectivo_id: string; nombre: string; orden: number; estado: string}>
   asignaciones: AsignacionDocente[]
   matriculas: Matricula[]
@@ -47,7 +49,7 @@ export interface ComponenteEvaluacion {
   asignacion_id: string
   periodo_id: string
   nombre: string
-  modo: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE'
+  modo: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE' | 'MANUAL'
   peso: string | number | null
   actividades?: ActividadEvaluacion[]
 }
@@ -73,7 +75,7 @@ export interface Calificacion {
 
 export interface ResultadoEstudiante {
   matricula_id: string
-  secciones?: Array<{componente_token: string; estado: 'calculado' | 'pendiente'; display_value?: string; provisional?: string | null; motivo?: string;
+  secciones?: Array<{componente_token: string; estado: 'calculado' | 'pendiente'; raw_value?: string; display_value?: string; provisional?: string | null; motivo?: string; manual_version?: number;
     valoracion?: import('../configuracion/configuracion.types').EscalaOpcion;
     valoracion_provisional?: import('../configuracion/configuracion.types').EscalaOpcion}>
   raw_value?: string
@@ -81,6 +83,9 @@ export interface ResultadoEstudiante {
   display_value?: string
   aprobado?: boolean
   estado: 'calculado' | 'pendiente'
+  origen?: 'manual' | 'recuperacion'
+  manual_version?: number
+  manual_actualizado_en?: string
   motivo?: string
   provisional?: string | null
   valoracion?: import('../configuracion/configuracion.types').EscalaOpcion
@@ -110,7 +115,7 @@ export interface SeccionPlanilla {
   componente_token: string | null
   nombre: string | null
   peso: string | null
-  modo: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE'
+  modo: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE' | 'MANUAL'
   version: number
   fecha_inicio?: string | null
   fecha_fin?: string | null

@@ -261,14 +261,15 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
                 <option value='SIMPLE_AVERAGE'>
                   {t('evaluacion.planilla.promedio_simple')}
                 </option>
-                <option value='MANUAL' disabled>{t('siee.manualPending')}</option>
+                <option value='MANUAL'>{t('siee.manualArea')}</option>
                 <option value='DISABLED' disabled={formData.usar_areas}>{t('siee.disabled')}</option>
               </select>
+              {formData.usar_areas && formData.modo_area === 'MANUAL' && <p className='text-muted fs-7 mt-2'>{t('siee.manualAreaHelp')}</p>}
             </div>
 
-            {data.tiene_planillas_anteriores && <div className='col-md-4'>
+            <div className='col-md-4'>
               <label className='form-label required'>
-                {t('grading.legacyCalculation')}
+                {t('siee.modo_asignatura')}
               </label>
               <select
                 className='form-select'
@@ -281,10 +282,11 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
                 <option value='SIMPLE_AVERAGE'>
                   {t('evaluacion.planilla.promedio_simple')}
                 </option>
-                <option value='MANUAL' disabled>{t('siee.manualPending')}</option>
+                <option value='MANUAL'>{t('siee.manualSubject')}</option>
               </select>
-              <p className='text-muted fs-7 mt-2'>{t('grading.legacyCalculationHelp')}</p>
-            </div>}
+              <p className='text-muted fs-7 mt-2'>{t('siee.subjectModeHelp')}</p>
+              {data.tiene_planillas_anteriores && <p className='text-muted fs-7 mt-2'>{t('grading.legacyCalculationHelp')}</p>}
+            </div>
 
             <div className='col-md-4'>
               <label className='form-label required'>
@@ -301,7 +303,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
                 <option value='WEIGHTED_AVERAGE'>
                   {t('evaluacion.planilla.promedio_ponderado')}
                 </option>
-                <option value='MANUAL' disabled>{t('siee.manualPending')}</option>
+                <option value='MANUAL'>{t('grading.manualAnnualTitle')}</option>
               </select>
             </div>
 

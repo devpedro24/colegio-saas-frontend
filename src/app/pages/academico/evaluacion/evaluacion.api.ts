@@ -11,6 +11,81 @@ import type {
 
 const EVAL_URL = '/evaluacion'
 
+export type ManualAreaSheet = {
+  grupo: {url_token: string; nombre: string}
+  periodo: {url_token: string; nombre: string; estado: string}
+  areas: Array<{url_token: string; nombre: string}>
+  area_token: string | null
+  editable: boolean
+  valor_min: string
+  valor_max: string
+  escala_visual: {tipo: 'imagenes' | 'numerica'; opciones: Array<{url_token: string; nombre: string}>}
+  matriculas: Array<{url_token: string; nombre_lista: string; resultado: {
+    estado: 'calculado' | 'pendiente'; display_value?: string; origen?: string; manual_version: number;
+    valoracion?: {url_token: string; nombre: string}; motivo?: string
+  }}>
+  pagination: {page: number; per_page: number; total: number; last_page: number}
+}
+
+export const useManualAreaSheet = (group: string, period: string, area: string, page: number) => useQuery<ManualAreaSheet>({
+  queryKey: ['evaluacion', 'areas', 'manual', group, period, area, page],
+  enabled: !!group && !!period,
+  queryFn: () => {
+    const params = new URLSearchParams({opaque: '1', grupo_token: group, periodo_token: period, page: String(page)})
+    if (area) params.set('area_token', area)
+    return api.get<{data: ManualAreaSheet}>(`${EVAL_URL}/areas/manual?${params}`).then(response => response.data)
+  },
+})
+
+export const useGuardarResultadoManualArea = () => {
+  const cache = useQueryClient()
+  return useMutation({
+    mutationFn: ({group, period, area, enrollment, valor, escalaOpcionToken, motivo, version}: {
+      group: string; period: string; area: string; enrollment: string; valor: string | null;
+      escalaOpcionToken?: string | null; motivo: string; version: number
+    }) => api.put(`${EVAL_URL}/areas/manual/${encodeURIComponent(group)}/${encodeURIComponent(period)}/${encodeURIComponent(area)}/${encodeURIComponent(enrollment)}?opaque=1`,
+      {valor, escala_opcion_token: escalaOpcionToken ?? null, motivo, version}),
+    onSuccess: () => {
+      cache.invalidateQueries({queryKey: ['evaluacion', 'areas', 'manual']})
+      cache.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
+      cache.invalidateQueries({queryKey: ['boletines']})
+    },
+  })
+}
+
+export type ManualAnnualSheet = Omit<ManualAreaSheet, 'periodo' | 'areas' | 'area_token'> & {
+  ambito: 'materia' | 'area'
+  recursos: Array<{url_token: string; nombre: string}>
+  recurso_token: string | null
+}
+
+export const useManualAnnualSheet = (group: string, scope: 'materia' | 'area', resource: string, page: number) => useQuery<ManualAnnualSheet>({
+  queryKey: ['evaluacion', 'anuales', 'manual', group, scope, resource, page],
+  enabled: !!group,
+  queryFn: () => {
+    const params = new URLSearchParams({opaque: '1', grupo_token: group, ambito: scope, page: String(page)})
+    if (resource) params.set(`${scope}_token`, resource)
+    return api.get<{data: ManualAnnualSheet}>(`${EVAL_URL}/anuales/manual?${params}`).then(response => response.data)
+  },
+})
+
+export const useGuardarResultadoManualAnual = () => {
+  const cache = useQueryClient()
+  return useMutation({
+    mutationFn: ({group, enrollment, scope, resource, valor, escalaOpcionToken, motivo, version}: {
+      group: string; enrollment: string; scope: 'materia' | 'area'; resource: string;
+      valor: string | null; escalaOpcionToken?: string | null; motivo: string; version: number
+    }) => api.put(`${EVAL_URL}/anuales/manual/${encodeURIComponent(group)}/${encodeURIComponent(enrollment)}?opaque=1`,
+      {ambito: scope, [`${scope}_token`]: resource, valor, escala_opcion_token: escalaOpcionToken ?? null, motivo, version}),
+    onSuccess: () => {
+      cache.invalidateQueries({queryKey: ['evaluacion', 'anuales', 'manual']})
+      cache.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
+      cache.invalidateQueries({queryKey: ['boletines']})
+      cache.invalidateQueries({queryKey: ['anos-lectivos']})
+    },
+  })
+}
+
 export type CatalogoFilters = {
   view?: 'planillas' | 'matriculas' | 'boletines'
   yearId?: string
@@ -86,11 +161,40 @@ export const useGuardarNotas = (asignacionId: string, periodoId: string) => {
   })
 }
 
+export const useGuardarResultadoManual = (asignacionId: string, periodoId: string) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({matriculaId, valor, escalaOpcionToken, motivo, version}: {matriculaId: string; valor: string | null; escalaOpcionToken?: string | null; motivo: string; version: number}) =>
+      api.put(`${EVAL_URL}/planillas/${encodeURIComponent(asignacionId)}/${encodeURIComponent(periodoId)}/resultados-manuales/${encodeURIComponent(matriculaId)}?opaque=1`,
+        {valor, escala_opcion_token: escalaOpcionToken ?? null, motivo, version}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})
+      queryClient.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
+      queryClient.invalidateQueries({queryKey: ['boletines']})
+    },
+  })
+}
+
+export const useGuardarResultadoManualComponente = (asignacionId: string, periodoId: string) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({componenteId, matriculaId, valor, escalaOpcionToken, motivo, version}: {
+      componenteId: string; matriculaId: string; valor: string | null; escalaOpcionToken?: string | null; motivo: string; version: number
+    }) => api.put(`${EVAL_URL}/planillas/${encodeURIComponent(asignacionId)}/${encodeURIComponent(periodoId)}/componentes/${encodeURIComponent(componenteId)}/resultados-manuales/${encodeURIComponent(matriculaId)}?opaque=1`,
+      {valor, escala_opcion_token: escalaOpcionToken ?? null, motivo, version}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})
+      queryClient.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
+      queryClient.invalidateQueries({queryKey: ['boletines']})
+    },
+  })
+}
+
 export type ActividadPlanillaInput = {
   operacion: 'crear' | 'editar' | 'eliminar' | 'modo'
   componente_token: string | null; preinforme_token: string | null; actividad_token?: string
   version: number; nombre?: string; fecha?: string; peso?: string | null
-  modo?: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE'
+  modo?: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE' | 'MANUAL'
 }
 export function useActividadPlanilla(asignacion: string, periodo: string) {
   const cache = useQueryClient()
