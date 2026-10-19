@@ -13,6 +13,7 @@ const SieePage = lazy(() => import('./siee/SieePage'))
 const PreinformesPage = lazy(() => import('./preinformes/PreinformesPage'))
 const BoletinesPage = lazy(() => import('./boletines/BoletinesPage'))
 const AsistenciaPage = lazy(() => import('./asistencia/AsistenciaPage'))
+const IndicadoresPage = lazy(() => import('./evaluacion/IndicadoresPage'))
 
 // Los enlaces previos siguen funcionando después de separar la configuración.
 const LegacyConfiguracionRedirect: FC = () => {
@@ -64,6 +65,7 @@ const AcademicoPage: FC = () => {
       <Route path='preinformes' element={platformInSchool || hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar') ? <PreinformesPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='evaluacion/*' element={<EvaluacionPage />} />
       <Route path='boletines/*' element={<BoletinesPage />} />
+      <Route path='indicadores' element={hasPermission('indicadores.base.gestionar') ? <IndicadoresPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='asistencia' element={platformInSchool || hasPermission('asistencia.registrar_clases') ||
         hasPermission('asistencia.justificar_propia') || hasPermission('asistencia.correccion.aprobar') ||
         hasPermission('asistencia.correccion.solicitar') ||

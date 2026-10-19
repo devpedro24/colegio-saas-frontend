@@ -54,6 +54,8 @@ const PrivateRoutes = () => {
           }
         />
         <Route path='ajustes-institucionales' element={<InstitutionalSettingsIndex />} />
+        <Route path='ajustes-institucionales/matriculas' element={<SuspensedView><InstitutionalSettingsPage section='matriculas' /></SuspensedView>} />
+        <Route path='ajustes-institucionales/boletines' element={<SuspensedView><InstitutionalSettingsPage section='boletines' /></SuspensedView>} />
         <Route path='ajustes-institucionales/correo' element={<SuspensedView><InstitutionalSettingsPage section='correo' /></SuspensedView>} />
         <Route
           path='ajustes-institucionales/datos'
@@ -184,6 +186,12 @@ const InstitutionalSettingsIndex = () => {
   }
   if (inSchool && hasPermission('academico.estructura.gestionar')) {
     return <Navigate to='/ajustes-institucionales/sedes' replace />
+  }
+  if (inSchool && hasPermission('ingreso.configurar')) {
+    return <Navigate to='/ajustes-institucionales/matriculas' replace />
+  }
+  if (inSchool && hasPermission('boletines.politica.gestionar')) {
+    return <Navigate to='/ajustes-institucionales/boletines' replace />
   }
   return <Navigate to='/dashboard' replace />
 }

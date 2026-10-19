@@ -21,7 +21,7 @@ const Header: FC = () => {
 
   const isPlatform = currentUser?.is_platform === true
   const isTenantUser = !!currentUser && currentUser.is_platform !== true
-  const canManageUsers = hasPermission('usuarios.gestionar')
+  const canManageUsers = hasPermission('usuarios.gestionar') || hasPermission('estudiantes.egreso.gestionar')
 
   useEffect(() => {
     updateDOM(config)
@@ -45,6 +45,7 @@ const Header: FC = () => {
             activeColegio: !!activeColegio,
             canManageUsers,
             canViewPreinformes: hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar'),
+            canManageIndicators: hasPermission('indicadores.base.gestionar'),
             canManageEnrollments: hasPermission('academico.matriculas.gestionar'),
             canManageIntake: ['ingreso.ver', 'ingreso.configurar', 'ingreso.revisar', 'ingreso.decidir', 'ingreso.asignar'].some(hasPermission),
             canViewAula: hasPermission('aula.ver_todas') || hasPermission('aula.ver_asignadas') || hasPermission('aula.ver_propias'),

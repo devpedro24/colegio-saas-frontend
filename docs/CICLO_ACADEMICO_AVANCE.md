@@ -1,5 +1,17 @@
 # Ciclo académico: preparación, recuperación y promoción revisada
 
+## Definitiva anual manual — 15 de octubre de 2026
+
+En Evaluación, cuando el SIEE del año usa modo anual `MANUAL`, la persona con `notas.resultados_anuales.gestionar` dispone de **Definitivas anuales**. Selecciona año, grupo, ámbito (materia o área) y recurso curricular; la lista de estudiantes activos se pagina en bloques de 50. Puede registrar, corregir o anular con motivo de al menos diez caracteres. El formulario usa nota numérica o categoría visual según el grupo; muestra pendiente si no hay resultado. La edición se habilita solo con año en curso y todos los períodos reales cerrados, y la API exige además resultados completos para cada estudiante y recurso. SIEE permite elegir el modo anual manual, también si se presenta un período sumatorio. El informe y la promoción toman la definitiva efectiva; la escritura invalida las vistas de boletín, catálogo y revisión del año. No se crean actividades ficticias. ES/EN y compilación verificadas; falta recorrido visual de campo. Esto no completa todos los criterios de aceptación del plan académico.
+
+Verificación de este bloque: build TypeScript/Vite y presupuesto de carga, lint focalizado, auditoría de 1779 claves estáticas sin faltantes ES/EN y 54 pruebas frontend aprobadas. No se hizo prueba de campo con personas reales.
+
+## Primeros incrementos de boletín e indicadores — 14 de octubre de 2026
+
+Se añadió **Académico → Indicadores** para la escala anual y el catálogo institucional reutilizable; la planilla muestra indicadores del grupo/período y permite variantes docentes solo cuando el Rector habilita la regla y el servidor confirma permiso más asignación. La vista preliminar del boletín presenta valoraciones visuales con íconos Keen, cualitativas o numéricas, sin mezclarlas con las notas SIEE. Las observaciones por período/final tienen captura y aprobación separadas. El backend documenta permisos, esquema, migraciones y límites en `docs/BOLETINES_OBSERVACIONES.md` y `docs/INDICADORES_ACADEMICOS.md`. Esto no emite un PDF ni completa el ciclo. En este corte, build, 53 pruebas frontend y auditoría de 1649 claves ES/EN pasaron; el recorrido visual de campo queda pendiente.
+
+**Plantillas:** `Académico → Boletines → Plantillas` ofrece diseño base de período/final y, si el plan y permiso lo permiten, edición de color, texto, densidad, tipografía y bloques con vista previa viva. Se pueden guardar borradores y publicar revisiones. La muestra es ficticia y no representa un boletín emitido; el PDF y la aprobación individual siguen pendientes. Contrato: `colegio-saas-backend/docs/BOLETIN_PLANTILLAS.md`.
+
 ## Usabilidad, currículo por lotes y admisiones — 1 de octubre de 2026
 
 - **Admisiones y matrícula → Gestión de Matrículas** (`/admisiones/matriculas`) contiene la vinculación existente de estudiante con grupo/año. Evaluación conserva las planillas, no el formulario de matrícula. El acceso depende de `academico.matriculas.gestionar`; no cambia los permisos actuales del rector sobre notas.

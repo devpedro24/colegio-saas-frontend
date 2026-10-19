@@ -178,7 +178,7 @@ const Sidebar = () => {
   const isPlatform = currentUser?.is_platform === true
   const isTenantUser = !!currentUser && currentUser.is_platform !== true
   const {data: sedesForRail, isLoading: sedesLoading} = useSedes(!!currentUser && (!isPlatform || !!activeColegio))
-  const canManageUsers = hasPermission('usuarios.gestionar')
+  const canManageUsers = hasPermission('usuarios.gestionar') || hasPermission('estudiantes.egreso.gestionar')
 
   // La rail desktop solo se muestra si hay sedes adicionales navegables (no
   // principal) o si se está en modo plataforma pura (siempre tiene colegios).
@@ -278,6 +278,7 @@ const Sidebar = () => {
                   activeColegio: !!activeColegio,
                   canManageUsers,
                   canViewPreinformes: hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar'),
+                  canManageIndicators: hasPermission('indicadores.base.gestionar'),
                   canManageEnrollments: hasPermission('academico.matriculas.gestionar'),
                   canManageIntake: ['ingreso.ver', 'ingreso.configurar', 'ingreso.revisar', 'ingreso.decidir', 'ingreso.asignar'].some(hasPermission),
                 })

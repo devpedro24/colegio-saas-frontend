@@ -31,6 +31,13 @@ test('publishing or moving Aula resources refreshes the calendar without opening
   assert.equal(shouldRefreshQuery(['evento', 'event-token'], ['aula-grade'], 'tenant'), false)
 })
 
+test('issuing a bulletin refreshes reports without refetching unrelated school modules', () => {
+  assert.equal(resourceForPath('/boletines/emisiones/opaque/preparar?opaque=1'), 'bulletins')
+  assert.equal(shouldRefreshQuery(['boletines', 'emisiones'], ['bulletins'], 'tenant'), true)
+  assert.equal(shouldRefreshQuery(['evaluacion', 'planillas'], ['bulletins'], 'tenant'), false)
+  assert.equal(shouldRefreshQuery(['eventos', 'mes'], ['bulletins'], 'tenant'), false)
+})
+
 test('platform events do not refresh another active school, and tenant events do not touch the central cache', () => {
   assert.equal(shouldRefreshQuery(['horarios'], ['all'], 'platform'), false)
   assert.equal(shouldRefreshQuery(['colegios'], ['all'], 'tenant'), false)

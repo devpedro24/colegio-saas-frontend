@@ -23,6 +23,7 @@ export const getHeaderMenuHtml = (
     activeColegio?: boolean
     canManageUsers?: boolean
     canViewPreinformes?: boolean
+    canManageIndicators?: boolean
     canManageEnrollments?: boolean
     canManageIntake?: boolean
     canViewAttendance?: boolean
@@ -51,6 +52,7 @@ export const getHeaderMenuHtml = (
     ['academico.parameters.title', '/academico/parametros-academicos', 'setting-2'],
     ['siee.title', '/academico/siee', 'notepad'],
     ...(opts?.canViewPreinformes ? [['preinformes.title', '/academico/preinformes', 'calendar-8'] as [string, string, string]] : []),
+    ...(opts?.canManageIndicators ? [['indicators.title', '/academico/indicadores', 'check-circle'] as [string, string, string]] : []),
   ]) : ''
 
   const moduleLink = (id: string, path: string) => `<div class="menu-item me-0 me-lg-2"><a class="menu-link" href="${esc(path)}" data-kt-nav="${esc(path)}"><span class="menu-title">${esc(t(id))}</span></a></div>`

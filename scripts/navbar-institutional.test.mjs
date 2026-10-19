@@ -13,6 +13,19 @@ const accessSource = fs.readFileSync(new URL('../src/app/modules/auth/core/schoo
 const accessJs = ts.transpileModule(accessSource, {compilerOptions: {module: ts.ModuleKind.ESNext}}).outputText
 const {canAccessSchoolMail} = await import('data:text/javascript;base64,' + Buffer.from(accessJs).toString('base64'))
 
+test('enrollment settings are independently available with their permission in both languages', () => {
+  for (const locale of ['es', 'en']) {
+    const messages = JSON.parse(fs.readFileSync(new URL(`../src/_metronic/i18n/messages/${locale}.json`, import.meta.url), 'utf8').replace(/^\uFEFF/, ''))
+    const intl = {formatMessage: ({id}) => messages[id] ?? id}
+    const html = getNavbarHtml(intl, {showQuickIcons: false, canConfigureEnrollment: true})
+    assert.ok(html.includes('data-kt-nav="/ajustes-institucionales/matriculas"'))
+    assert.ok(html.includes(messages['intake.settings.title']))
+    assert.ok(html.includes('ki-setting-2'))
+    assert.ok(!html.includes('data-kt-nav="/ajustes-institucionales/correo"'))
+    assert.ok(!getNavbarHtml(intl, {showQuickIcons: false}).includes('data-kt-nav="/ajustes-institucionales/matriculas"'))
+  }
+})
+
 test('mail link, tab and route require rector role plus permission, outside platform and impersonation', () => {
   const rector = {role: 'rector', roles: ['rector'], permissions: ['config.correo'], is_platform: false}
   assert.equal(canAccessSchoolMail(rector, false), true)

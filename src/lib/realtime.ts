@@ -9,6 +9,7 @@ const dependencies: Record<string, string[]> = {
   schedule: ['horarios', 'asistencias', 'evaluacion', 'boletines', 'eventos', 'evento', 'eventos-catalogo'],
   attendance: ['asistencias'],
   evaluation: ['evaluacion', 'boletines', 'horarios', 'estructura', 'aula', 'eventos-catalogo'],
+  bulletins: ['boletines'],
   aula: ['aula', 'eventos'],
   'enrollment-intake': ['ingreso'],
   'school-mail': ['school-mail', 'ingreso'],
@@ -62,7 +63,7 @@ export function resourceForPath(path: string): string {
   return ({'anos-lectivos': 'academic', periodos: 'academic', estructura: 'structure', 'plan-estudios': 'curriculum',
     ingreso: 'enrollment-intake', 'ingreso-publico': 'enrollment-intake',
     'correo-institucional': 'school-mail',
-    horarios: 'schedule', asignaciones: 'schedule', asistencias: 'attendance', evaluacion: 'evaluation', aula: 'aula', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
+    horarios: 'schedule', asignaciones: 'schedule', asistencias: 'attendance', evaluacion: 'evaluation', boletines: 'bulletins', aula: 'aula', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
     onboarding: 'institution', branding: 'institution', usuarios: 'users', rbac: 'rbac', colegios: 'schools', plans: 'plans',
     planes: 'plans', account: 'account', mfa: 'account', storage: 'storage'} as Record<string, string>)[root] ?? 'all'
 }

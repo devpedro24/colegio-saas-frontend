@@ -17,6 +17,7 @@ export const getNavbarHtml = (
     canConfigureInstitution?: boolean
     canManageCampuses?: boolean
     canConfigureMail?: boolean
+    canConfigureEnrollment?: boolean
   }
 ) => {
   const t = (id: string) => intl.formatMessage({id})
@@ -26,7 +27,7 @@ export const getNavbarHtml = (
   // sin colegio activo). Para usuarios de colegio (tenant) no aplican y se ocultan.
   const showQuickIcons = opts?.showQuickIcons !== false
   const showInstitutionalSettings =
-    opts?.canConfigureInstitution === true || opts?.canManageCampuses === true || opts?.canConfigureMail === true
+    opts?.canConfigureInstitution === true || opts?.canManageCampuses === true || opts?.canConfigureMail === true || opts?.canConfigureEnrollment === true
   const name = escapeUserHtml(opts?.userName || t('account.user'))
   const email = escapeUserHtml(opts?.userEmail || '')
   const plan = escapeUserHtml(opts?.planLabel || '')
@@ -1619,6 +1620,16 @@ ${plan ? `<span class="badge badge-light-primary align-self-start mt-2 text-wrap
                             <span class="institutional-menu__copy">
                               <span class="institutional-menu__title">${t('intake.ui.emailConnection')}</span>
                               <span class="institutional-menu__description">${t('schoolMail.menuDescription')}</span>
+                            </span>
+                          </a>
+                        </div>` : ''}
+                        ${opts?.canConfigureEnrollment ? String.raw`
+                        <div class="menu-item">
+                          <a href="/ajustes-institucionales/matriculas" data-kt-nav="/ajustes-institucionales/matriculas" class="menu-link institutional-menu__item">
+                            <span class="institutional-menu__icon" aria-hidden="true"><i class="ki-solid ki-setting-2 fs-2"></i></span>
+                            <span class="institutional-menu__copy">
+                              <span class="institutional-menu__title">${t('intake.settings.title')}</span>
+                              <span class="institutional-menu__description">${t('intake.settings.menuHint')}</span>
                             </span>
                           </a>
                         </div>` : ''}
