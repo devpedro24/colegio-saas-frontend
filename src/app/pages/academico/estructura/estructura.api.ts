@@ -304,6 +304,32 @@ export function useDeleteGrupo() {
   })
 }
 
+export type GroupDirector = {
+  grupo_token: string
+  docente_token: string | null
+  docente_nombre: string | null
+  version: number
+  historial: {version: number; motivo: string | null; registrado_en: string; anterior: string | null; nuevo: string | null; actor: string | null}[]
+}
+
+export function useGroupDirector(groupToken: string | null) {
+  return useQuery({
+    queryKey: [...GRUPOS_KEY, groupToken, 'director'],
+    enabled: !!groupToken,
+    queryFn: () => api.get<{data: GroupDirector}>(`/estructura/grupos/${encodeURIComponent(groupToken!)}/director?opaque=1`)
+      .then(result => result.data),
+  })
+}
+
+export function useSaveGroupDirector(groupToken: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {docente_token: string | null; version: number; motivo?: string}) =>
+      api.put<{data: GroupDirector}>(`/estructura/grupos/${encodeURIComponent(groupToken)}/director?opaque=1`, input),
+    onSuccess: () => client.invalidateQueries({queryKey: [...GRUPOS_KEY, groupToken, 'director']}),
+  })
+}
+
 // ---- Bloques horarios ----
 
 export function useBloquesHorarios(jornadaId?: string) {

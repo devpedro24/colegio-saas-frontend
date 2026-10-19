@@ -40,7 +40,9 @@ export function useAuthz(): Authz {
       roles,
       permissions,
       hasRole: (role: string) => roles.includes(role),
-      hasPermission: (permission: string) => permissions.includes(permission),
+      // El backend concede todos los gates al superadministrador suplantando
+      // un colegio; la interfaz debe mostrar esas mismas acciones.
+      hasPermission: (permission: string) => isSuperadminImpersonating || permissions.includes(permission),
     }
   }, [currentUser])
 }

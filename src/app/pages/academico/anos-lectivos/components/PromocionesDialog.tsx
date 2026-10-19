@@ -14,8 +14,7 @@ const DecisionRow: FC<{row: PromocionRegistro; summary: PromocionResumen; ano: s
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
   const approve = useAprobarPromocion(ano)
-  const [result, setResult] = useState(row.decision?.vigente
-    ? row.decision.resultado : row.propuesta.resultado ?? 'reprobado')
+  const result = row.propuesta.resultado ?? 'reprobado'
   const [target, setTarget] = useState(row.decision?.vigente ? row.decision.grado_destino_token ?? '' : '')
   const [reason, setReason] = useState(row.decision?.motivo ?? '')
   const calculated = row.propuesta.estado === 'calculada'
@@ -46,13 +45,6 @@ const DecisionRow: FC<{row: PromocionRegistro; summary: PromocionResumen; ano: s
         {' · '}{t('academico.promocion.average')}: {row.propuesta.promedio}
       </div>
       <div className='row g-2'>
-        <div className='col-md-4'>
-          <label className='form-label'>{t('academico.promocion.decision')} <span className='text-danger'>*</span></label>
-          <select className='form-select' value={result} onChange={(event) => {setResult(event.target.value); setTarget('')}}>
-            <option value={row.propuesta.resultado}>{t(`academico.promocion.result.${row.propuesta.resultado}`)}</option>
-            {row.propuesta.resultado === 'promovido' && <option value='egresado'>{t('academico.promocion.result.egresado')}</option>}
-          </select>
-        </div>
         {result === 'promovido' && <div className='col-md-4'>
           <label className='form-label'>{t('academico.promocion.target')} <span className='text-danger'>*</span></label>
           <select className='form-select' value={target} onChange={(event) => setTarget(event.target.value)}>
@@ -61,7 +53,7 @@ const DecisionRow: FC<{row: PromocionRegistro; summary: PromocionResumen; ano: s
               <option key={grade.token} value={grade.token}>{grade.nombre}</option>)}
           </select>
         </div>}
-        <div className={result === 'promovido' ? 'col-md-4' : 'col-md-8'}>
+        <div className={result === 'promovido' ? 'col-md-8' : 'col-md-12'}>
           <label className='form-label'>{t('academico.promocion.reason')} <span className='text-danger'>*</span></label>
           <input className='form-control' value={reason} maxLength={2000} onChange={(event) => setReason(event.target.value)} />
         </div>

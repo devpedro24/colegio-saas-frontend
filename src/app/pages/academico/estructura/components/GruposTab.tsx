@@ -20,6 +20,7 @@ import type {CreateGrupoInput, Grupo} from '../estructura.types'
 import {useEstructuraList} from '../useAcademicPagedList'
 import {AcademicListFilters} from './AcademicListFilters'
 import {DeleteConfirmDialog} from './DeleteConfirmDialog'
+import {GroupDirectorDialog} from './GroupDirectorDialog'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
 
@@ -272,6 +273,7 @@ const GruposTab: FC = () => {
   const [formOpen, setFormOpen] = useState(false)
   const [edit, setEdit] = useState<Grupo | null>(null)
   const [deleteId, setDeleteId] = useState<Grupo | null>(null)
+  const [directorGroup, setDirectorGroup] = useState<Grupo | null>(null)
 
   const list = listQuery.rows
 
@@ -374,6 +376,12 @@ const GruposTab: FC = () => {
                   </td>
                   <td>
                     <div className='d-flex align-items-center justify-content-end flex-shrink-0 gap-2'>
+                      <button type='button' className='btn btn-icon btn-light-primary btn-sm'
+                        title={t('academico.estructura.director.title')}
+                        aria-label={`${t('academico.estructura.director.title')}: ${g.grado?.nombre ?? ''} / ${g.nombre}`}
+                        onClick={() => setDirectorGroup(g)}>
+                        <i className='ki-duotone ki-profile-user fs-5'><span className='path1'></span><span className='path2'></span><span className='path3'></span><span className='path4'></span></i>
+                      </button>
                       <button
                         type='button'
                         className='btn btn-icon btn-light-primary btn-sm'
@@ -428,6 +436,7 @@ const GruposTab: FC = () => {
           setEdit(null)
         }}
       />
+      <GroupDirectorDialog group={directorGroup} onClose={() => setDirectorGroup(null)} />
       <DeleteConfirmDialog
         show={deleteId !== null}
         title={t('academico.estructura.deleteConfirm.title')}

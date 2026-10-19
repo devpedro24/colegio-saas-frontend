@@ -20,11 +20,11 @@ export interface UsuarioCreateResult {
 }
 
 /** GET /api/usuarios?page=&per_page= — usuarios del colegio + de cada sede (tenant hijo) activa. */
-export function useUsuarios(page: number = 1, perPage: number = 5) {
+export function useUsuarios(page: number = 1, perPage: number = 5, departureOnly = false) {
   return useQuery({
-    queryKey: [...USUARIOS_KEY, {page, perPage}],
+    queryKey: [...USUARIOS_KEY, {page, perPage, departureOnly}],
     queryFn: () => api.get<{data: Usuario[]; meta: PaginationMeta}>(
-      `/usuarios?page=${page}&per_page=${perPage}`
+      `/usuarios${departureOnly ? '/egreso-candidatos' : ''}?page=${page}&per_page=${perPage}`
     ),
   })
 }
@@ -75,6 +75,17 @@ export function useDeleteUsuario() {
   return useMutation({
     mutationFn: ({id, sedeToken}: {id: string; sedeToken?: string | null}) =>
       api.delete<{data: null}>(`/usuarios/${encodeURIComponent(id)}${sedeToken ? `?sede_url_token=${encodeURIComponent(sedeToken)}` : ''}`),
+    onSuccess: () => queryClient.invalidateQueries({queryKey: USUARIOS_KEY}),
+  })
+}
+
+/** POST /api/usuarios/{url_token}/egreso — salida manual sin borrar el expediente. */
+export function useEgresarUsuario() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({id, sedeToken}: {id: string; sedeToken?: string | null}) =>
+      api.post<{data: Usuario}>(`/usuarios/${encodeURIComponent(id)}/egreso`,
+        sedeToken ? {sede_url_token: sedeToken} : {}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: USUARIOS_KEY}),
   })
 }

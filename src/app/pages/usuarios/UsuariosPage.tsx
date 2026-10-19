@@ -6,7 +6,7 @@ import {Content} from '../../../_metronic/layout/components/content'
 import {useToast} from '@/lib/ui/toast'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
-import {useDeleteUsuario, useUsuarios} from './usuarios.api'
+import {useDeleteUsuario, useEgresarUsuario, useUsuarios} from './usuarios.api'
 import type {Usuario} from './usuarios.types'
 import {DeleteConfirmDialog} from '../academico/estructura/components/DeleteConfirmDialog'
 import {CredencialesDialog} from './components/CredencialesDialog'
@@ -14,6 +14,7 @@ import {UsuarioFormDialog} from './components/UsuarioFormDialog'
 import {UserPasswordDialog} from './components/UserPasswordDialog'
 import {PaginationBar} from '@/app/shared/components/PaginationBar'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
+import {EgresoConfirmDialog} from './components/EgresoConfirmDialog'
 
 const statusBadge = (status: string): {cls: string; label: string} => {
   switch (status) {
@@ -21,6 +22,8 @@ const statusBadge = (status: string): {cls: string; label: string} => {
       return {cls: 'badge badge-light-success', label: 'common.active'}
     case 'suspended':
       return {cls: 'badge badge-light-warning', label: 'common.suspended'}
+    case 'egresado':
+      return {cls: 'badge badge-light-info', label: 'academico.usuarios.egreso.status'}
     default:
       return {cls: 'badge badge-light-secondary', label: 'common.inactive'}
   }
@@ -44,17 +47,20 @@ const UsuariosPage: FC = () => {
   const [formOpen, setFormOpen] = useState(false)
   const [userEdit, setUserEdit] = useState<Usuario | null>(null)
   const [deleteUser, setDeleteUser] = useState<Usuario | null>(null)
+  const [egresoUser, setEgresoUser] = useState<Usuario | null>(null)
   const [creds, setCreds] = useState<{email: string; password: string} | null>(null)
   const [pwdUser, setPwdUser] = useState<Usuario | null>(null)
 
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = usePageSize()
-  const {data, isLoading, isError} = useUsuarios(page, pageSize)
+  const canManage = authz.hasPermission('usuarios.gestionar')
+  const canMarkDeparture = authz.hasPermission('estudiantes.egreso.gestionar')
+  const {data, isLoading, isError} = useUsuarios(page, pageSize, !canManage)
   const del = useDeleteUsuario()
+  const egresar = useEgresarUsuario()
 
   const list = data?.data ?? []
   const meta = data?.meta
-  const canManage = authz.hasPermission('usuarios.gestionar')
 
   const openCreate = () => { setUserEdit(null); setFormOpen(true) }
   const openEdit = (u: Usuario) => { setUserEdit(u); setFormOpen(true) }
@@ -67,11 +73,19 @@ const UsuariosPage: FC = () => {
     })
   }
 
+  const onEgresar = () => {
+    if (!egresoUser) return
+    egresar.mutate({id: egresoUser.url_token, sedeToken: egresoUser.sede_url_token}, {
+      onSuccess: () => { toast.success(t('academico.usuarios.egreso.success')); setEgresoUser(null) },
+      onError: () => toast.error(t('academico.usuarios.egreso.error')),
+    })
+  }
+
   return (
     <>
       <PageTitle breadcrumbs={breadcrumbs}>{t('header.menu.users')}</PageTitle>
       <Content>
-        {!canManage ? (
+        {!canManage && !canMarkDeparture ? (
           <div className='alert alert-warning d-flex align-items-center py-5'>
             <i className='ki-duotone ki-information fs-2 text-warning me-3'>
               <span className='path1'></span><span className='path2'></span><span className='path3'></span>
@@ -86,10 +100,10 @@ const UsuariosPage: FC = () => {
                 <span className='text-muted fs-7'>{t('academico.usuarios.subtitle')}</span>
               </div>
               <div className='card-toolbar'>
-                <button type='button' className='btn btn-primary' onClick={openCreate}>
+                {canManage && <button type='button' className='btn btn-primary' onClick={openCreate}>
                   <i className='ki-duotone ki-plus fs-2'></i>
                   {t('academico.usuarios.new')}
-                </button>
+                </button>}
               </div>
             </div>
             <div className='card-body py-4'>
@@ -147,7 +161,7 @@ const UsuariosPage: FC = () => {
                             <td><span className={status.cls}>{t(status.label)}</span></td>
                             <td>
                               <div className='d-flex align-items-center justify-content-end flex-shrink-0 gap-2'>
-                                {u.must_change_password && (
+                                {canManage && u.must_change_password && u.status !== 'egresado' && (
                                   <button
                                     type='button'
                                     className='btn btn-icon btn-light-warning btn-sm'
@@ -159,7 +173,17 @@ const UsuariosPage: FC = () => {
                                     </i>
                                   </button>
                                 )}
-                                <button
+                                {u.role === 'estudiante' && u.status !== 'egresado' && canMarkDeparture && (
+                                  <button
+                                    type='button'
+                                    className='btn btn-sm btn-light-warning'
+                                    title={t('academico.usuarios.egreso.action')}
+                                    onClick={() => setEgresoUser(u)}
+                                  >
+                                    {t('academico.usuarios.egreso.action')}
+                                  </button>
+                                )}
+                                {canManage && u.status !== 'egresado' && <button
                                   type='button'
                                   className='btn btn-icon btn-light-primary btn-sm'
                                    title={t('common.edit', {name: intl.formatMessage({id: 'entity.usuario'})})}
@@ -168,8 +192,8 @@ const UsuariosPage: FC = () => {
                                   <i className='ki-duotone ki-pencil fs-5'>
                                     <span className='path1'></span><span className='path2'></span>
                                   </i>
-                                </button>
-                                <button
+                                </button>}
+                                {canManage && u.status !== 'egresado' && <button
                                   type='button'
                                   className='btn btn-icon btn-light-danger btn-sm'
                                    title={t('common.delete', {name: intl.formatMessage({id: 'entity.usuario'})})}
@@ -178,7 +202,7 @@ const UsuariosPage: FC = () => {
                                   <i className='ki-duotone ki-trash fs-5'>
                                     <span className='path1'></span><span className='path2'></span><span className='path3'></span><span className='path4'></span><span className='path5'></span>
                                   </i>
-                                </button>
+                                </button>}
                               </div>
                             </td>
                           </tr>
@@ -228,6 +252,12 @@ const UsuariosPage: FC = () => {
           pending={del.isPending}
           onConfirm={onDelete}
           onClose={() => setDeleteUser(null)}
+        />
+        <EgresoConfirmDialog
+          user={egresoUser}
+          pending={egresar.isPending}
+          onConfirm={onEgresar}
+          onClose={() => setEgresoUser(null)}
         />
         <UserPasswordDialog
           show={pwdUser !== null}
