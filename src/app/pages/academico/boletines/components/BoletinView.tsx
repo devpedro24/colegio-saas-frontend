@@ -7,6 +7,9 @@ import {useIntl} from 'react-intl'
 import '../boletines.css'
 import {gradeDecimal} from '../../evaluacion/gradeDecimal'
 import {VisualChoice} from '../../evaluacion/components/VisualChoice'
+import {useAuthz} from '@/app/modules/auth/core/authz'
+import {BulletinObservationCard} from './BulletinObservationCard'
+import {BulletinIssueCard} from './BulletinIssueCard'
 
 export const BoletinView = () => {
   const {matriculaId} = useParams()
@@ -23,6 +26,7 @@ export const BoletinView = () => {
 
 const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
   const navigate = useNavigate()
+  const {hasPermission} = useAuthz()
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
 
@@ -63,7 +67,7 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
     </span>
   }
 
-  return (
+  return (<>
     <KTCard className='grade-report'>
       <div className='card-header border-0 pt-5'>
         <h3 className='card-title align-items-start flex-column'>
@@ -193,7 +197,27 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
             </table>
           </div>
         </div>
+        {!!boletin.indicadores?.length && <section className='mt-8'>
+          <h4 className='fw-bold mb-2'>{t('indicators.title')}</h4>
+          <p className='text-muted fs-7'>{t('indicators.noGradeEffect')}</p>
+          {boletin.periodos.map(period => {
+            const rows = boletin.indicadores?.filter(item => item.periodo_id === period.id) ?? []
+            if (!rows.length) return null
+            return <div key={period.id} className='mb-6'>
+              <h5 className='fw-semibold mb-3'>{period.nombre}</h5>
+              <div className='table-responsive'><table className='table table-bordered align-middle gs-3 gy-3'>
+                <thead><tr className='fw-bold bg-light'><th>{t('boletines.asignaturas')}</th><th>{t('indicators.newText')}</th></tr></thead>
+                <tbody>{rows.map((item, index) => <tr key={`${item.materia_id}:${index}`}>
+                  <td>{item.materia}</td><td>{item.texto}</td>
+                </tr>)}</tbody>
+              </table></div>
+            </div>
+          })}
+        </section>}
       </KTCardBody>
     </KTCard>
-  )
+    {(hasPermission('boletines.observaciones.gestionar') || hasPermission('boletines.observaciones.aprobar'))
+      && <BulletinObservationCard matriculaToken={matriculaId} />}
+    <BulletinIssueCard matriculaToken={matriculaId} periods={boletin.periodos} />
+  </>)
 }

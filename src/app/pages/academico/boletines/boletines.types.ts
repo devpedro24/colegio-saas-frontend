@@ -43,5 +43,9 @@ export interface BoletinData {
   periodo_sumatorio: {orden: number; nombre: string; modo: string} | null
   asignaturas: BoletinAsignatura[]
   areas: BoletinArea[]
+  indicadores?: Array<{
+    periodo_id: string; periodo: string; materia_id: string; materia: string; area_id: string | null
+    texto: string
+  }>
   advertencias: string[]
 }
