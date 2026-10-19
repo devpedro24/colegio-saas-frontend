@@ -19,7 +19,7 @@ const gradingMode = process.argv.includes('--grading')
 const workflowMode = process.argv.includes('--academic-workflow')
 const aulaMode = process.argv.includes('--aula')
 const eventsMode = process.argv.includes('--events')
-const intakeMode = process.argv.includes('--ingreso')
+const intakeMode = process.argv.includes('--ingreso') || process.argv.includes('--ingreso-summary')
 const apiReads = []
 const apiWrites = []
 const detailedReads = []
@@ -681,7 +681,7 @@ try {
   if (eventsMode) {
     await runEventsSmoke({navigate, evaluate, until, screenshot, command, fixture: eventFixture, errors})
   } else if (intakeMode) {
-    await runEnrollmentSmoke({navigate, evaluate, until, screenshot, command, fixture: intakeFixture, errors, apiReads})
+    await runEnrollmentSmoke({navigate, evaluate, until, screenshot, command, fixture: intakeFixture, errors, apiReads, summaryOnly: process.argv.includes('--ingreso-summary')})
   } else if (aulaMode) {
     await navigate('/evaluacion/aula', 'Selecciona un grupo académico')
     assert.ok(await evaluate(`!document.body.innerText.includes('Docente de prueba')`), 'No debe cargar las aulas antes de elegir grupo.')

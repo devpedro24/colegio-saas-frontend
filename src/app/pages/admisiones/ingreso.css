@@ -1,19 +1,93 @@
 .ingreso { color: var(--bs-gray-900, #172b36); }
-.ingreso-public { min-height: 100vh; padding: 32px 18px; background: #f3f7f5; }
-.ingreso-shell { max-width: 1080px; margin: auto; }
+html:has(.ingreso-public), body:has(.ingreso-public), body:has(.ingreso-public) #root, body:has(.ingreso-public) #kt_app_root { background: #f3f7f5 !important; }
+.ingreso-public { position: relative; min-height: 100vh; min-height: 100dvh; height: auto !important; padding: 32px 18px 64px; background: #f3f7f5; }
+.ingreso-shell { position: relative; max-width: 1080px; margin: auto; }
 .ingreso-hero { background: #123e34; color: white; padding: 30px; border-radius: 20px; margin-bottom: 24px; }
 .ingreso-hero h1, .ingreso-hero h2 { color: white; }
 .ingreso-hero p { color: #d9ebe4; margin: 0; }
-.ingreso-card { background: var(--bs-body-bg, white); border: 1px solid var(--bs-border-color, #d9e5df); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+.ingreso-card { background: #fff; border: 1px solid #dfe9e3; border-radius: 20px; padding: 28px; margin-bottom: 20px; box-shadow: 0 12px 30px rgba(18, 62, 52, .045); }
+.ingreso-form-section { margin-top: 32px; padding-top: 30px; border-top: 1px solid #e6e9f0; }
+.ingreso-overview { border-color: #d9dcef; background: #fafaff; }
+.ingreso-overview h2 { margin: 4px 0 12px; }
+.ingreso-overline { color: #5d4ac8; font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.ingreso-section-heading { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+.ingreso-section-heading h2 { margin: 0 0 3px; }
+.ingreso-section-heading p { margin: 0; }
+.ingreso-section-mark { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; border-radius: 13px; color: #5144b8; background: #efedff; font-weight: 800; }
+.ingreso-grid-wide { grid-column: 1 / -1; }
+.ingreso-age { display: inline-block; margin: 8px 0 0; padding: 6px 11px; background: #e8f8ee; color: #14613d; border-radius: 999px; font-size: 13px; font-weight: 700; }
+.ingreso-phone { display: flex; gap: 8px; }
+.ingreso-dial-menu { position: relative; flex: 0 0 120px; min-width: 0; }
+.ingreso-dial-menu summary { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; border: 1px solid #d9e2ef; border-radius: 22px; background: #fff; cursor: pointer; list-style: none; white-space: nowrap; }
+.ingreso-dial-menu summary::-webkit-details-marker { display: none; }
+.ingreso-dial-menu summary:focus-visible { outline: 3px solid #b5aefa; outline-offset: 2px; }
+.ingreso-dial-menu summary[aria-disabled='true'] { opacity: .6; cursor: not-allowed; }
+.ingreso-dial-menu img, .ingreso-dial-options img { display: block; width: 22px; height: 16px; flex: 0 0 22px; object-fit: cover; border-radius: 2px; box-shadow: 0 0 0 1px rgba(18, 38, 64, .12); }
+.ingreso-dial-menu summary > span:not(.ingreso-dial-chevron) { line-height: 1; }
+.ingreso-dial-chevron { display: grid; flex: 0 0 16px; width: 16px; height: 16px; margin-left: auto; place-items: center; color: #6a7591; }
+.ingreso-dial-chevron i { display: block; font-size: 16px; line-height: 1; transition: transform .18s ease; }
+.ingreso-dial-menu[open] .ingreso-dial-chevron i { transform: rotate(180deg); }
+.ingreso-globe { display: inline-grid; width: 22px; height: 16px; place-items: center; color: #52627c; font-size: 18px; line-height: 1; }
+.ingreso-dial-options { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; width: min(290px, calc(100vw - 48px)); max-height: 270px; overflow: auto; padding: 6px; border: 1px solid #d9e2ef; border-radius: 14px; background: #fff; box-shadow: 0 15px 35px rgba(21, 38, 73, .15); }
+.ingreso-dial-options button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px; border: 0; border-radius: 9px; background: #fff; color: #172b4d; text-align: left; }
+.ingreso-dial-options button:hover, .ingreso-dial-options button:focus-visible, .ingreso-dial-options button[aria-selected='true'] { background: #f0effc; }
+.ingreso-dial-options button span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ingreso-dial-options button strong { margin-left: auto; flex-shrink: 0; font-weight: 600; }
+.ingreso-phone > input:last-child { min-width: 0; }
+.ingreso-phone .ingreso-dial-other { flex: 0 0 75px; width: 75px; }
+.ingreso-relationship { min-width: 0; padding: 0; border: 0; }
+.ingreso-relationship legend { float: none; width: auto; margin-bottom: 8px; font-size: inherit; font-weight: 600; }
+.ingreso-relationship-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.ingreso .ingreso-relationship-options label { display: inline-flex; align-items: center; justify-content: flex-start; gap: 8px; min-height: 44px; min-width: 96px; padding: 9px 14px; border: 1px solid #d6e5dc; border-radius: 12px; background: #fff; cursor: pointer; margin: 0; white-space: nowrap; }
+.ingreso .ingreso-relationship-options input[type='radio'] { float: none; flex: 0 0 16px; width: 16px; height: 16px; margin: 0; accent-color: #5144b8; }
+.ingreso-relationship-options label span { line-height: 1.2; }
+.ingreso-relationship-options label:has(input:checked) { border-color: #1abb68; background: #eaf9ef; color: #105f39; }
+.ingreso-same-phone { display: inline-flex !important; align-items: center; gap: 9px; margin: 0; min-height: 42px; cursor: pointer; }
+.ingreso-same-phone input[type='checkbox'] { appearance: none; position: relative; flex: 0 0 20px; width: 20px; height: 20px; margin: 0; border: 2px solid #8aa99a; border-radius: 50%; background: #fff; cursor: pointer; }
+.ingreso-same-phone input[type='checkbox']:checked { background: #0ea85a; border-color: #0ea85a; }
+.ingreso-same-phone input[type='checkbox']:checked::after { content: ''; position: absolute; left: 6px; top: 2px; width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.ingreso-same-phone input[type='checkbox']:focus-visible { outline: 3px solid #a7ecc0; outline-offset: 2px; }
+.ingreso-same-phone input[type='checkbox']:disabled { cursor: not-allowed; opacity: .55; }
+.ingreso-save-bar { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 14px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e6e9f0; }
+.ingreso-public .ingreso-action-primary { background: #5144b8; border-color: #5144b8; color: #fff; font-weight: 700; box-shadow: 0 6px 16px rgba(81, 68, 184, .18); }
+.ingreso-public .ingreso-action-primary:hover, .ingreso-public .ingreso-action-primary:focus-visible { background: #40339f; border-color: #40339f; color: #fff; box-shadow: 0 8px 18px rgba(81, 68, 184, .24); }
+.ingreso-public .ingreso-action-primary:disabled { background: #5144b8; border-color: #5144b8; color: #fff; opacity: .55; box-shadow: none; }
+.ingreso-verification { display: flex; gap: 20px; align-items: flex-start; padding: 22px; margin-bottom: 26px; border: 1px solid #bde8cf; border-radius: 18px; background: linear-gradient(135deg, #edf9f1, #f7fcf9); }
+.ingreso-verification-icon { display: grid; flex: 0 0 48px; width: 48px; height: 48px; place-items: center; border-radius: 15px; background: #d4f4df; color: #087b44; font-size: 25px; }
+.ingreso-verification-eyebrow { color: #087b44; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.ingreso-verification h2 { margin: 4px 0 9px; color: #123e34; font-size: 24px; }
+.ingreso-verification p { margin: 0 0 7px; line-height: 1.55; overflow-wrap: anywhere; }
+.ingreso-pin-group { min-width: 0; grid-column: 1 / -1; padding: 0; border: 0; }
+.ingreso-pin-group legend { float: none; width: auto; margin-bottom: 10px; font-size: 14px; font-weight: 700; }
+.ingreso-pin-cells { display: flex; gap: 12px; }
+.ingreso-pin-cell { width: 60px; height: 68px; border: 1.5px solid #cadbd1; border-radius: 14px; background: #fff; color: #123e34; text-align: center; font-size: 28px; font-weight: 750; box-shadow: 0 4px 12px rgba(18, 62, 52, .04); }
+.ingreso-pin-cell:focus { outline: 3px solid #a7ecc0; outline-offset: 2px; border-color: #10b954; }
+.ingreso-auth-progress { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; margin-top: 16px; border-radius: 12px; background: #f0f8f3; color: #125b39; font-weight: 600; }
+.ingreso-auth-error { margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: #fff1f1; color: #9d3030; }
 .ingreso-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .ingreso label { display: block; font-weight: 600; margin-bottom: 6px; }
 .ingreso .form-check label { margin-bottom: 0; }
 .ingreso-help { color: var(--bs-gray-700, #4a6257); font-size: 13px; }
 .ingreso-row { padding: 16px 0; border-bottom: 1px solid var(--bs-border-color, #d9e5df); }
-.ingreso-status { display: inline-block; padding: 5px 12px; border-radius: 12px; background: #e2f5e9; color: #155a39; font-weight: 600; }
-.ingreso-status[data-status='rechazado'], .ingreso-status[data-status='correcciones'], .ingreso-status[data-status='rechazada'] { background: #fff0d6; color: #744d08; }
+.ingreso-status { display: inline-block; padding: 5px 12px; border-radius: 12px; background: #e8f6ec; color: #17603b; font-weight: 700; }
+.ingreso-status[data-status='pendiente'], .ingreso-status[data-status='enviada'], .ingreso-status[data-status='revision'], .ingreso-status[data-status='espera'], .ingreso-status[data-status='correcciones'] { background: #fff1cd; color: #845300; }
+.ingreso-status[data-status='rechazado'], .ingreso-status[data-status='rechazada'] { background: #fde8e8; color: #ac2c39; }
+.ingreso-status[data-status='borrador'], .ingreso-status[data-status='retirado'] { background: #edf0f5; color: #526079; }
+.ingreso-document a { color: #3659ae; text-decoration-color: #a5b8e5; overflow-wrap: anywhere; }
+.ingreso-document a:hover { color: #233e84; }
+.ingreso-timeline { position: relative; margin: 18px 0 0 7px; border-left: 2px solid #e4e8f2; }
+.ingreso-timeline-item { position: relative; padding: 0 0 20px 22px; }
+.ingreso-timeline-item:last-child { padding-bottom: 0; }
+.ingreso-timeline-dot { position: absolute; top: 4px; left: -7px; width: 12px; height: 12px; border: 2px solid #fff; border-radius: 50%; background: #6573a2; box-shadow: 0 0 0 2px #dce3f2; }
+.ingreso-timeline-item[data-event='documento_rechazado'] .ingreso-timeline-dot, .ingreso-timeline-item[data-event='rechazada'] .ingreso-timeline-dot, .ingreso-timeline-item[data-event='correcciones'] .ingreso-timeline-dot { background: #cc4952; box-shadow: 0 0 0 2px #f7d8da; }
+.ingreso-timeline-item[data-event='aprobada'] .ingreso-timeline-dot, .ingreso-timeline-item[data-event='matriculada'] .ingreso-timeline-dot, .ingreso-timeline-item[data-event='documento_aprobado'] .ingreso-timeline-dot { background: #18a15d; box-shadow: 0 0 0 2px #d9f1e2; }
+.ingreso-timeline-item strong { display: block; color: #172d4e; }
+.ingreso-timeline-item time { display: block; margin-top: 2px; color: #65738a; font-size: 12px; }
+.ingreso-timeline-item p { margin: 6px 0 0; color: #34445b; white-space: pre-wrap; }
 .ingreso-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; }
+.ingreso-public .ingreso-card > .ingreso-actions { justify-content: flex-end; }
 .ingreso-document { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 20px 0; border-bottom: 1px solid var(--bs-border-color, #d9e5df); }
+.ingreso-document > div:last-child .btn { display: block; margin-left: auto; }
 .ingreso aside { border-left: 4px solid #0d9e60; padding: 12px 18px; background: #edf8f0; color: #193d2c; }
 .ingreso button:disabled { cursor: not-allowed; }
 .ingreso-modal .modal-content > form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
@@ -23,4 +97,7 @@
 .ingreso-modal .campaign-field-options { align-self: end; min-height: 44px; }
 .ingreso-table { overflow-x: auto; }
 .ingreso-table td, .ingreso-table th { padding: 12px; }
-@media(max-width: 700px) { .ingreso-grid, .ingreso-document { grid-template-columns: 1fr; } .ingreso-card, .ingreso-hero { padding: 18px; } }
+@media(max-width: 700px) { .ingreso-grid, .ingreso-document { grid-template-columns: 1fr; } .ingreso-card, .ingreso-hero { padding: 18px; } .ingreso-verification { padding: 16px; gap: 12px; } .ingreso-pin-cells { gap: 8px; } .ingreso-pin-cell { width: min(20vw, 60px); height: 62px; } }
+.ingreso .required::after {content: ' *'; color: #c52f4b; font-weight: 700;}
+.ingreso-local-file {display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; color: #5144b8; overflow-wrap: anywhere;}
+.ingreso-local-file span {width: 100%; color: #566580; font-size: .9rem;}

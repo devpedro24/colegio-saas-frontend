@@ -9,6 +9,7 @@ const read = file => fs.readFileSync(new URL('../'+file, import.meta.url), 'utf8
 const catalogs = Object.fromEntries(['es','en'].map(lang=>[lang,JSON.parse(read(`src/_metronic/i18n/messages/${lang}.json`))]))
 const components = ['admisiones/CampaignEditor.tsx','admisiones/EnrollmentManagement.tsx','admisiones/PublicEnrollmentPage.tsx','admisiones/StudentEnrollmentStatus.tsx','admisiones/AdmisionesPage.tsx','academico/configuracion/components/SchoolMailCard.tsx','config/correo/SchoolMailRequestsPage.tsx'].map(file=>'src/app/pages/'+file)
 components.push('src/_metronic/layout/components/header/SchoolMailRequestsNotification.tsx')
+components.push('src/app/pages/admisiones/EnrollmentSettingsCard.tsx')
 
 test('Spanish and English catalogs are free of encoding corruption', () => {
   for(const [locale,messages] of Object.entries(catalogs)) for(const [id,value] of Object.entries(messages)) {
@@ -28,7 +29,7 @@ test('new intake and mail messages have both translations and valid ICU syntax',
   for(const locale of ['es','en']) {
     const intl=createIntl({locale,messages:catalogs[locale],onError:error=>{throw error}})
     for(const count of [0,1,2]) assert.ok(intl.formatMessage({id:'schoolMail.pendingCount'},{count}).includes(String(count)))
-    assert.ok(intl.formatMessage({id:'intake.fileTooLarge'},{size:5}).includes('5 MB'))
+    assert.ok(intl.formatMessage({id:'intake.fileTooLarge'}).includes(locale === 'es' ? 'límite' : 'limit'))
     assert.equal(intl.formatMessage({id:'intake.page'},{page:2,total:4}), locale==='es'?'Página 2 de 4':'Page 2 of 4')
   }
 })
@@ -37,7 +38,7 @@ test('new components have no hardcoded JSX copy and every literal translation ke
   for(const file of components) {
     const source=ts.createSourceFile(file,read(file),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX)
     function visit(node) {
-      if(ts.isJsxText(node)&&/[\p{L}]/u.test(node.text)) assert.ok(['MB','· v'].includes(node.text.trim()), `${file}: untranslated ${node.text}`)
+      if(ts.isJsxText(node)&&/[\p{L}]/u.test(node.text)) assert.ok(['· v'].includes(node.text.trim()), `${file}: untranslated ${node.text}`)
       if(ts.isJsxAttribute(node)&&['title','placeholder','aria-label'].includes(node.name.getText(source))&&node.initializer&&ts.isStringLiteral(node.initializer)) {
         assert.ok(node.initializer.text.includes('@'),`${file}: untranslated attribute ${node.initializer.text}`)
       }
