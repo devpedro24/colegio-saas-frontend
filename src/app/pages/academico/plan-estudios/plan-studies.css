@@ -1,0 +1,46 @@
+.plan-studies-card,
+.plan-studies-card > .card-body {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .plan-studies-card > .card-header,
+  .plan-studies-card > .card-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .plan-studies-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .plan-studies-tabs .nav-item {
+    min-width: 0;
+  }
+
+  .plan-studies-tabs .nav-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin: 0 !important;
+    padding: 8px 6px !important;
+    border-radius: 10px;
+    border: 0;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .plan-studies-tabs .nav-link.active {
+    background: #e1fbed;
+    color: #087d46 !important;
+  }
+
+  .plan-studies-tab-resumen { order: 0; }
+  .plan-studies-tab-horarios { order: 1; }
+  .plan-studies-tab-areas { order: 2; }
+  .plan-studies-tab-asignaciones { order: 3; }
+}

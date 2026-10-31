@@ -8,6 +8,7 @@ import {useAuthz} from '../../../modules/auth/core/authz'
 import {AreasMateriasTab} from './components/AreasMateriasTab'
 import {SchedulingPanel} from './components/SchedulingPanel'
 import {AcademicYearContent, AcademicYearPicker, AcademicYearProvider} from '../academic-year-context'
+import './plan-studies.css'
 
 type Tab = 'resumen' | 'areas' | 'asignaciones' | 'horarios'
 
@@ -51,7 +52,7 @@ const PlanEstudiosPage: FC = () => {
     <>
       <PageTitle breadcrumbs={breadcrumbs}>{t('academico.planEstudios.title')}</PageTitle>
       <Content>
-        <AcademicYearProvider><div className='card'>
+        <AcademicYearProvider><div className='card plan-studies-card'>
           <div className='card-header border-0 pt-6'>
             <div className='card-title flex-column align-items-start'>
               <h3 className='fw-bold mb-1'>{t('academico.planEstudios.title')}</h3>
@@ -60,9 +61,9 @@ const PlanEstudiosPage: FC = () => {
             <div className='card-toolbar'><AcademicYearPicker /></div>
           </div>
           <div className='card-body py-4'>
-            <ul className='nav nav-tabs nav-line-tabs nav-line-tabs-2x border-0 fs-6 fw-semibold mb-6'>
+            <ul className='nav nav-tabs nav-line-tabs nav-line-tabs-2x border-0 fs-6 fw-semibold mb-6 plan-studies-tabs' aria-label={t('academico.planEstudios.title')}>
               {tabs.map((item) => (
-                <li className='nav-item' key={item.key}>
+                <li className={`nav-item plan-studies-tab-${item.key}`} key={item.key}>
                   <a
                     className={`nav-link pb-2 ${tab === item.key ? 'active text-primary' : 'text-muted'}`}
                     onClick={(e) => {

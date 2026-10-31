@@ -588,6 +588,7 @@
     "schedule.move":  "Move",
     "schedule.copy":  "Copy",
     "schedule.placeCopy":  "Drag the class or tap an empty slot to place the copy:",
+    "schedule.mobileHint": "Tap a class to view its details and actions, or a day heading to browse all its classes.",
     "schedule.dragHint":  "Drag a class to move it. Open ⋯ to copy, edit or delete it. Esc cancels an action; tap outside to close the menu.",
     "schedule.subjects":  "Subjects",
     "schedule.assignments":  "Assignments",

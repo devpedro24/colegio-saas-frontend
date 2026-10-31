@@ -582,6 +582,7 @@
     "schedule.move":  "Mover",
     "schedule.copy":  "Copiar",
     "schedule.placeCopy":  "Arrastra la clase o toca un espacio libre para colocar la copia:",
+    "schedule.mobileHint": "Toca una clase para ver sus datos y acciones, o el nombre de un día para consultar todas sus clases.",
     "schedule.dragHint":  "Arrastra una clase para moverla. Abre ⋯ para copiarla, editarla o eliminarla. Esc cancela una acción; toca fuera para cerrar el menú.",
     "schedule.subjects":  "Asignaturas",
     "schedule.assignments":  "Asignaciones",
