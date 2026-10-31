@@ -3,7 +3,7 @@ import {useIntl} from 'react-intl'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import type {BoletinData} from '../boletines.types'
 import {bulletinPdfUrl, useBulletinIssues, useIssueActions, type IssueSelection} from '../emisiones.api'
-import {useTemplateCatalog} from '../plantillas.api'
+import {TemplateSelection} from './TemplateSelection'
 
 export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: string; periods: BoletinData['periodos']}) {
   const intl = useIntl()
@@ -13,7 +13,6 @@ export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: st
   const canPublish = hasPermission('boletines.emisiones.publicar')
   const canReadTemplates = hasFeature('boletines_personalizables') &&
     (hasPermission('boletines.plantillas.ver') || hasPermission('boletines.plantillas.gestionar'))
-  const templates = useTemplateCatalog(1, canReadTemplates)
   const [page, setPage] = useState(1)
   const issues = useBulletinIssues(matriculaToken, page)
   const actions = useIssueActions(matriculaToken)
@@ -24,8 +23,6 @@ export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: st
     : {contexto: 'periodo', periodo_token: context, plantilla_token: template || null}
   const contextLabel = (item: {contexto: 'periodo' | 'final'; periodo_token: string | null}) => item.contexto === 'final'
     ? t('boletines.issue.final') : periods.find(period => period.id === item.periodo_token)?.nombre ?? t('boletines.issue.period')
-  const currentTemplates = canReadTemplates ? templates.data?.plantillas.filter(item => item.ambito === selection.contexto
-    && item.revision_publicada !== null) ?? [] : []
   const busy = actions.preview.isPending || actions.emit.isPending || actions.publish.isPending
   const error = actions.preview.error ?? actions.emit.error ?? actions.publish.error
 
@@ -42,13 +39,8 @@ export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: st
             <option value='final'>{t('boletines.issue.final')}</option>
           </select></div>
         <div className='col-md-5'><label className='form-label' htmlFor='bulletin-issue-template'>{t('boletines.issue.template')}</label>
-          <select className='form-select' id='bulletin-issue-template' value={template} onChange={event => {
-            setTemplate(event.target.value); setPreview(null)
-          }}>
-            <option value=''>{t('boletines.issue.baseTemplate')}</option>
-            {currentTemplates.map(item => <option key={item.token} value={item.token}>{item.nombre}</option>)}
-          </select></div>
-        <div className='col-md-2'><button type='button' className='btn btn-light-primary w-100' disabled={busy}
+          <TemplateSelection scope={selection.contexto} value={template} enabled={canReadTemplates} disabled={busy} onChange={token => {setTemplate(token); setPreview(null)}} /></div>
+        <div className='col-md-2'><button type='button' className='btn btn-light-primary w-100' disabled={busy || !template}
           onClick={() => actions.preview.mutate(selection, {onSuccess: setPreview})}>{t('boletines.issue.check')}</button></div>
       </div>}
       {error && <div className='alert alert-danger' role='alert'>{error.message}</div>}

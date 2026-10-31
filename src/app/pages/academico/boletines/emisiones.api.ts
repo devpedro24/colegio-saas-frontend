@@ -6,7 +6,7 @@ import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 export type IssueSelection = {contexto: 'periodo' | 'final'; periodo_token?: string; plantilla_token?: string | null}
 export type BulletinIssue = {token: string; matricula_token: string; contexto: 'periodo' | 'final';
   periodo_token: string | null; revision: number; estado: 'preparado' | 'aprobado' | 'publicado' | 'sustituido' | 'descartado';
-  plantilla: string | null; preparado_en: string | null; aprobado_en: string | null;
+  plantilla: string | null; archivo: string; preparado_en: string | null; aprobado_en: string | null;
   publicado_en: string | null; pdf_disponible: boolean}
 export type BulletinIssuesPage = {data: BulletinIssue[]; pagina: number; ultima_pagina: number; total: number}
 export type IssuePreview = {contexto: string; huella_insumos: string; plantilla: string;
