@@ -1,0 +1,37 @@
+.group-indicator-frame {border: 1px solid #dcebe2; border-radius: 1rem; overflow: hidden; background: #fff}
+.group-indicator-table {table-layout: fixed; border-collapse: separate; border-spacing: 0; margin-bottom: 0}
+.group-indicator-table thead th {background: #168653 !important; color: #fff !important; border-bottom: 0 !important}
+.group-indicator-table th:first-child {width: 34%}
+.group-indicator-table th, .group-indicator-table td {padding: 1rem 1.15rem; vertical-align: top; border-bottom: 1px solid #e7eee9}
+.table.group-indicator-table > :not(caption) > tr > :first-child {padding-left: 1.5rem}
+.group-indicator-table th:first-child {border-right: 1px solid #e7eee9}
+.group-indicator-table tbody tr:last-child > * {border-bottom: 0}
+.group-indicator-table tbody th {font-weight: 600; color: #172554}
+.group-indicator-description {min-height: 2.25rem}
+.group-indicator-rich {white-space: normal; overflow-wrap: anywhere; line-height: 1.55}
+.group-indicator-rich p {margin: 0 0 .55rem}
+.group-indicator-rich p:last-child {margin-bottom: 0}
+.group-indicator-rich ul, .group-indicator-rich ol,
+.group-indicator-editor ul, .group-indicator-editor ol {margin: .35rem 0 .65rem; padding-left: 1.6rem}
+.group-indicator-rich ul, .group-indicator-editor ul {list-style: disc}
+.group-indicator-rich ol, .group-indicator-editor ol {list-style: decimal}
+.group-indicator-row-actions {display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .7rem}
+.group-indicator-delete-confirm {display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .7rem; padding: .65rem .75rem; border: 1px solid #f4d0c9; border-radius: .65rem; background: #fff8f6}
+.group-indicator-delete-confirm span {flex: 1 1 18rem}
+.group-indicator-toolbar {display: flex; flex-wrap: wrap; gap: .2rem; padding: .35rem; background: #f5f7fb; border: 1px solid #dce2ee; border-radius: .5rem .5rem 0 0}
+.group-indicator-toolbar button.btn.btn-light.group-indicator-tool-active[aria-pressed="true"],
+.group-indicator-toolbar button.btn.btn-light.group-indicator-tool-active[aria-pressed="true"]:hover,
+.group-indicator-toolbar button.btn.btn-light.group-indicator-tool-active[aria-pressed="true"]:focus {background-color: #0aaf53 !important; color: #fff !important; box-shadow: inset 0 0 0 1px #087b3d !important}
+.group-indicator-source {margin-left: auto}
+.group-indicator-editor {min-height: 8rem; max-height: 30rem; overflow: auto; padding: .8rem; border: 1px solid #dce2ee; border-top: 0; border-radius: 0 0 .5rem .5rem; line-height: 1.55; overflow-wrap: anywhere}
+.group-indicator-editor:focus {outline: 2px solid #2dbd6e; outline-offset: 1px}
+.group-indicator-source-editor {display: block; width: 100%; min-height: 8rem; max-height: 30rem; padding: .8rem; border: 1px solid #dce2ee; border-top: 0; border-radius: 0 0 .5rem .5rem; resize: vertical; font-family: ui-monospace, SFMono-Regular, Consolas, monospace}
+.group-indicator-actions {display: flex; justify-content: flex-end; gap: .6rem; margin-top: .7rem}
+@media (max-width: 640px) {
+  .group-indicator-frame {border: 0; overflow: visible}
+  .group-indicator-table, .group-indicator-table tbody, .group-indicator-table tr, .group-indicator-table th, .group-indicator-table td {display: block; width: 100% !important}
+  .group-indicator-table thead {display: none}
+  .group-indicator-table tr {border: 1px solid #dce2ee; margin-bottom: .9rem; border-radius: .65rem; overflow: hidden}
+  .group-indicator-table th, .group-indicator-table td {border: 0 !important; padding: .8rem}
+  .group-indicator-table tbody th {background: #f3f6fd}
+}
