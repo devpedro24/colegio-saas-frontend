@@ -1,7 +1,7 @@
 import type {IntlShape} from 'react-intl'
 export type Choice = {token: string; nombre: string; ano_token?: string; regla_token?: string}
 export type Requirement = {key: string; nombre: string; instrucciones: string; obligatorio: boolean; formatos: string[]; grados: string[]}
-export type Field = {key: string; nombre: string; obligatorio: boolean; tipo: 'texto' | 'fecha'}
+export type Field = {key: string; nombre: string; obligatorio: boolean; tipo: 'texto' | 'fecha' | 'numero'}
 export type EnrollmentSettings = {version: number; requiere_revision: boolean; privacidad: string; zona_horaria: string;
   grados: {url_token: string; nombre: string; nivel: string; edad_min: number | null; edad_max: number | null}[]}
 export type EnrollmentSettingsInput = Pick<EnrollmentSettings, 'version' | 'privacidad'> & {

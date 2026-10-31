@@ -51,8 +51,10 @@ export default function EnrollmentManagement() {
   })
   return <div className='d-flex flex-column gap-6'>
     <AcademicPageHeader title={t('intake.ui.enrollmentByLink')} description={t('intake.ui.enrollmentRoundsDocumentsDecisionsAndGroupAssignments')}>
-      {can('configurar') && <Link className='btn btn-light-primary' to={enrollmentSettingsPath}><i className='ki-solid ki-setting-2 fs-3' aria-hidden='true' />{t('intake.settings.title')}</Link>}
-      {can('configurar') && <button className='btn btn-primary' disabled={busy || !catalog.data?.anos.length} onClick={() => setEditor({})}>{t('intake.ui.enrollmentRound')}</button>}
+      {can('configurar') && <div className='d-flex flex-wrap align-items-center justify-content-end gap-3 ms-auto'>
+        <button className='btn btn-primary' disabled={busy || !catalog.data?.anos.length} onClick={() => setEditor({})}>{t('intake.ui.enrollmentRound')}</button>
+        <Link className='btn btn-light-primary' to={enrollmentSettingsPath}><i className='ki-solid ki-setting-2 fs-3' aria-hidden='true' />{t('intake.settings.title')}</Link>
+      </div>}
     </AcademicPageHeader>
     {(catalog.error || list.error) && <div className='alert alert-danger' role='alert'>{catalog.error?.message || list.error?.message}</div>}
     {catalog.data?.correo_operativo === false && <div className='alert alert-warning' role='status'>{t('intake.ui.outgoingEmailIsInTestModeNoPinsOrCredentialsWillBe')}{' '}{hasPermission('config.correo') && <Link to='/ajustes-institucionales/correo'>{t('intake.ui.connectGmailStepByStep')}</Link>}</div>}

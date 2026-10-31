@@ -91,6 +91,7 @@ export function enrollmentFixture(user) {
         {key: 'representante_nombre', nombre: 'Nombre del representante legal', obligatorio: true, tipo: 'texto'},
         {key: 'representante_parentesco', nombre: 'Parentesco del representante', obligatorio: true, tipo: 'texto'},
         {key: 'representante_telefono', nombre: 'Teléfono del representante', obligatorio: true, tipo: 'texto'},
+        {key: 'telefono_emergencia', nombre: 'Teléfono de emergencia', obligatorio: false, tipo: 'numero'},
         {key: 'procedencia', nombre: 'Colegio de procedencia', obligatorio: false, tipo: 'texto'}],
       documentos: [{key: 'identidad', nombre: 'Documento de identidad', instrucciones: 'Adjunta una copia clara y completa.', obligatorio: true, formatos: ['pdf','png'], grados: []}]}}
   const app = {url_token: application, radicado: 'MAT-PRUEBA', estado: 'enviada', email: 'estudiante@example.test', grado_token: grade,
@@ -121,9 +122,14 @@ export function enrollmentFixture(user) {
   const mail = mailFixture(user, writes)
   const middleware = (req, res, next) => {
     const url = new URL(req.url, 'http://localhost')
-    if (!url.pathname.startsWith('/api/ingreso')) return mail.middleware(req, res, next)
+    if (!url.pathname.startsWith('/api/ingreso') && !url.pathname.startsWith('/api/matriculas')) return mail.middleware(req, res, next)
     const reply = (data, status = 200) => {res.statusCode = status; res.setHeader('Content-Type','application/json'); res.end(JSON.stringify(data))}
     if (req.method === 'GET') {
+      if (url.pathname === '/api/matriculas') return reply({data: [{token: 'M'.repeat(24), nombre: 'Ana Pruebas', email: app.email, estado: 'activa', grupo: 'Primero / 01A', sede: 'Principal', convocatoria: campaign.nombre, origen: 'enlace'}],
+        page: 1, last_page: 1, total: 1, ano_token: campaign.ano_token, anos: [{token: campaign.ano_token, nombre: '2027', estado: 'en_curso'}],
+        grupos: [{token: group, grado_token: grade, nombre: 'Primero / 01A', sede: 'Principal', estado: 'activo'}], campanas: [presentCampaign()], correo_operativo: true})
+      if (url.pathname === '/api/matriculas/geografia') return reply({departamentos: [{codigo: '41', nombre: 'HUILA', municipios: [{codigo: '41001', nombre: 'NEIVA'}]}]})
+      if (url.pathname === `/api/matriculas/${'M'.repeat(24)}`) return reply({data: {nombre: 'Ana Pruebas', email: app.email, grupo: 'Primero / 01A', sede: 'Principal', datos: app.datos, documentos: app.documentos}})
       if (url.pathname === '/api/ingreso-publico/ubicaciones') return reply({data: [{codigo: '41', nombre: 'HUILA', municipios: [{codigo: '41001', nombre: 'NEIVA'}]}, {codigo: '05', nombre: 'ANTIOQUIA', municipios: [{codigo: '05001', nombre: 'MEDELLÍN'}]}]})
       if (url.pathname === '/api/ingreso/configuracion') return user.permissions.includes('ingreso.configurar') ? reply({data: settings}) : reply({message: 'Forbidden'}, 403)
       if (url.pathname === '/api/ingreso-publico/catalogo') return reply({colegio: 'Colegio de prueba', zona_horaria: settings.zona_horaria,
@@ -205,14 +211,16 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
   const fill = (id, value) => evaluate(`(()=>{const el=document.getElementById(${JSON.stringify(id)}); const proto=el.tagName==='SELECT'?HTMLSelectElement.prototype:el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`)
   if (summaryOnly) {
     const messages = {
-      es: {management: 'Matrículas por enlace', configure: 'Configurar', duplicate: 'Duplicar para el próximo año', create: '+ Convocatoria', cancel: 'Cancelar', settings: 'Configuración de matrículas', level: 'Primaria', firstRange: 'De 6 a 8 años, incluidos', secondRange: 'De 9 a 12 años, incluidos', legacyRange: 'De 5 a 7 años, incluidos'},
-      en: {management: 'Enrollment by link', configure: 'Configure', duplicate: 'Copy for next year', create: '+ Enrollment round', cancel: 'Cancel', settings: 'Enrollment settings', level: 'Primary', firstRange: '6 to 8 years, inclusive', secondRange: '9 to 12 years, inclusive', legacyRange: '5 to 7 years, inclusive'},
+      es: {management: 'Matrículas por enlace', configure: 'Configurar', duplicate: 'Duplicar para el próximo año', create: 'Nueva convocatoria', cancel: 'Cancelar', settings: 'Configuración de matrículas', level: 'Primaria', firstRange: 'De 6 a 8 años, incluidos', secondRange: 'De 9 a 12 años, incluidos', legacyRange: 'De 5 a 7 años, incluidos'},
+      en: {management: 'Enrollment by link', configure: 'Configure', duplicate: 'Copy for next year', create: 'New enrollment round', cancel: 'Cancel', settings: 'Enrollment settings', level: 'Primary', firstRange: '6 to 8 years, inclusive', secondRange: '9 to 12 years, inclusive', legacyRange: '5 to 7 years, inclusive'},
     }
     const summary = `document.querySelector('[aria-labelledby="campaign-institutional-summary"]')`
     const assertSummary = async expected => {
       await until(`${summary}?.textContent.includes(${JSON.stringify(expected)})`)
       assert.ok(await evaluate(`!${summary}.querySelector('input,textarea,select')`), 'The institutional summary stays read-only')
       assert.ok(await evaluate(`!!${summary}.querySelector('a[href="/ajustes-institucionales/matriculas"]')`))
+      assert.ok(await evaluate(`(()=>{const section=${summary},button=section.querySelector('a[href="/ajustes-institucionales/matriculas"]'),help=section.querySelector('p.ingreso-help');return help.getBoundingClientRect().top-button.getBoundingClientRect().bottom>=12})()`),
+        'The institutional settings link needs breathing room before its explanatory text.')
     }
     const selectGrade = async token => {
       const grade = fixture.catalog.grados.find(g => g.token === token)
@@ -230,6 +238,9 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
       const copy = messages[locale]
       const languageScript = await command('Page.addScriptToEvaluateOnNewDocument', {source: `localStorage.setItem('i18nConfig',JSON.stringify({selectedLang:'${locale}'}));`})
       await navigate('/admisiones/solicitudes', copy.management)
+      assert.ok(await evaluate(`(()=>{const header=document.querySelector('[data-testid="academic-page-header"]'),button=[...header.querySelectorAll('button')].find(x=>x.textContent.trim()===${JSON.stringify(copy.create)}),link=header.querySelector('a[href="/ajustes-institucionales/matriculas"]');return !!button&&!!link&&!!link.querySelector('.ki-setting-2')&&button.nextElementSibling===link&&button.getBoundingClientRect().right<link.getBoundingClientRect().left&&header.getBoundingClientRect().right-link.getBoundingClientRect().right<40&&!button.textContent.includes('+')})()`),
+        'The new enrollment round and settings actions stay together at the right in that order.')
+      await screenshot(`matriculas-cabecera-${locale}`)
       await click(copy.configure); await until(`!!document.getElementById('campaign-name')`)
       await assertSummary(copy.firstRange)
       await selectGrade(fixture.catalog.grados[1].token); await assertSummary(copy.secondRange)
@@ -472,7 +483,6 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
   })()`
   for (const [route, title, icon] of [
     ['seleccion', 'Selección previa, entrevistas y pruebas', 'user-tick'],
-    ['matriculas', 'Gestión de Matrículas', 'address-book'],
     ['solicitudes', 'Convocatoria', 'document'],
   ]) {
     const path = `/admisiones/${route}`
@@ -488,9 +498,19 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
     assert.equal(await evaluate(`document.body.innerText.includes('Admisiones y matrícula')`), false)
     await screenshot(`ingreso-${route}-estilo-desktop`, true)
   }
+  assert.equal(await evaluate(`!!document.querySelector('#kt_app_header_menu a[href="/admisiones/matriculas"]')`), true)
+  await navigate('/admisiones/matriculas', 'Gestión de matrículas')
+  await until(`document.body.innerText.includes('Ana Pruebas')`)
+  assert.equal(await evaluate(`document.body.innerText.includes('Ver Boletín') || document.body.innerText.includes('Nivelaciones')`), false)
+  await click('Ver ficha'); await until(`document.body.innerText.includes('1234567')`)
+  await click('Matrícula manual'); await until(`!!document.getElementById('manual-campaign')`)
+  await fill('manual-campaign', fixture.token)
+  await until(`document.getElementById('manual-campus').value === 'Principal'`)
+  await screenshot('matricula-manual-desktop', true)
+  await click('Cancelar')
   await command('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true})
   let mobileHeaderStyle
-  for (const [route, title] of [['matriculas','Gestión de Matrículas'],['seleccion','Selección previa, entrevistas y pruebas'],['solicitudes','Convocatoria']]) {
+  for (const [route, title] of [['seleccion','Selección previa, entrevistas y pruebas'],['solicitudes','Convocatoria']]) {
     await navigate(`/admisiones/${route}`, title)
     await until(`!!document.querySelector('[data-testid="academic-page-header"]')`)
     const style = await evaluate(readHeaderStyle)
@@ -553,6 +573,7 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
   assert.ok((await evaluate(gradeColumns)).sameRow, 'Grades and capacities use two columns on desktop')
   const fieldAlignment = `(()=>{const parent=document.querySelector('.campaign-field-options');const items=[parent.querySelector('select'),parent.querySelector('label'),parent.querySelector('input'),parent.querySelector('button')].map(el=>el.getBoundingClientRect());const centers=items.map(rect=>rect.top+rect.height/2);return Math.max(...centers)-Math.min(...centers);})()`
   assert.ok(await evaluate(fieldAlignment) < 2, 'Required checkbox, label and actions align horizontally')
+  assert.ok(await evaluate(`!!document.querySelector('.campaign-field-options select option[value="numero"]')`), 'Campaign editor offers a numeric additional-field type')
   assert.deepEqual(await evaluate(`[...document.querySelectorAll('[aria-label="Formatos del documento 1"] label')].filter(el=>el.querySelector('input').checked).map(el=>el.textContent)`), ['PDF','PNG','Obligatorio'], 'Editing preserves previously selected formats')
   const writesBeforeInvalid = fixture.writes.length
   await fill('doc-help-0',''); await click('Guardar convocatoria')
@@ -623,6 +644,9 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
   assert.deepEqual(fixture.writes.at(-1), {path:'/api/ingreso-publico/consultar',data:{pin:'0427'},csrf:undefined}, 'The same browser sends the short PIN with its HttpOnly challenge cookie')
   await screenshot('ingreso-portal-desktop',true)
   assert.ok(await evaluate(`!!document.querySelector('.ingreso-age') && !!document.querySelector('.ingreso-relationship-options') && !!document.getElementById('data-address')`), 'Age, representative and required address are visible')
+  assert.ok(await evaluate(`(()=>{const input=document.getElementById('extra-telefono_emergencia');return input?.inputMode==='numeric' && input.pattern==='[0-9]+'})()`), 'Numeric campaign fields request a digit keyboard and validate digits')
+  await fill('extra-telefono_emergencia', '0abc123')
+  assert.equal(await evaluate(`document.getElementById('extra-telefono_emergencia').value`), '0123', 'Numeric additional field removes pasted letters without losing leading zeroes')
   assert.ok(await evaluate(`document.querySelector('.ingreso-public').getAttribute('translate')==='no' && !document.querySelector('.ingreso-save-bar')`), 'No draft save action remains')
   assert.ok(await evaluate(`(()=>{const button=document.querySelector('.ingreso-action-primary'),card=button.closest('.ingreso-card');return !!card && Math.abs(button.getBoundingClientRect().right-card.getBoundingClientRect().right)<40})()`), 'Final Submit stays inside its white card, aligned right')
   assert.ok(await evaluate(`(()=>{const card=document.querySelector('.ingreso-information-card');return card?.querySelectorAll('.ingreso-section-heading').length===3 && document.querySelector('.ingreso-student-form').querySelectorAll('.ingreso-card').length===1})()`), 'Student, representative and additional information share one white card')
@@ -683,6 +707,7 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
   assert.equal(fixture.writes.length, beforeSelection + 3, 'Only final submissions and retries carry data/files')
   assert.equal(fixture.writes.at(-1).data.privacidad_version, fixture.app.campana.privacidad_version)
   assert.equal(fixture.writes.at(-1).data.datos.telefono, '+573001234567')
+  assert.equal(fixture.writes.at(-1).data.datos.adicionales.telefono_emergencia, '0123')
   await reload(); await until(`document.getElementById('data-phone')?.value === '3001234567'`)
   assert.ok(await evaluate(`!Object.values(localStorage).some(v=>v.includes('A'.repeat(32))||v.includes('estudiante@example.test'))`),'No personal data or PIN persisted locally')
   await command('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false})
