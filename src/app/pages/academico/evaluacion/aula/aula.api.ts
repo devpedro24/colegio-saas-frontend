@@ -29,7 +29,7 @@ export type AulaResource = {token: string; tipo: 'texto' | 'archivo' | 'tarea' |
   reenvios?: boolean;
   estudiante?: boolean; puede_gestionar?: boolean; puede_calificar?: boolean; puede_evaluar?: boolean;
   puede_adjuntar?: boolean; puede_planilla?: boolean; puede_calificar_cuestionario?: boolean; puede_reactivar_intento?: boolean;
-  entrega?: {token: string; texto: string; estado: string; nota: string | null;
+  entrega?: {token: string; version: number; texto: string; estado: string; nota: string | null;
     valoracion?: {nombre: string; emoji: string | null; imagen_url: string | null} | null; retroalimentacion: string | null;
     adjuntos: {token: string; nombre: string}[]} | null}
 export type QuestionMedia = {token: string; nombre: string; mime: string; opcion_indice: number | null}
@@ -235,11 +235,11 @@ export const useArchivarRecurso = () => {const client = useQueryClient(); return
   onSuccess: () => refetchAula(client),
 })}
 export const useEntregarTarea = () => {const client = useQueryClient(); return useMutation({
-  mutationFn: (input: {token: string; texto: string}) => api.post(`${base}/recursos/${input.token}/entregas?opaque=1`, {texto: input.texto}),
+  mutationFn: (input: {token: string; texto: string; version: number}) => api.post(`${base}/recursos/${input.token}/entregas?opaque=1`, {texto: input.texto, version: input.version}),
   onSuccess: () => refetchAula(client),
 })}
 export const useBorradorEntrega = () => {const client = useQueryClient(); return useMutation({
-  mutationFn: (token: string) => api.post<{data: {token: string}}>(`${base}/recursos/${token}/entregas/borrador?opaque=1`, {})
+  mutationFn: (token: string) => api.post<{data: {token: string; version: number}}>(`${base}/recursos/${token}/entregas/borrador?opaque=1`, {})
     .then(r => r.data), onSuccess: () => refetchAula(client),
 })}
 export const useEntregas = (token: string, enabled: boolean) => useQuery({queryKey: ['aula', 'entregas', token], enabled: !!token && enabled,

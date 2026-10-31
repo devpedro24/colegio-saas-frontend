@@ -1,4 +1,7 @@
 import {useState, type FormEvent} from 'react'
+import {useIntl} from 'react-intl'
+import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
+import {useDraftFiles} from '@/lib/drafts/files'
 import {AulaRichEditor} from './AulaRichEditor'
 import {AulaAttachmentGallery} from './AulaAttachmentGallery'
 import {type AulaResource, type AulaSection, type ResourceInput,
@@ -67,6 +70,29 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
   const [savedVersion, setSavedVersion] = useState(resource?.version ?? 1)
   const [error, setError] = useState('')
   const [progress, setProgress] = useState('')
+  const intl = useIntl()
+  const [editorRevision, setEditorRevision] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
+  const attachments = useDraftFiles(files, form.seccion_token ?? section)
+  const selectedSection = sections.find(item => item.token === form.seccion_token)
+  const closedPeriod = periods.find(period => period.token === selectedSection?.periodo_token)?.estado === 'cerrado'
+  const editableContent = !closedPeriod || allowClosedContent
+  const editableFiles = canChangeFiles && editableContent
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial(resource, section)) || html !== priorHtml(resource) || files.length > 0
+  const recovery = useWorkDraft({context: `aula-resource:${resource?.token ?? `new:${section}`}`,
+    title: form.titulo || intl.formatMessage({id: 'drafts.title'}), base: String(resource?.version ?? 0), dirty,
+    enabled: editableContent,
+    value: {form, html, files: attachments.references, savedToken, savedVersion, pendingPublication},
+    editIdentity: value => ({form: value.form, html: value.html, files: value.files.map(file => file.token)}),
+    files: attachments.references.map(file => file.token),
+    restore: value => {
+      void attachments.restore(value.files).then(restored => {
+        setForm(value.form); setHtml(value.html); setSavedToken(value.savedToken); setSavedVersion(value.savedVersion)
+        setPendingPublication(value.pendingPublication); setEditorRevision(current => current + 1); setFiles(restored)
+      })
+    },
+    reset: () => {setForm(initial(resource, section)); setHtml(priorHtml(resource)); setFiles([]); setEditorRevision(current => current + 1)},
+  })
   const set = (patch: Partial<ResourceInput>) => setForm(current => ({...current, ...patch}))
   const setOption = (key: string, value: unknown) => setForm(current => ({...current,
     configuracion: {...current.configuracion, [key]: value}}))
@@ -75,10 +101,6 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
     visible_estudiantes: tipo === 'cuestionario' && !(resource?.preguntas?.length) ? false : current.visible_estudiantes,
     calificable: tipo === 'texto' || tipo === 'archivo' ? false : current.calificable,
     llevar_planilla: tipo === 'texto' || tipo === 'archivo' ? false : current.llevar_planilla}))
-  const selectedSection = sections.find(item => item.token === form.seccion_token)
-  const closedPeriod = periods.find(period => period.token === selectedSection?.periodo_token)?.estado === 'cerrado'
-  const editableContent = !closedPeriod || allowClosedContent
-  const editableFiles = canChangeFiles && editableContent
   const destination = usePlanillaDestino(form.seccion_token ?? section,
     canLinkGradebook && form.llevar_planilla && !resource?.actividad_token && !closedPeriod)
   const selectedComponent = destination.data?.componentes.find(item =>
@@ -116,6 +138,8 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
       }
     }
     let resourceSaved = false
+    const finishDraft = recovery.afterSave()
+    setSubmitting(true)
     const publishAfterFiles = (pendingPublication || (!savedToken && files.length > 0)) && form.visible_estudiantes
     try {
       const payload: ResourceInput = {...form, version: savedVersion,
@@ -143,19 +167,25 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
         setSavedVersion('version' in published.data ? Number(published.data.version) : nextVersion + 1)
       }
       setPendingPublication(false)
+      finishDraft(true)
       onSaved(token)
     } catch (cause) {setProgress(''); setError(`${cause instanceof Error ? cause.message : 'No se pudo completar la operación.'}${resourceSaved
       ? publishAfterFiles ? ' El recurso quedó guardado como borrador: revisa los archivos pendientes y vuelve a guardar para publicarlo.'
         : ' El recurso sí se guardó, pero puede haber archivos pendientes. Revisa el resultado antes de reintentar.'
-      : ''}`)}
+      : ''}`)} finally {setSubmitting(false)}
   }
 
   return <section className='aula-editor-page'>
-    <button className='btn btn-link p-0 mb-5' onClick={onClose}>← Contenido del aula</button>
+    {recovery.notice}
+    {(attachments.busy || attachments.failed) && <div className='alert alert-warning' role='status'>
+      {intl.formatMessage({id: attachments.busy ? 'drafts.filesPreparing' : 'drafts.filesFailed'})}
+    </div>}
+    <button className='btn btn-link p-0 mb-5' disabled={submitting} onClick={onClose}>← Contenido del aula</button>
     <div className='aula-main-head'><div><span className='aula-eyebrow'>{selectedSection?.titulo ?? 'Aula'}</span>
       <h1>{resource ? 'Editar recurso' : 'Agregar recurso'}</h1>
       <p className='text-muted mb-0'>Prepara el contenido y sus archivos en esta misma página.</p></div></div>
     <form className='aula-inline-form aula-resource-form' onSubmit={event => void submit(event)}>
+      <fieldset disabled={submitting || attachments.restoring} inert={submitting || attachments.restoring}>
       <div className='fw-semibold mb-3'>Tipo de contenido</div>
       <div className='aula-kind-grid' role='group' aria-label='Tipo de recurso'>
         {kinds.filter(kind => kind.id !== 'cuestionario' || canManageQuiz || resource?.tipo === 'cuestionario').map(kind => <button type='button' key={kind.id}
@@ -177,7 +207,7 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
               {item.periodo} · {item.titulo}</option>)}</select>
         </label></div></div>
       <div className='mt-6'><label className='form-label fw-semibold'>Contenido e indicaciones</label>
-        <AulaRichEditor initialHtml={html} onChange={setHtml} /></div>
+        <AulaRichEditor key={editorRevision} initialHtml={html} onChange={setHtml} /></div>
       <div className='aula-composer-settings mt-5'><div className='d-flex justify-content-between align-items-center flex-wrap gap-4'>
         <div><strong>Archivos adjuntos</strong><p className='text-muted fs-7 mb-0'>PDF, presentaciones, documentos, hojas de cálculo,
           imágenes, audio o video. Hasta 30 archivos de {Math.round(limitBytes / 1024 / 1024)} MB cada uno.</p></div>
@@ -309,8 +339,9 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
       {progress && <div className='alert alert-info mt-4' role='status'>{progress}</div>}
       {error && <div className='alert alert-danger mt-4' role='alert'>{error}</div>}
       <div className='aula-form-actions'><button type='button' className='btn btn-light' onClick={onClose}>Cancelar</button>
-        <button className='btn btn-success' disabled={save.isPending || upload.isPending}>
+        <button className='btn btn-success' disabled={save.isPending || upload.isPending || attachments.busy}>
           {save.isPending || upload.isPending ? 'Guardando…' : resource ? 'Guardar cambios' : 'Crear recurso'}</button></div>
+      </fieldset>
     </form>
   </section>
 }

@@ -1,6 +1,8 @@
 import {useEffect, useRef, useState, type FormEvent} from 'react'
 import {useNavigate, useParams} from 'react-router-dom'
 import {useIntl} from 'react-intl'
+import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
+import {useDraftFiles} from '@/lib/drafts/files'
 import {AulaWorkspace} from './AulaWorkspace'
 import {AulaQuestionBuilder} from './AulaQuestionBuilder'
 import {AulaAttachmentGallery} from './AulaAttachmentGallery'
@@ -47,7 +49,7 @@ function QuestionMediaPreview({media}: {media: QuestionMedia[]}) {
 function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired, canInteract, isStudent, reenvios}: {token: string; canManage: boolean; gradeable: boolean;
   scale?: AulaScale; reasonRequired?: boolean;
   canInteract?: boolean; isStudent: boolean; reenvios?: boolean;
-  existing?: {token: string; texto: string | null; estado: string; nota: string | null; retroalimentacion: string | null;
+  existing?: {token: string; version: number; texto: string | null; estado: string; nota: string | null; retroalimentacion: string | null;
     valoracion?: {nombre: string; emoji: string | null} | null; adjuntos: {token: string; nombre: string}[]} | null}) {
   const submit = useEntregarTarea()
   const draft = useBorradorEntrega()
@@ -59,19 +61,49 @@ function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired
   const [text, setText] = useState(existing?.texto ?? '')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [draftToken, setDraftToken] = useState(existing?.estado === 'borrador' ? existing.token : '')
+  const editVersion = useRef(existing?.version ?? 0)
   const [message, setMessage] = useState('')
+  const intl = useIntl()
+  const [sending, setSending] = useState(false)
+  const attachments = useDraftFiles(selectedFiles, token, true)
+  if (text === (existing?.texto ?? '') && !selectedFiles.length) editVersion.current = existing?.version ?? 0
+  const submissionRecovery = useWorkDraft({context: `aula-submission:${token}`, title: intl.formatMessage({id: 'drafts.task'}),
+    value: {text, files: attachments.references, draftToken}, base: String(existing?.version ?? 0),
+    editIdentity: value => ({text: value.text, files: value.files.map(file => file.token)}),
+    files: attachments.references.map(file => file.token),
+    dirty: isStudent && (text !== (existing?.texto ?? '') || selectedFiles.length > 0),
+    compatible: (value, base) => base === String(existing?.version ?? 0)
+      || (!!value.draftToken && value.draftToken === existing?.token && existing.estado === 'borrador' && !existing.texto),
+    enabled: !!canInteract && isStudent && (!existing || existing.estado === 'borrador' || (!!reenvios && existing.estado === 'entregada')) && !existing?.nota,
+    restore: value => {void attachments.restore(value.files).then(restored => {
+      editVersion.current = existing?.version ?? 0; setText(value.text); setDraftToken(value.draftToken); setSelectedFiles(restored)
+    })},
+    reset: () => {setText(existing?.texto ?? ''); setSelectedFiles([])}})
   const canEditEvidence = canInteract && existing?.nota === null
     && (existing?.estado === 'borrador' || (reenvios && existing?.estado === 'entregada'))
-  const [gradeForm, setGradeForm] = useState<Record<string, {nota: string; retroalimentacion: string; motivo?: string}>>({})
+  type Feedback = {nota: string; retroalimentacion: string; motivo?: string; version?: number}
+  const [gradeForm, setGradeFormState] = useState<Record<string, Feedback>>({})
+  const setGradeForm = (next: Record<string, Feedback>) => setGradeFormState(Object.fromEntries(Object.entries(next)
+    .map(([id, value]) => [id, {...value, version: value.version ?? submissions.data?.find(item => item.token === id)?.version}])))
+  const feedbackRecovery = useWorkDraft({context: `aula-feedback:${token}`, title: intl.formatMessage({id: 'drafts.feedback'}),
+    value: gradeForm, dirty: Object.keys(gradeForm).length > 0, enabled: canManage,
+    compatible: value => Object.entries(value).every(([id, row]) => submissions.data?.some(item => item.token === id && item.version === row.version)),
+    restore: setGradeFormState, reset: () => setGradeFormState({})})
+  const finishFeedback = (id: string) => {
+    if (Object.keys(gradeForm).length === 1) feedbackRecovery.afterSave()()
+    setGradeFormState(current => {const next = {...current}; delete next[id]; return next})
+  }
   const send = async (event: FormEvent) => {
     event.preventDefault(); setMessage('')
     if (!text.trim() && !selectedFiles.length && !existing?.adjuntos.length) {
       setMessage('Escribe una respuesta o selecciona al menos un archivo.'); return
     }
+    const finishDraft = submissionRecovery.afterSave(); setSending(true)
     try {
       let attachmentTarget = draftToken || existing?.token || ''
       if (selectedFiles.length && !attachmentTarget && !existing) {
         const reserved = await draft.mutateAsync(token)
+        editVersion.current = reserved.version
         attachmentTarget = reserved.token; setDraftToken(attachmentTarget)
       }
       for (const file of selectedFiles) {
@@ -79,18 +111,21 @@ function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired
         await upload.mutateAsync({token: attachmentTarget, archivo: file, destino: 'entregas'})
         setSelectedFiles(current => current.filter(item => item !== file))
       }
-      await submit.mutateAsync({token, texto: text})
+      await submit.mutateAsync({token, texto: text, version: editVersion.current})
+      finishDraft(true)
       setDraftToken(''); setMessage('Entrega enviada.')
     } catch (error) {
       setMessage(`${error instanceof Error ? error.message : 'No se pudo entregar.'} Revisa los archivos ya adjuntados antes de reintentar para no subirlos dos veces.`)
-    }
+    } finally {setSending(false)}
   }
   if (canManage) return <section className='mt-8'><h3>Entregas</h3>
+    {feedbackRecovery.notice}
     {submissions.isLoading ? <p>Cargando entregas…</p> : submissions.data?.length ? <div className='d-flex flex-column gap-4'>
       {submissions.data.map(item => <article className='border rounded p-4' key={item.token}>
         <div className='fw-semibold'>{item.estudiante} <span className='badge badge-light-info'>{item.estado}</span></div>
         <p className='my-3' style={{whiteSpace: 'pre-wrap'}}>{item.texto}</p>
         {!!item.adjuntos?.length && <p>{item.adjuntos.map(file => <a className='me-3' key={file.token} href={aulaAdjuntoUrl(file.token)}>{file.nombre}</a>)}</p>}
+        <fieldset disabled={grades.isPending || review.isPending}>
         {gradeable && <div className='d-flex flex-wrap gap-3 align-items-end'><label>Valoración<GradeField scale={scale}
           label={`Valoración de ${item.estudiante}`}
           value={gradeForm[item.token]?.nota ?? (scale?.tipo === 'imagenes' ? item.escala_opcion_token ?? '' : item.nota ?? '')}
@@ -103,40 +138,44 @@ function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired
             value={gradeForm[item.token]?.motivo ?? ''} onChange={event => setGradeForm({...gradeForm,
               [item.token]: {...(gradeForm[item.token] ?? {nota: '', retroalimentacion: ''}), motivo: event.target.value}})} /></label>}
           <button className='btn btn-success' disabled={grades.isPending || (reasonRequired && (gradeForm[item.token]?.motivo ?? '').trim().length < 8)}
-            onClick={() => void grades.mutateAsync({token: item.token, version: item.version,
+            onClick={() => void grades.mutateAsync({token: item.token, version: gradeForm[item.token]?.version ?? item.version,
             ...(scale?.tipo === 'imagenes'
               ? {escala_opcion_token: gradeForm[item.token]?.nota ?? item.escala_opcion_token ?? ''}
               : {nota: gradeForm[item.token]?.nota ?? item.nota ?? ''}),
             retroalimentacion: gradeForm[item.token]?.retroalimentacion ?? item.retroalimentacion ?? '',
             motivo: gradeForm[item.token]?.motivo})
-            .then(() => setMessage('Calificación guardada.')).catch(error => setMessage(error instanceof Error ? error.message : 'Error al calificar.'))}>Calificar</button></div>}
+            .then(() => {finishFeedback(item.token); setMessage('Calificación guardada.')}).catch(error => setMessage(error instanceof Error ? error.message : 'Error al calificar.'))}>Calificar</button></div>}
         {!gradeable && <div className='d-flex flex-wrap gap-3 align-items-end'><label className='flex-grow-1'>Retroalimentación
           <input className='form-control' value={gradeForm[item.token]?.retroalimentacion ?? item.retroalimentacion ?? ''}
             onChange={event => setGradeForm({...gradeForm, [item.token]: {...(gradeForm[item.token] ?? {nota: ''}),
               retroalimentacion: event.target.value}})} /></label>
           <button className='btn btn-success' disabled={review.isPending || item.estado === 'revisada'}
-            onClick={() => void review.mutateAsync({token: item.token, version: item.version,
+            onClick={() => void review.mutateAsync({token: item.token, version: gradeForm[item.token]?.version ?? item.version,
               retroalimentacion: gradeForm[item.token]?.retroalimentacion ?? item.retroalimentacion ?? ''})
-              .then(() => setMessage('Entrega revisada.')).catch(error => setMessage(error instanceof Error ? error.message : 'No se pudo revisar.'))}>
+              .then(() => {finishFeedback(item.token); setMessage('Entrega revisada.')}).catch(error => setMessage(error instanceof Error ? error.message : 'No se pudo revisar.'))}>
             {item.estado === 'revisada' ? 'Revisada' : 'Marcar como revisada'}</button></div>}
+        </fieldset>
       </article>)}</div> : <p className='text-muted'>Todavía no hay entregas.</p>}
     {message && <div className='alert alert-info mt-4'>{message}</div>}</section>
   if (!isStudent) return <div className='alert alert-light mt-7'>Esta tarea está disponible en solo lectura para tu perfil.</div>
   return <section className='mt-8'><h3>Tu entrega</h3>
+    {submissionRecovery.notice}
+    {(attachments.busy || attachments.failed) && <div className='alert alert-warning' role='status'>
+      {intl.formatMessage({id: attachments.busy ? 'drafts.filesPreparing' : 'drafts.filesFailed'})}</div>}
     {!canInteract && <div className='alert alert-warning'>El plazo de interacción terminó. Tu entrega y su retroalimentación siguen visibles.</div>}
     {existing && <p className='text-muted'>Estado: {existing.estado}
       {existing.valoracion ? ` · ${existing.valoracion.emoji ?? ''} ${existing.valoracion.nombre}` : existing.nota ? ` · Nota: ${existing.nota}` : ''}
       {existing.retroalimentacion ? ` · ${existing.retroalimentacion}` : ''}</p>}
     {canInteract && (!existing || existing.estado === 'borrador' || (reenvios && existing.estado === 'entregada'))
-      && <form onSubmit={event => void send(event)}><textarea className='form-control mb-3' rows={7} maxLength={20000}
+      && <form onSubmit={event => void send(event)}><fieldset disabled={sending || attachments.restoring}><textarea className='form-control mb-3' rows={7} maxLength={20000}
       placeholder='Escribe tu respuesta…' value={text} onChange={event => setText(event.target.value)} />
       <label className='form-label d-block'>Archivos de la entrega<input className='form-control mt-2' type='file' multiple
         onChange={event => {setSelectedFiles(current => [...current, ...Array.from(event.target.files ?? [])]); event.target.value = ''}} /></label>
       {!!selectedFiles.length && <div className='mb-3'>{selectedFiles.map((file, index) => <span className='aula-selected-file me-2' key={`${file.name}-${index}`}>
         {file.name} <button type='button' className='btn btn-sm btn-light-danger' onClick={() =>
           setSelectedFiles(current => current.filter((_, position) => position !== index))}>Quitar</button></span>)}</div>}
-      <button className='btn btn-success' disabled={submit.isPending || draft.isPending || upload.isPending}>Enviar entrega</button>
-      <span className='text-muted ms-3'>Puedes enviar texto, archivos o ambos.</span></form>}
+      <button className='btn btn-success' disabled={submit.isPending || draft.isPending || upload.isPending || attachments.busy}>Enviar entrega</button>
+      <span className='text-muted ms-3'>Puedes enviar texto, archivos o ambos.</span></fieldset></form>}
     {existing && <div className='mt-4'>
       {!!existing.adjuntos?.length && <div className='aula-submission-files mt-2'>{existing.adjuntos.map(file =>
         <span className='aula-selected-file' key={file.token}><a href={aulaAdjuntoUrl(file.token)}>{file.nombre}</a>
@@ -327,6 +366,7 @@ function AttemptSession({attempt}: {attempt: Attempt}) {
 }
 
 function QuestionReview({attempt, onSaved}: {attempt: Attempt; onSaved: () => void}) {
+  const intl = useIntl()
   const review = useRevisarPreguntas()
   const manual = attempt.preguntas.filter(question => ['abierta', 'audio', 'video'].includes(question.tipo))
   const [scores, setScores] = useState<Record<string, {puntos: string; retroalimentacion: string; criterios: string[]}>>(() =>
@@ -337,17 +377,25 @@ function QuestionReview({attempt, onSaved}: {attempt: Attempt; onSaved: () => vo
     }])))
   const [reason, setReason] = useState('')
   const [message, setMessage] = useState('')
+  const initialScores = useRef(JSON.stringify(scores))
+  const recovery = useWorkDraft({context: `aula-review:${attempt.token}`, title: intl.formatMessage({id: 'drafts.feedback'}),
+    value: {scores, reason}, dirty: !!reason || JSON.stringify(scores) !== initialScores.current,
+    base: String(attempt.version), enabled: attempt.estado === 'pendiente_revision',
+    restore: value => {setScores(value.scores); setReason(value.reason)},
+    reset: () => {setScores(JSON.parse(initialScores.current)); setReason('')}})
   const saveReview = async () => {
     setMessage('')
+    const finishDraft = recovery.afterSave()
     try {
       await review.mutateAsync({token: attempt.token, version: attempt.version, motivo: reason,
         evaluaciones: manual.map(question => ({pregunta_token: question.token,
           puntos: scores[question.token]?.puntos ?? '0', retroalimentacion: scores[question.token]?.retroalimentacion ?? '',
           criterios: scores[question.token]?.criterios ?? []}))})
-      onSaved()
+      finishDraft(); onSaved()
     } catch (error) {setMessage(error instanceof Error ? error.message : 'No se pudo guardar la revisión.')}
   }
   return <div className='aula-question-review'>
+    {recovery.notice}
     {attempt.preguntas.map((question, index) => {
       const answer = attempt.respuestas[question.token]
       const isManual = ['abierta', 'audio', 'video'].includes(question.tipo)
@@ -447,7 +495,7 @@ function QuizPanel({token, canEdit, canGrade, canReactivate, canLinkGradebook, h
         {reviewToken && <div className='border rounded p-5 mt-5'><div className='d-flex justify-content-between align-items-center gap-3'>
           <h4 className='mb-0'>Respuestas del intento</h4><button className='btn btn-sm btn-light' onClick={() => setReviewToken('')}>Cerrar</button></div>
           {review.isLoading ? <p className='mt-4'>Cargando respuestas…</p> : review.data
-            ? <QuestionReview key={review.data.token} attempt={review.data} onSaved={() => setReviewToken('')} />
+            ? <QuestionReview key={`${review.data.token}:${review.data.version}`} attempt={review.data} onSaved={() => setReviewToken('')} />
             : <p className='text-danger mt-4'>No se pudieron cargar las respuestas.</p>}</div>}</section>}</>
       : !isStudent ? <div className='alert alert-light mt-7'>Este cuestionario está disponible en solo lectura para tu perfil.</div>
       : !attemptToken ? <button className='btn btn-success mt-8' disabled={start.isPending || !canInteract} onClick={() => void start.mutateAsync(token)

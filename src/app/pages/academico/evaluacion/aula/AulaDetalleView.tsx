@@ -8,6 +8,7 @@ import {useToast} from '@/lib/ui/toast'
 import {useAula, useArchivarRecurso, useCrearSeccion, useEditarSeccion, useEliminarRecurso,
   useEliminarSeccion, useRestaurarRecurso, useRestaurarSeccion, type AulaResource} from './aula.api'
 import './aula.css'
+import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
 
 const resourceIcon: Record<AulaResource['tipo'], string> = {texto: '▤', archivo: '▣', tarea: '✓', cuestionario: '☷'}
 type SectionForm = {titulo: string; periodo_token: string; preinforme_token: string; visible_estudiantes: boolean}
@@ -17,7 +18,7 @@ export function AulaDetalleView() {
   const {aulaToken = ''} = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const {data, isLoading, error} = useAula(aulaToken)
   const createSection = useCrearSeccion()
   const editSection = useEditarSeccion()
@@ -27,18 +28,38 @@ export function AulaDetalleView() {
   const restoreResource = useRestaurarRecurso()
   const restoreSection = useRestaurarSeccion()
   const toast = useToast()
-  const [editor, setEditor] = useState<Editor>(null)
+  const [editor, setEditorState] = useState<Editor>(null)
+  const setEditor = (next: Editor) => {
+    setEditorState(next)
+    const params = new URLSearchParams(searchParams); params.delete('editar'); params.delete('crear_recurso')
+    if (next?.kind === 'resource') params.set(next.resource ? 'editar' : 'crear_recurso', next.resource?.token ?? next.section)
+    setSearchParams(params, {replace: true})
+  }
   const [sectionForm, setSectionForm] = useState<SectionForm>({titulo: '', periodo_token: '', preinforme_token: '', visible_estudiantes: true})
+  const [sectionBaseline, setSectionBaseline] = useState('')
   const {values: expandedSections, toggle: toggleContentSection} = useAulaAccordionState(aulaToken, 'content')
   const requestedEdit = searchParams.get('editar')
+  const requestedNew = searchParams.get('crear_recurso')
+  const sectionRecovery = useWorkDraft({context: `aula-section:${aulaToken}`, title: sectionForm.titulo || 'Aula',
+    value: {sectionForm, editor: editor?.kind === 'section' ? editor : null},
+    dirty: editor?.kind === 'section' && JSON.stringify(sectionForm) !== sectionBaseline,
+    enabled: !!data?.permisos.editar || !!data?.permisos.crear,
+    restore: value => {setSectionForm(value.sectionForm); setEditor(value.editor)}, reset: () => setEditor(null),
+    base: JSON.stringify(data?.secciones.map(s => [s.token, s.titulo, s.periodo_token, s.preinforme_token]) ?? []),
+  })
   useEffect(() => {
-    if (!requestedEdit || !data) return
+    if (!data) return
+    if (requestedNew && data.permisos.crear && data.secciones.some(s => s.token === requestedNew && !s.eliminado)) {
+      setEditorState(current => current?.kind === 'resource' && current.section === requestedNew && !current.resource ? current
+        : {kind: 'resource', section: requestedNew, resource: null})
+    }
+    if (!requestedEdit || !data.permisos.editar) return
     for (const section of data.secciones) {
       const resource = section.recursos.find(item => item.token === requestedEdit)
-      if (resource) {setEditor({kind: 'resource', section: section.token, resource}); break}
+      if (resource) {setEditorState(current => current?.kind === 'resource' && current.resource?.token === resource.token ? current
+        : {kind: 'resource', section: section.token, resource}); break}
     }
-    navigate(`/evaluacion/aula/${aulaToken}`, {replace: true})
-  }, [requestedEdit, data, aulaToken, navigate])
+  }, [requestedEdit, requestedNew, data])
   useEffect(() => {
     if (!data || !location.hash.startsWith('#section-')) return
     const frame = requestAnimationFrame(() => document.getElementById(location.hash.slice(1))?.scrollIntoView({block: 'start'}))
@@ -50,14 +71,16 @@ export function AulaDetalleView() {
   const selectedPeriod = data.periodos.find(item => item.token === sectionForm.periodo_token)
   const openSection = (token?: string) => {
     const section = data.secciones.find(item => item.token === token)
-    setSectionForm(section ? {titulo: section.titulo, periodo_token: section.periodo_token,
+    const form = section ? {titulo: section.titulo, periodo_token: section.periodo_token,
       preinforme_token: section.preinforme_token ?? '', visible_estudiantes: section.visible_estudiantes}
       : {titulo: '', periodo_token: '',
-        preinforme_token: '', visible_estudiantes: data.permisos.publicar})
+        preinforme_token: '', visible_estudiantes: data.permisos.publicar}
+    setSectionForm(form); setSectionBaseline(JSON.stringify(form))
     setEditor({kind: 'section', token: section?.token ?? null})
   }
   const submitSection = async (event: FormEvent) => {
     event.preventDefault()
+    const finishDraft = sectionRecovery.afterSave()
     try {
       if (editor?.kind !== 'section') return
       if (editor.token) await editSection.mutateAsync({token: editor.token, titulo: sectionForm.titulo,
@@ -65,7 +88,7 @@ export function AulaDetalleView() {
       else await createSection.mutateAsync({aula: aulaToken, titulo: sectionForm.titulo,
         periodo_token: sectionForm.periodo_token, preinforme_token: sectionForm.preinforme_token || null,
         visible_estudiantes: sectionForm.visible_estudiantes})
-      setEditor(null)
+      finishDraft(); setEditor(null)
       toast.success('Sección guardada.')
     } catch (cause) {toast.error(cause instanceof Error ? cause.message : 'No se pudo guardar la sección.')}
   }
@@ -89,6 +112,7 @@ export function AulaDetalleView() {
   }
 
   return <AulaWorkspace aula={data}>
+    {sectionRecovery.notice}
     {editor?.kind === 'section' ? <section className='aula-editor-page'>
       <button className='btn btn-link p-0 mb-5' onClick={() => setEditor(null)}>← Contenido del aula</button>
       <div className='aula-main-head'><div><span className='aula-eyebrow'>Organización del aula</span>

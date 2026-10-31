@@ -1,4 +1,5 @@
 import {useState, type FormEvent} from 'react'
+import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
 import {aulaPreguntaMedioUrl, type Question, type QuestionMedia, useGuardarPreguntas,
   useQuitarMedioPregunta, useSubirMedioPregunta} from './aula.api'
 
@@ -33,6 +34,13 @@ export function AulaQuestionBuilder({token, current, version, locked, lockReason
   const [questions, setQuestions] = useState<Draft[]>(() => fromCurrent(current))
   const [active, setActive] = useState(0)
   const [message, setMessage] = useState('')
+  const [baseline, setBaseline] = useState(() => JSON.stringify(fromCurrent(current)))
+  const recovery = useWorkDraft({context: `aula-questions:${token}`, title: 'Aula',
+    value: {questions, active, savedVersion}, dirty: JSON.stringify(questions) !== baseline,
+    base: String(version), enabled: !locked,
+    restore: value => {setQuestions(value.questions); setActive(value.active); setSavedVersion(value.savedVersion)},
+    reset: () => {setQuestions(fromCurrent(current)); setSavedVersion(version); setActive(0)},
+  })
   const item = questions[active]
   const total = questions.reduce((sum, q) => sum + (Number(q.puntos) || 0), 0)
   const update = (patch: Partial<Draft>) => setQuestions(current => current.map((q, at) => at === active ? {...q, ...patch} : q))
@@ -93,6 +101,7 @@ export function AulaQuestionBuilder({token, current, version, locked, lockReason
   }
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setMessage('')
+    const finishDraft = recovery.afterSave()
     try {const result = await save.mutateAsync({token, version: savedVersion, preguntas: questions.map(question => ({token: question.token,
       tipo: question.tipo,
       enunciado: question.enunciado.trim(), opciones: question.opciones.map(option => option.trim()).filter(Boolean),
@@ -100,12 +109,14 @@ export function AulaQuestionBuilder({token, current, version, locked, lockReason
         ? question.respuesta.map(value => value.trim()).filter(Boolean) : question.respuesta.trim()}, puntos: question.puntos,
       puntajes_opciones: question.puntajes, rubrica: question.rubrica}))})
       setSavedVersion(result.version)
+      finishDraft(); setBaseline(JSON.stringify(fromCurrent(result.preguntas)))
       setQuestions(fromCurrent(result.preguntas))
       setMessage('Preguntas guardadas.')
     } catch (error) {setMessage(error instanceof Error ? error.message : 'No se pudieron guardar las preguntas.')}
   }
 
   return <section className='aula-question-builder mt-8'>
+    {recovery.notice}
     <div className='aula-question-header'><div><span className='aula-eyebrow'>Evaluación</span>
       <h3 className='mb-1'>Preguntas del cuestionario</h3>
       <p className='text-muted mb-0'>{questions.length} preguntas · {total.toLocaleString('es-CO')} puntos</p></div>
