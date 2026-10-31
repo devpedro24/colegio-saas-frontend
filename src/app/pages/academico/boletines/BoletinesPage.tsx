@@ -8,6 +8,7 @@ import {Content} from '@/_metronic/layout/components/content'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import PlantillasPage from './PlantillasPage'
 import BulletinWorkspace from './BulletinWorkspace'
+import './boletines.css'
 
 const BoletinesPage: FC = () => {
   const intl = useIntl()
@@ -19,11 +20,11 @@ const BoletinesPage: FC = () => {
 
   return (
     <Routes>
+      <Route path='plantillas' element={canCustomize
+        ? <><PageTitle breadcrumbs={breadcrumbs}>{intl.formatMessage({id: 'templates.title'})}</PageTitle><PlantillasPage /></>
+        : <Navigate to='/academico/boletines' replace />} />
       <Route element={<Content><Outlet /></Content>}>
         <Route path='gestion' element={<BulletinWorkspace />} />
-        <Route path='plantillas' element={canCustomize
-          ? <><PageTitle breadcrumbs={breadcrumbs}>{intl.formatMessage({id: 'templates.title'})}</PageTitle><PlantillasPage /></>
-          : <Navigate to='/academico/boletines' replace />} />
         <Route
           path=':matriculaId'
           element={
@@ -36,11 +37,11 @@ const BoletinesPage: FC = () => {
           }
         />
         <Route index element={<><PageTitle breadcrumbs={breadcrumbs}>{intl.formatMessage({id: 'boletines.title'})}</PageTitle>
-          <CatalogoView reportsOnly reportActions={<>
+          <CatalogoView reportsOnly reportActions={({year, group}) => <>
             {(hasPermission('boletines.observaciones.gestionar') || hasPermission('boletines.emisiones.preparar')) &&
-              <Link className='btn btn-primary btn-sm' to='/academico/boletines/gestion'>
-                {intl.locale.startsWith('en') ? 'Observations and report issuance' : 'Observaciones y emisión de boletines'}</Link>}
-            {canCustomize && <Link className='btn btn-light-primary btn-sm' to='/academico/boletines/plantillas'>
+              <Link className='btn btn-light-primary btn-sm bulletin-catalog-action' to={`/academico/boletines/gestion?${new URLSearchParams({ano: year, ...(group ? {grupo: group} : {})})}`}>
+                {intl.formatMessage({id: 'boletines.workspace.title'})}</Link>}
+            {canCustomize && <Link className='btn btn-light-primary btn-sm bulletin-catalog-action' to='/academico/boletines/plantillas'>
               {intl.formatMessage({id: 'templates.openEditor'})}</Link>}
           </>} /></>} />
       </Route>

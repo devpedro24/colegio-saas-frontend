@@ -22,7 +22,7 @@ function load(text, mocks) {
 }
 const intl = {useIntl: () => ({formatMessage: ({id}) => id})}
 const box = ({children}) => React.createElement('section', null, children)
-function catalog({teacher = true, statuses = ['activa'], reportsOnly = false, subjectCount = 1, groupCount = 1, from = 1} = {}) {
+function catalog({teacher = true, statuses = ['activa'], reportsOnly = false, subjectCount = 1, groupCount = 1, from = 1, selectedGroup = teacher ? 'group' : ''} = {}) {
   const {CatalogoView} = load(source('evaluacion/components/CatalogoView.tsx'), {
     'react-intl': intl,
     'react-router-dom': {useNavigate: () => () => {}},
@@ -39,11 +39,11 @@ function catalog({teacher = true, statuses = ['activa'], reportsOnly = false, su
     '@/app/shared/components/AcademicPageHeader': {AcademicPageHeader: box},
     '@/app/shared/hooks/usePageSize': {usePageSize: () => [20, () => {}]},
     '../../shared/AcademicOptionSelect': {AcademicOptionSelect: ({tipo}) => React.createElement('span', {'data-filter': tipo})},
-    '../../shared/useCatalogFilters': {useCatalogFilters: () => [{ano: 'year', grupo: teacher ? 'group' : '', materia: '', periodo: 'period'}, () => {}]},
+    '../../shared/useCatalogFilters': {useCatalogFilters: () => [{ano: 'year', grupo: selectedGroup, materia: '', periodo: 'period'}, () => {}]},
     '@/app/modules/auth/core/authz': {useAuthz: () => ({hasRole: () => teacher, hasPermission: () => false})},
   })
   return renderToStaticMarkup(React.createElement(CatalogoView, {
-    reportsOnly, reportActions: React.createElement('button', null, 'Emitir boletines'),
+    reportsOnly, reportActions: ({year, group}) => React.createElement('button', {'data-year': year, 'data-group': group}, 'Emitir boletines'),
   }))
 }
 
@@ -53,9 +53,22 @@ test('single-group teacher report has no empty filter card and actions are in li
   assert.match(html, /card-header gap-3[\s\S]*card-toolbar[\s\S]*Emitir boletines/)
 })
 test('rector reports retain their group filter', () => {
-  const html = catalog({reportsOnly: true, teacher: false})
+  const html = catalog({reportsOnly: true, teacher: false, groupCount: 2})
   assert.match(html, /report-catalog-filters/)
-  assert.match(html, /data-filter="grupos"/)
+  assert.match(html, /card-header gap-3[\s\S]*data-filter="grupos"[\s\S]*Emitir boletines/)
+})
+
+test('multi-group reports require a group before showing any student data', () => {
+  for (const teacher of [true, false]) {
+    const html = catalog({reportsOnly: true, teacher, groupCount: 2, selectedGroup: ''})
+    assert.match(html, /role="status">boletines.workspace.groupFirst/)
+    assert.doesNotMatch(html, /<table|Apellido Nombre|Nombre Apellido/)
+    assert.match(html, /data-group=""/)
+  }
+  const selected = catalog({reportsOnly: true, teacher: false, groupCount: 2, selectedGroup: 'group'})
+  assert.match(selected, /<table[\s\S]*Apellido Nombre/)
+  assert.match(selected, /data-year="year" data-group="group"/)
+  assert.doesNotMatch(selected, /boletines.workspace.groupFirst/)
 })
 test('teacher reports keep the status filter when there are multiple statuses', () => {
   const html = catalog({reportsOnly: true, statuses: ['activa', 'retirada']})
@@ -81,7 +94,7 @@ test('report roster shows position rather than internal ID and no status column'
   const teacher = catalog({reportsOnly: true})
   assert.match(teacher, /<td class="text-muted">1<\/td>/)
   assert.doesNotMatch(teacher, /<th>evaluacion.matriculas.estado<\/th>|evaluacion.matriculas.estado.activa/)
-  assert.match(catalog({reportsOnly: true, teacher: false, from: 21}), /<td class="text-muted">21<\/td>/)
+  assert.match(catalog({reportsOnly: true, teacher: false, groupCount: 2, selectedGroup: 'group', from: 21}), /<td class="text-muted">1<\/td>/)
 })
 test('gradebook shares the HTML indicator sheet and removes obsolete objective UI', () => {
   const workspace = source('evaluacion/components/IndicadorWorkspace.tsx')
