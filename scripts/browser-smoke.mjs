@@ -8,9 +8,11 @@ import assert from 'node:assert/strict'
 import {createServer} from 'vite'
 import {enrollmentFixture, runEnrollmentSmoke} from './enrollment-smoke.mjs'
 import {eventsFixture, runEventsSmoke} from './events-smoke.mjs'
+import {runAcademicNavigationSmoke} from './academic-navigation-smoke.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
-const realtimeMode = process.argv.includes('--realtime')
+const academicCacheMode = process.argv.includes('--academic-cache')
+const realtimeMode = process.argv.includes('--realtime') || academicCacheMode
 const paginationMode = process.argv.includes('--pagination')
 const platformMode = process.argv.includes('--platform')
 const performanceMode = process.argv.includes('--performance')
@@ -19,9 +21,16 @@ const gradingMode = process.argv.includes('--grading')
 const workflowMode = process.argv.includes('--academic-workflow')
 const aulaMode = process.argv.includes('--aula')
 const eventsMode = process.argv.includes('--events')
+const teacherAccessMode = process.argv.includes('--teacher-access') || academicCacheMode
+const indicatorScopeMode = process.argv.includes('--indicator-scope')
+const indicatorSheetMode = process.argv.includes('--indicator-sheet')
+const rbacMode = process.argv.includes('--rbac')
 const intakeMode = process.argv.includes('--ingreso') || process.argv.includes('--ingreso-summary')
 const apiReads = []
 const apiWrites = []
+const indicatorSheetWrites = []
+const indicatorSheetDeletes = []
+const closedIndicatorPeriod = 'q'.repeat(24)
 const detailedReads = []
 const samplePdf = () => {
   const stream = 'BT /F1 22 Tf 60 720 Td (Vista previa del archivo) Tj ET'
@@ -51,7 +60,61 @@ const artifacts = path.join(root, 'artifacts', 'ui-smoke')
 fs.mkdirSync(artifacts, {recursive: true})
 const today = new Date().toLocaleDateString('en-CA')
 const user = {id: 'u'.repeat(24), tenant_channel: 't'.repeat(24), name: 'Rector de prueba', email: 'rector@example.test', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.anos.transicionar', 'academico.periodos.transicionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
+if (workflowMode || paginationMode) user.institution = {name: 'Colegio de prueba', plan: {name: 'Premium', features: ['nucleo', 'academico']}}
 if (platformMode) { user.is_platform = true; user.tenant_channel = null; user.roles = ['superadmin']; user.permissions = [] }
+if (rbacMode) user.permissions.push('usuarios.ajustar_permisos')
+if (indicatorScopeMode) user.permissions.push('indicadores.configurar', 'indicadores.base.gestionar')
+if (indicatorSheetMode) user.permissions.push('indicadores.base.gestionar')
+const rbacFixture = rbacMode ? {data: [
+  {module: 'academico', permissions: [
+    {key: 'academico.anos.gestionar', action: 'anos.gestionar', feature_key: 'academico', cells: {
+      rector: {type: 'structural', level: 'crud', granted: true, locked_by_plan: false},
+      docente: {type: 'denied', level: null, granted: false, locked_by_plan: false},
+      custom_apoyo: {type: 'configurable', level: null, granted: true, locked_by_plan: false},
+    }},
+    {key: 'academico.matriculas.gestionar', action: 'matriculas.gestionar', feature_key: 'academico', cells: {
+      rector: {type: 'structural', level: 'crud', granted: true, locked_by_plan: false},
+      docente: {type: 'configurable', level: null, granted: false, locked_by_plan: false},
+      custom_apoyo: {type: 'configurable', level: null, granted: false, locked_by_plan: false},
+    }},
+  ]},
+  {module: 'Aula', permissions: [{key: 'aula.ver_todas', action: 'Ver todas las aulas', feature_key: 'aula', cells: {
+    rector: {type: 'structural', level: 'ver', granted: false, locked_by_plan: true},
+    docente: {type: 'configurable', level: null, granted: false, locked_by_plan: true},
+    custom_apoyo: {type: 'configurable', level: null, granted: false, locked_by_plan: true},
+  }}]},
+], roles: [
+  {key: 'rector', label: 'Rector', custom: false, locked_by_plan: false},
+  {key: 'docente', label: 'Docente', custom: false, locked_by_plan: false},
+  {key: 'custom_apoyo', label: 'Apoyo académico', custom: true, locked_by_plan: false},
+], custom_role_limit: 2, custom_role_count: 1, plan_features: ['nucleo', 'academico']} : null
+if (rbacFixture) {
+  for (const [key, label] of [
+    ['coord_academico', 'Coordinador académico'], ['coord_convivencia', 'Coordinador de convivencia'],
+    ['coord_combinado', 'Coordinador académico y de convivencia'], ['secretaria', 'Secretaría académica'],
+    ['director_grupo', 'Director de grupo'], ['estudiante', 'Estudiante'], ['personal_apoyo', 'Personal de apoyo'],
+  ]) rbacFixture.roles.push({key, label, custom: false, locked_by_plan: false})
+  rbacFixture.data[0].permissions.push(...Array.from({length: 60}, (_, index) => ({
+    key: `academico.recorrido.${index + 1}`, action: `Permiso de recorrido ${index + 1}`, feature_key: 'academico',
+    cells: {rector: {type: 'structural', level: 'ver', granted: true, locked_by_plan: false}},
+  })))
+}
+const rbacCatalogFixture = rbacMode && platformMode ? {
+  permissions: rbacFixture.data.flatMap(module => module.permissions.map((permission, sort_order) => ({
+    key: permission.key, module: module.module, action: permission.action, feature_key: permission.feature_key,
+    description: null, is_system: true, sort_order,
+  }))),
+  roles: rbacFixture.roles.filter(role => !role.custom).map((role, sort_order) => ({
+    key: role.key, label: role.label, is_system: true, sort_order,
+  })),
+  matrix: [
+    {role_key: 'rector', permission_key: 'academico.anos.gestionar', type: 'structural', level: 'crud', default_granted: true},
+    {role_key: 'docente', permission_key: 'academico.matriculas.gestionar', type: 'configurable', level: null, default_granted: false},
+  ], levels: ['crud', 'editar', 'ver'], features: [
+    {key: 'nucleo', category: 'general', label: 'plan.f.nucleo', description: 'plan.f.nucleo.desc', required: true},
+    {key: 'academico', category: 'academico', label: 'plan.f.academico', description: 'plan.f.academico.desc'},
+  ], categories: [{key: 'general', label: 'plan.cat.general'}, {key: 'academico', label: 'plan.cat.academico'}],
+} : null
 const intakeFixture = intakeMode ? enrollmentFixture(user) : null
 if (process.argv.includes('--institutional')) user.permissions.push('config.correo')
 if (realtimeMode) user.tenant_channel = reverbProbe({action: 'channel'}).token
@@ -206,17 +269,116 @@ const fixtures = {
   '/api/eventos/tareas': {data: [], last_page: 1},
   [`/api/eventos/${urlTokens.event}`]: {data: {...event, archivos: [], puede_editar: true}},
   '/api/evaluacion/catalogo': {data: {can_manage: true, can_configure: true, can_view_reports: true, anos: [year, nextYear], periodos: [period, {...period, id: 2, ano_lectivo_id: 2, url_token: 'l'.repeat(24)}], asignaciones: [assignment], matriculas: [enrollment], grupos: [group], estudiantes: []}},
+  '/api/indicadores': {data: {periodo_token: urlTokens.period, indicadores: [], pagina: 1, ultima_pagina: 1, total: 0}},
+  [`/api/indicadores/politica/${urlTokens.year}`]: {data: {alcance: 'grupo', docente_puede_editar: false, version: 1, configurado: true}},
   '/api/evaluacion/planillas/1/1': {data: {editable: true, requiere_motivo: true, configuracion: config, componentes: [{id: 1, asignacion_id: 1, periodo_id: 1, nombre: 'Talleres', modo: 'SIMPLE_AVERAGE', peso: null, actividades: [{id: 1, componente_id: 1, nombre: 'Taller 1', fecha: today, peso: null}]}], matriculas: [enrollment], calificaciones: [], resultados: [{matricula_id: 1, estado: 'pendiente', motivo: 'Faltan notas'}]}},
   '/api/evaluacion/boletines/1': {data: {tipo: 'VISTA_PREVIA', generado_en: new Date().toISOString(), institucion: 'Colegio de prueba', estudiante: enrollment.estudiante, grupo: 'A', grado: 'Primero', ano: '2026', configuracion: config, periodos: [period], periodo_sumatorio: {orden: 4, nombre: 'P4', modo: 'SIMPLE_AVERAGE'}, asignaturas: [{materia_id: 1, nombre: 'Matemáticas', peso_area: null, periodos: [{periodo_id: 1, estado: 'pendiente'}], anual: {estado: 'pendiente'}}], areas: [], advertencias: []}},
   '/api/evaluacion/recuperaciones': {data: [], candidatos: [
-    {asignacion_token: urlTokens.assignment, periodo_token: urlTokens.period, materia: 'Matemáticas', periodo: 'Trimestre 1', valor_original: '2.0', tipo: 'nivelacion', puede_abrir: false},
+    {asignacion_token: urlTokens.assignment, periodo_token: urlTokens.period, materia: 'Matemáticas', periodo: 'Trimestre 1', valor_original: '2.0', tipo: 'nivelacion', puede_abrir: true},
   ], can_manage: true, contexto: {estudiante: 'Estudiante reprobado', grado: 'Primero', grupo: 'A', ano_lectivo_token: urlTokens.year}, meta: {current_page: 1, last_page: 1, total: 0}},
   [sieePath]: {data: {editable: true, curriculo_editable: true, configuracion: config, escalas: [{url_token: sieeTokens.scale, nombre: 'Numérica', tipo: 'numerica', valor_min: '0', valor_max: '5', decimales: 2}], metodos: [{url_token: sieeTokens.method, calculo_nota: 'promedio_simple', nota_minima: '3', ambito: 'materia'}], curriculo: [], grados: [{url_token: sieeTokens.grade, nombre: 'Primero', nivel_token: sieeTokens.level, estado: 'activo'}], materias: [{url_token: 'v'.repeat(24), nombre: 'Matemáticas', nivel_token: null, area_token: null, estado: 'activo'}], areas: []}},
 }
 fixtures[sieeCurriculumPath] = {data: [], meta: {current_page: 1, per_page: 1000, last_page: 1, total: 0}}
 user.permissions.push('academico.matriculas.gestionar')
+user.permissions.push('notas.gestionar_nivelaciones')
 fixtures['/api/evaluacion/catalogo'].data.can_manage_enrollments = true
 fixtures['/api/evaluacion/catalogo'].data.materias = [{id: 1, nombre: 'Matemáticas'}]
+if (teacherAccessMode) {
+  user.name = 'Docente de prueba'
+  user.roles = ['docente']
+  user.institution = {plan: {name: 'Esencial', features: ['nucleo', 'academico']}}
+  user.permissions = ['notas.registrar_materia_asignada', 'boletines.grupo.ver', 'boletines.observaciones.gestionar', 'indicadores.grupo.ver', 'indicadores.grupo.editar',
+    'asistencia.registrar_clases', 'eventos.publicar_asignados', 'boletines.emisiones.preparar', 'boletines.emisiones.ver', 'notas.gestionar_nivelaciones']
+  fixtures['/api/evaluacion/catalogo'].data.can_manage = false
+  fixtures['/api/evaluacion/catalogo'].data.can_configure = false
+  fixtures['/api/evaluacion/catalogo'].data.can_manage_enrollments = false
+  fixtures['/api/evaluacion/catalogo'].data.estados_disponibles = ['activa']
+  fixtures['/api/eventos/catalogo'].data.es_rector = false
+  fixtures['/api/eventos/catalogo'].data.puede_institucional = false
+  fixtures['/api/eventos/catalogo'].data.grupos[0].ano_lectivo_inicio = '2026-01-01'
+  fixtures['/api/eventos/catalogo'].data.grupos[0].ano_lectivo_fin = '2026-12-31'
+  fixtures['/api/eventos/catalogo'].data.grupos.push({url_token: 'h'.repeat(24), nombre: 'B',
+    ano_lectivo_inicio: '2025-01-01', ano_lectivo_fin: '2025-12-31',
+    grado: {url_token: sieeTokens.grade, nombre: 'Primero'}})
+  fixtures['/api/indicadores'] = {data: {periodo_token: urlTokens.period, indicadores: [], pagina: 1, ultima_pagina: 1, total: 0}}
+  fixtures['/api/indicadores/tabla'] = {data: {grupo_token: urlTokens.group, periodo_token: urlTokens.period,
+    materias: [{materia_token: urlTokens.materia, materia: 'Matemáticas',
+      texto_html: '<p>Resuelve <strong>sumas</strong> sencillas.</p><p>Explica el proceso.</p>',
+      version: 1, puede_editar: true}]}}
+  fixtures['/api/indicadores/opciones-asignadas'] = {data: {
+    anos: [{token: urlTokens.year, nombre: '2026', estado: 'en_curso'}],
+    grupos: [{token: urlTokens.group, ano_token: urlTokens.year, grado_token: sieeTokens.grade,
+      nombre: 'A', grado_nombre: 'Primero', materias: [{token: urlTokens.materia, nombre: 'Matemáticas'}]}],
+    periodos: [{token: closedIndicatorPeriod, ano_token: urlTokens.year, nombre: 'Primer período', orden: 1, estado: 'cerrado'},
+      {token: urlTokens.period, ano_token: urlTokens.year, nombre: 'Trimestre 1', orden: 2, estado: 'abierto'}],
+  }}
+  fixtures[`/api/indicadores/politica/${urlTokens.year}`] = {data: {
+    alcance: 'grupo', docente_puede_editar: true, version: 1, configurado: true,
+    indicadores_grado: 0, indicadores_grupo: 0,
+  }}
+  fixtures['/api/boletines/politica'] = {data: {requiere_observacion_final: false,
+    docente_edita_indicadores_grupo: true, version: 1}}
+  fixtures[`/api/boletines/observaciones/${urlTokens.enrollment}`] = {data: {
+    matricula_token: urlTokens.enrollment, politica: {requiere_observacion_final: false, version: 1},
+    puede_editar: true, puede_aprobar: false,
+    periodos: [{periodo_token: urlTokens.period, nombre: 'Trimestre 1', observacion: null,
+      puede_editar: true, motivo_bloqueo: null}], final: null,
+  }}
+  fixtures[`/api/boletines/emisiones/${urlTokens.enrollment}`] = {data: [], pagina: 1, ultima_pagina: 1, total: 0}
+  fixtures[`/api/boletines/emisiones/${urlTokens.enrollment}/emitir`] = {data: {token: 'B'.repeat(24), estado: 'aprobado', pdf_disponible: true}}
+  fixtures['/api/asistencias'] = {data: {anos: [{token: urlTokens.year, nombre: '2026', estado: 'en_curso'}],
+    ano_lectivo_token: urlTokens.year, asignaciones: [{token: urlTokens.assignment, nombre: 'Matemáticas · Primero / A',
+      ano_lectivo_token: urlTokens.year, ano_lectivo_nombre: '2026', grupo_token: urlTokens.group,
+      grupo_nombre: 'Primero / A', materia_token: urlTokens.materia, materia_nombre: 'Matemáticas'}]}}
+  fixtures['/api/asistencias/planilla'] = {data: {periodos: [{token: urlTokens.period, nombre: 'Trimestre 1', estado: 'abierto'}],
+    periodo: {token: urlTokens.period, nombre: 'Trimestre 1', estado: 'abierto'}, estudiantes: [], columnas: []}}
+}
+if (indicatorScopeMode) {
+  fixtures[`/api/indicadores/politica/${urlTokens.year}`] = {data: {
+    alcance: 'grado', docente_puede_editar: false, version: 1, configurado: true,
+    indicadores_grado: 1, indicadores_grupo: 2,
+  }}
+  fixtures[`/api/indicadores/contexto/${urlTokens.year}`] = {data: {
+    grados: [{token: sieeTokens.grade, nombre: 'Primero'}],
+    materias: [{token: urlTokens.materia, nombre: 'Matemáticas'}],
+    periodos: [{token: urlTokens.period, nombre: 'Trimestre 1', orden: 1, estado: 'abierto'}],
+  }}
+  fixtures['/api/indicadores/bases'] = {data: [], meta: {pagina: 1, ultima_pagina: 1, total: 0}}
+  fixtures['/api/indicadores/borradores'] = {data: [{texto: 'Reconoce los números del uno al diez.'}]}
+  fixtures['/api/indicadores/vinculos'] = {data: [{
+    indicador_token: '1'.repeat(24), vinculo_token: '2'.repeat(24),
+    texto_base: 'Resuelve sumas sencillas.', version_base: 1,
+    texto_vinculado: 'Resuelve sumas sencillas.', revision_vinculada: 1,
+    orden: 1, periodos_orden: [1], version_vinculo: 1,
+  }], meta: {pagina: 1, ultima_pagina: 1, total: 1}}
+  fixtures['/api/indicadores/opciones-asignadas'] = {data: {
+    anos: [{token: urlTokens.year, nombre: '2026', estado: 'en_curso'}],
+    grupos: [{token: urlTokens.group, ano_token: urlTokens.year, grado_token: sieeTokens.grade,
+      nombre: 'A', grado_nombre: 'Primero', materias: [{token: urlTokens.materia, nombre: 'Matemáticas'}]}],
+    periodos: [{token: urlTokens.period, ano_token: urlTokens.year, nombre: 'Trimestre 1', orden: 1, estado: 'abierto'}],
+  }}
+  fixtures['/api/indicadores'] = {data: {periodo_token: urlTokens.period, indicadores: [], pagina: 1,
+    ultima_pagina: 1, total: 0}}
+}
+if (indicatorSheetMode) {
+  fixtures[`/api/indicadores/politica/${urlTokens.year}`] = {data: {
+    alcance: 'grupo', docente_puede_editar: true, version: 1, configurado: true,
+    indicadores_grado: 0, indicadores_grupo: 0,
+  }}
+  fixtures['/api/indicadores/opciones-asignadas'] = {data: {
+    anos: [{token: urlTokens.year, nombre: '2026', estado: 'en_curso'}],
+    grupos: [{token: urlTokens.group, ano_token: urlTokens.year, grado_token: sieeTokens.grade,
+      nombre: 'A', grado_nombre: 'Primero', materias: [
+        {token: urlTokens.materia, nombre: 'Matemáticas'}, {token: 'z'.repeat(24), nombre: 'Lenguaje'},
+      ]}, {token: urlTokens.groupB, ano_token: urlTokens.year, grado_token: sieeTokens.grade,
+      nombre: 'B', grado_nombre: 'Primero', materias: [{token: urlTokens.materia, nombre: 'Matemáticas'}]}],
+    periodos: [{token: urlTokens.period, ano_token: urlTokens.year, nombre: 'Trimestre 1', orden: 1, estado: 'abierto'}],
+  }}
+  fixtures['/api/indicadores/tabla'] = {data: {grupo_token: urlTokens.group, periodo_token: urlTokens.period,
+    materias: [{materia_token: 'z'.repeat(24), materia: 'Lenguaje', texto_html: '', version: 0, puede_editar: true},
+      {materia_token: urlTokens.materia, materia: 'Matemáticas', texto_html: '<ul><li>Resuelve <strong>sumas</strong>.</li><li>Explica el proceso.</li></ul>',
+        version: 1, puede_editar: true}]}}
+}
 if (aulaMode || eventsMode) {
   user.permissions.push('aula.ver_todas', 'aula.recursos.gestionar')
   const aulaToken = 'y'.repeat(24), resourceToken = 'z'.repeat(24), quizToken = 'q'.repeat(24)
@@ -284,6 +446,7 @@ if (workflowMode) {
     {url_token: '6'.repeat(24), nombre: 'Geometría', nivel_token: sieeTokens.level, area_token: sieeTokens.area, estado: 'activo'})
 }
 if (paginationMode) {
+  user.permissions.push('boletines.emisiones.ver')
   fixtures[sieePath].data.configuracion.usar_areas = true
   fixtures[sieePath].data.configuracion.modo_area = 'WEIGHTED_AVERAGE'
   fixtures['/api/plan-estudios/areas'].data = Array.from({length: 25}, (_, index) => ({id: index + 1, ano_lectivo_id: 1, nombre: `Área ${String(index + 1).padStart(2, '0')}`, descripcion: null, estado: 'activo'}))
@@ -330,7 +493,7 @@ const paged = (rows, requestedPage, requestedPerPage) => {
     meta: {current_page: page, per_page: perPage, last_page: Math.max(1, Math.ceil(rows.length / perPage)), total: rows.length}}
 }
 let server, browser, socket
-const eventFixture = eventsMode ? eventsFixture(event, fixtures['/api/eventos/catalogo'].data, today) : null
+const eventFixture = eventsMode || teacherAccessMode ? eventsFixture(event, fixtures['/api/eventos/catalogo'].data, today) : null
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 try {
   server = await createServer({root, logLevel: 'error', server: {host: '127.0.0.1', port: 5197, strictPort: true}, plugins: [{name: 'smoke-api', configureServer(vite) {
@@ -348,6 +511,16 @@ try {
         apiReads.push(url.pathname)
         detailedReads.push(url.pathname + url.search)
       } else apiWrites.push(url.pathname)
+      if (rbacMode && req.method === 'GET' && url.pathname === '/api/rbac/roles') {
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(rbacFixture))
+        return
+      }
+      if (rbacCatalogFixture && req.method === 'GET' && url.pathname === '/api/rbac/catalog') {
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(rbacCatalogFixture))
+        return
+      }
       if (aulaMode && req.method === 'GET' && /^\/api\/aula\/adjuntos\/[A-Za-z0-9_-]{24}\/vista-oficina$/.test(url.pathname)) {
         const pptx = url.pathname.includes('/' + 'g'.repeat(24) + '/')
         res.setHeader('Content-Type', 'application/json')
@@ -380,6 +553,20 @@ try {
       const annualStructure = ['/api/estructura/jornadas', '/api/estructura/bloques-horarios', '/api/plan-estudios/areas', '/api/plan-estudios/materias']
       let fixture = annualStructure.includes(url.pathname) && (url.searchParams.get('ano_lectivo_id') === '2' || url.searchParams.get('ano_lectivo_token') === urlTokens.nextYear)
         ? {data: []} : fixtures[url.pathname]
+      if (teacherAccessMode && req.method === 'GET' && url.pathname === '/api/boletines/observaciones/grupo') {
+        assert.equal(url.searchParams.get('grupo_token'), urlTokens.group)
+        assert.equal(url.searchParams.get('periodo_token'), urlTokens.period)
+        const catalog = fixtures[`/api/boletines/observaciones/${urlTokens.enrollment}`].data
+        const row = catalog.periodos[0]
+        fixture = {data: {grupo_token: urlTokens.group, periodo_token: urlTokens.period,
+          puede_editar: catalog.puede_editar && row.puede_editar, motivo_bloqueo: row.motivo_bloqueo,
+          matriculas: [{matricula_token: urlTokens.enrollment, observacion: row.observacion}]}}
+      }
+      if (teacherAccessMode && req.method === 'GET' && url.pathname === '/api/indicadores/tabla'
+        && url.searchParams.get('periodo_token') === closedIndicatorPeriod) {
+        fixture = {data: {...fixture.data, periodo_token: closedIndicatorPeriod,
+          materias: fixture.data.materias.map(row => ({...row, puede_editar: false}))}}
+      }
       if (url.pathname === opaquePlanillaPath) fixture = fixtures['/api/evaluacion/planillas/1/1']
       if (url.pathname === opaqueBoletinPath) fixture = fixtures['/api/evaluacion/boletines/1']
       if (url.pathname === `/api/anos-lectivos/${urlTokens.year}/periodos`) fixture = fixtures['/api/anos-lectivos/1/periodos']
@@ -534,6 +721,60 @@ try {
       req.on('data', chunk => {body += chunk})
       req.on('end', () => {
         const parsed = req.headers['content-type']?.includes('application/json') ? JSON.parse(body || '{}') : Object.fromEntries(new URLSearchParams(body))
+        if (teacherAccessMode && req.method === 'PUT' && url.pathname === `/api/boletines/observaciones/${urlTokens.enrollment}`) {
+          assert.equal(parsed.periodo_token, urlTokens.period)
+          const observation = {...parsed, estado: 'borrador', version: parsed.version + 1, autor: 'Docente de prueba'}
+          fixtures[url.pathname].data.periodos[0].observacion = observation
+          fixture = {data: observation}
+        }
+        if (teacherAccessMode && url.pathname === `/api/boletines/emisiones/${urlTokens.enrollment}/emitir`) {
+          assert.equal(parsed.periodo_token, urlTokens.period)
+          assert.equal(parsed.contexto, 'periodo')
+        }
+        if (teacherAccessMode && url.pathname === '/api/evaluacion/recuperaciones' && req.method === 'POST') {
+          assert.equal(parsed.periodo_token, urlTokens.period)
+          assert.equal(parsed.asignacion_token, urlTokens.assignment)
+          const row = {url_token: 'R'.repeat(24), matricula_token: urlTokens.enrollment,
+            asignacion_token: urlTokens.assignment, periodo_token: urlTokens.period, materia: 'Matemáticas',
+            periodo: 'Trimestre 1', tipo: 'nivelacion', estado: 'pendiente', politica: 'REPLACE', version: 1,
+            valor_original_exacto: '2', nota_recuperacion: null, valor_efectivo_exacto: null,
+            can_record: true, can_cancel: true, motivo_bloqueo: null}
+          fixtures['/api/evaluacion/recuperaciones'].data = [row]
+          fixtures['/api/evaluacion/recuperaciones'].candidatos = []
+          fixture = {data: row}
+        }
+        if (teacherAccessMode && url.pathname === `/api/evaluacion/recuperaciones/${'R'.repeat(24)}` && req.method === 'PUT') {
+          assert.equal(parsed.version, 1)
+          const row = fixtures['/api/evaluacion/recuperaciones'].data[0]
+          Object.assign(row, {nota_recuperacion: parsed.nota_recuperacion, valor_efectivo_exacto: parsed.nota_recuperacion,
+            estado: 'aprobada', version: 2})
+          fixture = {data: row}
+        }
+        if (teacherAccessMode && req.method === 'PUT' && url.pathname === `/api/indicadores/tabla/${urlTokens.materia}`) {
+          assert.equal(parsed.grupo_token, urlTokens.group)
+          assert.equal(parsed.periodo_token, urlTokens.period)
+          indicatorSheetWrites.push(parsed)
+          const row = fixtures['/api/indicadores/tabla'].data.materias[0]
+          Object.assign(row, {texto_html: parsed.texto_html, version: row.version + 1})
+          fixture = {data: row}
+        }
+        if (academicCacheMode && req.method === 'PUT' && url.pathname === '/api/asistencias') {
+          const column = fixtures['/api/asistencias/planilla'].data.columnas[0]
+          assert.equal(parsed.sesion_token, column.sesion_token)
+          assert.equal(parsed.version, column.version)
+          column.marcas = Object.fromEntries(parsed.marcas.map(item => [item.matricula_token, item.estado]))
+          column.version++; column.registrada = true
+          fixture = {data: {guardado: true}}
+        }
+        if (teacherAccessMode && req.method === 'DELETE' && url.pathname === `/api/indicadores/tabla/${urlTokens.materia}`) {
+          assert.equal(url.searchParams.get('grupo_token'), urlTokens.group)
+          assert.equal(url.searchParams.get('periodo_token'), urlTokens.period)
+          const row = fixtures['/api/indicadores/tabla'].data.materias[0]
+          assert.equal(Number(url.searchParams.get('version')), row.version)
+          indicatorSheetDeletes.push(url.pathname)
+          Object.assign(row, {texto_html: '', version: row.version + 1})
+          fixture = {data: row}
+        }
          if (aulaMode && url.pathname === `/api/aula/recursos/${'z'.repeat(24)}/abrir`) {
           fixtures[`/api/aula/recursos/${'z'.repeat(24)}`].data.progreso = 'completado'
           fixture = {data: {progreso: 'completado', aula_token: 'y'.repeat(24),
@@ -668,7 +909,7 @@ try {
       try { if (await evaluate(expression)) return } catch { /* A navigation can replace the page during evaluation. */ }
       await sleep(100)
     }
-    console.error('Page at failure:', await evaluate('document.body.innerText.slice(0, 2500)'), errors)
+    console.error('Page at failure:', await evaluate('({url: location.href, text: document.body.innerText.slice(0, 2500), navigation: window.smokeNavigation})'), errors)
     const capture = await command('Page.captureScreenshot', {format: 'png'})
     fs.writeFileSync(path.join(artifacts, 'failure.png'), Buffer.from(capture.data, 'base64'))
     throw new Error(`UI condition timed out: ${expression}`)
@@ -678,7 +919,305 @@ try {
   await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
   const navigate = async (route, text) => { console.log('Checking', route); await command('Page.navigate', {url: `http://127.0.0.1:5197${route}`}); await until(`document.body.innerText.includes(${JSON.stringify(text)})`) }
   const screenshot = async (name, full = false) => { const image = await command('Page.captureScreenshot', {format: 'png', captureBeyondViewport: full}); fs.writeFileSync(path.join(artifacts, `${name}.png`), Buffer.from(image.data, 'base64')) }
-  if (eventsMode) {
+  const assertIndicatorNavigationCache = async condition => {
+    await evaluate(`document.querySelector('[data-kt-nav="/academico/anos-lectivos"]').click()`)
+    await until(`location.pathname === '/academico/anos-lectivos'`)
+    await new Promise(resolve => setTimeout(resolve, 500))
+    const checkpoint = detailedReads.length
+    await evaluate(`document.querySelector('[data-kt-nav="/academico/indicadores"]').click()`)
+    await until(condition)
+    await new Promise(resolve => setTimeout(resolve, 500))
+    assert.deepEqual(detailedReads.slice(checkpoint), [], 'Rector indicators must retain filters and cached data on SPA return.')
+  }
+  const assertStickyMatrix = async () => {
+    const geometry = await evaluate(`(async()=>{
+      const pane=document.querySelector('.rbac-matrix-scroll');
+      const header=pane.querySelector('thead th:first-child');
+      const role=pane.querySelector('thead th:nth-child(2)');
+      const permission=pane.querySelector('.rbac-matrix-permission');
+      pane.scrollTop=0;pane.scrollLeft=0;
+      await new Promise(requestAnimationFrame);
+      const before={top:header.getBoundingClientRect().top,left:permission.getBoundingClientRect().left,roleLeft:role.getBoundingClientRect().left};
+      pane.scrollTop=600;pane.scrollLeft=180;
+      await new Promise(requestAnimationFrame);
+      const after={top:header.getBoundingClientRect().top,left:permission.getBoundingClientRect().left,roleLeft:role.getBoundingClientRect().left};
+      return {before,after,scrollTop:pane.scrollTop,scrollLeft:pane.scrollLeft,headerPosition:getComputedStyle(header).position};
+    })()`)
+    assert.ok(geometry.scrollTop >= 500 && geometry.scrollLeft >= 100, JSON.stringify(geometry))
+    assert.equal(geometry.headerPosition, 'sticky')
+    assert.ok(Math.abs(geometry.before.top - geometry.after.top) <= 2, `Role headers moved vertically: ${JSON.stringify(geometry)}`)
+    assert.ok(Math.abs(geometry.before.left - geometry.after.left) <= 2, `Permission column moved horizontally: ${JSON.stringify(geometry)}`)
+    assert.ok(geometry.before.roleLeft - geometry.after.roleLeft >= 100, `Role columns should scroll horizontally: ${JSON.stringify(geometry)}`)
+  }
+  if (rbacCatalogFixture) {
+    await navigate('/configuracion/roles-permisos', 'Roles y Permisos')
+    await until(`document.querySelectorAll('table tbody tr').length >= 3`)
+    assert.equal(await evaluate(`document.querySelector('table tbody tr td:first-child')?.textContent.trim()`), 'Académico')
+    assert.equal(await evaluate(`document.querySelector('table tbody tr td:nth-child(2)')?.textContent.trim()`), 'Gestionar años lectivos')
+    assert.ok(await evaluate(`document.querySelector('table tbody tr td:nth-child(4)')?.textContent.includes('Gestión académica')`))
+    await screenshot('rbac-plataforma-permisos-desktop')
+    await evaluate(`[...document.querySelectorAll('.nav-link')].find(el => el.textContent.trim() === 'Matriz')?.click()`)
+    await until(`document.querySelector('table tbody tr.bg-light')?.textContent.includes('Académico')`)
+    assert.ok(await evaluate(`document.querySelector('table tbody tr:not(.bg-light)')?.textContent.includes('Gestionar años lectivos')`))
+    await screenshot('rbac-plataforma-matriz-desktop')
+    await assertStickyMatrix()
+    await screenshot('rbac-plataforma-matriz-scroll')
+    assert.deepEqual(errors, [], 'Uncaught browser errors in platform RBAC.')
+    console.log('PASS: platform RBAC permission and matrix labels are human-readable.')
+  } else if (rbacMode) {
+    await navigate('/usuarios/roles-permisos', 'Roles y permisos del colegio')
+    await until(`document.querySelectorAll('table tbody tr').length >= 5`)
+    assert.equal(await evaluate(`!!document.querySelector('#tenant-role-select')`), false)
+    assert.equal(await evaluate(`document.querySelectorAll('table thead th').length`), rbacFixture.roles.length + 1)
+    assert.ok(await evaluate(`document.body.innerText.includes('Gestionar años lectivos') &&
+      document.body.innerText.includes('Gestionar matrículas') &&
+      document.body.innerText.includes('Académico')`), 'The matrix must show readable academic labels.')
+    assert.ok(await evaluate(`document.body.innerText.includes('No disponible en este plan')`), 'Plan-locked cells must be visible.')
+    await screenshot('rbac-rector-matriz-desktop')
+    await assertStickyMatrix()
+    await screenshot('rbac-rector-matriz-scroll')
+    await evaluate(`[...document.querySelectorAll('.nav-link')].find(el => el.textContent.trim() === 'Roles')?.click()`)
+    await until(`document.body.innerText.includes('Crear rol adicional') && !!document.querySelector('table')`)
+    assert.equal(await evaluate(`document.querySelectorAll('table tbody tr').length`), rbacFixture.roles.length)
+    await screenshot('rbac-rector-roles-desktop')
+    await command('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true})
+    await evaluate(`[...document.querySelectorAll('.nav-link')].find(el => el.textContent.trim() === 'Matriz')?.click()`)
+    await until(`document.querySelectorAll('table thead th').length === ${rbacFixture.roles.length + 1}`)
+    assert.ok(await evaluate(`(()=>{const pane=document.querySelector('.table-responsive');return pane.scrollWidth > pane.clientWidth})()`),
+      'The matrix must scroll horizontally on mobile.')
+    await screenshot('rbac-rector-matriz-mobile')
+    assert.deepEqual(apiWrites.filter(path => path.startsWith('/api/rbac/')), [], 'Visual smoke must not change school permissions.')
+    assert.deepEqual(errors, [], 'Uncaught browser errors in school RBAC.')
+    console.log('PASS: rector matrix, readable labels, role management, plan locks and mobile horizontal scroll.')
+  } else if (indicatorScopeMode) {
+    await navigate('/ajustes-institucionales/indicadores', 'Configuración de indicadores')
+    await until(`!!document.querySelector('input[name="indicator-scope"]:checked')`)
+    assert.ok(await evaluate(`document.body.innerText.includes('Por grado: un indicador se muestra en todos sus grupos')`))
+    assert.equal(await evaluate(`document.querySelector('form.card .form-switch input[type="checkbox"]')?.disabled`), true)
+    await screenshot('indicadores-alcance-rector')
+    await evaluate(`document.querySelector('input[name="indicator-scope"][value="grupo"]').click()`)
+    await until(`document.body.innerText.includes('Se copiarán los indicadores de grado a cada grupo por separado')`)
+    await until(`document.querySelector('form.card .form-switch input[type="checkbox"]')?.disabled === false`)
+    assert.equal(await evaluate(`document.querySelector('.card-footer button[type="submit"]')?.disabled`), true)
+    await navigate('/academico/indicadores', 'Indicadores de aprendizaje')
+    await until(`!!document.querySelector('#indicator-grade')`)
+    await evaluate(`(()=>{const select=document.querySelector('#indicator-grade');select.value='${sieeTokens.grade}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`!!document.querySelector('#indicator-subject option[value="${urlTokens.materia}"]')`)
+    await evaluate(`(()=>{const select=document.querySelector('#indicator-subject');select.value='${urlTokens.materia}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.body.innerText.includes('Resuelve sumas sencillas.') && !!document.querySelector('#indicator-draft option')`)
+    assert.ok(await evaluate(`document.body.innerText.includes('Reconoce los números del uno al diez.')`))
+    await assertIndicatorNavigationCache(`document.querySelector('#indicator-grade')?.value === '${sieeTokens.grade}' && document.querySelector('#indicator-subject')?.value === '${urlTokens.materia}' && document.body.innerText.includes('Resuelve sumas sencillas.')`)
+    await screenshot('indicadores-grado-rector')
+    assert.deepEqual(errors, [], 'Uncaught browser errors in rector indicators.')
+    assert.deepEqual(apiWrites.filter(path => path.startsWith('/api/indicadores')), [], 'Scope smoke must not change indicator data.')
+    console.log('PASS: rector indicator settings, conversion warning, grade editor and reusable group drafts.')
+  } else if (indicatorSheetMode) {
+    await navigate('/academico/indicadores', 'Indicadores de aprendizaje')
+    await until(`!!document.querySelector('#assigned-indicator-group')`)
+    await evaluate(`(()=>{const select=document.querySelector('#assigned-indicator-group');select.value='${urlTokens.group}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.querySelectorAll('.group-indicator-table tbody tr').length === 2`)
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('.group-indicator-table tbody th')].map(el => el.textContent.trim())`),
+      ['Lenguaje', 'Matemáticas'])
+    assert.equal(await evaluate(`!!document.querySelector('#assigned-indicator-subject')`), false)
+    assert.equal(await evaluate(`document.querySelector('.group-indicator-rich strong')?.textContent`), 'sumas')
+    assert.ok(await evaluate(`parseFloat(getComputedStyle(document.querySelector('.group-indicator-frame')).borderTopLeftRadius) >= 10`))
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.group-indicator-table thead th')).backgroundColor`), 'rgb(22, 134, 83)')
+    const originalDescription = await evaluate(`document.querySelector('.group-indicator-table tbody tr:nth-child(2) .group-indicator-rich').innerHTML`)
+    await evaluate(`document.querySelector('.group-indicator-table tbody tr:nth-child(2) .group-indicator-edit').click()`)
+    await until(`!!document.querySelector('.group-indicator-table tbody tr:nth-child(2) .group-indicator-editor')`)
+    await evaluate(`document.querySelector('.group-indicator-table tbody tr:nth-child(2) .group-indicator-editor').focus()`)
+    await command('Input.insertText', {text: 'Borrador que se descarta'})
+    await evaluate(`document.querySelector('.group-indicator-table tbody tr:nth-child(2) .group-indicator-actions .btn-light').click()`)
+    await until(`!!document.querySelector('.group-indicator-table tbody tr:nth-child(2) .group-indicator-rich')`)
+    assert.equal(await evaluate(`document.querySelector('.group-indicator-table tbody tr:nth-child(2) .group-indicator-rich').innerHTML`), originalDescription,
+      'Cancel must restore exactly one copy of the original indicator.')
+    assert.equal(await evaluate(`document.querySelectorAll('.group-indicator-table tbody tr:nth-child(2) .group-indicator-description ul').length`), 1,
+      'Cancel must discard the editable DOM instead of leaving a second list in the action container.')
+    assert.equal(await evaluate(`document.querySelector('.group-indicator-table tbody tr:nth-child(2) .group-indicator-description').textContent.includes('Borrador que se descarta')`), false)
+    await assertIndicatorNavigationCache(`document.querySelector('#assigned-indicator-group')?.value === '${urlTokens.group}' && document.querySelectorAll('.group-indicator-table tbody tr').length === 2`)
+    await screenshot('indicadores-tabla-rector')
+    await command('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true})
+    await screenshot('indicadores-tabla-rector-mobile')
+    assert.deepEqual(apiWrites.filter(path => path.startsWith('/api/indicadores')), [], 'Visual smoke must not change indicators.')
+    assert.deepEqual(errors, [], 'Uncaught browser errors in rector indicator sheet.')
+    console.log('PASS: rector group indicator sheet, two columns, rich preview and mobile layout.')
+  } else if (academicCacheMode) {
+    await runAcademicNavigationSmoke({navigate, evaluate, until, command, screenshot, detailedReads, apiWrites,
+      fixtures, user, tokens: urlTokens, closedPeriod: closedIndicatorPeriod,
+      publish: resources => reverbProbe({action: 'publish', resources}), errors})
+  } else if (teacherAccessMode) {
+    await navigate('/academico/indicadores', 'Indicadores de aprendizaje')
+    await until(`!!document.querySelector('.group-indicator-table tbody tr')`)
+    assert.equal(await evaluate(`!!document.querySelector('#assigned-indicator-group')`), false)
+    assert.equal(await evaluate(`!!document.querySelector('#assigned-indicator-subject')`), false)
+    assert.equal(await evaluate(`document.querySelector('.group-indicator-table tbody tr th')?.textContent`), 'Matemáticas')
+    assert.equal(await evaluate(`document.querySelector('.group-indicator-rich strong')?.textContent`), 'sumas')
+    assert.equal(await evaluate(`document.querySelectorAll('.group-indicator-rich p').length`), 2)
+    await screenshot('indicadores-tabla-docente-lectura')
+    await evaluate(`(()=>{const select=document.querySelector('#assigned-indicator-period');select.value='${closedIndicatorPeriod}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.querySelector('.alert-warning')?.textContent.includes('Período o año cerrado')`)
+    await until(`!!document.querySelector('.group-indicator-table tbody tr') && !document.querySelector('.group-indicator-edit')`)
+    await screenshot('indicadores-periodo-cerrado')
+    await evaluate(`(()=>{const select=document.querySelector('#assigned-indicator-period');select.value='${urlTokens.period}';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`!!document.querySelector('.group-indicator-edit') && !document.querySelector('.alert-warning')`)
+    await evaluate(`document.querySelector('.group-indicator-edit').click()`)
+    await until(`!!document.querySelector('.group-indicator-editor[contenteditable="true"]')`)
+    assert.ok(await evaluate(`!!document.querySelector('.group-indicator-toolbar [aria-label="Negrita"]')`))
+    await evaluate(`(()=>{const editor=document.querySelector('.group-indicator-editor');editor.focus();const range=document.createRange();range.selectNodeContents(editor);range.collapse(false);const selection=getSelection();selection.removeAllRanges();selection.addRange(range)})()`)
+    await command('Input.insertText', {text: ' Primer'})
+    await command('Input.insertText', {text: ' Segundo'})
+    assert.ok(await evaluate(`document.querySelector('.group-indicator-editor').textContent.includes('Primer Segundo')`),
+      'Successive keystrokes must remain in the indicator editor.')
+    await evaluate(`(()=>{const editor=document.querySelector('.group-indicator-editor');const range=document.createRange();range.selectNodeContents(editor.lastElementChild);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);document.querySelector('[aria-label="Negrita"]').click()})()`)
+    await until(`document.querySelector('[aria-label="Negrita"]')?.getAttribute('aria-pressed') === 'true'`)
+    assert.ok(await evaluate(`document.querySelector('[aria-label="Negrita"]').classList.contains('group-indicator-tool-active')`),
+      'Bold button must be visibly active when selected text is bold.')
+    await until(`getComputedStyle(document.querySelector('[aria-label="Negrita"]')).backgroundColor === 'rgb(10, 175, 83)'`)
+    await screenshot('indicadores-negrita-activa')
+    await evaluate(`document.querySelector('[aria-label="Negrita"]').click()`)
+    await until(`document.querySelector('[aria-label="Negrita"]')?.getAttribute('aria-pressed') === 'false'`)
+    assert.ok(await evaluate(`!document.querySelector('[aria-label="Negrita"]').classList.contains('group-indicator-tool-active')`),
+      'Bold button must stop highlighting when bold is removed.')
+    await until(`getComputedStyle(document.querySelector('[aria-label="Negrita"]')).backgroundColor !== 'rgb(10, 175, 83)'`)
+    await evaluate(`document.querySelector('[aria-label="Negrita"]').click()`)
+    await until(`document.querySelector('[aria-label="Negrita"]')?.getAttribute('aria-pressed') === 'true'`)
+    assert.ok(await evaluate(`[...document.querySelectorAll('.group-indicator-editor b, .group-indicator-editor strong')].some(el => el.textContent.includes('Primer Segundo'))`),
+      'Bold command must format the selected text.')
+    await evaluate(`(()=>{const editor=document.querySelector('.group-indicator-editor');const range=document.createRange();range.selectNodeContents(editor.firstElementChild);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);document.querySelector('[aria-label="Lista con puntos"]').click()})()`)
+    assert.ok(await evaluate(`!!document.querySelector('.group-indicator-editor ul li')`), 'Bulleted list command must format a line.')
+    await until(`document.querySelector('[aria-label="Lista con puntos"]')?.getAttribute('aria-pressed') === 'true'`)
+    assert.equal(await evaluate(`document.querySelector('[aria-label="Negrita"]')?.getAttribute('aria-pressed')`), 'false',
+      'Moving to an unbold line must clear the bold highlight.')
+    await evaluate(`document.querySelector('.group-indicator-source').click()`)
+    await until(`document.querySelector('.group-indicator-source').getAttribute('aria-pressed') === 'true'`)
+    assert.ok(await evaluate(`document.querySelector('.group-indicator-source-editor')?.value.includes('<ul>')`))
+    await evaluate(`document.querySelector('.group-indicator-source').click()`)
+    await until(`!!document.querySelector('.group-indicator-editor ul li')`)
+    await screenshot('indicadores-tabla-docente')
+    await evaluate(`document.querySelector('.group-indicator-actions .btn-primary').click()`)
+    await until(`!document.querySelector('.group-indicator-editor') && document.querySelector('.group-indicator-rich')?.textContent.includes('Primer Segundo')`)
+    assert.equal(indicatorSheetWrites.length, 1)
+    assert.ok(indicatorSheetWrites[0].texto_html.includes('<strong>') && indicatorSheetWrites[0].texto_html.includes('<ul>'))
+    await evaluate(`document.querySelector('.group-indicator-row-actions .btn-light-danger').click()`)
+    await until(`!!document.querySelector('.group-indicator-delete-confirm')`)
+    await evaluate(`document.querySelector('.group-indicator-delete-confirm .btn-danger').click()`)
+    await until(`!!document.querySelector('.group-indicator-table .group-indicator-row-actions') && !document.querySelector('.group-indicator-row-actions .btn-light-danger')`)
+    assert.equal(indicatorSheetDeletes.length, 1)
+    assert.ok(await evaluate(`document.querySelector('.group-indicator-description')?.textContent.includes('Sin descripción')`))
+    const menu = await evaluate(`document.querySelector('#kt_app_header_menu')?.innerText ?? ''`)
+    for (const forbidden of ['Años lectivos', 'Estructura organizacional', 'Plan de estudios', 'Parámetros académicos', 'Configuración SIEE', 'Reportes']) {
+      assert.ok(!menu.includes(forbidden), `Teacher sees ${forbidden}`)
+    }
+    await navigate('/academico/boletines', 'Boletín de Calificaciones')
+    await until(`document.querySelectorAll('table tbody tr').length === 1`)
+    assert.equal(await evaluate(`!!document.querySelector('[aria-label="Grupo"]')`), false)
+    assert.equal(await evaluate(`!!document.querySelector('#evaluacion-status')`), false)
+    const previewReadsStart = apiReads.length
+    for (let visit = 0; visit < 2; visit++) {
+      await navigate(`/academico/boletines/${urlTokens.enrollment}`, 'Informe preliminar')
+      await until(`!!document.querySelector('.grade-report tbody tr')`)
+      assert.equal(await evaluate(`!!document.querySelector('[id^="observation-"]')`), false,
+        'Report preview must not contain period or final observation editors, including after reload.')
+      const previewText = await evaluate(`document.body.innerText`)
+      assert.ok(!previewText.includes('Observaciones para el boletín') && !previewText.includes('Emisión individual de boletines'),
+        'Observation management and issuance belong exclusively in the bulletin workspace.')
+    }
+    assert.ok(!apiReads.slice(previewReadsStart).some(route => route.startsWith('/api/boletines/observaciones/') || route.startsWith('/api/boletines/emisiones/')),
+      'The read-only preview must not request observation editors or issuance history.')
+    await screenshot('boletin-vista-previa-docente')
+    const workspaceStart = detailedReads.length
+    await navigate('/academico/boletines/gestion', 'Observaciones y emisión de boletines')
+    await until(`!!document.querySelector('textarea') && document.querySelector('#workspace-group').disabled`)
+    assert.ok(await evaluate(`!!document.querySelector('[data-testid="academic-page-header"] #workspace-year.form-select-solid')`),
+      'The workspace year selector must match the gradebook header.')
+    assert.equal(await evaluate(`document.querySelector('#workspace-period option:checked').textContent`), 'Trimestre 1 · Abierto')
+    assert.equal(detailedReads.slice(workspaceStart).filter(route => route.startsWith('/api/boletines/observaciones/grupo?')).length, 1)
+    assert.ok(detailedReads.slice(workspaceStart).filter(route => route.startsWith('/api/evaluacion/catalogo')).length <= 2,
+      'Default year and group must resolve together, not cascade through three catalog reads.')
+    assert.equal(apiReads.slice(workspaceStart).filter(route => route === `/api/boletines/observaciones/${urlTokens.enrollment}`).length, 0)
+    await evaluate(`(()=>{const input=document.querySelector('textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(input,'Avanza en su aprendizaje.');input.dispatchEvent(new Event('input',{bubbles:true}));})()`)
+    await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.trim()==='Guardar observación').click()`)
+    await until(`document.body.innerText.includes('Guardada')`)
+    await screenshot('observaciones-grupo-desktop')
+    const beforeIssuance = detailedReads.length
+    await evaluate(`[...document.querySelectorAll('[role=tab]')].find(button=>button.textContent.includes('Boletín')).click()`)
+    await evaluate(`document.querySelector('input[aria-label="Seleccionar todos"]').click()`)
+    await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.includes('Generar boletín')).click()`)
+    await until(`!!document.querySelector('a[href*="/emisiones/documentos/"]')`)
+    await screenshot('emision-grupo-desktop')
+    await sleep(250) // Include the debounced local invalidation.
+    assert.equal(detailedReads.slice(beforeIssuance).filter(route => route.startsWith('/api/boletines/observaciones/') || route.startsWith('/api/evaluacion/catalogo')).length, 0,
+      'Issuing a PDF must not refetch the roster or observations.')
+    await evaluate(`[...document.querySelectorAll('[role=tab]')].find(button=>button.textContent.includes('Observaciones')).click()`)
+    const beforeNavigation = detailedReads.length
+    const authBeforeNavigation = apiWrites.filter(route => route === '/api/broadcasting/auth').length
+    await evaluate(`(()=>{window.smokeNavigation=[];for(const key of ['pushState','replaceState']){const original=history[key];history[key]=function(...args){window.smokeNavigation.push([key,args[2]]);return original.apply(this,args)}}})()`)
+    await evaluate(`document.querySelector('[data-kt-nav="/academico/boletines"]').click()`)
+    await until(`location.pathname === '/academico/boletines'`)
+    await until(`!!document.querySelector('a[href="/academico/boletines/gestion"]')`)
+    await evaluate(`document.querySelector('a[href="/academico/boletines/gestion"]').click()`)
+    await until(`!!document.querySelector('#workspace-period') && !!document.querySelector('textarea')`)
+    assert.equal(detailedReads.slice(beforeNavigation).filter(route => route.startsWith('/api/boletines/observaciones/')).length, 0,
+      'Returning within the app must reuse observations from memory.')
+    assert.equal(apiWrites.filter(route => route === '/api/broadcasting/auth').length, authBeforeNavigation,
+      'SPA navigation must keep its authorized WebSocket.')
+    const beforeReload = detailedReads.length
+    await command('Page.reload')
+    await until(`!!document.querySelector('textarea') && document.querySelector('#workspace-year').value === '${urlTokens.year}'`)
+    assert.equal(detailedReads.slice(beforeReload).filter(route => route.startsWith('/api/evaluacion/catalogo')).length, 1,
+      'F5 restores public URL selectors and needs only one catalog read.')
+    assert.equal(detailedReads.slice(beforeReload).filter(route => route.startsWith('/api/boletines/observaciones/grupo?')).length, 1)
+    await command('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true})
+    assert.ok(await evaluate(`(()=>{const header=document.querySelector('[data-testid="academic-page-header"]');return header.scrollWidth <= header.clientWidth + 1})()`))
+    await screenshot('observaciones-grupo-mobile')
+    await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
+    console.log('PASS: one group observation request, cached SPA return, no socket reauthorization on navigation, and one catalog read after F5.')
+    await navigate(`/evaluacion/recuperaciones/${urlTokens.enrollment}?desde=boletines`, 'Abrir proceso')
+    await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.trim()==='Abrir proceso').click()`)
+    await until(`!!document.querySelector('input[id^="grade-"]')`)
+    await evaluate(`(()=>{for(const [selector,value] of [['input[id^="grade-"]','4'],['input[id^="reason-"]','Refuerzo completado']]) {const input=document.querySelector(selector);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));}})()`)
+    await evaluate(`document.querySelector('input[id^="grade-"]').closest('form').requestSubmit()`)
+    await until(`document.body.innerText.includes('Aprobada')`)
+    await screenshot('nivelacion-abierta-docente')
+    const recoveryRow = fixtures['/api/evaluacion/recuperaciones'].data[0]
+    Object.assign(recoveryRow, {can_record: false, can_cancel: false,
+      motivo_bloqueo: 'La nivelación solo se puede crear, modificar o anular con el período abierto.'})
+    await navigate(`/evaluacion/recuperaciones/${urlTokens.enrollment}?desde=boletines`, 'La nivelación solo se puede')
+    assert.equal(await evaluate(`!!document.querySelector('input[id^="grade-"]') || !!document.querySelector('details')`), false)
+    await screenshot('nivelacion-cerrada-docente')
+    Object.assign(fixtures[`/api/boletines/observaciones/${urlTokens.enrollment}`].data.periodos[0], {
+      puede_editar: false, motivo_bloqueo: 'La observación solo se puede modificar con el período abierto.',
+    })
+    fixtures['/api/evaluacion/catalogo'].data.periodos[0].estado = 'cerrado'
+    await navigate('/academico/boletines/gestion', 'La observación solo se puede modificar')
+    assert.equal(await evaluate(`document.querySelector('textarea').disabled`), true)
+    assert.equal(await evaluate(`document.querySelector('#workspace-period option:checked').textContent`), 'Trimestre 1 · Cerrado')
+    await navigate('/evaluacion/catalogo', 'Mis Asignaciones')
+    await until(`document.querySelectorAll('table tbody tr').length === 1`)
+    assert.equal(await evaluate(`!!document.querySelector('[aria-label="Grupo"]')`), false)
+    await navigate('/academico/asistencia', 'Planilla de asistencia')
+    await until(`new URLSearchParams(location.search).get('asignacion') === '${urlTokens.assignment}'`)
+    assert.equal(await evaluate(`!!document.querySelector('#attendance-group')`), false)
+    assert.equal(await evaluate(`!!document.querySelector('#attendance-subject')`), false)
+    assert.equal(await evaluate(`!!document.querySelector('#attendance-period')`), true)
+    await navigate('/comunicacion/eventos', 'Feria de ciencias')
+    await until(`document.querySelector('.event-recent-card') !== null`)
+    assert.equal(await evaluate(`!!document.querySelector('select[aria-label="Grupo"]')`), false,
+      'A historical assignment must not create a redundant group selector in the current month.')
+    assert.ok(eventFixture.readUrls.some(url => url.includes(`grupo_token=${urlTokens.group}`)), 'Calendar must query the assigned group')
+    await command('Page.navigate', {url: 'http://127.0.0.1:5197/academico/anos-lectivos'})
+    await until(`location.pathname === '/dashboard'`)
+    for (const denied of ['/academico/estructura', '/academico/plan-estudios',
+      '/academico/parametros-academicos', '/academico/siee']) {
+      await command('Page.navigate', {url: `http://127.0.0.1:5197${denied}`})
+      await until(`location.pathname === '/dashboard'`)
+    }
+    await command('Page.navigate', {url: 'http://127.0.0.1:5197/academico/boletines/plantillas'})
+    await until(`location.pathname === '/academico/boletines'`)
+    assert.ok(!apiReads.some(read => read === '/api/anos-lectivos' || read === '/api/estructura/sedes'))
+    assert.deepEqual(errors, [], 'Uncaught browser errors in teacher navigation.')
+    console.log('PASS: teacher navigation, scoped indicators/report, and unique-group gradebook, attendance and calendar.')
+  } else if (eventsMode) {
     await runEventsSmoke({navigate, evaluate, until, screenshot, command, fixture: eventFixture, errors})
   } else if (intakeMode) {
     await runEnrollmentSmoke({navigate, evaluate, until, screenshot, command, fixture: intakeFixture, errors, apiReads, summaryOnly: process.argv.includes('--ingreso-summary')})
@@ -999,7 +1538,7 @@ try {
     await evaluate(`(()=>{const select=${subjectLevelFilter};select.value='';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
     await until(`document.querySelectorAll('section[aria-label="Materias"] table tbody tr').length===2`)
     await navigate('/evaluacion/catalogo', 'Mis Asignaciones')
-    assert.equal(await evaluate(`!!document.querySelector('a[href="/admisiones/matriculas"]')`), true, 'Header links to admissions.')
+    assert.equal(await evaluate(`!!document.querySelector('a[href="/admisiones/matriculas"]')`), true, 'Enrollment has its own navigation entry, separate from evaluation.')
     assert.equal(await evaluate(`!!document.querySelector('form')`), false, 'Evaluation no longer contains the enrollment form.')
     const select = async (label, value) => {
       await until(`!!document.querySelector('select[aria-label="${label}"] option[value="${value}"]')`)
@@ -1018,14 +1557,6 @@ try {
     await evaluate(`window.workflowReloadPending = true`)
     await command('Page.reload')
     await until(`!window.workflowReloadPending && document.readyState === 'complete' && document.querySelector('select[aria-label="Grupo"]')?.value === '${urlTokens.group}' && document.querySelector('select[aria-label="Materia"]')?.value === '${urlTokens.materia}'`)
-    await navigate('/admisiones/matriculas', 'Gestión de Matrículas')
-    await until(`!!document.querySelector('#matricula-estudiante')`)
-    await select('Grupo', urlTokens.group)
-    await until(`location.search.includes('grupo=${urlTokens.group}')`)
-    await evaluate(`window.workflowReloadPending = true`)
-    await command('Page.reload')
-    await until(`!window.workflowReloadPending && document.readyState === 'complete' && document.querySelector('select[aria-label="Grupo"]')?.value === '${urlTokens.group}'`)
-    await screenshot('admissions-desktop')
     await navigate('/academico/plan-estudios?tab=horarios', 'Agregar clase')
     await until(`[...document.querySelectorAll('button')].some(b=>b.textContent.includes('Agregar clase'))`)
     await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Agregar clase')).click()`)
@@ -1389,21 +1920,10 @@ try {
     assert.equal(await evaluate(`!!document.querySelector('#siee-curriculo-search').closest('.card').querySelector('.pagination')`), false, 'Curriculum with one result hides pagination controls.')
     await navigate('/academico/evaluacion/catalogo', 'Evaluación')
     const assignmentRows = `document.querySelectorAll('table')[0]?.querySelectorAll('tbody tr')`
-    const enrollmentRows = `document.querySelectorAll('table')[0]?.querySelectorAll('tbody tr')`
     await until(`${assignmentRows}?.length === 12`)
     assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.assignmentPage === 1 && read.assignmentPerPage === 20 && read.enrollmentPage === 1 && read.enrollmentPerPage === 20))
     assert.equal(await evaluate(`!!document.querySelector('.pagination') || !!document.querySelector('select[aria-label="Filas por página"]') || document.body.innerText.includes('Mostrar más')`), false, 'Small assignment and enrollment catalogs have no pagination footer.')
     assert.ok(await evaluate(`!!document.querySelector('select[aria-label="Grupo"] option[value=""]') && !!document.querySelector('select[aria-label="Materia"] option[value=""]') && !document.querySelector('form')`))
-    await navigate('/admisiones/matriculas', 'Gestión de Matrículas')
-    await until(`${enrollmentRows}?.length === 12 && !!document.querySelector('input[role="combobox"]')`)
-    assert.ok(await evaluate(`document.querySelectorAll('input[type="search"]').length === 1 && !document.querySelector('form select[aria-label="Estudiante"]')`))
-    await evaluate(`document.querySelector('input[role="combobox"][aria-label="Estudiante"]').focus()`)
-    await command('Input.insertText', {text: 'Alumno 12'})
-    await until(`!!document.querySelector('#evaluacion-estudiantes-resultados button') && document.querySelector('#evaluacion-estudiantes-resultados').innerText.includes('Alumno 12')`)
-    for (let i = 0; i < 20 && !pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.studentSearch === 'alumno 12'); i++) await sleep(100)
-    assert.ok(pagedReads.some(read => read.path === '/api/evaluacion/catalogo' && read.studentSearch === 'alumno 12'))
-    await evaluate(`document.querySelector('form select[aria-label="Grupo"]').value='${urlTokens.group}';document.querySelector('form select[aria-label="Grupo"]').dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#evaluacion-estudiantes-resultados button').click()`)
-    await until(`!document.querySelector('#evaluacion-estudiantes-resultados') && document.querySelector('form button.btn-primary')?.disabled === false`)
     const catalogRoster = fixtures['/api/evaluacion/catalogo'].data.matriculas
     catalogRoster[0].nombre_lista = 'Andrade Anzuate Estudiante 01'
     catalogRoster[1].nombre_lista = 'Andrade Ortiz Estudiante 02'
@@ -1413,9 +1933,11 @@ try {
       nombre_lista: `Zeta ${String(i).padStart(2, '0')} Estudiante ${String(i).padStart(2, '0')}`})
     fixtures['/api/evaluacion/planillas/1/1'].data.matriculas = catalogRoster
     fixtures['/api/evaluacion/planillas/1/1'].data.resultados = catalogRoster.map(matricula => ({matricula_id: matricula.id, estado: 'pendiente', motivo: 'Faltan notas'}))
-    await navigate(`/academico/boletines?ano=${urlTokens.year}`, 'Boletín de Calificaciones')
+    await navigate(`/academico/boletines?ano=${urlTokens.year}&grupo=${urlTokens.group}`, 'Boletín de Calificaciones')
     await until(`document.querySelectorAll('table tbody tr').length === 52`)
-    assert.ok(await evaluate(`(()=>{const table=document.querySelector('table');const container=table?.closest('.table-responsive');return table && container && !container.style.maxHeight && table.getBoundingClientRect().height>innerHeight && !document.querySelector('.pagination') && !document.querySelector('select[aria-label="Filas por página"]') && document.querySelector('table tbody tr')?.innerText.includes('Andrade Anzuate Estudiante 01')})()`), 'The bulletin roster shows all students in the normal page flow with surname-first names, without an internal scroll or pagination.')
+    const bulletinLayout = await evaluate(`(()=>{const table=document.querySelector('table'),container=table?.closest('.table-responsive');return {table:!!table,container:!!container,maxHeight:container?.style.maxHeight,height:table?.getBoundingClientRect().height,viewport:innerHeight,pagination:!!document.querySelector('.pagination'),pageSize:!!document.querySelector('select[aria-label="Filas por página"]'),first:document.querySelector('table tbody tr')?.innerText}})()`)
+    assert.ok(bulletinLayout.table && bulletinLayout.container && !bulletinLayout.maxHeight && bulletinLayout.height > bulletinLayout.viewport && !bulletinLayout.pagination && !bulletinLayout.pageSize && bulletinLayout.first?.includes('Andrade Anzuate Estudiante 01'),
+      `The bulletin roster stays in page flow without pagination: ${JSON.stringify(bulletinLayout)}`)
     await navigate(`/academico/evaluacion/planillas/${urlTokens.assignment}/${urlTokens.period}`, 'Taller 1')
     const planillaRows = `Array.from(document.querySelectorAll('table')).at(-1)?.querySelectorAll('tbody tr')`
     await until(`${planillaRows}?.length === 52`)
@@ -1425,7 +1947,7 @@ try {
     await command('Input.insertText', {text: '4.2'})
     assert.equal(await evaluate(`document.querySelector('input[aria-label="Estudiante 01 · Taller 1"]').value`), '4.2', 'Editing a small gradebook retains the exact draft.')
     assert.deepEqual(errors, [], 'Academic pagination browser errors.')
-    console.log('PASS: areas and SIEE pagination; admissions pagination retained; bulletin shows all 52 students in page flow and gradebook scrolls its full roster, without pagination.')
+    console.log('PASS: areas and SIEE pagination; bulletin shows all 52 students in page flow and gradebook scrolls its full roster, without pagination.')
   } else if (realtimeMode) {
     user.institution = {name: 'Colegio de prueba', plan: {key: 'esencial', name: 'Esencial'}}
     user.onboarding = fixtures['/api/onboarding/status']
@@ -1708,11 +2230,15 @@ try {
   await evaluate(`[...document.querySelectorAll('table tbody tr')][1].querySelector('button.btn-light-info').click()`)
   await until(`location.pathname === '/evaluacion/recuperaciones/${'w'.repeat(24)}' && new URLSearchParams(location.search).get('desde') === 'boletines'`)
   await until(`[...document.querySelectorAll('button')].some(button=>button.textContent.trim()==='Volver')`)
-  assert.ok(await evaluate(`document.body.innerText.includes('Provisional: podrás abrir la nivelación') && [...document.querySelectorAll('button')].find(button=>button.textContent.trim()==='Abrir proceso')?.disabled === true`), 'An open term shows a failing candidate but cannot start the recovery yet.')
+  assert.ok(await evaluate(`!document.body.innerText.includes('Provisional:') && [...document.querySelectorAll('button')].find(button=>button.textContent.trim()==='Abrir proceso')?.disabled === false`), 'An open term allows an authorized recovery.')
   await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.trim()==='Volver').click()`)
   await until(`location.pathname === '/academico/boletines' && document.querySelectorAll('table tbody tr').length === 2`)
   assert.ok(await evaluate(`document.body.innerText.includes('Ver Boletín') && !document.body.innerText.includes('Mis asignaciones')`), 'Back from recovery returns to bulletin list, not gradebooks.')
   await navigate(`/academico/boletines/${urlTokens.enrollment}`, 'Informe preliminar')
+  assert.equal(await evaluate(`!!document.querySelector('[id^="observation-"]')`), false,
+    'Rector report preview must not contain observation editors.')
+  assert.equal(await evaluate(`document.body.innerText.includes('Emisión individual de boletines')`), false,
+    'Rector report preview must not contain individual issuance.')
   assert.ok(await evaluate(`document.querySelector('.grade-report thead')?.innerText.includes('P4')`), 'The summary result must appear as the next numbered column.')
   await screenshot('report-preview')
   await navigate('/academico/anos-lectivos', '2027')

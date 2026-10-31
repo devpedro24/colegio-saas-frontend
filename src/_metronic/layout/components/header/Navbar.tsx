@@ -48,6 +48,8 @@ const Navbar = () => {
     schoolContext && (superadminInSchool || hasPermission('academico.estructura.gestionar'))
   const canConfigureMail = canAccessSchoolMail(currentUser, !!activeColegio)
   const canConfigureEnrollment = schoolContext && hasPermission('ingreso.configurar')
+  const canConfigureBulletins = schoolContext && hasPermission('boletines.politica.gestionar')
+  const canConfigureIndicators = schoolContext && hasPermission('indicadores.configurar')
 
   useEffect(() => {
     // Modo de tema: init nativo (bindea clicks de [data-kt-element="mode"], aplica el modo
@@ -99,12 +101,12 @@ const Navbar = () => {
         }
       }
 
-      // Cambio de idioma (recarga si cambia)
+      // An explicit selection persists even when it matches the detected language.
       const langEl = target.closest<HTMLElement>('[data-kt-lang]')
       if (langEl) {
         e.preventDefault()
         const value = langEl.getAttribute('data-kt-lang')
-        if (value && value !== lang) {
+        if (value) {
           setLanguage(value)
         }
         return
@@ -114,7 +116,7 @@ const Navbar = () => {
     // Fase de CAPTURA: KTMenu hace stopPropagation en algunos .menu-link, asi corremos antes.
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [navigate, lang, logout, toast, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, canConfigureEnrollment, currentUser?.name, currentUser?.email, planLabel])
+  }, [navigate, lang, logout, toast, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators, currentUser?.name, currentUser?.email, planLabel])
 
   return (
     <div className='app-navbar flex-shrink-0'>
@@ -123,7 +125,7 @@ const Navbar = () => {
       className='app-navbar flex-shrink-0'
       dangerouslySetInnerHTML={{
         __html: withBase(
-          getNavbarHtml(intl, {showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, canConfigureEnrollment, userName: currentUser?.name, userEmail: currentUser?.email, planLabel})
+          getNavbarHtml(intl, {showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators, userName: currentUser?.name, userEmail: currentUser?.email, planLabel})
         ),
       }}
     />

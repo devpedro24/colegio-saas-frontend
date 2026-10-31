@@ -22,10 +22,20 @@ export const getHeaderMenuHtml = (
     isTenantUser?: boolean
     activeColegio?: boolean
     canManageUsers?: boolean
+    canManageRbac?: boolean
     canViewPreinformes?: boolean
-    canManageIndicators?: boolean
-    canManageEnrollments?: boolean
+    canViewIndicators?: boolean
+    canManageYears?: boolean
+    canManageStructure?: boolean
+    canManageStudyPlan?: boolean
+    canConfigureAcademics?: boolean
+    canViewGradebook?: boolean
+    canViewBulletins?: boolean
+    canViewPlaceholders?: boolean
+    canViewPayments?: boolean
+    canViewFinancialReports?: boolean
     canManageIntake?: boolean
+    canManageEnrollments?: boolean
     canViewAttendance?: boolean
     canViewAula?: boolean
   }
@@ -45,39 +55,44 @@ export const getHeaderMenuHtml = (
   const dropdown = (titleId: string, items: [string, string, string][]) => renderHeaderDropdown(
     t(titleId), items.map(([id, path, icon]) => ({label: t(id), path, icon})),
   )
-  const academicoBlock = colegioMode ? dropdown('academico.title', [
-    ['academico.anos.title', '/academico/anos-lectivos', 'calendar-8'],
-    ['academico.estructura.title', '/academico/estructura', 'abstract-26'],
-    ['academico.planEstudios.title', '/academico/plan-estudios', 'book-open'],
-    ['academico.parameters.title', '/academico/parametros-academicos', 'setting-2'],
-    ['siee.title', '/academico/siee', 'notepad'],
+  const academicoItems: [string, string, string][] = [
+    ...(opts?.canManageYears ? [['academico.anos.title', '/academico/anos-lectivos', 'calendar-8'] as [string, string, string]] : []),
+    ...(opts?.canManageStructure ? [['academico.estructura.title', '/academico/estructura', 'abstract-26'] as [string, string, string]] : []),
+    ...(opts?.canManageStudyPlan ? [['academico.planEstudios.title', '/academico/plan-estudios', 'book-open'] as [string, string, string]] : []),
+    ...(opts?.canConfigureAcademics ? [
+      ['academico.parameters.title', '/academico/parametros-academicos', 'setting-2'] as [string, string, string],
+      ['siee.title', '/academico/siee', 'notepad'] as [string, string, string],
+    ] : []),
     ...(opts?.canViewPreinformes ? [['preinformes.title', '/academico/preinformes', 'calendar-8'] as [string, string, string]] : []),
-    ...(opts?.canManageIndicators ? [['indicators.title', '/academico/indicadores', 'check-circle'] as [string, string, string]] : []),
-  ]) : ''
+    ...(opts?.canViewIndicators ? [['indicators.title', '/academico/indicadores', 'check-circle'] as [string, string, string]] : []),
+  ]
+  const academicoBlock = colegioMode && academicoItems.length ? dropdown('academico.title', academicoItems) : ''
 
   const moduleLink = (id: string, path: string) => `<div class="menu-item me-0 me-lg-2"><a class="menu-link" href="${esc(path)}" data-kt-nav="${esc(path)}"><span class="menu-title">${esc(t(id))}</span></a></div>`
   const modulosBlock = colegioMode ? [
-    ...(opts?.canManageEnrollments || opts?.canManageIntake ? [renderHeaderDropdown(t('intake.menu'), [
-      ...(opts?.canManageIntake ? [{label: t('intake.ui.enrollmentByLink'), path: '/admisiones/solicitudes', icon: 'document'}, {label: t('intake.ui.admissions'), path: '/admisiones/seleccion', icon: 'user-tick'}] : []),
-      ...(opts?.canManageEnrollments ? [{label: t('evaluacion.matriculas.title'), path: '/admisiones/matriculas', icon: 'address-book'}] : []),
+    ...(opts?.canManageIntake || opts?.canManageEnrollments ? [renderHeaderDropdown(t('intake.menu'), [
+      ...(opts?.canManageIntake ? [{label: t('intake.ui.enrollmentByLink'), path: '/admisiones/solicitudes', icon: 'document'},
+        {label: t('intake.ui.admissions'), path: '/admisiones/seleccion', icon: 'user-tick'}] : []),
+      ...(opts?.canManageEnrollments ? [{label: t('evaluacion.matriculas.title'), path: '/admisiones/matriculas', icon: 'people'}] : []),
     ])] : []),
-    dropdown('grading.menu', [
-      ['grading.sheets', '/evaluacion/catalogo', 'notepad'],
-      ['boletines.title', '/academico/boletines', 'document'],
+    ...(opts?.canViewGradebook || opts?.canViewBulletins || opts?.canViewAula || opts?.canViewAttendance ? [dropdown('grading.menu', [
+      ...(opts?.canViewGradebook ? [['grading.sheets', '/evaluacion/catalogo', 'notepad'] as [string, string, string]] : []),
+      ...(opts?.canViewBulletins ? [['boletines.title', '/academico/boletines', 'document'] as [string, string, string]] : []),
       ...(opts?.canViewAula ? [['aula.title', '/evaluacion/aula', 'book-open'] as [string, string, string]] : []),
       ...(opts?.canViewAttendance ? [['attendance.title', '/academico/asistencia', 'calendar-tick'] as [string, string, string]] : []),
-    ]),
+    ])] : []),
     dropdown('comunicacion.title', [['events.calendar', '/comunicacion/eventos', 'calendar-8']]),
-    moduleLink('pagos.title', '/pagos'),
-    moduleLink('reportes.title', '/reportes'),
-    moduleLink('bienestar.title', '/bienestar'),
-    moduleLink('talentoHumano.title', '/talento-humano'),
+    ...(opts?.canViewPayments ? [moduleLink('pagos.title', '/pagos')] : []),
+    ...(opts?.canViewFinancialReports ? [moduleLink('reportes.title', '/reportes')] : []),
   ].join('') : ''
 
   // Bloque 'Gestion de usuarios' (usuarios del colegio / roles): visible en MODO COLEGIO
   // SOLO si el rol tiene el permiso 'usuarios.gestionar'.
-  const usersBlock = colegioMode && (opts?.canManageUsers === true)
-    ? dropdown('header.menu.userManagement', [['header.menu.users', '/usuarios', 'people']])
+  const usersBlock = colegioMode && (opts?.canManageUsers === true || opts?.canManageRbac === true)
+    ? dropdown('header.menu.userManagement', [
+      ...(opts?.canManageUsers ? [['header.menu.users', '/usuarios', 'people'] as [string, string, string]] : []),
+      ...(opts?.canManageRbac ? [['rbac.title', '/usuarios/roles-permisos', 'security-user'] as [string, string, string]] : []),
+    ])
     : ''
 
   // Bloque 'Configuración' (colegios / planes / roles-permisos): visible en MODO PLATAFORMA
@@ -91,6 +106,8 @@ export const getHeaderMenuHtml = (
     : ''
 
   const auditBlock = platformMode ? `<div class="menu-item"><a class="menu-link" href="/configuracion/auditoria" data-kt-nav="/configuracion/auditoria"><span class="menu-icon"><i class="ki-solid ki-notepad fs-3"></i></span><span class="menu-title">${esc(t('audit.title'))}</span></a></div>` : ''
+  // El megamenú de demostración de Metronic no representa permisos del colegio.
+  if (colegioMode) return `${academicoBlock}${modulosBlock}${usersBlock}`
   return String.raw`${academicoBlock}${modulosBlock}${usersBlock}${configBlock}${auditBlock}
 									<!--begin:Menu item-->
 									<div data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="bottom-start" class="menu-item menu-lg-down-accordion menu-sub-lg-down-indention me-0 me-lg-2">

@@ -16,7 +16,7 @@ const Header: FC = () => {
   const {config} = useLayout()
   const intl = useIntl()
   const {currentUser} = useAuth()
-  const {hasPermission, hasRole} = useAuthz()
+  const {hasPermission, hasRole, hasFeature} = useAuthz()
   const {activeColegio} = useImpersonation()
 
   const isPlatform = currentUser?.is_platform === true
@@ -44,11 +44,20 @@ const Header: FC = () => {
             isTenantUser,
             activeColegio: !!activeColegio,
             canManageUsers,
-            canViewPreinformes: hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar'),
-            canManageIndicators: hasPermission('indicadores.base.gestionar'),
-            canManageEnrollments: hasPermission('academico.matriculas.gestionar'),
+            canManageRbac: !isPlatform && hasRole('rector') && hasPermission('usuarios.ajustar_permisos'),
+            canViewPreinformes: hasFeature('preinformes') && (hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar')),
+            canViewIndicators: hasPermission('indicadores.base.gestionar') || hasPermission('indicadores.grupo.ver'),
+            canManageYears: hasPermission('academico.anos.gestionar'),
+            canManageStructure: hasPermission('academico.estructura.gestionar'),
+            canManageStudyPlan: hasPermission('academico.plan_estudios.gestionar'),
+            canConfigureAcademics: hasPermission('academico.configurar'),
+            canViewGradebook: hasPermission('notas.ver_consolidado_todos') || hasPermission('notas.editar_no_dicta') || hasPermission('notas.registrar_materia_asignada'),
+            canViewBulletins: hasPermission('boletines.grupo.ver') || hasPermission('boletines.emisiones.ver') || hasPermission('notas.ver_propias'),
+            canViewPayments: hasFeature('pagos_pension') && hasPermission('pagos.ver'),
+            canViewFinancialReports: hasFeature('reportes_financieros') && hasPermission('reportes.financieros'),
             canManageIntake: ['ingreso.ver', 'ingreso.configurar', 'ingreso.revisar', 'ingreso.decidir', 'ingreso.asignar'].some(hasPermission),
-            canViewAula: hasPermission('aula.ver_todas') || hasPermission('aula.ver_asignadas') || hasPermission('aula.ver_propias'),
+            canManageEnrollments: hasPermission('academico.matriculas.gestionar'),
+            canViewAula: hasFeature('aula') && (hasPermission('aula.ver_todas') || hasPermission('aula.ver_asignadas') || hasPermission('aula.ver_propias')),
             canViewAttendance: hasPermission('asistencia.registrar_clases') ||
               hasPermission('asistencia.justificar_propia') || hasPermission('asistencia.correccion.aprobar') ||
               hasPermission('asistencia.correccion.solicitar') ||

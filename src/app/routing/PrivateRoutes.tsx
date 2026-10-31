@@ -2,6 +2,7 @@ import {lazy, FC, Suspense} from 'react'
 import {Route, Routes, Navigate, useLocation} from 'react-router-dom'
 import {MasterLayout} from '../../_metronic/layout/MasterLayout'
 import {EventLoginRedirect} from './EventLoginRedirect'
+import {MyDrafts} from '@/lib/drafts/WorkDrafts'
 import TopBarProgress from 'react-topbar-progress-indicator'
 import {DashboardWrapper} from '../pages/dashboard/DashboardWrapper'
 import {getCSSVariableValue} from '../../_metronic/assets/ts/_utils'
@@ -15,6 +16,7 @@ const AcademicoPage = lazy(() => import('../pages/academico/AcademicoPage'))
 const InstitutionalSettingsPage = lazy(() => import('../pages/academico/configuracion/InstitutionalSettingsPage'))
 const SedeDetallePage = lazy(() => import('../pages/academico/sedes/SedeDetallePage'))
 const UsuariosPage = lazy(() => import('../pages/usuarios/UsuariosPage'))
+const TenantRolesPage = lazy(() => import('../pages/usuarios/roles/TenantRolesPage'))
 const ProximamentePage = lazy(() => import('../pages/proximamente/ProximamentePage'))
 const EventosPage = lazy(() => import('../pages/comunicacion/EventosPage'))
 const EvaluacionPage = lazy(() => import('../pages/academico/evaluacion/EvaluacionPage'))
@@ -28,6 +30,7 @@ const PrivateRoutes = () => {
         <Route path='auth/*' element={<EventLoginRedirect authenticated />} />
         {/* Pages */}
         <Route path='dashboard' element={<DashboardWrapper />} />
+        <Route path='mis-borradores' element={<MyDrafts />} />
         {/* Lazy Modules */}
         <Route
           path='account/*'
@@ -56,6 +59,7 @@ const PrivateRoutes = () => {
         <Route path='ajustes-institucionales' element={<InstitutionalSettingsIndex />} />
         <Route path='ajustes-institucionales/matriculas' element={<SuspensedView><InstitutionalSettingsPage section='matriculas' /></SuspensedView>} />
         <Route path='ajustes-institucionales/boletines' element={<SuspensedView><InstitutionalSettingsPage section='boletines' /></SuspensedView>} />
+        <Route path='ajustes-institucionales/indicadores' element={<SuspensedView><InstitutionalSettingsPage section='indicadores' /></SuspensedView>} />
         <Route path='ajustes-institucionales/correo' element={<SuspensedView><InstitutionalSettingsPage section='correo' /></SuspensedView>} />
         <Route
           path='ajustes-institucionales/datos'
@@ -78,6 +82,7 @@ const PrivateRoutes = () => {
             </SuspensedView>
           }
         />
+        <Route path='usuarios/roles-permisos' element={<SuspensedView><TenantRolesPage /></SuspensedView>} />
         {/* Módulos del roadmap aún sin pantallas reales (placeholder "próximamente") */}
         <Route
           path='admisiones/*'
@@ -121,35 +126,19 @@ const PrivateRoutes = () => {
         />
         <Route
           path='pagos'
-          element={
-            <SuspensedView>
-              <ProximamentePage titleId='pagos.title' />
-            </SuspensedView>
-          }
+          element={<PlanPlaceholder feature='pagos_pension' permission='pagos.ver' titleId='pagos.title' />}
         />
         <Route
           path='reportes'
-          element={
-            <SuspensedView>
-              <ProximamentePage titleId='reportes.title' />
-            </SuspensedView>
-          }
+          element={<PlanPlaceholder feature='reportes_financieros' permission='reportes.financieros' titleId='reportes.title' />}
         />
         <Route
           path='bienestar'
-          element={
-            <SuspensedView>
-              <ProximamentePage titleId='bienestar.title' />
-            </SuspensedView>
-          }
+          element={<Navigate to='/dashboard' replace />}
         />
         <Route
           path='talento-humano'
-          element={
-            <SuspensedView>
-              <ProximamentePage titleId='talentoHumano.title' />
-            </SuspensedView>
-          }
+          element={<Navigate to='/dashboard' replace />}
         />
         {/* Page Not Found */}
         <Route path='*' element={<Navigate to='/error/404' />} />
@@ -168,6 +157,12 @@ const SuspensedView: FC<WithChildren> = ({children}) => {
     shadowBlur: 5,
   })
   return <Suspense fallback={<TopBarProgress />}>{children}</Suspense>
+}
+
+const PlanPlaceholder = ({feature, permission, titleId}: {feature: string; permission: string; titleId: string}) => {
+  const {hasFeature, hasPermission} = useAuthz()
+  if (!hasFeature(feature) || !hasPermission(permission)) return <Navigate to='/dashboard' replace />
+  return <SuspensedView><ProximamentePage titleId={titleId} /></SuspensedView>
 }
 
 const AcademicAlias = () => {
@@ -192,6 +187,9 @@ const InstitutionalSettingsIndex = () => {
   }
   if (inSchool && hasPermission('boletines.politica.gestionar')) {
     return <Navigate to='/ajustes-institucionales/boletines' replace />
+  }
+  if (inSchool && hasPermission('indicadores.configurar')) {
+    return <Navigate to='/ajustes-institucionales/indicadores' replace />
   }
   return <Navigate to='/dashboard' replace />
 }

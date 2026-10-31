@@ -37,7 +37,7 @@ const LegacySedeDetalleRedirect: FC = () => {
 // Router anidado del modulo Academico. Cada pagina trae su propio <PageTitle> +
 // <Content>, por eso aqui NO se envuelve con ToolbarWrapper/Content.
 const AcademicoPage: FC = () => {
-  const {isPlatform, hasPermission, hasRole} = useAuthz()
+  const {isPlatform, hasPermission, hasRole, hasFeature} = useAuthz()
   const {activeColegio} = useImpersonation()
   const platformInSchool = isPlatform && !!activeColegio
   const canConfigure = platformInSchool || hasPermission('academico.configurar')
@@ -52,20 +52,20 @@ const AcademicoPage: FC = () => {
 
   return (
     <Routes>
-      <Route path='anos-lectivos' element={<AnosLectivosPage />} />
-      <Route path='estructura' element={<EstructuraPage />} />
-      <Route path='plan-estudios' element={<PlanEstudiosPage />} />
+      <Route path='anos-lectivos' element={platformInSchool || hasPermission('academico.anos.gestionar') ? <AnosLectivosPage /> : <Navigate to='/dashboard' replace />} />
+      <Route path='estructura' element={canManageCampuses ? <EstructuraPage /> : <Navigate to='/dashboard' replace />} />
+      <Route path='plan-estudios' element={platformInSchool || hasPermission('academico.plan_estudios.gestionar') ? <PlanEstudiosPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='configuracion' element={<LegacyConfiguracionRedirect />} />
       <Route path='parametros-academicos' element={canConfigure ? <ConfiguracionColegioPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='ajustes-institucionales' element={<Navigate to={canConfigure ? '/ajustes-institucionales/datos' : canManageCampuses ? '/ajustes-institucionales/sedes' : '/dashboard'} replace />} />
       <Route path='ajustes-institucionales/datos' element={<Navigate to='/ajustes-institucionales/datos' replace />} />
       <Route path='ajustes-institucionales/horario' element={<Navigate to='/ajustes-institucionales/horario' replace />} />
       <Route path='ajustes-institucionales/sedes' element={<Navigate to='/ajustes-institucionales/sedes' replace />} />
-      <Route path='siee/*' element={<SieePage />} />
-      <Route path='preinformes' element={platformInSchool || hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar') ? <PreinformesPage /> : <Navigate to='/dashboard' replace />} />
+      <Route path='siee/*' element={canConfigure ? <SieePage /> : <Navigate to='/dashboard' replace />} />
+      <Route path='preinformes' element={hasFeature('preinformes') && (platformInSchool || hasPermission('academico.preinformes.ver') || hasPermission('academico.preinformes.gestionar')) ? <PreinformesPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='evaluacion/*' element={<EvaluacionPage />} />
-      <Route path='boletines/*' element={<BoletinesPage />} />
-      <Route path='indicadores' element={hasPermission('indicadores.base.gestionar') ? <IndicadoresPage /> : <Navigate to='/dashboard' replace />} />
+      <Route path='boletines/*' element={platformInSchool || hasPermission('boletines.emisiones.ver') || hasPermission('boletines.grupo.ver') || hasPermission('notas.ver_propias') ? <BoletinesPage /> : <Navigate to='/dashboard' replace />} />
+      <Route path='indicadores' element={hasPermission('indicadores.base.gestionar') || hasPermission('indicadores.grupo.ver') ? <IndicadoresPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='asistencia' element={platformInSchool || hasPermission('asistencia.registrar_clases') ||
         hasPermission('asistencia.justificar_propia') || hasPermission('asistencia.correccion.aprobar') ||
         hasPermission('asistencia.correccion.solicitar') ||
@@ -73,7 +73,9 @@ const AcademicoPage: FC = () => {
           (hasRole('rector') || hasRole('coord_academico') || hasRole('coord_combinado')))
         ? <AsistenciaPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='sedes/:id' element={<LegacySedeDetalleRedirect />} />
-      <Route index element={<Navigate to='/academico/anos-lectivos' />} />
+      <Route index element={<Navigate to={platformInSchool || hasPermission('academico.anos.gestionar') ? '/academico/anos-lectivos'
+        : hasPermission('indicadores.grupo.ver') ? '/academico/indicadores'
+        : hasPermission('boletines.grupo.ver') ? '/academico/boletines' : '/dashboard'} replace />} />
     </Routes>
   )
 }

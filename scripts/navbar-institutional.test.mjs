@@ -53,6 +53,19 @@ for (const lang of ['es', 'en']) {
     assert.ok(dataOnly.includes('data-kt-nav="/ajustes-institucionales/datos"'))
     assert.ok(!dataOnly.includes('data-kt-nav="/ajustes-institucionales/sedes"'))
     assert.ok(!dataOnly.includes('data-kt-nav="/ajustes-institucionales/correo"'))
+    assert.ok(!dataOnly.includes('data-kt-nav="/ajustes-institucionales/boletines"'))
+    assert.ok(!dataOnly.includes('data-kt-nav="/ajustes-institucionales/indicadores"'))
+
+    const bulletinsOnly = getNavbarHtml(intl, {showQuickIcons: false, canConfigureBulletins: true})
+    assert.ok(bulletinsOnly.includes('data-testid="institutional-settings-panel"'))
+    assert.ok(bulletinsOnly.includes('data-kt-nav="/ajustes-institucionales/boletines"'))
+    assert.ok(bulletinsOnly.includes(messages['boletines.policy.title']))
+    assert.ok(!bulletinsOnly.includes('data-kt-nav="/ajustes-institucionales/datos"'))
+
+    const indicatorsOnly = getNavbarHtml(intl, {showQuickIcons: false, canConfigureIndicators: true})
+    assert.ok(indicatorsOnly.includes('data-kt-nav="/ajustes-institucionales/indicadores"'))
+    assert.ok(indicatorsOnly.includes(messages['indicators.policy.title']))
+    assert.ok(!indicatorsOnly.includes('data-kt-nav="/ajustes-institucionales/boletines"'))
 
     const mailOnly = getNavbarHtml(intl, {showQuickIcons: false, canConfigureMail: true})
     assert.ok(mailOnly.includes('data-testid="institutional-settings-panel"'))

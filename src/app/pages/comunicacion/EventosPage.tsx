@@ -14,7 +14,8 @@ import { useAuthz } from "@/app/modules/auth/core/authz";
 import { useImpersonation } from "@/app/modules/impersonation/impersonation.store";
 import "./eventos.css";
 
-type Group = { url_token: string; nombre: string; grado?: { nombre: string } };
+type Group = { url_token: string; nombre: string; grado?: { nombre: string };
+  ano_lectivo_inicio?: string | null; ano_lectivo_fin?: string | null };
 type EventItem = {
   url_token: string;
   titulo: string;
@@ -104,6 +105,7 @@ export default function EventosPage() {
 
 function Calendar() {
   const intl = useIntl();
+  const {hasRole} = useAuthz();
   const toast = useToast();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -141,14 +143,23 @@ function Calendar() {
   });
   const from = dateKey(month);
   const until = dateKey(new Date(month.getFullYear(), month.getMonth() + 1, 0));
+  const calendarGroups = useMemo(() => catalog.data?.grupos.filter(item =>
+    (!item.ano_lectivo_inicio || item.ano_lectivo_inicio <= until)
+    && (!item.ano_lectivo_fin || item.ano_lectivo_fin >= from)) ?? [], [catalog.data?.grupos, from, until]);
+  const soleTeacherGroup = (hasRole('docente') || hasRole('director_grupo')) && calendarGroups.length === 1;
+  const effectiveGroup = soleTeacherGroup ? calendarGroups[0].url_token
+    : calendarGroups.some(item => item.url_token === group) ? group : '';
+  useEffect(() => {
+    if (catalog.data && group && !calendarGroups.some(item => item.url_token === group)) setGroup('');
+  }, [catalog.data, calendarGroups, group]);
   const summary = useQuery({
-    queryKey: ["eventos", "resumen", from, group, categoryFilter],
+    queryKey: ["eventos", "resumen", from, effectiveGroup, categoryFilter],
     queryFn: async () => (await api.get<{data: DaySummary[]}>(
-      `/eventos/resumen?opaque=1&desde=${from}&hasta=${until}&grupo_token=${encodeURIComponent(group)}&categoria=${categoryFilter}`)).data,
+      `/eventos/resumen?opaque=1&desde=${from}&hasta=${until}&grupo_token=${encodeURIComponent(effectiveGroup)}&categoria=${categoryFilter}`)).data,
     staleTime: Infinity, gcTime: 60 * 60_000,
   });
   const taskEvents = useQuery({
-    queryKey: ["eventos", "tareas", from, group, categoryFilter],
+    queryKey: ["eventos", "tareas", from, effectiveGroup, categoryFilter],
     queryFn: async () => {
       if (categoryFilter && categoryFilter !== "tarea") return [];
       const all: EventItem[] = [];
@@ -156,7 +167,7 @@ function Calendar() {
       let lastPage = 1;
       do {
         const result = await api.get<{ data: EventItem[]; last_page: number }>(
-          `/eventos/tareas?opaque=1&desde=${from}&hasta=${until}&grupo_token=${encodeURIComponent(group)}&page=${page}`,
+          `/eventos/tareas?opaque=1&desde=${from}&hasta=${until}&grupo_token=${encodeURIComponent(effectiveGroup)}&page=${page}`,
         );
         all.push(...result.data);
         lastPage = result.last_page;
@@ -167,14 +178,14 @@ function Calendar() {
     staleTime: Infinity, gcTime: 60 * 60_000,
   });
   const feed = useInfiniteQuery({
-    queryKey: ["eventos", "flujo", from, group, categoryFilter, day],
+    queryKey: ["eventos", "flujo", from, effectiveGroup, categoryFilter, day],
     initialPageParam: "",
     queryFn: async ({pageParam}) => api.get<{data: EventItem[]; next_cursor: string | null}>(
-      `/eventos/flujo?opaque=1&desde=${from}&hasta=${until}&grupo_token=${encodeURIComponent(group)}&categoria=${categoryFilter}${day ? `&dia=${day}` : ""}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}&limite=${pageParam ? 10 : 50}`),
+      `/eventos/flujo?opaque=1&desde=${from}&hasta=${until}&grupo_token=${encodeURIComponent(effectiveGroup)}&categoria=${categoryFilter}${day ? `&dia=${day}` : ""}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}&limite=${pageParam ? 10 : 50}`),
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     staleTime: Infinity, gcTime: 60 * 60_000,
   });
-  useEffect(() => { setVisibleCount(50); }, [from, group, categoryFilter, day]);
+  useEffect(() => { setVisibleCount(50); }, [from, effectiveGroup, categoryFilter, day]);
   useEffect(() => {
     if (!calendarCard.current || !calendarGrid.current) return;
     const update = () => {
@@ -403,19 +414,19 @@ function Calendar() {
                   </button>
                 </div>
                 <div className="d-flex gap-3 flex-wrap mb-6">
-                  <select
+                  {!soleTeacherGroup && <select
                     aria-label={t("schedule.group")}
                     className="form-select w-auto"
                     value={group}
                     onChange={(e) => setGroup(e.target.value)}
                   >
                     <option value="">{t("schedule.allGroups")}</option>
-                    {catalog.data?.grupos.map((item) => (
+                    {calendarGroups.map((item) => (
                       <option key={item.url_token} value={item.url_token}>
                         {item.grado?.nombre} · {item.nombre}
                       </option>
                     ))}
-                  </select>
+                  </select>}
                   <select
                     aria-label={t("events.filterCategory")}
                     className="form-select w-auto"

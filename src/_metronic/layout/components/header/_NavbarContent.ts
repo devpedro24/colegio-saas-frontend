@@ -18,6 +18,8 @@ export const getNavbarHtml = (
     canManageCampuses?: boolean
     canConfigureMail?: boolean
     canConfigureEnrollment?: boolean
+    canConfigureBulletins?: boolean
+    canConfigureIndicators?: boolean
   }
 ) => {
   const t = (id: string) => intl.formatMessage({id})
@@ -27,7 +29,7 @@ export const getNavbarHtml = (
   // sin colegio activo). Para usuarios de colegio (tenant) no aplican y se ocultan.
   const showQuickIcons = opts?.showQuickIcons !== false
   const showInstitutionalSettings =
-    opts?.canConfigureInstitution === true || opts?.canManageCampuses === true || opts?.canConfigureMail === true || opts?.canConfigureEnrollment === true
+    opts?.canConfigureInstitution === true || opts?.canManageCampuses === true || opts?.canConfigureMail === true || opts?.canConfigureEnrollment === true || opts?.canConfigureBulletins === true || opts?.canConfigureIndicators === true
   const name = escapeUserHtml(opts?.userName || t('account.user'))
   const email = escapeUserHtml(opts?.userEmail || '')
   const plan = escapeUserHtml(opts?.planLabel || '')
@@ -1633,6 +1635,26 @@ ${plan ? `<span class="badge badge-light-primary align-self-start mt-2 text-wrap
                             </span>
                           </a>
                         </div>` : ''}
+                        ${opts?.canConfigureBulletins ? String.raw`
+                        <div class="menu-item">
+                          <a href="/ajustes-institucionales/boletines" data-kt-nav="/ajustes-institucionales/boletines" class="menu-link institutional-menu__item">
+                            <span class="institutional-menu__icon" aria-hidden="true"><i class="ki-solid ki-document fs-2"></i></span>
+                            <span class="institutional-menu__copy">
+                              <span class="institutional-menu__title">${t('boletines.policy.title')}</span>
+                              <span class="institutional-menu__description">${t('boletines.policy.menuHint')}</span>
+                            </span>
+                          </a>
+                        </div>` : ''}
+                        ${opts?.canConfigureIndicators ? String.raw`
+                        <div class="menu-item">
+                          <a href="/ajustes-institucionales/indicadores" data-kt-nav="/ajustes-institucionales/indicadores" class="menu-link institutional-menu__item">
+                            <span class="institutional-menu__icon" aria-hidden="true"><i class="ki-solid ki-book-square fs-2"></i></span>
+                            <span class="institutional-menu__copy">
+                              <span class="institutional-menu__title">${t('indicators.policy.title')}</span>
+                              <span class="institutional-menu__description">${t('indicators.policy.menuHint')}</span>
+                            </span>
+                          </a>
+                        </div>` : ''}
 												${opts?.canManageCampuses ? String.raw`
 												<div class="menu-item">
 													<a href="/ajustes-institucionales/sedes" data-kt-nav="/ajustes-institucionales/sedes" class="menu-link institutional-menu__item">
@@ -1648,6 +1670,7 @@ ${plan ? `<span class="badge badge-light-primary align-self-start mt-2 text-wrap
 										<!--end::Institutional settings-->` : ''}
 										<!--begin::Menu item-->
 										<div class="menu-item px-5">
+											<a href="/mis-borradores" data-kt-nav="/mis-borradores" class="menu-link px-5">${t('drafts.title')}</a>
 											<a href="#" data-kt-action="logout" class="menu-link px-5">${t(
 												'header.user.signOut'
 											)}</a>

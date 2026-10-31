@@ -15,8 +15,10 @@ import {SchoolMailCard} from './components/SchoolMailCard'
 import {canAccessSchoolMail} from '@/app/modules/auth/core/schoolMailAccess'
 import {EnrollmentSettingsCard} from '../../admisiones/EnrollmentSettingsCard'
 import {BulletinPolicyCard} from './components/BulletinPolicyCard'
+import {IndicatorPolicyCard} from './components/IndicatorPolicyCard'
+import {AcademicYearProvider} from '../academic-year-context'
 
-type Section = 'datos' | 'sedes' | 'horario' | 'correo' | 'matriculas' | 'boletines'
+type Section = 'datos' | 'sedes' | 'horario' | 'correo' | 'matriculas' | 'boletines' | 'indicadores'
 
 const InstitutionalSettingsContent: FC<{
   section: Section
@@ -25,10 +27,12 @@ const InstitutionalSettingsContent: FC<{
   canConfigureMail: boolean
   canConfigureEnrollment: boolean
   canConfigureBulletins: boolean
-}> = ({section, canConfigure, canManageCampuses, canConfigureMail, canConfigureEnrollment, canConfigureBulletins}) => {
+  canConfigureIndicators: boolean
+}> = ({section, canConfigure, canManageCampuses, canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators}) => {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const {currentUser} = useAuth()
+  const {hasPermission} = useAuthz()
   const {activeColegio} = useImpersonation()
   const branding = useOnboarding(currentUser?.tenant_channel, !currentUser?.is_platform)
   const {data: official} = useDatosInstitucionales(canConfigure)
@@ -48,8 +52,9 @@ const InstitutionalSettingsContent: FC<{
     {key: 'correo', allowed: canConfigureMail},
     {key: 'matriculas', allowed: canConfigureEnrollment},
     {key: 'boletines', allowed: canConfigureBulletins},
+    {key: 'indicadores', allowed: canConfigureIndicators},
   ]
-  const sectionTitle = (key: Section) => t(key === 'matriculas' ? 'intake.settings.title' : key === 'correo' ? 'intake.ui.emailConnection' : key === 'boletines' ? 'boletines.policy.title' : `academico.config.tab.${key}`)
+  const sectionTitle = (key: Section) => t(key === 'matriculas' ? 'intake.settings.title' : key === 'correo' ? 'intake.ui.emailConnection' : key === 'boletines' ? 'boletines.policy.title' : key === 'indicadores' ? 'indicators.policy.title' : `academico.config.tab.${key}`)
 
   return (
     <>
@@ -103,7 +108,7 @@ const InstitutionalSettingsContent: FC<{
             </nav>
           </div>
         </div>
-        {section === 'matriculas' ? <EnrollmentSettingsCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'boletines' ? <BulletinPolicyCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'correo' ? <SchoolMailCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'datos' ? <DatosInstitucionalesCard /> : section === 'horario' ? <ZonaHorariaCard /> : <SedesConfigTab />}
+        {section === 'matriculas' ? <EnrollmentSettingsCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'boletines' ? <BulletinPolicyCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'indicadores' ? <AcademicYearProvider source={hasPermission('academico.anos.gestionar') ? 'management' : 'evaluation'}><IndicatorPolicyCard /></AcademicYearProvider> : section === 'correo' ? <SchoolMailCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'datos' ? <DatosInstitucionalesCard /> : section === 'horario' ? <ZonaHorariaCard /> : <SedesConfigTab />}
       </Content>
     </>
   )
@@ -120,14 +125,16 @@ const InstitutionalSettingsPage: FC<{section: Section}> = ({section}) => {
   const canConfigureMail = canAccessSchoolMail(currentUser, !!activeColegio)
   const canConfigureEnrollment = inSchool && hasPermission('ingreso.configurar')
   const canConfigureBulletins = inSchool && hasPermission('boletines.politica.gestionar')
+  const canConfigureIndicators = inSchool && hasPermission('indicadores.configurar')
   if (section === 'matriculas' && !canConfigureEnrollment) return <Navigate to='/dashboard' replace />
   if (section === 'correo' && !canConfigureMail) return <Navigate to='/dashboard' replace />
   if (section === 'boletines' && !canConfigureBulletins) return <Navigate to='/dashboard' replace />
+  if (section === 'indicadores' && !canConfigureIndicators) return <Navigate to='/dashboard' replace />
 
   if ((section === 'datos' || section === 'horario') && !canConfigure) return <Navigate to='/dashboard' replace />
   if (section === 'sedes' && !canManageCampuses) return <Navigate to='/dashboard' replace />
 
-  return <InstitutionalSettingsContent section={section} canConfigure={canConfigure} canManageCampuses={canManageCampuses} canConfigureMail={canConfigureMail} canConfigureEnrollment={canConfigureEnrollment} canConfigureBulletins={canConfigureBulletins} />
+  return <InstitutionalSettingsContent section={section} canConfigure={canConfigure} canManageCampuses={canManageCampuses} canConfigureMail={canConfigureMail} canConfigureEnrollment={canConfigureEnrollment} canConfigureBulletins={canConfigureBulletins} canConfigureIndicators={canConfigureIndicators} />
 }
 
 export default InstitutionalSettingsPage
