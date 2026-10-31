@@ -7,18 +7,21 @@ import {CatalogoView} from '../evaluacion/components/CatalogoView'
 import {Content} from '@/_metronic/layout/components/content'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import PlantillasPage from './PlantillasPage'
+import BulletinWorkspace from './BulletinWorkspace'
 
 const BoletinesPage: FC = () => {
   const intl = useIntl()
-  const {hasPermission} = useAuthz()
+  const {hasPermission, hasFeature} = useAuthz()
+  const canCustomize = hasFeature('boletines_personalizables') && hasPermission('boletines.plantillas.gestionar')
   const breadcrumbs: Array<PageLink> = [
-    {title: intl.formatMessage({id: 'academico.title'}), path: '/academico/anos-lectivos', isSeparator: false, isActive: false},
+    {title: intl.formatMessage({id: 'academico.title'}), path: '/academico/boletines', isSeparator: false, isActive: false},
   ]
 
   return (
     <Routes>
       <Route element={<Content><Outlet /></Content>}>
-        <Route path='plantillas' element={hasPermission('boletines.plantillas.ver') || hasPermission('boletines.plantillas.gestionar')
+        <Route path='gestion' element={<BulletinWorkspace />} />
+        <Route path='plantillas' element={canCustomize
           ? <><PageTitle breadcrumbs={breadcrumbs}>{intl.formatMessage({id: 'templates.title'})}</PageTitle><PlantillasPage /></>
           : <Navigate to='/academico/boletines' replace />} />
         <Route
@@ -33,10 +36,13 @@ const BoletinesPage: FC = () => {
           }
         />
         <Route index element={<><PageTitle breadcrumbs={breadcrumbs}>{intl.formatMessage({id: 'boletines.title'})}</PageTitle>
-          {(hasPermission('boletines.plantillas.ver') || hasPermission('boletines.plantillas.gestionar')) &&
-            <div className='d-flex justify-content-end mb-5'><Link className='btn btn-light-primary' to='/academico/boletines/plantillas'>
-              {intl.formatMessage({id: 'templates.openEditor'})}</Link></div>}
-          <CatalogoView reportsOnly /></>} />
+          <CatalogoView reportsOnly reportActions={<>
+            {(hasPermission('boletines.observaciones.gestionar') || hasPermission('boletines.emisiones.preparar')) &&
+              <Link className='btn btn-primary btn-sm' to='/academico/boletines/gestion'>
+                {intl.locale.startsWith('en') ? 'Observations and report issuance' : 'Observaciones y emisión de boletines'}</Link>}
+            {canCustomize && <Link className='btn btn-light-primary btn-sm' to='/academico/boletines/plantillas'>
+              {intl.formatMessage({id: 'templates.openEditor'})}</Link>}
+          </>} /></>} />
       </Route>
     </Routes>
   )

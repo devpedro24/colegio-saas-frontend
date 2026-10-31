@@ -32,6 +32,8 @@ export function useIssueActions(enrollmentToken: string) {
   const base = `/boletines/emisiones/${encodeURIComponent(enrollmentToken)}`
   const document = (token: string) => `/boletines/emisiones/documentos/${encodeURIComponent(token)}`
   return {
+    emit: useMutation({mutationFn: (selection: IssueSelection) =>
+      api.post<{data: BulletinIssue}>(`${base}/emitir?opaque=1`, selection).then(result => result.data), onSuccess: refresh}),
     preview: useMutation({mutationFn: (selection: IssueSelection) => {
       const params = new URLSearchParams({opaque: '1', contexto: selection.contexto})
       if (selection.periodo_token) params.set('periodo_token', selection.periodo_token)

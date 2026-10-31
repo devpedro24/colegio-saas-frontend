@@ -5,7 +5,6 @@ import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 
 export type BulletinPolicy = {
   requiere_observacion_final: boolean
-  docente_edita_indicadores_grupo: boolean
   version: number
 }
 
@@ -26,7 +25,8 @@ export type BulletinObservationCatalog = {
   politica: BulletinPolicy
   puede_editar: boolean
   puede_aprobar: boolean
-  periodos: Array<{periodo_token: string; nombre: string; observacion: BulletinObservation | null}>
+  periodos: Array<{periodo_token: string; nombre: string; observacion: BulletinObservation | null;
+    puede_editar: boolean; motivo_bloqueo: string | null}>
   final: BulletinObservation | null
 }
 
@@ -63,13 +63,30 @@ export function useBulletinObservations(matriculaToken: string, enabled: boolean
 
 export type ObservationTarget = {contexto: 'periodo' | 'final'; periodo_token?: string}
 
+export type GroupObservations = {
+  grupo_token: string; periodo_token: string; puede_editar: boolean; motivo_bloqueo: string | null
+  matriculas: Array<{matricula_token: string; observacion: BulletinObservation | null}>
+}
+
+export function useGroupObservations(group: string, period: string, enabled: boolean) {
+  const scope = useReportCacheScope()
+  return useQuery({queryKey: ['boletines', 'observaciones-grupo', ...scope, group, period],
+    enabled: enabled && !!group && !!period,
+    queryFn: () => api.get<{data: GroupObservations}>(`/boletines/observaciones/grupo?${new URLSearchParams({grupo_token: group, periodo_token: period})}`)
+      .then(result => result.data)})
+}
+
 export function useSaveBulletinObservation(matriculaToken: string) {
   const client = useQueryClient()
   const scope = useReportCacheScope()
   return useMutation({mutationFn: (input: ObservationTarget & {contenido: string; version: number}) =>
     api.put<{data: BulletinObservation}>(`/boletines/observaciones/${encodeURIComponent(matriculaToken)}`, input)
       .then(result => result.data),
-    onSuccess: () => {void client.invalidateQueries({queryKey: observationKey(scope, matriculaToken)})},
+    onSuccess: () => {
+      void client.invalidateQueries({queryKey: observationKey(scope, matriculaToken)})
+      void client.invalidateQueries({queryKey: ['boletines', 'observaciones-grupo', ...scope],
+        predicate: query => !!(query.state.data as GroupObservations | undefined)?.matriculas.some(row => row.matricula_token === matriculaToken)})
+    },
   })
 }
 

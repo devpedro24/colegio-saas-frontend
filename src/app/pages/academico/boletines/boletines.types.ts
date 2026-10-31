@@ -45,7 +45,7 @@ export interface BoletinData {
   areas: BoletinArea[]
   indicadores?: Array<{
     periodo_id: string; periodo: string; materia_id: string; materia: string; area_id: string | null
-    texto: string
+    texto: string; texto_html?: string
   }>
   advertencias: string[]
 }

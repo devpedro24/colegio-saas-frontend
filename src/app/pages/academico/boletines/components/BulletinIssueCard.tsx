@@ -8,11 +8,11 @@ import {useTemplateCatalog} from '../plantillas.api'
 export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: string; periods: BoletinData['periodos']}) {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
-  const {hasPermission} = useAuthz()
+  const {hasPermission, hasFeature} = useAuthz()
   const canPrepare = hasPermission('boletines.emisiones.preparar')
-  const canApprove = hasPermission('boletines.emisiones.aprobar')
   const canPublish = hasPermission('boletines.emisiones.publicar')
-  const canReadTemplates = hasPermission('boletines.plantillas.ver') || hasPermission('boletines.plantillas.gestionar')
+  const canReadTemplates = hasFeature('boletines_personalizables') &&
+    (hasPermission('boletines.plantillas.ver') || hasPermission('boletines.plantillas.gestionar'))
   const templates = useTemplateCatalog(1, canReadTemplates)
   const [page, setPage] = useState(1)
   const issues = useBulletinIssues(matriculaToken, page)
@@ -26,8 +26,8 @@ export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: st
     ? t('boletines.issue.final') : periods.find(period => period.id === item.periodo_token)?.nombre ?? t('boletines.issue.period')
   const currentTemplates = canReadTemplates ? templates.data?.plantillas.filter(item => item.ambito === selection.contexto
     && item.revision_publicada !== null) ?? [] : []
-  const busy = actions.preview.isPending || actions.prepare.isPending || actions.approve.isPending || actions.publish.isPending
-  const error = actions.preview.error ?? actions.prepare.error ?? actions.approve.error ?? actions.publish.error
+  const busy = actions.preview.isPending || actions.emit.isPending || actions.publish.isPending
+  const error = actions.preview.error ?? actions.emit.error ?? actions.publish.error
 
   return <section className='card mt-5 d-print-none' aria-labelledby='bulletin-issue-title'>
     <div className='card-header'><h3 className='card-title' id='bulletin-issue-title'>{t('boletines.issue.title')}</h3></div>
@@ -55,7 +55,7 @@ export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: st
       {preview && <div className='alert alert-info d-flex justify-content-between align-items-center gap-3'>
         <span>{t('boletines.issue.ready')} · {preview.resumen.estudiante.nombre} · {preview.resumen.asignaturas} {t('boletines.issue.subjects')}</span>
         <button className='btn btn-sm btn-primary' type='button' disabled={busy}
-          onClick={() => actions.prepare.mutate(selection, {onSuccess: () => setPreview(null)})}>{t('boletines.issue.prepare')}</button>
+          onClick={() => actions.emit.mutate(selection, {onSuccess: () => setPreview(null)})}>{t('boletines.issue.prepare')}</button>
       </div>}
       {issues.isLoading && <p role='status'>{t('boletines.issue.loading')}</p>}
       {issues.isError && <div className='alert alert-danger' role='alert'>{issues.error.message}</div>}
@@ -70,13 +70,11 @@ export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: st
             {item.plantilla && <div className='text-muted fs-8 mt-1'>{item.plantilla}</div>}
           </div>
           <div className='d-flex flex-wrap gap-2'>
-            {canApprove && item.estado === 'preparado' && <button className='btn btn-sm btn-light-primary' disabled={busy}
-              type='button' onClick={() => actions.approve.mutate(item.token)}>{t('boletines.issue.approve')}</button>}
             {canPublish && item.estado === 'aprobado' && <button className='btn btn-sm btn-primary' disabled={busy}
               type='button' onClick={() => {
                 if (window.confirm(t('boletines.issue.publishConfirm'))) actions.publish.mutate(item.token)
               }}>{t('boletines.issue.publish')}</button>}
-            {item.pdf_disponible && (canApprove || canPublish || item.estado === 'publicado') &&
+            {item.pdf_disponible &&
               <a className='btn btn-sm btn-light' href={bulletinPdfUrl(item.token)} target='_blank' rel='noreferrer'>
                 {t('boletines.issue.download')}</a>}
           </div>
