@@ -11,6 +11,7 @@ import {VisualChoice} from './VisualChoice'
 import {IndicadorWorkspace} from './IndicadorWorkspace'
 import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
 import {useGradePreview} from '../useGradePreview'
+import {QuickActivityEditor} from './QuickActivityEditor'
 
 export const PlanillaView = () => {
   const {asignacionId = '', periodoId = ''} = useParams()
@@ -29,6 +30,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
   const [editor, setEditor] = useState<{section: SeccionPlanilla; activity?: ActividadEvaluacion} | null>(null)
   const [activityForm, setActivityForm] = useState({nombre: '', fecha: '', peso: ''})
   const [selectedSection, setSelectedSection] = useState('')
+  const [quickActivityDirty, setQuickActivityDirty] = useState(false)
   const [reason, setReason] = useState('')
   const [manualEditor, setManualEditor] = useState<{section: SeccionPlanilla; student: Matricula; result: NonNullable<ResultadoEstudiante['secciones']>[number] | undefined} | null>(null)
   const [manualValue, setManualValue] = useState('')
@@ -39,7 +41,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
   const data = dirty ? snapshot.current : query.data
   const visual = data?.escala_visual?.tipo === 'imagenes'
   const preview = useGradePreview(assignment, period, data, draft)
-  const dirtyRef = useRef(dirty); dirtyRef.current = dirty
+  const dirtyRef = useRef(dirty); dirtyRef.current = dirty || quickActivityDirty
   const recovery = useWorkDraft({context: `grades:${assignment}:${period}`, title: selected?.materia.nombre ?? t('evaluacion.planilla.title'),
     value: {draft, reason, selectedSection}, dirty, enabled: !!query.data?.editable,
     restore: value => {setDraft(value.draft); setReason(value.reason); setSelectedSection(value.selectedSection)},
@@ -98,8 +100,14 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
   const activities = sections.flatMap(section => section.actividades)
   const byGrade = new Map(data.calificaciones.map(g => [`${g.actividad_id}:${g.matricula_id}`, g]))
   const byResult = new Map(data.resultados.map(r => [r.matricula_id, r]))
-  const editable = data.editable && !save.isPending && !activityMutation.isPending && !manualComponent.isPending
+  const pageEditable = data.editable && !save.isPending && !activityMutation.isPending && !manualComponent.isPending
+  const editable = pageEditable && !quickActivityDirty
+  const changeSection = (key: string) => {
+    if (quickActivityDirty) {toast.show(t('grading.saveActivitiesFirst'), 'info'); return}
+    setSelectedSection(key)
+  }
   const clean = () => {
+    if (quickActivityDirty) {toast.show(t('grading.saveActivitiesFirst'), 'info'); return false}
     if (dirty && !window.confirm(t('grading.unsaved'))) return false
     setDraft({}); return true
   }
@@ -215,7 +223,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
           <div className='d-flex align-items-center flex-wrap gap-3 text-muted'>
             <span><KTIcon iconName='people' className='fs-4 me-1' />{selected ? `${selected.grupo.grado.nombre} / (${selected.grupo.nombre})` : '—'}</span>
             <span className='badge badge-light-primary'>{data.periodo?.nombre}</span>
-            {visual ? <span>{data.escala_visual?.nombre}</span> : <span>{data.configuracion.valor_min} – {data.configuracion.valor_max}</span>}
+            {visual ? <span>{data.escala_visual?.nombre}</span> : <span>{Number(data.configuracion.valor_min).toFixed(1)} – {Number(data.configuracion.valor_max).toFixed(1)}</span>}
           </div>
         </div>
         <div className='d-flex align-items-center gap-3'>
@@ -231,20 +239,21 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
       {!data.editable && <div className='alert alert-info'>{t('grading.readOnly')}</div>}
       {dirty && query.data !== snapshot.current && <div className='alert alert-warning'>{t('grading.remoteChanges')}</div>}
       {data.estructura_anterior && <div className='alert alert-light border'>{t('grading.legacy')}</div>}
-      {allSections.length > 1 && <div className='nav nav-tabs nav-line-tabs gap-4 mb-5'>
-        <button className={`nav-link ${!selectedSection ? 'active' : ''}`} onClick={() => setSelectedSection('')}>{t('grading.all')}</button>
-        {allSections.map(section => <button key={sectionKey(section)} className={`nav-link ${selectedSection === sectionKey(section) ? 'active' : ''}`}
-          onClick={() => setSelectedSection(sectionKey(section))}>{section.nombre}</button>)}
+      {allSections.length > 1 && <div className='nav nav-tabs grade-sheet-tabs' role='group' aria-label={t('grading.views')}>
+        <button type='button' className={`nav-link${!selectedSection ? ' active' : ''}`} aria-pressed={!selectedSection}
+          onClick={() => changeSection('')}>{t('grading.all')}</button>
+        {allSections.map(section => <button type='button' key={sectionKey(section)} className={`nav-link${selectedSection === sectionKey(section) ? ' active' : ''}`}
+          aria-pressed={selectedSection === sectionKey(section)} onClick={() => changeSection(sectionKey(section))}>{section.nombre}</button>)}
       </div>}
       {data.usa_preinformes && <p className='text-gray-700 fs-7'>{t('grading.sharedActivityMode')}</p>}
       <div className='row g-4 mb-5'>{sections.map(section => <div className={sections.length > 1 ? 'col-lg-6 col-xl-4' : 'col-12'} key={sectionKey(section)}>
-        <div className='border rounded-3 p-4 h-100'>
+        <div className='border rounded-3 p-4 h-100 grade-component-card'>
           <div className='d-flex justify-content-between align-items-center gap-3 mb-3'>
             <span className='fw-bold'>{section.nombre ?? t('grading.periodActivities')}{data.usa_preinformes && section.peso != null ? ` · ${gradeDecimal(section.peso)}%` : ''}</span>
             {section.modo !== 'MANUAL' && data.permisos.crear && <button className='btn btn-sm btn-light-primary' disabled={!editable} onClick={() => openActivity(section)}><KTIcon iconName='plus' className='fs-4' />{t('grading.activity')}</button>}
           </div>
           <label className='form-label fs-7' htmlFor={`grade-mode-${sectionKey(section)}`}>{t('grading.componentMode')}</label>
-          <select id={`grade-mode-${sectionKey(section)}`} className='form-select form-select-sm' value={section.modo}
+          <select id={`grade-mode-${sectionKey(section)}`} className='form-select form-select-sm grade-component-mode' value={section.modo}
             disabled={!editable || !data.permisos.configurar || dirty}
             onChange={e => activityMutation.mutate({operacion: 'modo', componente_token: section.componente_token, preinforme_token: section.preinforme_token,
               version: section.version, modo: e.target.value as SeccionPlanilla['modo']}, {onError: error => toast.error(error.message)})}>
@@ -254,6 +263,9 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
           </select>
           {section.modo === 'MANUAL' && <p className='text-muted fs-7 mt-3 mb-0'>{t('grading.manualComponentHelp')}</p>}
           {section.modo === 'WEIGHTED_AVERAGE' && <p className='text-muted fs-7 mt-3 mb-0'>{t('grading.total')}: {Number(section.actividades.reduce((sum, a) => sum + Number(a.peso ?? 0), 0).toFixed(4))}% / 100%</p>}
+          {!!selectedSection && section.modo !== 'MANUAL' && <QuickActivityEditor key={sectionKey(section)}
+            assignment={assignment} period={period} section={section} periodStart={data.periodo.fecha_inicio} periodEnd={data.periodo.fecha_fin}
+            editable={pageEditable && !dirty && data.permisos.editar} onDirtyChange={setQuickActivityDirty} />}
         </div>
       </div>)}</div>
       <div className='d-flex flex-wrap gap-3 justify-content-end align-items-center mb-4'>

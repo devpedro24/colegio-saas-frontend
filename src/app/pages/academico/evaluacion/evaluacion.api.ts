@@ -182,18 +182,21 @@ export const useGuardarResultadoManualComponente = (asignacionId: string, period
 }
 
 export type ActividadPlanillaInput = {
-  operacion: 'crear' | 'editar' | 'eliminar' | 'modo'
+  operacion: 'crear' | 'editar' | 'eliminar' | 'modo' | 'editar_lote'
   componente_token: string | null; preinforme_token: string | null; actividad_token?: string
   version: number; nombre?: string; fecha?: string; peso?: string | null
   modo?: 'SIMPLE_AVERAGE' | 'WEIGHTED_AVERAGE' | 'MANUAL'
+  actividades?: Array<{actividad_token: string; version: number; nombre: string; fecha: string; peso?: string}>
 }
 export function useActividadPlanilla(asignacion: string, periodo: string) {
   const cache = useQueryClient()
   return useMutation({mutationFn: (data: ActividadPlanillaInput) => api.put(`${EVAL_URL}/planillas/${asignacion}/${periodo}/actividades`, data),
-    onSuccess: () => {
-      cache.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacion, periodo]})
-      cache.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
-      cache.invalidateQueries({queryKey: ['boletines']})
+    onSuccess: async () => {
+      await Promise.all([
+        cache.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacion, periodo]}),
+        cache.invalidateQueries({queryKey: ['evaluacion', 'catalogo']}),
+        cache.invalidateQueries({queryKey: ['boletines']}),
+      ])
     }})
 }
 

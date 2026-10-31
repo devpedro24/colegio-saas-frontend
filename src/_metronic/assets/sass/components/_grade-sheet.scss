@@ -2,6 +2,26 @@
   --grade-student-width: 260px;
   --grade-result-width: 112px;
   --grade-line: color-mix(in srgb, var(--bs-info) 15%, var(--bs-body-bg));
+  .grade-sheet-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid #e3e6eb; }
+  .grade-sheet-tabs .nav-link { margin-bottom: -1px; border: 1px solid #e3e6eb; border-bottom: 0; border-radius: 12px 12px 0 0; padding: 10px 15px; background: #f2f3f5; color: #202733; font-size: 13px; font-weight: 500; line-height: 1.4; transition: background .15s, border-color .15s; }
+  .grade-sheet-tabs .nav-link:hover { background: #e8ebee; color: #111827; }
+  .grade-sheet-tabs .nav-link.active { background: var(--bs-primary); border-color: var(--bs-primary); color: #fff; }
+  .grade-sheet-tabs .nav-link.active:hover { background: var(--bs-primary-active); border-color: var(--bs-primary-active); }
+  .grade-sheet-tabs button:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+  .grade-component-mode { max-width: 340px; }
+  .grade-quick-activities { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--grade-line); }
+  .grade-quick-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .grade-quick-heading h3 { font-size: 14px; font-weight: 700; margin: 0 0 5px; }
+  .grade-quick-heading p { margin: 0; color: var(--bs-gray-700); font-size: 12px; }
+  .grade-quick-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .grade-quick-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 180px; align-items: end; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--grade-line); }
+  .grade-quick-row.is-weighted { grid-template-columns: 26px minmax(0, 1fr) 180px 130px; }
+  .grade-quick-row > div { min-width: 0; }
+  .grade-quick-row label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--bs-dark); }
+  .grade-quick-row input { min-width: 0; min-height: 38px; color: var(--bs-dark); }
+  .grade-quick-number { display: grid; place-items: center; height: 38px; color: var(--bs-gray-700); font-size: 12px; }
+  .grade-quick-total { display: flex; justify-content: flex-end; gap: 6px; padding-top: 12px; font-size: 12px; }
+  .grade-quick-weight-note { padding: 9px 12px; background: #fff6d9; color: #6b4b0a; border-radius: 8px; font-size: 12px; }
   .grade-preview-notice { color: var(--bs-dark); background: var(--bs-info-light); border-left: 3px solid var(--bs-info); padding: 10px 14px; border-radius: 8px; font-size: 13px; }
   .grade-sheet-scroll { overflow: auto; max-height: 72vh; margin: 0 2.25rem 1rem; border: 1px solid var(--grade-line); border-radius: 12px; }
   .grade-sheet-table {
@@ -38,5 +58,12 @@
     .grade-sheet-table .grade-input { height: 34px; }
     .grade-sheet-table .grade-result { position: static; }
     .grade-sheet-scroll { max-height: 65vh; margin-inline: 1.25rem; }
+    .grade-sheet-tabs { gap: 6px; }
+    .grade-sheet-tabs button { flex: 1 1 130px; padding: 10px; font-size: 12px; }
+    .grade-quick-row, .grade-quick-row.is-weighted { grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+    .grade-quick-name { grid-column: 2 / -1; }
+    .grade-quick-name + div { grid-column: 2; }
+    .grade-quick-row:not(.is-weighted) .grade-quick-name + div { grid-column: 2 / -1; }
+    .grade-quick-row input { min-height: 44px; }
   }
 }
