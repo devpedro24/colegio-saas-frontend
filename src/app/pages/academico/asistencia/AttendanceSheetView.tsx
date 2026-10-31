@@ -2,14 +2,16 @@ import {useEffect, useMemo, useRef, useState, type KeyboardEvent} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useQueryClient} from '@tanstack/react-query'
 import {useIntl} from 'react-intl'
-import {useSearchParams} from 'react-router-dom'
+import {useAcademicSearchParams} from '../shared/useAcademicSearchParams'
 import {ApiError, api} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {AttendancePolicySettings} from './AttendancePolicyPanel'
 import {TeacherCorrectionForm} from './AttendanceRequests'
+import {attendanceToday, canEditAttendanceMark, nextAttendanceMark} from './attendanceCorrection'
 import {useAttendance, useAttendanceCatalog, useAttendanceSheet,
   type AttendanceSheet, type AttendanceSheetColumn, type AttendanceState} from './asistencia.api'
 import './attendance-sheet.css'
+import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
 
 type Draft = {version: number; marks: Record<string, AttendanceState>}
 const columnKey = (column: AttendanceSheetColumn) => `${column.fecha}:${column.sesion_token}`
@@ -30,6 +32,19 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   const [saving, setSaving] = useState(false)
   const [revision, setRevision] = useState(0)
+  const [today, setToday] = useState(attendanceToday)
+  useEffect(() => {
+    // Expire same-day corrections even when this query stays cached overnight.
+    const updateDay = () => setToday(attendanceToday())
+    const timer = window.setInterval(updateDay, 1000)
+    window.addEventListener('focus', updateDay)
+    document.addEventListener('visibilitychange', updateDay)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', updateDay)
+      document.removeEventListener('visibilitychange', updateDay)
+    }
+  }, [])
   const gridRef = useRef<HTMLTableElement>(null)
   const periodClosed = sheet.periodo.estado === 'cerrado'
   useEffect(() => { setDrafts({}) }, [assignment, sheet.periodo.token, revision])
@@ -38,18 +53,30 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
   const columns = sheet.columnas
   const selectedColumn = columns.find(column => columnKey(column) === selected)
   const dirtyKeys = Object.keys(drafts)
+  const recovery = useWorkDraft({context: `attendance:${assignment}:${sheet.periodo.token}`, title: t('attendance.sheet.title'),
+    value: drafts, dirty: dirtyKeys.length > 0, enabled: !periodClosed,
+    restore: setDrafts, reset: () => setDrafts({}),
+    compatible: value => Object.entries(value).every(([key, draft]) => {
+      const column = columns.find(item => columnKey(item) === key)
+      return column?.version === draft.version && Object.keys(draft.marks).every(token =>
+        column.matriculas.includes(token) && canEditAttendanceMark(column, token, attendanceToday()))
+    }),
+  })
   const stale = dirtyKeys.some(key => columns.find(column => columnKey(column) === key)?.version !== drafts[key].version)
+  const expired = dirtyKeys.some(key => {
+    const column = columns.find(item => columnKey(item) === key)
+    return !column || Object.keys(drafts[key].marks).some(token => !canEditAttendanceMark(column, token, today))
+  })
   const cellState = (column: AttendanceSheetColumn, token: string) =>
     drafts[columnKey(column)]?.marks[token] ?? column.marcas[token] ?? 'sin_marcar'
 
   const changeCell = (column: AttendanceSheetColumn, token: string, choice: 'presente' | 'ausente') => {
     const key = columnKey(column)
     const original = column.marcas[token] ?? 'sin_marcar'
-    if (!column.editable || !column.matriculas.includes(token)
-      || original === 'ausente' || original === 'tarde' || original === 'justificada') return
+    if (!canEditAttendanceMark(column, token, attendanceToday())) return
     setDrafts(previous => {
       const existing = previous[key]
-      const value = (existing?.marks[token] ?? original) === choice ? 'sin_marcar' : choice
+      const value = nextAttendanceMark(original, existing?.marks[token] ?? original, choice)
       const marks = {...existing?.marks}
       if (value === original) delete marks[token]
       else marks[token] = value
@@ -98,16 +125,20 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
   }
 
   const save = async () => {
-    if (saving || stale) return
+    if (saving || stale || expired) return
     const targets = dirtyKeys.length ? columns.filter(column => dirtyKeys.includes(columnKey(column)))
       : selectedColumn?.editable && !selectedColumn.registrada ? [selectedColumn] : []
     if (!targets.length) return
     setSaving(true)
+    const finishDraft = recovery.afterSave()
     const saved: string[] = []
     try {
       for (const column of targets) {
         const key = columnKey(column)
         const draft = drafts[key]
+        if (draft && Object.keys(draft.marks).some(token => !canEditAttendanceMark(column, token, attendanceToday()))) {
+          throw new Error(t('attendance.sheet.correctionExpired'))
+        }
         await api.put('/asistencias?opaque=1', {
           asignacion_token: assignment, sesion_token: column.sesion_token,
           fecha: column.fecha, version: draft?.version ?? column.version,
@@ -117,9 +148,10 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
         saved.push(key)
       }
       toast.success(t('attendance.saved'))
+      finishDraft()
     } catch (error) {
       const reason = error instanceof ApiError
-        ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : t('attendance.saveError')
+        ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error instanceof Error ? error.message : t('attendance.saveError')
       toast.error(saved.length ? `${t('attendance.partialSave')} ${reason}` : reason)
     } finally {
       if (saved.length) setDrafts(previous => {
@@ -134,20 +166,22 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
   }
 
   return <section className='card mb-6'><div className='card-body'>
+    {recovery.notice}
     {periodClosed && <div className='alert alert-danger mb-4' role='alert'>{t('attendance.sheet.periodClosed')}</div>}
     <div className='d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4'>
       <div>
         <h3 className='fs-4 fw-bold mb-1'>{t('attendance.sheet.title')}</h3>
         <p className='text-muted fs-7 mb-0'>{t('attendance.sheet.help')}</p>
       </div>
-      {!periodClosed && <button type='button' className='btn btn-primary' disabled={saving || stale ||
+      {!periodClosed && <button type='button' className='btn btn-primary' disabled={saving || stale || expired ||
         (selectedColumn && !selectedColumn.matriculas.length && !dirtyKeys.length) ||
         (!dirtyKeys.length && (!selectedColumn?.editable || selectedColumn.registrada))}
         onClick={save}>{saving ? t('common.pleaseWait') : dirtyKeys.length
           ? t('attendance.sheet.saveChanges') : t('attendance.sheet.saveBlank')}</button>}
     </div>
-    {stale && <div className='alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2' role='alert'>
-      <span>{t('attendance.stale')}</span>
+    <div className='alert alert-warning mb-4' role='note'>{t('attendance.sheet.correctionHelp')}</div>
+    {(stale || expired) && <div className='alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2' role='alert'>
+      <span>{t(expired ? 'attendance.sheet.correctionExpired' : 'attendance.stale')}</span>
       <button type='button' className='btn btn-sm btn-light' onClick={() => {
         if (window.confirm(t('attendance.sheet.discard'))) setRevision(value => value + 1)
       }}>
@@ -179,8 +213,7 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
             const key = columnKey(column)
             const state = cellState(column, student.matricula_token)
             const belongs = column.matriculas.includes(student.matricula_token)
-            const locked = !column.editable || !student.activa || !belongs
-              || ['ausente', 'tarde', 'justificada'].includes(column.marcas[student.matricula_token] ?? '')
+            const locked = !student.activa || !canEditAttendanceMark(column, student.matricula_token, today)
             return <td key={key} className={`attendance-sheet-cell attendance-sheet-${state} ${selected === key ? 'is-selected' : ''}`}>
               {belongs && (state === 'tarde' || state === 'justificada'
                 ? <span className='attendance-sheet-legacy' title={t(`attendance.${state}`)}>{state === 'tarde' ? 'T' : 'J'}</span>
@@ -193,7 +226,8 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
                       data-attendance-row={index} data-attendance-col={columnIndex} data-attendance-choice={choice}
                       onKeyDown={event => navigateCell(event, index, columnIndex, choice)}
                       aria-label={t(`attendance.${choice}`)}
-                      title={locked && state === 'ausente' ? t('attendance.sheet.correctAbsence') : t(`attendance.${choice}`)}>
+                      title={locked && state === 'ausente' && column.fecha < today
+                        ? t('attendance.sheet.correctAbsence') : t(`attendance.${choice}`)}>
                       {choice === 'presente' ? '✓' : 'X'}
                     </button>)}
                   </div>)}
@@ -221,7 +255,7 @@ export function AttendanceSheetView({canConfigure, canRequest}: {canConfigure: b
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const client = useQueryClient()
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useAcademicSearchParams('asistencia')
   const requestedYear = publicToken(params.get('ano'))
   const requestedGroup = publicToken(params.get('grupo'))
   const requestedAssignment = publicToken(params.get('asignacion'))
@@ -244,9 +278,11 @@ export function AttendanceSheetView({canConfigure, canRequest}: {canConfigure: b
   const groups = useMemo(() => [...new Map((assignments ?? []).map(item => [item.grupo_token, {
     token: item.grupo_token, nombre: item.grupo_nombre,
   }])).values()], [assignments])
-  const group = groups.some(item => item.token === requestedGroup) ? requestedGroup : ''
+  const group = groups.some(item => item.token === requestedGroup) ? requestedGroup
+    : groups.length === 1 ? groups[0].token : ''
   const subjects = (assignments ?? []).filter(item => item.grupo_token === group)
-  const assignment = subjects.some(item => item.token === requestedAssignment) ? requestedAssignment : ''
+  const assignment = subjects.some(item => item.token === requestedAssignment) ? requestedAssignment
+    : subjects.length === 1 ? subjects[0].token : ''
   const sheet = useAttendanceSheet(assignment, requestedPeriod)
   const selectedColumn = sheet.data?.columnas.find(column => columnKey(column) === selected)
   const detail = useAttendance(assignment, canRequest && selectedColumn?.registrada ? selectedColumn.fecha : '')
@@ -260,11 +296,14 @@ export function AttendanceSheetView({canConfigure, canRequest}: {canConfigure: b
     }
     const next = new URLSearchParams(params)
     if (next.get('ano') !== year) next.set('ano', year)
-    if (params.has('grupo') && !group) {
-      next.delete('grupo'); next.delete('asignacion'); next.delete('periodo')
-    } else if (params.has('asignacion') && !assignment) {
+    if (requestedGroup && requestedGroup !== group) {
       next.delete('asignacion'); next.delete('periodo')
-    } else if (!assignment && next.has('periodo')) next.delete('periodo')
+    }
+    if (group) next.set('grupo', group); else next.delete('grupo')
+    if (requestedAssignment && requestedAssignment !== assignment) next.delete('periodo')
+    if (assignment) next.set('asignacion', assignment); else {
+      next.delete('asignacion'); next.delete('periodo')
+    }
     if (next.toString() !== params.toString()) setParams(next, {replace: true})
   }, [catalogReady, year, group, assignment, requestedYear, requestedGroup, requestedAssignment,
     catalog.data, client, params, setParams])
@@ -321,18 +360,18 @@ export function AttendanceSheetView({canConfigure, canRequest}: {canConfigure: b
         </div>
       </div>
       <div className='row g-4'>
-        <div className='col-md-5'><label htmlFor='attendance-group' className='form-label'>{t('attendance.sheet.group')}</label>
+        {groups.length !== 1 && <div className='col-md-5'><label htmlFor='attendance-group' className='form-label'>{t('attendance.sheet.group')}</label>
           <select id='attendance-group' className='form-select' value={group} disabled={!catalogReady}
             onChange={event => changeFilter('grupo', event.target.value)}>
             <option value=''>{t('attendance.sheet.selectGroup')}</option>
             {groups.map(item => <option key={item.token} value={item.token}>{item.nombre}</option>)}
-          </select></div>
-        <div className='col-md-4'><label htmlFor='attendance-subject' className='form-label'>{t('attendance.sheet.subject')}</label>
+          </select></div>}
+        {subjects.length !== 1 && <div className='col-md-4'><label htmlFor='attendance-subject' className='form-label'>{t('attendance.sheet.subject')}</label>
           <select id='attendance-subject' className='form-select' value={assignment} disabled={!group}
             onChange={event => changeFilter('asignacion', event.target.value)}>
             <option value=''>{t('attendance.sheet.selectSubject')}</option>
             {subjects.map(item => <option key={item.token} value={item.token}>{item.materia_nombre}</option>)}
-          </select></div>
+          </select></div>}
         <div className='col-md-3'><label htmlFor='attendance-period' className='form-label'>{t('attendance.sheet.period')}</label>
           <select id='attendance-period' className='form-select' value={sheet.data?.periodo.token ?? requestedPeriod}
             disabled={!assignment || !sheet.data?.periodos.length}
@@ -347,7 +386,6 @@ export function AttendanceSheetView({canConfigure, canRequest}: {canConfigure: b
       {sheet.error instanceof ApiError ? sheet.error.message : catalog.error instanceof ApiError
         ? catalog.error.message : t('attendance.loadError')}
     </div>}
-    {!assignment && catalogReady && <div className='card card-body mb-6 text-muted'>{t('attendance.sheet.choose')}</div>}
     {assignment && sheet.data && <AttendanceGrid key={`${assignment}:${sheet.data.periodo.token}`} sheet={sheet.data}
       assignment={assignment} selected={selected} onSelect={setSelected} onDirtyChange={setDirty} />}
     {canRequest && selectedColumn?.registrada && <div className='mb-6'>

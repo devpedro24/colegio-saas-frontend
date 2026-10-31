@@ -1,7 +1,8 @@
-import {useMemo, useState} from 'react'
+import {useMemo, useRef, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {AttendanceApprovalModal} from './AttendanceApprovalModal'
 import {
   useAttendanceRequests, useCreateAttendanceRequest, useOwnAbsences,
   useResolveAttendanceRequest, useReviewAttendanceRequest,
@@ -128,21 +129,34 @@ export function AttendanceRequestInbox({scope}: {scope: 'propias' | 'docente' | 
   const [page, setPage] = useState(1)
   const [showAll, setShowAll] = useState(false)
   const [responses, setResponses] = useState<Record<string, string>>({})
-  const status = showAll || scope === 'propias' ? undefined
-    : scope === 'docente' ? 'revision_docente' : 'pendiente_aprobacion'
+  const [approval, setApproval] = useState<AttendanceRequest | null>(null)
+  const [approvalError, setApprovalError] = useState('')
+  const submitting = useRef(false)
+  const status = scope === 'aprobacion' && !showAll ? 'pendiente_aprobacion' : undefined
   const query = useAttendanceRequests(scope, page, status)
   const review = useReviewAttendanceRequest()
   const resolve = useResolveAttendanceRequest()
   const decide = (row: AttendanceRequest, decision: 'remitir' | 'aprobar' | 'rechazar') => {
+    if (submitting.current || review.isPending || resolve.isPending) return
     const response = responses[row.token]?.trim() ?? ''
     if (decision === 'rechazar' && response.length < 10) {
       toast.error(t('attendance.rejectionReason'))
       return
     }
-    if (decision === 'aprobar' && !window.confirm(t('attendance.confirmApproval'))) return
+    submitting.current = true
+    setApprovalError('')
     const callbacks = {
-      onSuccess: () => {toast.success(t('attendance.requestUpdated')); setResponses(current => ({...current, [row.token]: ''}))},
-      onError: (error: unknown) => toast.error(message(error, t('attendance.requestError'))),
+      onSuccess: () => {
+        toast.success(t('attendance.requestUpdated'))
+        setResponses(current => ({...current, [row.token]: ''}))
+        setApproval(null)
+      },
+      onError: (error: unknown) => {
+        const reason = message(error, t('attendance.requestError'))
+        if (decision === 'aprobar') setApprovalError(reason)
+        else toast.error(reason)
+      },
+      onSettled: () => {submitting.current = false},
     }
     if (scope === 'docente' && decision !== 'aprobar') {
       review.mutate({token: row.token, decision, respuesta: response}, callbacks)
@@ -155,7 +169,7 @@ export function AttendanceRequestInbox({scope}: {scope: 'propias' | 'docente' | 
   return <section className='card mb-6'><div className='card-body'>
     <div className='d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3'>
       <h2 className='fs-4 fw-bold mb-0'>{t(title)}</h2>
-      {scope !== 'propias' && <label className='form-check form-switch form-check-custom form-check-solid'>
+      {scope === 'aprobacion' && <label className='form-check form-switch form-check-custom form-check-solid'>
         <input className='form-check-input' type='checkbox' checked={showAll}
           onChange={event => {setShowAll(event.target.checked); setPage(1)}} />
         <span className='form-check-label'>{t('attendance.showAllRequests')}</span>
@@ -168,7 +182,9 @@ export function AttendanceRequestInbox({scope}: {scope: 'propias' | 'docente' | 
       <div className='d-flex flex-column gap-3'>{query.data.solicitudes.map(row => <article key={row.token} className='border rounded p-4'>
         <div className='d-flex flex-wrap align-items-center gap-2 mb-2'>
           <strong>{row.estudiante}</strong><span className='text-muted'>· {row.asignatura} · {row.grupo}</span>
-          <span className='badge badge-light-primary'>{t(`attendance.requestStatus.${row.estado}`)}</span>
+          <span className={`badge ${row.estado === 'rechazada' ? 'badge-light-danger' : 'badge-light-primary'}`}>
+            {t(`attendance.requestStatus.${row.estado}`)}
+          </span>
         </div>
         <div className='text-muted fs-7 mb-2'>{row.marcas.map(item =>
           `${item.fecha} ${item.hora_inicio}–${item.hora_fin}`,
@@ -184,7 +200,10 @@ export function AttendanceRequestInbox({scope}: {scope: 'propias' | 'docente' | 
             onChange={event => setResponses(current => ({...current, [row.token]: event.target.value}))} />
           <div className='d-flex flex-wrap gap-2'>
             <button type='button' className='btn btn-sm btn-primary' disabled={review.isPending || resolve.isPending}
-              onClick={() => decide(row, scope === 'docente' ? 'remitir' : 'aprobar')}>
+              onClick={() => {
+                if (scope === 'docente') decide(row, 'remitir')
+                else {setApprovalError(''); setApproval(row)}
+              }}>
               {t(scope === 'docente' ? 'attendance.forward' : 'attendance.approve')}
             </button>
             <button type='button' className='btn btn-sm btn-light-danger' disabled={review.isPending || resolve.isPending}
@@ -194,5 +213,8 @@ export function AttendanceRequestInbox({scope}: {scope: 'propias' | 'docente' | 
       </article>)}</div>
       <Pager page={page} last={query.data.pagination.last_page} total={query.data.pagination.total} onPage={setPage} />
     </>}
+    <AttendanceApprovalModal request={approval} pending={resolve.isPending} error={approvalError}
+      onClose={() => {if (!submitting.current) {setApproval(null); setApprovalError('')}}}
+      onConfirm={() => {if (approval && scope === 'aprobacion') decide(approval, 'aprobar')}} />
   </div></section>
 }

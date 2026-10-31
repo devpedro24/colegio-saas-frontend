@@ -60,7 +60,6 @@ const key = (assignment: string, date: string) => ['asistencias', 'detalle', ass
 export function useAttendanceCatalog(yearToken = '') {
   return useQuery({
     queryKey: ['asistencias', 'catalogo', yearToken],
-    staleTime: 5 * 60_000,
     placeholderData: previous => previous,
     queryFn: () => api.get<{data: AttendanceCatalog}>(`/asistencias?opaque=1${yearToken ? `&ano_lectivo_token=${encodeURIComponent(yearToken)}` : ''}`)
       .then(response => response.data),
@@ -70,7 +69,6 @@ export function useAttendanceCatalog(yearToken = '') {
 export function useAttendanceSheet(assignment: string, period: string) {
   return useQuery({
     queryKey: ['asistencias', 'planilla', assignment, period], enabled: !!assignment,
-    staleTime: 10_000,
     queryFn: () => {
       const params = new URLSearchParams({opaque: '1', asignacion_token: assignment})
       if (period) params.set('periodo_token', period)
