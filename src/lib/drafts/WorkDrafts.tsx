@@ -65,6 +65,7 @@ type Options<T> = {
   restore: (value: T) => void; reset?: () => void; compatible?: (value: T, base: string) => boolean
   files?: string[]
   editIdentity?: (value: T) => unknown
+  reviewCurrent?: () => void
 }
 // eslint-disable-next-line react-refresh/only-export-components
 export function useWorkDraft<T>(options: Options<T>) {
@@ -136,13 +137,16 @@ export function useWorkDraft<T>(options: Options<T>) {
         restoredTime.current = serialized === JSON.stringify(candidate.value) ? null : candidate.editedAt
         options.restore(candidate.value as T); setIgnored(items => [...items, candidate.token])
       }}>{t('drafts.restore')}</button>
-      <button type='button' className='btn btn-sm btn-light' onClick={() => setInspect(candidate)}>{t('drafts.inspect')}</button>
+      <button type='button' className='btn btn-sm btn-light-primary' onClick={() => setInspect(candidate)}>{t('drafts.inspect')}</button>
       <button type='button' className='btn btn-sm btn-light-danger' onClick={() => {void store?.discard(candidate.token)}}>{t('drafts.discard')}</button>
     </div>}
     {options.dirty && current && <div className={`alert ${current.status === 'error' ? 'alert-warning' : 'alert-light border'} d-flex flex-wrap align-items-center gap-3 my-3`} role='status'>
       <span className='flex-grow-1 text-gray-800'>{t('drafts.pending')} · {t(`drafts.${current.status}`)} {current.status !== 'saving' && intl.formatTime(current.editedAt)}
         <small className='d-block text-muted'>{t('drafts.manual')}</small></span>
-      {options.reset && <button type='button' className='btn btn-sm btn-light-danger' onClick={() => {void discard()}}>{t('drafts.discard')}</button>}
+      <div className='d-flex flex-wrap align-items-center gap-2'>
+        <button type='button' className='btn btn-sm btn-light-primary' onClick={() => options.reviewCurrent ? options.reviewCurrent() : setInspect(current)}>{t('drafts.inspect')}</button>
+        {options.reset && <button type='button' className='btn btn-sm btn-light-danger' onClick={() => {void discard()}}>{t('drafts.discard')}</button>}
+      </div>
     </div>}
     <Modal show={!!inspect} onHide={() => setInspect(null)} centered size='lg'>
       <Modal.Header closeButton><Modal.Title>{t('drafts.inspect')}</Modal.Title></Modal.Header>
