@@ -40,7 +40,10 @@ export type EscalaOpcionInput = Pick<EscalaOpcion, 'nombre' | 'valor_equivalente
 }
 
 /** Bloque 4: escala valorativa (puede variar por nivel — RN-CC-003). Por ano lectivo. */
+export type PerformanceRange = {nombre: string; desde: string; hasta: string}
+
 export interface EscalaValorativa {
+  desempenos?: PerformanceRange[] | null
   url_token: string
   ano_lectivo_token: string
   nombre: string
@@ -58,6 +61,7 @@ export interface EscalaValorativa {
 
 /** Body de POST/PUT /config/escalas. */
 export interface EscalaValorativaInput {
+  desempenos?: PerformanceRange[] | null
   ano_lectivo_token: string
   nombre: string
   nivel_educativo: NivelEducativo | null

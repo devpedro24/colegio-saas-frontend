@@ -1,4 +1,6 @@
 import {FC, useState, type FormEvent} from 'react'
+import {PerformanceRangeEditor} from './PerformanceRangeEditor'
+import type {PerformanceRange} from '../configuracion.types'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -73,6 +75,7 @@ const EscalaForm: FC<{
     ? escala.opciones.map(o => ({url_token: o.url_token, nombre: o.nombre,
         valor_equivalente: String(o.valor_equivalente), emoji: o.emoji,
         aprueba: o.aprueba, imagen_url: o.imagen_url})) : defaultChoices())
+  const [ranges, setRanges] = useState<PerformanceRange[]>(escala?.desempenos ?? [])
   const [error, setError] = useState<ApiError | null>(null)
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<FormState>) => setForm((prev) => ({...prev, ...patch}))
@@ -92,6 +95,7 @@ const EscalaForm: FC<{
       valor_min: isNumerica && form.valor_min !== '' ? Number(form.valor_min) : null,
       valor_max: isNumerica && form.valor_max !== '' ? Number(form.valor_max) : null,
       decimales: isNumerica ? 1 : null,
+      desempenos: isNumerica ? ranges : null,
     }
 
     const onError = (err: unknown) => {
@@ -219,6 +223,7 @@ const EscalaForm: FC<{
             </div>
           </div>
         )}
+        {isNumerica && <PerformanceRangeEditor value={ranges} onChange={setRanges} disabled={pending} />}
         {!isNumerica && <div className='mt-5'>
           {choicesLocked && <div className='alert alert-info' role='status'>
             {t('academico.config.escala.opciones.locked')}

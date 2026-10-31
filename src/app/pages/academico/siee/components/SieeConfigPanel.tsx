@@ -1,3 +1,5 @@
+import {PerformanceSettingsCard} from '../../configuracion/components/PerformanceRangeEditor'
+import {useAuthz} from '@/app/modules/auth/core/authz'
 import {useState, useEffect, useRef} from 'react'
 import {KTCard, KTCardBody, KTIcon} from '@/_metronic/helpers'
 import {useSiee, useCurriculo, useUpdateSiee, useUpdateCurriculo} from '../siee.api'
@@ -56,6 +58,7 @@ function CurriculumWeightCell({item, yearId, editable}: {item: CurriculoItem; ye
 }
 
 export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) => {
+  const authz = useAuthz()
   const intl = useIntl()
   const toast = useToast()
   const t = (id: string) => intl.formatMessage({id})
@@ -392,6 +395,8 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
         </KTCardBody>
       </KTCard>
 
+      {authz.hasPermission('academico.configurar') && <PerformanceSettingsCard year={anoLectivoToken} token={formData.escala_token} editable={data.editable} />}
+
       <KTCard>
         <div className='card-header border-0 pt-5'>
           <h3 className='card-title align-items-start flex-column'>
@@ -469,6 +474,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
             loading={curriculo.isFetching} onPageChange={setCurrPage} onPerPageChange={changeCurrSize} />
         </KTCardBody>
       </KTCard>
+
       {bulkMode && <BulkCurriculumModal key={`${anoLectivoToken}:${bulkMode}`} year={anoLectivoToken} mode={bulkMode} editable={curriculoEditable}
         weighted={data.configuracion.usar_areas && data.configuracion.modo_area === 'WEIGHTED_AVERAGE'} close={() => setBulkMode(null)} />}
     </div>
