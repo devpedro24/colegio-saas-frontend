@@ -14,6 +14,10 @@ const MasterLayout = () => {
     reInitMenu()
   }, [location.key])
 
+  if (/^\/academico\/boletines\/plantillas\/?$/.test(location.pathname)) {
+    return <PageDataProvider><Outlet /><UpgradePlanModal /></PageDataProvider>
+  }
+
   return (
     <PageDataProvider>
       {/* begin::App */}

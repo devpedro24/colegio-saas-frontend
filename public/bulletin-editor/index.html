@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es" translate="no" class="notranslate">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="google" content="notranslate">
+  <meta name="theme-color" content="#6A23FF">
+  <title>Plantillas de boletín</title>
+  <link rel="icon" href="assets/logo-muestra.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/keenicons.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="advanced.css">
+  <link rel="stylesheet" href="proposal.css">
+  <link rel="stylesheet" href="layout.css">
+  <link rel="stylesheet" href="assets/catalog-fonts.css">
+  <link rel="stylesheet" href="canvas.css">
+  <link rel="stylesheet" href="saas.css">
+  <link rel="stylesheet" href="selection-ui.css">
+  <script src="font-catalog.js" defer></script>
+  <script src="model.js" defer></script>
+  <script src="proposal-model.js" defer></script>
+  <script src="layout-model.js" defer></script>
+  <script src="field-guide.js" defer></script>
+  <script src="page-layout.js" defer></script>
+  <script src="report-engine.js" defer></script>
+  <script src="canvas-engine.js" defer></script>
+  <script src="design-library.js" defer></script>
+  <script src="template-pages.js" defer></script>
+  <script src="advanced-ui.js" defer></script>
+  <script src="sheet-ui.js" defer></script>
+  <script src="proposal-ui.js" defer></script>
+  <script src="sheet-editor.js" defer></script>
+  <script src="saas-bridge.js" defer></script>
+  <script src="editor-i18n.js" defer></script>
+  <script src="selection-ui.js" defer></script>
+  <script src="canvas-zoom.js" defer></script>
+  <script src="canvas-objects.js" defer></script>
+  <script src="studio-dialogs.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell" id="app" data-device="desktop">
+    <section id="gallery-view" aria-label="Galería de plantillas">
+
+      <main class="gallery-main"><div class="gallery-intro"><div><span class="eyebrow">TU COLEGIO, TU ESTILO</span><h1>Tus plantillas, a tu manera</h1><p>Crea y administra las plantillas de boletín de tu colegio.</p></div><button class="button green" data-action="new"><i class="ki-outline ki-plus"></i> Crear plantilla</button></div>
+        <div class="gallery-tools"><label class="search"><i class="ki-outline ki-magnifier"></i><input id="gallery-search" placeholder="Buscar plantillas" aria-label="Buscar plantillas"></label></div>
+        <div class="filter-row" role="group" aria-label="Tipo de plantilla"><button class="chip active" data-filter="all">Todas</button><button class="chip" data-filter="periodo">Por período</button><button class="chip" data-filter="final">Final / sumatorio</button><span class="hint"><i class="ki-outline ki-information-2"></i> Con tu propia identidad visual</span></div>
+        <div id="template-grid" class="template-grid"></div>
+        <div class="gallery-note"><i class="ki-outline ki-information-2"></i><span>Una plantilla define el diseño. Los datos se completan después, al emitir el boletín.</span><button class="text-button" data-action="import">Importar diseño <i class="ki-outline ki-exit-up"></i></button></div>
+      </main>
+    </section>
+    <section id="editor-view" hidden aria-label="Editor visual de boletines">
+      <header class="editor-header"><button class="icon-button white-icon" data-action="gallery" aria-label="Volver a plantillas" title="Volver a plantillas"><i class="ki-outline ki-arrow-left"></i></button><div class="header-divider"></div><button class="document-name" id="document-name" data-action="rename" title="Cambiar nombre"><span>Boletín de período</span><i class="ki-outline ki-pencil"></i></button><span id="save-status" class="save-status">Borrador</span><div class="header-spacer"></div><button class="icon-button white-icon history-button" data-action="undo" aria-label="Deshacer" title="Deshacer · Ctrl+Z"><span class="undo-glyph">↶</span></button><button class="icon-button white-icon history-button" data-action="redo" aria-label="Rehacer" title="Rehacer · Ctrl+Mayús+Z"><span class="undo-glyph">↷</span></button><button class="button header-preview" data-action="preview"><i class="ki-outline ki-eye"></i><span>Vista previa</span></button><button class="button header-save" data-action="save" aria-label="Guardar borrador"><i class="ki-outline ki-save-2"></i><span>Guardar borrador</span></button><button class="button green publish-button" data-action="publish">Publicar plantilla <i class="ki-outline ki-arrow-right"></i></button><div class="more-wrap"><button class="icon-button white-icon" data-action="more" aria-label="Más opciones" aria-expanded="false"><i class="ki-outline ki-dots-horizontal"></i></button><div id="more-menu" class="popover-menu" hidden><button data-action="save"><i class="ki-outline ki-save-2"></i> Guardar borrador</button><button data-action="preview"><i class="ki-outline ki-eye"></i> Vista previa</button><button data-action="publish"><i class="ki-outline ki-check-circle"></i> Publicar plantilla</button><button data-action="export"><i class="ki-outline ki-exit-down"></i> Exportar diseño</button><button data-action="import"><i class="ki-outline ki-exit-up"></i> Importar diseño</button><button data-action="versions"><i class="ki-outline ki-time"></i> Historial de versiones</button><button data-action="help"><i class="ki-outline ki-question-2"></i> Atajos y ayuda</button></div></div></header>
+      <div class="editor-toolbar"><div id="document-tools"><div class="segment scope-segment" role="group" aria-label="Tipo de boletín"><button data-scope="periodo" class="active">Período</button><button data-scope="final">Final</button></div><label class="toolbar-select"><i class="ki-outline ki-document"></i><select id="paper-format" aria-label="Tamaño de papel"><option value="carta">Carta (8,5 × 11 in)</option><option value="a4">A4 (210 × 297 mm)</option><option value="oficio">Legal (8,5 × 14 in)</option><option value="a5">A5 (148 × 210 mm)</option></select></label><select id="paper-orientation" aria-label="Orientación"><option value="portrait">Vertical</option><option value="landscape">Horizontal</option></select><span class="toolbar-divider"></span><label class="toggle-label toolbar-toggle"><input id="snap-toggle" type="checkbox" checked><span class="switch"></span>Ajustar a guías</label><button class="field-view-toggle" data-adv="toggle-fields" aria-pressed="false">Ver campos</button><div class="toolbar-spacer"></div></div><div id="element-format" class="element-format" role="toolbar" aria-label="Formato del elemento" hidden></div></div>
+      <div class="editor-workspace">
+        <nav class="tool-rail" aria-label="Herramientas del editor"><button data-panel="sheet"><i class="ki-outline ki-setting-2"></i><span>Hoja</span></button><button data-panel="designs"><i class="ki-outline ki-element-11"></i><span>Plantillas</span></button><button data-panel="blocks" class="active"><i class="ki-outline ki-element-plus"></i><span>Bloques</span></button><button data-panel="text"><i class="ki-outline ki-text"></i><span>Texto</span></button><button data-panel="shapes"><i class="ki-outline ki-abstract-14"></i><span>Elementos</span></button><button data-panel="images"><i class="ki-outline ki-picture"></i><span>Imágenes</span></button><button data-panel="data"><i class="ki-outline ki-data"></i><span>Datos</span></button><button data-panel="layers"><i class="ki-outline ki-abstract-26"></i><span>Capas</span></button><button data-panel="pages"><i class="ki-outline ki-document"></i><span>Páginas</span></button></nav>
+        <aside id="library" class="library" aria-label="Biblioteca de elementos"><div class="panel-heading"><h2 id="library-title">Bloques del boletín</h2><button class="icon-button close-panel" data-action="close-library" aria-label="Ocultar panel"><i class="ki-outline ki-left"></i></button></div><div id="library-content"></div></aside>
+        <main id="canvas-area" class="canvas-area" aria-label="Lienzo de diseño"><div class="canvas-context"><span id="canvas-context">CARTA · VERTICAL</span><span><i class="ki-outline ki-lock-2"></i> Datos de muestra</span></div><div id="canvas-scroll" class="canvas-scroll"><div id="paper-wrap" class="paper-wrap"><div id="paper" class="paper" tabindex="0" aria-label="Página del boletín"></div></div></div><button class="canvas-properties-button" data-action="open-properties"><i class="ki-outline ki-setting-2"></i> Propiedades</button><div class="canvas-hint" id="canvas-hint"><i class="ki-outline ki-mouse"></i> Selecciona un bloque para personalizarlo.</div></main>
+        <aside id="inspector" class="inspector" aria-label="Propiedades del elemento"><div class="panel-heading"><h2 id="inspector-title">Tu diseño</h2><button class="icon-button" data-action="close-properties" aria-label="Cerrar propiedades"><i class="ki-outline ki-cross"></i></button></div><div id="inspector-content"></div></aside>
+      </div>
+      <footer class="editor-footer"><div class="page-tabs" id="page-tabs"></div><button class="add-page" data-action="add-page"><i class="ki-outline ki-plus"></i><span>Añadir página</span></button><span id="page-count" class="page-count">Página 1 de 1</span><div class="zoom-controls"><button class="icon-button" data-action="fit" aria-label="Ajustar a página" title="Ajustar a página"><i class="ki-outline ki-maximize"></i></button><button class="icon-button" data-action="zoom-out" aria-label="Alejar"><i class="ki-outline ki-minus"></i></button><input type="range" id="zoom-range" min="20" max="180" step="5" value="60" aria-label="Zoom del lienzo"><output id="zoom-label">60 %</output><button class="icon-button" data-action="zoom-in" aria-label="Acercar"><i class="ki-outline ki-plus"></i></button></div></footer>
+      <nav class="mobile-dock" aria-label="Herramientas táctiles"><button data-panel="designs"><i class="ki-outline ki-element-11"></i>Plantillas</button><button data-panel="sheet"><i class="ki-outline ki-setting-2"></i>Hoja</button><button data-panel="blocks"><i class="ki-outline ki-plus-circle"></i>Añadir</button><button data-panel="text"><i class="ki-outline ki-text"></i>Texto</button><button data-panel="data"><i class="ki-outline ki-data"></i>Datos</button><button data-panel="pages"><i class="ki-outline ki-document"></i>Páginas</button><button data-panel="layers"><i class="ki-outline ki-abstract-26"></i>Capas</button></nav>
+      <button class="panel-scrim" id="panel-scrim" hidden aria-label="Cerrar paneles" data-action="close-panels"></button>
+    </section>
+  </div>
+  <dialog id="app-dialog" aria-labelledby="dialog-title"><form method="dialog" id="dialog-form"><div class="dialog-head"><h2 id="dialog-title"></h2><button type="button" class="icon-button studio-dialog-close" data-action="close-dialog" aria-label="Cerrar diálogo"><i class="ki-outline ki-cross"></i></button></div><div id="dialog-body"></div><div id="dialog-actions" class="dialog-actions"></div></form></dialog>
+  <dialog id="preview-dialog" aria-labelledby="preview-title"><header class="preview-header"><div><span class="eyebrow">DATOS DE MUESTRA</span><h2 id="preview-title">Vista previa del boletín</h2></div><select id="preview-scale" aria-label="Escala de la vista previa"><option value="numeric">Calificación numérica</option><option value="visual">Valoración con caritas</option></select><button class="button green" data-action="print"><i class="ki-outline ki-printer"></i> Imprimir / PDF</button><button class="icon-button studio-dialog-close" data-action="close-preview" aria-label="Cerrar vista previa"><i class="ki-outline ki-cross"></i></button></header><div class="preview-summary"><label>Estudiante de muestra <select id="preview-student"><option value="one">Lucía · Muestra</option><option value="two">Tomás · Muestra</option><option value="pending">Alex · Promoción pendiente</option></select></label><strong id="preview-page-total"></strong></div><div id="preview-pages" class="preview-pages"></div></dialog>
+  <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+  <input id="design-input" type="file" accept=".json,application/json" hidden>
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite"></div>
+  <div id="print-root"></div>
+</body>
+</html>

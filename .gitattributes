@@ -1,0 +1,3 @@
+# Engine manifests hash exact bytes; keep browser scripts stable on Windows and Linux.
+/public/bulletin-editor/*.js text eol=lf
+/public/bulletin-editor/*.json text eol=lf

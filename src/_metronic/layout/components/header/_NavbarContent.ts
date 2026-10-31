@@ -10,6 +10,7 @@ import {escapeUserHtml, userInitials} from '@/app/modules/accounts/accountPresen
 export const getNavbarHtml = (
   intl: IntlShape,
   opts?: {
+    minimal?: boolean
     userName?: string
     userEmail?: string
     planLabel?: string
@@ -35,14 +36,14 @@ export const getNavbarHtml = (
   const plan = escapeUserHtml(opts?.planLabel || '')
   const initials = escapeUserHtml(userInitials(opts?.userName))
   return String.raw`
-								<!--begin::Invite-->
+								${opts?.minimal ? '' : String.raw`<!--begin::Invite-->
 								<div class="align-items-center ms-1 ms-lg-3 d-none d-sm-flex">
 									<a href="#" class="btn btn-flex flex-center btn-primary h-35px h-md-40px" data-bs-toggle="modal" data-bs-target="#kt_modal_upgrade_plan">${t(
 										'header.navbar.upgrade'
 									)}
 									<span class="d-none d-sm-block ps-1">${t('header.navbar.planWord')}</span></a>
 								</div>
-								<!--end::Invite-->
+								<!--end::Invite-->`}
 								${showQuickIcons ? String.raw`<!--begin::Search-->
 								<div class="app-navbar-item align-items-stretch ms-1 ms-lg-3">
 									<!--begin::Search-->

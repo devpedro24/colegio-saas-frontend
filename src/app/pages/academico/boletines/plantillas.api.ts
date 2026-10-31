@@ -1,4 +1,4 @@
-import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
+import {useInfiniteQuery, useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
 import {useAuth} from '@/app/modules/auth'
 import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
@@ -13,11 +13,17 @@ export type TemplateDesign = {
   heading: string
   subheading: string
   sections: TemplateSection[]
+  canvas?: CanvasDocument
 }
+export type CanvasDocument = {id: string; name?: string; scope: TemplateScope; pages: unknown[]; assets?: Record<string, string>; [key: string]: unknown}
+export type TemplateInstitution = {name: string; logo?: string; nit?: string; dane?: string; resolution?: string;
+  address?: string; phone?: string; email?: string; principal?: string; year?: string; periods?: number; annual?: boolean;
+  scaleLegend?: string; performanceRanges?: {nombre: string; desde: string; hasta: string}[]}
 export type SavedTemplate = {token: string; nombre: string; ambito: TemplateScope; configuracion: TemplateDesign;
   version: number; revision_publicada: number | null; actualizado_en: string}
 export type TemplateCatalog = {colegio: string; puede_editar: boolean;
-  base: Record<TemplateScope, TemplateDesign>; plantillas: SavedTemplate[];
+  institucion?: TemplateInstitution;
+  plantillas: SavedTemplate[];
   pagina: number; ultima_pagina: number; total: number}
 export type TemplateInput = {nombre: string; ambito: TemplateScope; configuracion: TemplateDesign}
 
@@ -33,6 +39,14 @@ export function useTemplateCatalog(page = 1, enabled = true) {
     queryFn: () => api.get<{data: TemplateCatalog}>(`/boletines/plantillas?opaque=1&page=${page}`).then(result => result.data)})
 }
 
+export function usePublishedTemplates(context: TemplateScope, enabled = true) {
+  const scope = useScope()
+  return useInfiniteQuery({queryKey: ['boletines', 'plantillas', ...scope, 'published', context], enabled,
+    initialPageParam: 1,
+    queryFn: ({pageParam}) => api.get<{data: TemplateCatalog}>(`/boletines/plantillas?opaque=1&publicadas=1&ambito=${context}&page=${pageParam}`).then(result => result.data),
+    getNextPageParam: page => page.pagina < page.ultima_pagina ? page.pagina + 1 : undefined})
+}
+
 export function useTemplateActions() {
   const client = useQueryClient()
   const refresh = () => {void client.invalidateQueries({queryKey: ['boletines', 'plantillas']})}
@@ -44,6 +58,9 @@ export function useTemplateActions() {
         .then(result => result.data), onSuccess: refresh}),
     publish: useMutation({mutationFn: ({token, input}: {token: string; input: TemplateInput & {version: number}}) =>
       api.post<{data: SavedTemplate}>(`/boletines/plantillas/${encodeURIComponent(token)}/publicar?opaque=1`, input)
+        .then(result => result.data), onSuccess: refresh}),
+    remove: useMutation({mutationFn: ({token, version}: {token: string; version: number}) =>
+      api.delete<{data: {eliminada: boolean}}>(`/boletines/plantillas/${encodeURIComponent(token)}?opaque=1&version=${version}`)
         .then(result => result.data), onSuccess: refresh}),
   }
 }

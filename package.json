@@ -17,7 +17,11 @@
     "test:ui:navigation": "node scripts/browser-smoke.mjs --navigation",
     "test:ui:realtime": "node scripts/browser-smoke.mjs --realtime",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predev": "node scripts/sync-bulletin-engine.mjs --check",
+    "prebuild": "node scripts/sync-bulletin-engine.mjs --check",
+    "check:bulletin-engine": "node scripts/sync-bulletin-engine.mjs --check",
+    "sync:bulletin-engine": "node scripts/sync-bulletin-engine.mjs"
   },
   "dependencies": {
     "@formatjs/intl-pluralrules": "5.4.4",

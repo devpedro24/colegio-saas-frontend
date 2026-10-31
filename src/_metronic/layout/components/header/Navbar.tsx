@@ -1,4 +1,4 @@
-import {useEffect} from 'react'
+import {useEffect, useMemo} from 'react'
 import {useIntl} from 'react-intl'
 import {useNavigate} from 'react-router-dom'
 import {toAbsoluteUrl, withBase, reInitMenu} from '../../../helpers'
@@ -24,7 +24,7 @@ const LANGS: Record<string, {nameId: string; nameDefault: string; flag: string}>
 // ThemeModeComponent NATIVO de Metronic (sin estado React -> no re-renderiza el Navbar, asi
 // que la instancia de KTMenu del user menu no se rompe al cambiar de modo). Aqui solo
 // cableamos, en fase de captura: My Profile (data-kt-nav -> navigate) e idioma (data-kt-lang).
-const Navbar = () => {
+const Navbar = ({minimal = false}: {minimal?: boolean}) => {
   const navigate = useNavigate()
   const lang = useLang()
   const intl = useIntl()
@@ -37,7 +37,7 @@ const Navbar = () => {
 
   // Buscador, notificaciones y accesos rapidos son herramientas de PLATAFORMA (superadmin sin
   // colegio activo); para usuarios de colegio (o superadmin suplantando uno) se ocultan.
-  const showQuickIcons = isPlatform && !activeColegio
+  const showQuickIcons = !minimal && isPlatform && !activeColegio
   // El usuario de plataforma conserva sus permisos centrales (normalmente vacíos)
   // mientras administra un colegio; la sesión temporal se resuelve por cookie.
   const schoolContext = !isPlatform || !!activeColegio
@@ -50,6 +50,15 @@ const Navbar = () => {
   const canConfigureEnrollment = schoolContext && hasPermission('ingreso.configurar')
   const canConfigureBulletins = schoolContext && hasPermission('boletines.politica.gestionar')
   const canConfigureIndicators = schoolContext && hasPermission('indicadores.configurar')
+  // Keep the menu DOM intact when the surrounding workspace rerenders.
+  // Replacing this HTML also removes the element bindings installed by KTMenu.
+  const markup = useMemo(() => ({__html: withBase(getNavbarHtml(intl, {
+    minimal, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail,
+    canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators,
+    userName: currentUser?.name, userEmail: currentUser?.email, planLabel,
+  }))}), [intl, minimal, showQuickIcons, canConfigureInstitution, canManageCampuses,
+    canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators,
+    currentUser?.name, currentUser?.email, planLabel])
 
   useEffect(() => {
     // Modo de tema: init nativo (bindea clicks de [data-kt-element="mode"], aplica el modo
@@ -116,18 +125,14 @@ const Navbar = () => {
     // Fase de CAPTURA: KTMenu hace stopPropagation en algunos .menu-link, asi corremos antes.
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [navigate, lang, logout, toast, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators, currentUser?.name, currentUser?.email, planLabel])
+  }, [navigate, lang, logout, toast, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators, currentUser?.name, currentUser?.email, planLabel, minimal])
 
   return (
     <div className='app-navbar flex-shrink-0'>
-    <SchoolMailRequestsNotification />
+    {!minimal && <SchoolMailRequestsNotification />}
     <div
       className='app-navbar flex-shrink-0'
-      dangerouslySetInnerHTML={{
-        __html: withBase(
-          getNavbarHtml(intl, {showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators, userName: currentUser?.name, userEmail: currentUser?.email, planLabel})
-        ),
-      }}
+      dangerouslySetInnerHTML={markup}
     />
     </div>
   )
