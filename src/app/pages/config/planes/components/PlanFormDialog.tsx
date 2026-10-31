@@ -60,14 +60,17 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
   const [storageGb, setStorageGb] = useState(intToInput(plan?.storage_gb ?? null))
   const [maxSedes, setMaxSedes] = useState(intToInput(plan?.max_sedes ?? null))
   const [maxPasarelas, setMaxPasarelas] = useState(intToInput(plan?.max_pasarelas ?? null))
-  const [selected, setSelected] = useState<string[]>(plan?.features ?? [])
+  const [maxCustomRoles, setMaxCustomRoles] = useState(intToInput(plan?.max_roles_personalizados ?? (plan ? null : 0)))
+  const [selected, setSelected] = useState<string[]>(Array.from(new Set(['nucleo', ...(plan?.features ?? [])])))
   const [error, setError] = useState<ApiError | null>(null)
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const pending = create.isPending || update.isPending
 
-  const toggleFeature = (fkey: string) =>
+  const toggleFeature = (fkey: string) => {
+    if (catalog?.features.find((feature) => feature.key === fkey)?.required) return
     setSelected((prev) => (prev.includes(fkey) ? prev.filter((k) => k !== fkey) : [...prev, fkey]))
+  }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -84,6 +87,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
       storage_gb: numOrNull(storageGb),
       max_sedes: numOrNull(maxSedes),
       max_pasarelas: numOrNull(maxPasarelas),
+      max_roles_personalizados: numOrNull(maxCustomRoles),
       features: selected,
     }
 
@@ -260,6 +264,12 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
             />
             {fe('max_pasarelas') && <div className='invalid-feedback'>{fe('max_pasarelas')}</div>}
           </div>
+          <div className='col-md-3 fv-row mb-7'>
+            <label className='fs-7 fw-semibold text-muted mb-2'>{t('plan.limit.maxCustomRoles')}</label>
+            <input type='number' min='0' className={`form-control form-control-solid ${fe('max_roles_personalizados') ? 'is-invalid' : ''}`}
+              placeholder={t('common.unlimited')} value={maxCustomRoles} onChange={(e) => setMaxCustomRoles(e.target.value)} />
+            {fe('max_roles_personalizados') && <div className='invalid-feedback'>{fe('max_roles_personalizados')}</div>}
+          </div>
         </div>
 
         {/* Estado */}
@@ -288,14 +298,18 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
             {(catalog?.features ?? []).map((f) => (
               <label
                 key={f.key}
-                className='d-flex align-items-center justify-content-between border border-gray-300 border-dashed rounded p-4 mb-3 cursor-pointer'
+                className={`d-flex align-items-center justify-content-between border border-gray-300 border-dashed rounded p-4 mb-3 ${f.required ? '' : 'cursor-pointer'}`}
               >
-                <span className='fw-semibold text-gray-800 fs-6'>{featureLabel(f.key)}</span>
+                <span>
+                  <span className='fw-semibold text-gray-800 fs-6'>{featureLabel(f.key)}</span>
+                  {f.required && <span className='d-block text-muted fs-8'>{t('planes.features.required')}</span>}
+                </span>
                 <span className='form-check form-switch form-check-custom form-check-solid ms-3'>
                   <input
                     className='form-check-input'
                     type='checkbox'
-                    checked={selected.includes(f.key)}
+                    checked={f.required || selected.includes(f.key)}
+                    disabled={f.required}
                     onChange={() => toggleFeature(f.key)}
                   />
                 </span>

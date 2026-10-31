@@ -6,11 +6,13 @@ import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useRbacCatalog, useDeletePermission, useDeleteRole} from './rbac.api'
 import {toCellState} from './rbac.catalog'
+import {rbacActionLabel, rbacModuleLabel} from './rbac.labels'
 import {CellState, RbacMatrixCell, RbacPermission, RbacRole} from './rbac.types'
 import {PermissionFormDialog} from './components/PermissionFormDialog'
 import {RoleFormDialog} from './components/RoleFormDialog'
 import {DeleteRbacDialog} from './components/DeleteRbacDialog'
 import {MatrixCellDialog} from './components/MatrixCellDialog'
+import './rbac-matrix.css'
 
 type TabKey = 'permissions' | 'roles' | 'matrix'
 
@@ -92,8 +94,8 @@ const RbacPage: FC = () => {
   const deletePending = deletePermission.isPending || deleteRole.isPending
 
   const roles = data?.roles ?? []
-  const permissions = data?.permissions ?? []
-  const features = data?.features ?? []
+  const permissions = useMemo(() => data?.permissions ?? [], [data?.permissions])
+  const features = useMemo(() => data?.features ?? [], [data?.features])
   const levels = data?.levels ?? []
 
   // key de feature -> id i18n de su label (el backend manda el id en catalog.features).
@@ -243,8 +245,8 @@ const RbacPage: FC = () => {
                         <tbody className='text-gray-600 fw-semibold'>
                           {permissions.map((p) => (
                             <tr key={p.key}>
-                              <td className='text-gray-700'>{p.module}</td>
-                              <td className='text-gray-800 fw-bold'>{p.action}</td>
+                              <td className='text-gray-700'>{rbacModuleLabel(intl, p.module)}</td>
+                              <td className='text-gray-800 fw-bold'>{rbacActionLabel(intl, p.key, p.action)}</td>
                               <td>
                                 <span className='text-muted font-monospace fs-7'>{p.key}</span>
                               </td>
@@ -412,7 +414,7 @@ const RbacPage: FC = () => {
                       </span>
                     </div>
 
-                    <div className='table-responsive'>
+                    <div className='table-responsive rbac-matrix-scroll' role='region' tabIndex={0} aria-label={t('rbac.tab.matrix')}>
                       <table className='table table-row-bordered table-row-gray-200 align-middle gs-0 gy-3 mb-0'>
                         <thead>
                           <tr className='fw-bold fs-8 text-uppercase text-muted'>
@@ -433,15 +435,15 @@ const RbacPage: FC = () => {
                                   colSpan={roles.length + 1}
                                   className='text-gray-700 fw-bold text-uppercase fs-8 py-2'
                                 >
-                                  {group.module}
+                                  <span className='rbac-matrix-group-label'>{rbacModuleLabel(intl, group.module)}</span>
                                 </td>
                               </tr>
                               {group.permissions.map((perm) => (
                                 <tr key={perm.key}>
                                   {/* Columna permiso: accion + clave + feature (candado si gated) */}
-                                  <td>
+                                  <td className='rbac-matrix-permission'>
                                     <div className='d-flex flex-column'>
-                                      <span className='text-gray-800 fw-bold'>{perm.action}</span>
+                                      <span className='text-gray-800 fw-bold'>{rbacActionLabel(intl, perm.key, perm.action)}</span>
                                       <span className='text-muted font-monospace fs-8'>
                                         {perm.key}
                                         {perm.feature_key && (

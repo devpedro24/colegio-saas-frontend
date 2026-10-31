@@ -45,7 +45,7 @@ const PermForm: FC<{
   const [keyTouched, setKeyTouched] = useState(false)
   const [module, setModule] = useState(permission?.module ?? '')
   const [action, setAction] = useState(permission?.action ?? '')
-  const [featureKey, setFeatureKey] = useState(permission?.feature_key ?? '')
+  const [featureKey, setFeatureKey] = useState(permission?.feature_key ?? 'nucleo')
   const [description, setDescription] = useState(permission?.description ?? '')
   const [error, setError] = useState<ApiError | null>(null)
 
@@ -64,7 +64,7 @@ const PermForm: FC<{
     const input = {
       module,
       action,
-      feature_key: featureKey || null,
+      feature_key: featureKey,
       description: description.trim() || null,
     }
 
@@ -157,13 +157,12 @@ const PermForm: FC<{
 
         {/* Feature del plan */}
         <div className='fv-row mb-7'>
-          <label className='fs-6 fw-semibold mb-2'>{t('rbac.perm.feature')}</label>
+          <label className='required fs-6 fw-semibold mb-2'>{t('rbac.perm.feature')}</label>
           <select
             className={`form-select form-select-solid ${fe('feature_key') ? 'is-invalid' : ''}`}
             value={featureKey}
             onChange={(e) => setFeatureKey(e.target.value)}
           >
-            <option value=''>{t('rbac.perm.featureNone')}</option>
             {features.map((f) => (
               <option key={f.key} value={f.key}>
                 {featureLabel(f.key)}

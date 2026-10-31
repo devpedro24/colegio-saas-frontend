@@ -74,7 +74,7 @@ export interface UserModel {
   mfa_enabled?: boolean
   mfa_required?: boolean
   email_verified?: boolean
-  institution?: {name: string; plan: {key: string; name: string} | null} | null
+  institution?: {name: string; plan: {key: string; name: string; features: string[]} | null} | null
   profile_capabilities?: {edit_name: boolean; edit_email: boolean; edit_phone: boolean; google_link: boolean}
   /** Correo de la cuenta de Google vinculada (si la hay). */
   google_email?: string | null

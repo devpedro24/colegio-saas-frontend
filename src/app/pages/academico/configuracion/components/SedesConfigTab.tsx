@@ -20,6 +20,7 @@ import {useAcademicPagedList} from '../../estructura/useAcademicPagedList'
 import {DeleteConfirmDialog} from '../../estructura/components/DeleteConfirmDialog'
 import {HeredarDialog} from './HeredarDialog'
 import {fromOpaqueAcademic} from '../../shared/opaqueAcademic'
+import {useAuthz} from '@/app/modules/auth/core/authz'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
 
@@ -361,6 +362,7 @@ const tenantStatusBadge = (status: string | null): {cls: string; label: string} 
 // Sección Sedes (Ajustes institucionales): card + toolbar + modal con provisionamiento
 // de tenant hijo (slug, coordinador, herencia) + credenciales generadas.
 const SedesConfigTab: FC = () => {
+  const {hasFeature} = useAuthz()
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
@@ -422,10 +424,10 @@ const SedesConfigTab: FC = () => {
             <span className='text-muted fs-7'>{t('academico.estructura.sede.subtitle')}</span>
           </div>
           <div className='card-toolbar'>
-            <button type='button' className='btn btn-primary' onClick={openCreate}>
+            {hasFeature('multi_sede') && <button type='button' className='btn btn-primary' onClick={openCreate}>
               <i className='ki-duotone ki-plus fs-2'></i>
               {t('academico.estructura.new')}
-            </button>
+            </button>}
           </div>
         </div>
 

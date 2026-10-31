@@ -19,6 +19,7 @@ export interface Plan {
   storage_gb: number | null
   max_sedes: number | null
   max_pasarelas: number | null
+  max_roles_personalizados: number | null
   /** Claves de feature activas (subconjunto del catalogo cerrado). */
   features: string[]
   sort_order: number
@@ -36,11 +37,12 @@ export interface PlanFeature {
   category: string
   label: string
   description: string
+  required?: boolean
 }
 
 /** Un limite cuantitativo del catalogo. `label`/`unit` son claves i18n. */
 export interface PlanLimit {
-  key: 'max_estudiantes' | 'storage_gb' | 'max_sedes' | 'max_pasarelas'
+  key: 'max_estudiantes' | 'storage_gb' | 'max_sedes' | 'max_pasarelas' | 'max_roles_personalizados'
   label: string
   unit: string | null
 }
@@ -70,6 +72,7 @@ export interface PlanInput {
   storage_gb: number | null
   max_sedes: number | null
   max_pasarelas: number | null
+  max_roles_personalizados: number | null
   features: string[]
   sort_order?: number
 }

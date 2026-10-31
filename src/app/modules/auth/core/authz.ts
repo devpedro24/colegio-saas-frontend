@@ -19,6 +19,8 @@ export interface Authz {
   hasRole: (role: string) => boolean
   /** ¿El usuario tiene el permiso indicado? */
   hasPermission: (permission: string) => boolean
+  /** La capacidad está incluida en el plan actual del colegio. */
+  hasFeature: (feature: string) => boolean
 }
 
 /**
@@ -33,6 +35,7 @@ export function useAuthz(): Authz {
     const permissions = currentUser?.permissions ?? []
     const isPlatform = currentUser?.is_platform === true
     const isSuperadminImpersonating = currentUser?.is_superadmin === true
+    const planFeatures = currentUser?.institution?.plan?.features ?? []
 
     return {
       isPlatform,
@@ -43,6 +46,7 @@ export function useAuthz(): Authz {
       // El backend concede todos los gates al superadministrador suplantando
       // un colegio; la interfaz debe mostrar esas mismas acciones.
       hasPermission: (permission: string) => isSuperadminImpersonating || permissions.includes(permission),
+      hasFeature: (feature: string) => planFeatures.includes(feature),
     }
   }, [currentUser])
 }

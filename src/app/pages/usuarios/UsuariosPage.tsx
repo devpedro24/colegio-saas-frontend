@@ -15,6 +15,7 @@ import {UserPasswordDialog} from './components/UserPasswordDialog'
 import {PaginationBar} from '@/app/shared/components/PaginationBar'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
 import {EgresoConfirmDialog} from './components/EgresoConfirmDialog'
+import {AdditionalRolesDialog} from './roles/AdditionalRolesDialog'
 
 const statusBadge = (status: string): {cls: string; label: string} => {
   switch (status) {
@@ -30,16 +31,17 @@ const statusBadge = (status: string): {cls: string; label: string} => {
 }
 
 const UsuariosPage: FC = () => {
+  const authz = useAuthz()
+  const {activeColegio} = useImpersonation()
+  if (authz.isPlatform && !activeColegio) return <Navigate to='/dashboard' replace />
+  return <TenantUsuariosPage />
+}
+
+const TenantUsuariosPage: FC = () => {
   const intl = useIntl()
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const toast = useToast()
   const authz = useAuthz()
-  const {activeColegio} = useImpersonation()
-
-  if (authz.isPlatform && !activeColegio) {
-    return <Navigate to='/dashboard' replace />
-  }
-
   const breadcrumbs: Array<PageLink> = [
     {title: t('header.menu.userManagement'), path: '/usuarios', isSeparator: false, isActive: false},
   ]
@@ -50,11 +52,13 @@ const UsuariosPage: FC = () => {
   const [egresoUser, setEgresoUser] = useState<Usuario | null>(null)
   const [creds, setCreds] = useState<{email: string; password: string} | null>(null)
   const [pwdUser, setPwdUser] = useState<Usuario | null>(null)
+  const [rolesUser, setRolesUser] = useState<Usuario | null>(null)
 
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = usePageSize()
   const canManage = authz.hasPermission('usuarios.gestionar')
   const canMarkDeparture = authz.hasPermission('estudiantes.egreso.gestionar')
+  const canAdjustRoles = !authz.isPlatform && authz.hasRole('rector') && authz.hasPermission('usuarios.ajustar_permisos')
   const {data, isLoading, isError} = useUsuarios(page, pageSize, !canManage)
   const del = useDeleteUsuario()
   const egresar = useEgresarUsuario()
@@ -151,6 +155,8 @@ const UsuariosPage: FC = () => {
                             <td>
                               <span className='text-gray-700'>
                                 {intl.formatMessage({id: `academico.usuarios.rol.${u.role}`})}
+                                {u.roles.filter(role => role.startsWith('custom_')).length > 0 &&
+                                  <span className='badge badge-light-primary ms-2'>+{u.roles.filter(role => role.startsWith('custom_')).length}</span>}
                               </span>
                             </td>
                             <td>
@@ -161,6 +167,11 @@ const UsuariosPage: FC = () => {
                             <td><span className={status.cls}>{t(status.label)}</span></td>
                             <td>
                               <div className='d-flex align-items-center justify-content-end flex-shrink-0 gap-2'>
+                                {canAdjustRoles && u.role !== 'estudiante' && u.status !== 'egresado' &&
+                                  <button type='button' className='btn btn-icon btn-light-primary btn-sm'
+                                    title={t('tenantRbac.assignRoles')} onClick={() => setRolesUser(u)}>
+                                    <i className='ki-duotone ki-shield-tick fs-5'><span className='path1'></span><span className='path2'></span></i>
+                                  </button>}
                                 {canManage && u.must_change_password && u.status !== 'egresado' && (
                                   <button
                                     type='button'
@@ -239,6 +250,7 @@ const UsuariosPage: FC = () => {
           onClose={() => { setFormOpen(false); setUserEdit(null) }}
           onCreated={(email, password) => setCreds({email, password})}
         />
+        <AdditionalRolesDialog user={rolesUser} onClose={() => setRolesUser(null)} />
         <CredencialesDialog
           show={creds !== null}
           email={creds?.email ?? null}

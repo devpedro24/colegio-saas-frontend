@@ -5,6 +5,7 @@ import {FormattedMessage, useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useSetMatrixCell} from '../rbac.api'
+import {rbacActionLabel} from '../rbac.labels'
 import {CellState, CellType, RbacPermission, RbacRole} from '../rbac.types'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
@@ -62,7 +63,7 @@ const CellForm: FC<{
     <>
       <div className='modal-body py-lg-8 px-lg-10'>
         <div className='mb-6'>
-          <div className='text-gray-800 fw-bold fs-5'>{permission.action}</div>
+          <div className='text-gray-800 fw-bold fs-5'>{rbacActionLabel(intl, permission.key, permission.action)}</div>
           <div className='text-muted font-monospace fs-8'>{permission.key}</div>
           <div className='text-muted fs-7 mt-1'>
             {t('rbac.cell.roleLabel')}{' '}
