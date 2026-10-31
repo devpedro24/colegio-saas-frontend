@@ -6,7 +6,7 @@ import {ReactQueryDevtools} from '@tanstack/react-query-devtools'
 // Apps
 import {queryClient} from '@/lib/api/query-client'
 import {ToastProvider} from '@/lib/ui/toast'
-import {MetronicI18nProvider} from './_metronic/i18n/Metronici18n'
+import {initializeLanguage, MetronicI18nProvider} from './_metronic/i18n/Metronici18n'
 import './_metronic/assets/sass/style.react.scss'
 import './_metronic/assets/fonticon/fonticon.css'
 import './_metronic/assets/keenicons/duotone/style.css'
@@ -32,6 +32,7 @@ import {AuthProvider, setupAxios} from './app/modules/auth'
  * @see https://github.com/axios/axios#interceptors
  */
 setupAxios(axios)
+initializeLanguage()
 
 const container = document.getElementById('root')
 if (container) {
@@ -44,7 +45,7 @@ if (container) {
           </AuthProvider>
         </ToastProvider>
       </MetronicI18nProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   )
 }

@@ -9,6 +9,7 @@ import enMessages from './messages/en.json'
 import esMessages from './messages/es.json'
 import {WithChildren} from '../helpers'
 import {setApiLocale} from '@/lib/api/client'
+import {applyDocumentLanguage} from './language'
 
 const allMessages = {
   en: enMessages,
@@ -18,11 +19,11 @@ const allMessages = {
 const I18nProvider: FC<WithChildren> = ({children}) => {
   const locale = useLang()
   setApiLocale(locale)
-  useEffect(() => {document.documentElement.lang = locale}, [locale])
+  useEffect(() => {applyDocumentLanguage(locale)}, [locale])
   const messages = allMessages[locale]
 
   return (
-    <IntlProvider locale={locale} messages={messages}>
+    <IntlProvider locale={locale} defaultLocale='en' messages={messages}>
       {children}
     </IntlProvider>
   )
