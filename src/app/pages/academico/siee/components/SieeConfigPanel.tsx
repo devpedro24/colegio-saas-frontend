@@ -9,6 +9,7 @@ import {usePageSize} from '@/app/shared/hooks/usePageSize'
 import {AcademicOptionSelect} from '../../shared/AcademicOptionSelect'
 import {BulkCurriculumModal} from './BulkCurriculumModal'
 import {AcademicListFilters} from '../../estructura/components/AcademicListFilters'
+import {gradeDisplay} from '../../evaluacion/gradeDisplay'
 
 const isValidWeight = (value: string) => value === '' || /^(?:100(?:\.0{1,4})?|(?:0|[1-9]\d?)(?:\.\d{1,4})?)$/.test(value)
 
@@ -199,7 +200,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
                 <option value=''>{t('siee.select_escala')}</option>
                 {data.escalas?.map((esc) => (
                   <option key={esc.url_token} value={esc.url_token}>
-                    {esc.nombre} ({esc.valor_min} - {esc.valor_max})
+                    {esc.nombre} ({gradeDisplay(esc.valor_min)} - {gradeDisplay(esc.valor_max)})
                   </option>
                 ))}
               </select>
@@ -217,7 +218,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
                 <option value=''>{t('siee.select_metodo')}</option>
                 {data.metodos?.map((m) => (
                   <option key={m.url_token} value={m.url_token}>
-                    {intl.formatMessage({id: 'siee.minimum'}, {value: m.nota_minima})} ({t(`academico.config.metodo.ambito.${m.ambito}`)})
+                    {intl.formatMessage({id: 'siee.minimum'}, {value: gradeDisplay(m.nota_minima)})} ({t(`academico.config.metodo.ambito.${m.ambito}`)})
                   </option>
                 ))}
               </select>

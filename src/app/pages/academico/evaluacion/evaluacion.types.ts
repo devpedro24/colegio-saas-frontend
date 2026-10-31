@@ -29,6 +29,7 @@ export interface EvaluacionCatalogoResponse {
   can_manage: boolean
   can_configure: boolean
   can_view_reports: boolean
+  estados_disponibles?: string[]
   can_manage_manual_areas?: boolean
   can_manage_manual_annuals?: boolean
   anos: Array<{id: string; url_token: string; nombre: string; estado: string; area_manual?: boolean; anual_manual?: boolean; anual_areas?: boolean}>

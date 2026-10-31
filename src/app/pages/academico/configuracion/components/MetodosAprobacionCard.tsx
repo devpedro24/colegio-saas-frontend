@@ -4,6 +4,7 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {gradeDisplay} from '../../evaluacion/gradeDisplay'
 import {
   useCreateMetodo,
   useDeleteMetodo,
@@ -37,7 +38,7 @@ const emptyForm = (): FormState => ({
 
 const fromMetodo = (m: MetodoAprobacion): FormState => ({
   calculo_nota: m.calculo_nota,
-  nota_minima: String(m.nota_minima),
+  nota_minima: gradeDisplay(m.nota_minima),
   ambito: m.ambito,
 })
 
@@ -260,7 +261,7 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoToken}) => {
                     <td className='text-gray-800 fw-bold'>
                       {t(`academico.config.metodo.calculo.${m.calculo_nota}`)}
                     </td>
-                    <td>{m.nota_minima}</td>
+                    <td>{gradeDisplay(m.nota_minima)}</td>
                     <td>{t(`academico.config.metodo.ambito.${m.ambito}`)}</td>
                     <td>
                       <div className='d-flex align-items-center justify-content-end flex-shrink-0'>

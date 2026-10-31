@@ -4,6 +4,7 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {gradeDisplay} from '../../evaluacion/gradeDisplay'
 import {useCreateEscala, useDeleteEscala, useEscalas, useSaveEscalaOpciones, useUpdateEscala, useUploadEscalaImagen} from '../configuracion.api'
 import type {
   EscalaValorativa,
@@ -30,8 +31,8 @@ const emptyForm = (): FormState => ({
   nombre: '',
   nivel_educativo: '',
   tipo: 'numerica',
-  valor_min: '1',
-  valor_max: '5',
+  valor_min: '1.0',
+  valor_max: '5.0',
 })
 
 type ChoiceDraft = EscalaOpcionInput & {imagen_url?: string | null}
@@ -46,8 +47,8 @@ const fromEscala = (e: EscalaValorativa): FormState => ({
   nombre: e.nombre,
   nivel_educativo: e.nivel_educativo ?? '',
   tipo: e.tipo,
-  valor_min: e.valor_min === null ? '' : String(e.valor_min),
-  valor_max: e.valor_max === null ? '' : String(e.valor_max),
+  valor_min: gradeDisplay(e.valor_min),
+  valor_max: gradeDisplay(e.valor_max),
 })
 
 // Dialogo interno crear/editar escala (se remonta por escala via key en el padre).
@@ -386,7 +387,7 @@ const EscalasCard: FC<Props> = ({anoLectivoToken}) => {
                     <td>{t(`academico.config.escala.tipo.${e.tipo}`)}</td>
                     <td>
                       {e.tipo === 'numerica' && e.valor_min !== null && e.valor_max !== null
-                        ? `${e.valor_min} — ${e.valor_max}`
+                        ? `${gradeDisplay(e.valor_min)} — ${gradeDisplay(e.valor_max)}`
                         : '—'}
                     </td>
                     <td>

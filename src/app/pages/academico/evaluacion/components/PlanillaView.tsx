@@ -9,6 +9,8 @@ import type {NotaUpdate, SeccionPlanilla, ActividadEvaluacion, PlanillaResponse,
 import {gradeDecimal, validGrade} from '../gradeDecimal'
 import {VisualChoice} from './VisualChoice'
 import {IndicadorWorkspace} from './IndicadorWorkspace'
+import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
+import {useGradePreview} from '../useGradePreview'
 
 export const PlanillaView = () => {
   const {asignacionId = '', periodoId = ''} = useParams()
@@ -36,7 +38,33 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
   if (!dirty && query.data) snapshot.current = query.data
   const data = dirty ? snapshot.current : query.data
   const visual = data?.escala_visual?.tipo === 'imagenes'
+  const preview = useGradePreview(assignment, period, data, draft)
   const dirtyRef = useRef(dirty); dirtyRef.current = dirty
+  const recovery = useWorkDraft({context: `grades:${assignment}:${period}`, title: selected?.materia.nombre ?? t('evaluacion.planilla.title'),
+    value: {draft, reason, selectedSection}, dirty, enabled: !!query.data?.editable,
+    restore: value => {setDraft(value.draft); setReason(value.reason); setSelectedSection(value.selectedSection)},
+    reset: () => {setDraft({}); setReason('')},
+    compatible: value => Object.values(value.draft).every(item => {
+      const grade = query.data?.calificaciones.find(g => g.actividad_id === item.actividad_id && g.matricula_id === item.matricula_id)
+      return (grade?.version ?? 0) === item.version && query.data?.matriculas.some(m => m.id === item.matricula_id)
+        && query.data?.secciones?.some(s => s.actividades.some(a => a.id === item.actividad_id))
+    }),
+  })
+  const activityRecovery = useWorkDraft({context: `grade-activity:${assignment}:${period}`, title: t('grading.activity'),
+    value: {editor, activityForm}, dirty: !!editor && (activityForm.nombre !== (editor.activity?.nombre ?? '') || activityForm.peso !== gradeDecimal(editor.activity?.peso) || (!!editor.activity && activityForm.fecha !== editor.activity.fecha?.slice(0, 10))),
+    enabled: !!query.data?.editable && !!(query.data.permisos.crear || query.data.permisos.editar),
+    compatible: value => value.editor?.activity
+      ? !!query.data?.permisos.editar && query.data.secciones?.some(section => section.actividades.some(activity => activity.id === value.editor?.activity?.id && activity.version === value.editor?.activity?.version)) === true
+      : !!query.data?.permisos.crear && query.data.secciones?.some(section => section.componente_token === value.editor?.section.componente_token && section.preinforme_token === value.editor?.section.preinforme_token) === true,
+    restore: value => {setEditor(value.editor); setActivityForm(value.activityForm)}, reset: () => setEditor(null),
+  })
+  const manualRecovery = useWorkDraft({context: `grade-component:${assignment}:${period}`, title: t('grading.manualComponentResult'),
+    value: {manualEditor, manualValue, manualReason}, dirty: !!manualEditor && (manualValue !== (manualEditor.result?.estado === 'calculado'
+      ? visual ? manualEditor.result.valoracion?.url_token ?? '' : gradeDecimal(manualEditor.result.raw_value) : '') || !!manualReason), enabled: !!query.data?.editable,
+    compatible: value => !!value.manualEditor && query.data?.resultados.some(result => result.matricula_id === value.manualEditor?.student.id
+      && (result.secciones?.find(section => section.componente_token === value.manualEditor?.section.componente_token)?.manual_version ?? 0) === (value.manualEditor?.result?.manual_version ?? 0)) === true,
+    restore: value => {setManualEditor(value.manualEditor); setManualValue(value.manualValue); setManualReason(value.manualReason)}, reset: () => setManualEditor(null),
+  })
   useEffect(() => {
     const unload = (event: BeforeUnloadEvent) => {if (dirtyRef.current) {event.preventDefault(); event.returnValue = ''}}
     const link = (event: MouseEvent) => {
@@ -49,9 +77,18 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
   if (query.isPending) return <div role='status' className='p-6'>{t('common.pleaseWait')}</div>
   if (query.error || !data) return <div role='alert' className='alert alert-danger'>{query.error?.message ?? t('common.error')}</div>
 
+  const indicatorPeriod = catalog.data?.periodos.find(item => item.id === period || item.url_token === period)
+  const indicatorContext = selected && indicatorPeriod && selected.grupo?.grado?.id ? {
+    year: selected.ano_lectivo_id, grade: selected.grupo.grado.id,
+    group: selected.grupo_id, subject: selected.materia_id,
+    period, periodOrder: indicatorPeriod.orden,
+  } : null
+  const indicators = indicatorContext && <IndicadorWorkspace key={`${assignment}:${period}`} context={indicatorContext}
+    periodState={data.periodo.estado} />
+
   if (data.configuracion.modo_asignatura === 'MANUAL') {
-    return <ManualSubjectSheet assignment={assignment} period={period} data={data} subject={selected?.materia.nombre ?? ''}
-      back={() => navigate('/evaluacion/catalogo')} />
+    return <><ManualSubjectSheet assignment={assignment} period={period} data={data} subject={selected?.materia.nombre ?? ''}
+      back={() => navigate('/evaluacion/catalogo')} />{indicators}</>
   }
 
   const allSections = data.secciones ?? []
@@ -117,8 +154,9 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
       toast.error(t('grading.invalidChoice')); return
     }
     if (data.requiere_motivo && reason.trim().length < 3) return
+    const finishDraft = recovery.afterSave()
     save.mutate(values.map(v => ({...v, valor: visual || v.valor == null ? null : gradeDecimal(v.valor), motivo: reason.trim()})), {
-      onSuccess: () => {setDraft({}); setReason(''); toast.success(t('grading.saved'))},
+      onSuccess: () => {finishDraft(); setDraft({}); setReason(''); toast.success(t('grading.saved'))},
       onError: error => toast.error(error.message),
     })
   }
@@ -130,11 +168,12 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
   const commitActivity = (remove = false) => {
     if (!editor) return
     if (remove && !window.confirm(t('grading.confirmDelete'))) return
+    const finishDraft = activityRecovery.afterSave()
     activityMutation.mutate({operacion: remove ? 'eliminar' : editor.activity ? 'editar' : 'crear',
       componente_token: editor.section.componente_token, preinforme_token: editor.section.preinforme_token,
       actividad_token: editor.activity?.url_token ?? editor.activity?.id, version: editor.activity?.version ?? 0,
       ...(!remove ? {...activityForm, peso: activityForm.peso ? gradeDecimal(activityForm.peso) : null} : {}),
-    }, {onSuccess: () => {setEditor(null); toast.success(t('grading.saved'))}, onError: error => toast.error(error.message)})
+    }, {onSuccess: () => {finishDraft(); setEditor(null); toast.success(t('grading.saved'))}, onError: error => toast.error(error.message)})
   }
   const openManualComponent = (section: SeccionPlanilla, student: Matricula) => {
     if (dirty) {toast.show(t('grading.saveFirst'), 'info'); return}
@@ -149,24 +188,26 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
     const valueValid = visual ? !!data.escala_visual?.opciones.some(option => option.url_token === manualValue)
       : manualValue.trim() !== '' && validGrade(gradeDecimal(manualValue), data.configuracion.valor_min, data.configuracion.valor_max)
     if (!annul && !valueValid) return
+    const finishDraft = manualRecovery.afterSave()
     manualComponent.mutate({componenteId: manualEditor.section.componente_token,
       matriculaId: manualEditor.student.url_token, valor: annul || visual ? null : gradeDecimal(manualValue),
       escalaOpcionToken: !annul && visual ? manualValue : null,
       motivo: manualReason.trim(), version: manualEditor.result?.manual_version ?? 0}, {
-      onSuccess: () => {setManualEditor(null); toast.success(t('grading.saved'))},
+      onSuccess: () => {finishDraft(); setManualEditor(null); toast.success(t('grading.saved'))},
       onError: error => toast.error(error.message),
     })
   }
 
-  const indicatorPeriod = catalog.data?.periodos.find(item => item.id === period || item.url_token === period)
-  const indicatorContext = selected && indicatorPeriod && selected.grupo?.grado?.id ? {
-    year: selected.ano_lectivo_id, grade: selected.grupo.grado.id,
-    group: selected.grupo_id, subject: selected.materia_id,
-    period, periodOrder: indicatorPeriod.orden,
-  } : null
+  const remainingWeight = Number((100 - (editor?.section.actividades ?? []).filter(activity => activity.id !== editor?.activity?.id)
+    .reduce((sum, activity) => sum + Number(activity.peso ?? 0), 0)).toFixed(4))
+  const activityWeightValid = editor?.section.modo !== 'WEIGHTED_AVERAGE'
+    || (!!activityForm.peso && Number(activityForm.peso) > 0 && validGrade(activityForm.peso, '0', String(remainingWeight)))
 
   return <><div className='card grade-sheet'>
     <div className='card-body pb-0'>
+      {recovery.notice}
+      {!editor && activityRecovery.notice}
+      {!manualEditor && manualRecovery.notice}
       <div className='d-flex flex-wrap justify-content-between align-items-start gap-4 mb-5'>
         <div>
           <button className='btn btn-link p-0 mb-3 text-muted' onClick={() => {if (clean()) navigate('/evaluacion/catalogo')}}><KTIcon iconName='arrow-left' className='fs-4' />{t('grading.back')}</button>
@@ -183,6 +224,8 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
         </div>
       </div>
       <p className='text-muted fs-7 mb-5'>{t(visual ? 'grading.visualHelp' : 'grading.keyboard')}</p>
+      {dirty && <p className='grade-preview-notice' role='status'>{t(preview.error || preview.invalid ? 'grading.previewUnavailable' : preview.pending ? 'grading.previewCalculating' : 'grading.previewHelp')}</p>}
+      {(preview.error || preview.invalid) && <div className='alert alert-warning text-gray-800' role='alert'>{preview.error ?? t('grading.invalidGrade')}</div>}
       {dirty && data.requiere_motivo && <div className='mb-5'><label className='form-label required' htmlFor='grade-save-reason'>{t('evaluacion.planilla.motivo')}</label>
         <input id='grade-save-reason' className='form-control form-control-solid' value={reason} maxLength={500} onChange={e => setReason(e.target.value)} /></div>}
       {!data.editable && <div className='alert alert-info'>{t('grading.readOnly')}</div>}
@@ -193,6 +236,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
         {allSections.map(section => <button key={sectionKey(section)} className={`nav-link ${selectedSection === sectionKey(section) ? 'active' : ''}`}
           onClick={() => setSelectedSection(sectionKey(section))}>{section.nombre}</button>)}
       </div>}
+      {data.usa_preinformes && <p className='text-gray-700 fs-7'>{t('grading.sharedActivityMode')}</p>}
       <div className='row g-4 mb-5'>{sections.map(section => <div className={sections.length > 1 ? 'col-lg-6 col-xl-4' : 'col-12'} key={sectionKey(section)}>
         <div className='border rounded-3 p-4 h-100'>
           <div className='d-flex justify-content-between align-items-center gap-3 mb-3'>
@@ -230,10 +274,10 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
               {activity.nombre}{data.permisos.editar && <KTIcon iconName='pencil' className='fs-8 ms-2 text-muted' />}
             </button><span className='d-block text-muted fw-normal fs-8 mt-1'>{activity.fecha?.slice(0, 10)}{section.modo === 'WEIGHTED_AVERAGE' ? ` · ${gradeDecimal(activity.peso) || '—'}%` : ''}</span>
           </th>) : [<th key={sectionKey(section)} className='grade-activity text-muted fw-normal'>{t('grading.noActivities')}</th>]),
-          ...(data.usa_preinformes ? [<th key={`${sectionKey(section)}-subtotal`} className='grade-activity text-primary'>{t('grading.subtotal')}</th>] : [])])}</tr>
+          ...(data.usa_preinformes ? [<th key={`${sectionKey(section)}-subtotal`} className='grade-activity grade-subtotal'>{t('grading.subtotal')}</th>] : [])])}</tr>
         </thead>
         <tbody>{data.matriculas.map((enrollment, rowIndex) => {
-          const result = byResult.get(enrollment.id)
+          const result = preview.results.get(enrollment.id) ?? byResult.get(enrollment.id)
           const rowDirty = Object.values(draft).some(v => v.matricula_id === enrollment.id)
           return <tr key={enrollment.id}><th scope='row' className='grade-student'><span className='grade-row-number'>{rowIndex + 1}</span><span>{enrollment.nombre_lista ?? enrollment.estudiante.name}</span>
             {data.periodo.estado === 'cerrado' && <button className='btn btn-link p-0 d-block fs-8 mt-2' onClick={() => {if (clean()) navigate(`/evaluacion/recuperaciones/${enrollment.url_token}`)}}>{t('evaluacion.recuperaciones.title')}</button>}
@@ -241,7 +285,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
             {sections.flatMap(section => section.modo === 'MANUAL' ? [<td key={`${sectionKey(section)}-manual`} className='grade-cell text-center'>
               {(() => {
                 const subtotal = result?.secciones?.find(item => item.componente_token === section.componente_token)
-                return <button className='btn btn-sm btn-light-primary' disabled={!editable || dirty || !section.componente_token}
+                return <button className='btn btn-sm btn-light-primary fw-bold' disabled={!editable || dirty || !section.componente_token}
                   onClick={() => openManualComponent(section, enrollment)} aria-label={`${t('grading.manualComponentResult')} · ${enrollment.estudiante.name} · ${section.nombre ?? data.periodo.nombre}`}>
                   {subtotal?.estado === 'calculado' ? (visual ? <VisualChoice compact choice={subtotal.valoracion} /> : gradeDecimal(subtotal.display_value)) : t('grading.manualComponentRegister')}
                 </button>
@@ -275,16 +319,15 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
                   onFocus={e => e.target.select()} onKeyDown={e => keyboard(e, rowIndex, colIndex)} onPaste={e => paste(e, rowIndex, colIndex)} />}
               </td>
             }) : [<td key={sectionKey(section)} className='grade-cell text-center text-muted'>—</td>]),
-            ...(data.usa_preinformes ? [<td key={`${sectionKey(section)}-subtotal`} className='grade-cell text-center fw-semibold text-primary'>
-              {rowDirty ? '—' : (() => {
+            ...(data.usa_preinformes ? [<td key={`${sectionKey(section)}-subtotal`} className='grade-cell grade-subtotal text-center fw-bold'>
+              {(() => {
                 const subtotal = result?.secciones?.find(s => s.componente_token === section.componente_token)
                 return visual ? <VisualChoice compact choice={subtotal?.valoracion ?? subtotal?.valoracion_provisional} />
                   : gradeDecimal(subtotal?.display_value ?? subtotal?.provisional) || t('grading.pending')
               })()}
             </td>] : [])])}
-            <td className='grade-result' title={rowDirty ? t('grading.saveToCalculate') : result?.motivo}>
-              {rowDirty ? <span className='text-muted fs-8'>{t('grading.saveToCalculate')}</span>
-                : visual && result?.valoracion ? <VisualChoice compact choice={result.valoracion} />
+            <td className='grade-result' aria-busy={rowDirty && preview.pending} title={rowDirty ? t('grading.previewHelp') : result?.motivo}>
+              {visual && result?.valoracion ? <VisualChoice compact choice={result.valoracion} />
                 : visual && result?.valoracion_provisional ? <span className='grade-provisional' title={t('grading.provisionalHelp')}>
                     <VisualChoice compact choice={result.valoracion_provisional} /> <small>{t('grading.provisional')}</small>
                   </span>
@@ -302,24 +345,28 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
     <Modal show={!!editor} onHide={() => {if (!activityMutation.isPending) setEditor(null)}} centered>
       <Modal.Header closeButton><Modal.Title>{t(editor?.activity ? 'grading.editActivity' : 'grading.newActivity')}</Modal.Title></Modal.Header>
       <Modal.Body>
+        {activityRecovery.notice}
         <label className='form-label required' htmlFor='grade-activity-name'>{t('grading.name')}</label>
         <input id='grade-activity-name' className='form-control mb-5' autoFocus maxLength={160} value={activityForm.nombre} onChange={e => setActivityForm(p => ({...p, nombre: e.target.value}))} />
         <label className='form-label required' htmlFor='grade-activity-date'>{t('grading.date')}</label>
         <input id='grade-activity-date' type='date' className='form-control mb-5' value={activityForm.fecha} min={data.periodo?.fecha_inicio.slice(0, 10)} max={data.periodo?.fecha_fin.slice(0, 10)} onChange={e => setActivityForm(p => ({...p, fecha: e.target.value}))} />
         {editor?.section.modo === 'WEIGHTED_AVERAGE' && <><label className='form-label required' htmlFor='grade-activity-weight'>{t('grading.weight')}</label>
-          <input id='grade-activity-weight' inputMode='decimal' className='form-control' value={activityForm.peso} onChange={e => setActivityForm(p => ({...p, peso: e.target.value.replace(',', '.')}))} /></>}
+          <input id='grade-activity-weight' inputMode='decimal' className='form-control' aria-invalid={!activityWeightValid} value={activityForm.peso} onChange={e => setActivityForm(p => ({...p, peso: e.target.value.replace(',', '.')}))} />
+          <p className='text-gray-700 fs-7 mt-2'>{intl.formatMessage({id: 'grading.availableWeight'}, {weight: remainingWeight})}</p>
+          {!activityWeightValid && <div className='alert alert-warning text-gray-800' role='alert'>{t('grading.weightExceeded')}</div>}</>}
         {activityMutation.error && <div className='alert alert-danger mt-4' role='alert'>{activityMutation.error.message}</div>}
       </Modal.Body>
       <Modal.Footer className='justify-content-between'>
         <div>{editor?.activity && data.permisos.eliminar && <button className='btn btn-light-danger' disabled={activityMutation.isPending} onClick={() => commitActivity(true)}><KTIcon iconName='trash' className='fs-3' />{t('grading.delete')}</button>}</div>
         <div className='d-flex gap-3'><button className='btn btn-light' disabled={activityMutation.isPending} onClick={() => setEditor(null)}>{t('grading.cancel')}</button>
-          <button className='btn btn-primary' disabled={activityMutation.isPending || !activityForm.nombre.trim() || !activityForm.fecha || (editor?.section.modo === 'WEIGHTED_AVERAGE' && (!activityForm.peso || !validGrade(activityForm.peso, '0', '100'))) || (editor?.activity ? !data.permisos.editar : !data.permisos.crear)}
+          <button className='btn btn-primary' disabled={activityMutation.isPending || !activityForm.nombre.trim() || !activityForm.fecha || !activityWeightValid || (editor?.activity ? !data.permisos.editar : !data.permisos.crear)}
             onClick={() => commitActivity()}>{t('grading.save')}</button></div>
       </Modal.Footer>
     </Modal>
     <Modal show={!!manualEditor} onHide={() => {if (!manualComponent.isPending) setManualEditor(null)}} centered>
       <Modal.Header closeButton><Modal.Title>{t('grading.manualComponentResult')}</Modal.Title></Modal.Header>
       <Modal.Body>
+        {manualRecovery.notice}
         <p className='fw-semibold'>{manualEditor?.student.nombre_lista ?? manualEditor?.student.estudiante.name} · {manualEditor?.section.nombre ?? data.periodo.nombre}</p>
         <label className='form-label required' htmlFor='manual-component-value'>{t('grading.manualComponentResult')}</label>
         {visual ? <select id='manual-component-value' className='form-select mb-4' value={manualValue} onChange={e => setManualValue(e.target.value)}>
@@ -344,8 +391,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
       </Modal.Footer>
     </Modal>
   </div>
-    {indicatorContext && <IndicadorWorkspace key={`${assignment}:${period}`} context={indicatorContext}
-      periodState={data.periodo.estado} />}
+    {indicators}
   </>
 }
 
@@ -362,6 +408,12 @@ function ManualSubjectSheet({assignment, period, data, subject, back}: {
   const validManualValue = visual ? !!data.escala_visual?.opciones.some(option => option.url_token === value)
     : value.trim() !== '' && validGrade(gradeDecimal(value), data.configuracion.valor_min, data.configuracion.valor_max)
   const results = new Map(data.resultados.map(row => [row.matricula_id, row]))
+  const recovery = useWorkDraft({context: `grade-manual:${assignment}:${period}`, title: subject || t('grading.manualTitle'),
+    value: {editing, value, reason}, dirty: !!editing && (value !== (editing.result.estado === 'calculado'
+      ? visual ? editing.result.valoracion?.url_token ?? '' : gradeDecimal(editing.result.raw_value) : '') || !!reason),
+    enabled: data.editable, compatible: saved => !!saved.editing && data.resultados.some(row => row.matricula_id === saved.editing?.student.id
+      && row.manual_version === saved.editing?.result.manual_version),
+    restore: saved => {setEditing(saved.editing); setValue(saved.value); setReason(saved.reason)}, reset: () => setEditing(null)})
   const open = (student: Matricula, result: ResultadoEstudiante) => {
     setEditing({student, result}); setValue(result.estado === 'calculado'
       ? (visual ? result.valoracion?.url_token ?? '' : gradeDecimal(result.raw_value)) : '')
@@ -369,14 +421,16 @@ function ManualSubjectSheet({assignment, period, data, subject, back}: {
   }
   const submit = (annul = false) => {
     if (!editing || reason.trim().length < 10 || (!annul && !validManualValue)) return
+    const finishDraft = recovery.afterSave()
     save.mutate({matriculaId: editing.student.url_token, valor: annul || visual ? null : gradeDecimal(value),
       escalaOpcionToken: !annul && visual ? value : null,
       motivo: reason.trim(), version: editing.result.manual_version ?? 0}, {
-      onSuccess: () => {setEditing(null); toast.success(t('grading.saved'))},
+      onSuccess: () => {finishDraft(); setEditing(null); toast.success(t('grading.saved'))},
       onError: error => toast.error(error.message),
     })
   }
   return <div className='card grade-sheet'><div className='card-body'>
+    {!editing && recovery.notice}
     <button className='btn btn-link p-0 mb-4 text-muted' onClick={back}><KTIcon iconName='arrow-left' className='fs-4' />{t('grading.back')}</button>
     <h2 className='fs-2 fw-bold mb-2'>{subject || t('evaluacion.planilla.title')}</h2>
     <p className='text-muted mb-5'>{data.periodo.nombre} · {t('grading.manualSubjectHelp')}</p>
@@ -386,7 +440,7 @@ function ManualSubjectSheet({assignment, period, data, subject, back}: {
       <tbody>{data.matriculas.map(student => {
         const result = results.get(student.id)
         return <tr key={student.id}><th scope='row'>{student.nombre_lista ?? student.estudiante.name}</th>
-          <td>{result?.estado === 'calculado'
+          <td className='fw-bold'>{result?.estado === 'calculado'
             ? (result.valoracion ? <VisualChoice compact choice={result.valoracion} />
               : <span className={`badge badge-light-${result.aprobado ? 'success' : 'danger'}`}>{gradeDecimal(result.display_value)}</span>)
             : <span className='badge badge-light-warning'>{t('grading.pending')}</span>}</td>
@@ -399,6 +453,7 @@ function ManualSubjectSheet({assignment, period, data, subject, back}: {
     <Modal show={!!editing} onHide={() => !save.isPending && setEditing(null)} centered>
       <Modal.Header closeButton><Modal.Title>{t('grading.manualTitle')}</Modal.Title></Modal.Header>
       <Modal.Body><p className='fw-semibold'>{editing?.student.nombre_lista ?? editing?.student.estudiante.name}</p>
+        {recovery.notice}
         <label className='form-label required' htmlFor='manual-subject-value'>{t('evaluacion.planilla.definitiva')}</label>
         {visual ? <div className='d-flex align-items-center gap-3 mb-4'>
           {value && <VisualChoice compact choice={data.escala_visual?.opciones.find(option => option.url_token === value)} />}

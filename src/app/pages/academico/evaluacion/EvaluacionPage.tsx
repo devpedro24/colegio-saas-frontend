@@ -11,12 +11,16 @@ import {Content} from '@/_metronic/layout/components/content'
 import {AulaCatalogoView} from './aula/AulaCatalogoView'
 import {AulaDetalleView} from './aula/AulaDetalleView'
 import {AulaRecursoView} from './aula/AulaRecursoView'
+import {useAuthz} from '@/app/modules/auth/core/authz'
 
 const EvaluacionPage = () => {
+  const {hasFeature, hasPermission} = useAuthz()
   const intl = useIntl()
   const location = useLocation()
   const fromBulletins = location.pathname.includes('/recuperaciones/')
     && new URLSearchParams(location.search).get('desde') === 'boletines'
+  const canUseAula = hasFeature('aula') && ['aula.ver_todas', 'aula.ver_asignadas', 'aula.ver_propias'].some(hasPermission)
+  if (!hasFeature('academico')) return <Navigate to='/dashboard' replace />
   const evaluacionBreadcrumbs: Array<PageLink> = [
     {title: intl.formatMessage({id: 'grading.menu'}), path: '/evaluacion/catalogo', isSeparator: false, isActive: false},
   ]
@@ -62,9 +66,9 @@ const EvaluacionPage = () => {
             </>
           }
         />
-        <Route path='aula' element={<><PageTitle breadcrumbs={evaluacionBreadcrumbs}>Aula</PageTitle><AulaCatalogoView /></>} />
-        <Route path='aula/recursos/:recursoToken' element={<><PageTitle breadcrumbs={evaluacionBreadcrumbs}>Recurso del Aula</PageTitle><AulaRecursoView /></>} />
-        <Route path='aula/:aulaToken' element={<><PageTitle breadcrumbs={evaluacionBreadcrumbs}>Aula</PageTitle><AulaDetalleView /></>} />
+        <Route path='aula' element={canUseAula ? <><PageTitle breadcrumbs={evaluacionBreadcrumbs}>Aula</PageTitle><AulaCatalogoView /></> : <Navigate to='/dashboard' replace />} />
+        <Route path='aula/recursos/:recursoToken' element={canUseAula ? <><PageTitle breadcrumbs={evaluacionBreadcrumbs}>Recurso del Aula</PageTitle><AulaRecursoView /></> : <Navigate to='/dashboard' replace />} />
+        <Route path='aula/:aulaToken' element={canUseAula ? <><PageTitle breadcrumbs={evaluacionBreadcrumbs}>Aula</PageTitle><AulaDetalleView /></> : <Navigate to='/dashboard' replace />} />
         <Route index element={<Navigate to='catalogo' replace />} />
       </Route>
     </Routes>

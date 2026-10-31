@@ -1,8 +1,13 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
 import {fromOpaqueAcademic, toOpaqueAcademic} from '../shared/opaqueAcademic'
+import type {EscalaOpcion} from '../configuracion/configuracion.types'
 
-export type Recuperacion = {
+export type RecoveryResult = {display_value: string | null; valoracion: EscalaOpcion | null; aprobado: boolean}
+export type RecoveryPeriod = {periodo_id: string | null; periodo: string | null; periodo_orden: number | null; periodo_estado: string | null}
+export type RecoveryInput = {grade: string; manual: string; reason: string; choice?: string; manualChoice?: string}
+
+export type Recuperacion = RecoveryPeriod & {
   id: string
   url_token: string
   matricula_id: string
@@ -20,18 +25,26 @@ export type Recuperacion = {
   nota_recuperacion: string | null
   nota_manual: string | null
   valor_efectivo_exacto: string | null
+  resultado_original: RecoveryResult
+  resultado_recuperacion: RecoveryResult | null
+  resultado_manual: RecoveryResult | null
+  resultado_efectivo: RecoveryResult | null
+  escala_visual: {tipo: 'numerica' | 'imagenes'; opciones: EscalaOpcion[]}
   plan_mejoramiento: string | null
   motivo: string | null
   version: number
   can_record: boolean
+  can_cancel: boolean
+  motivo_bloqueo: string | null
 }
 
-export type Candidato = {
+export type Candidato = RecoveryPeriod & {
   asignacion_id: string
   periodo_id: string | null
   materia: string
   periodo: string | null
-  valor_original: string
+  valor_original: string | null
+  valoracion_original: EscalaOpcion | null
   tipo: 'nivelacion' | 'habilitacion'
   puede_abrir: boolean
 }
@@ -47,7 +60,8 @@ export type RecuperacionesResponse = {
 const base = '/evaluacion/recuperaciones'
 
 export const useRecuperaciones = (matriculaId: string, page = 1) => useQuery<RecuperacionesResponse>({
-  queryKey: ['evaluacion', 'recuperaciones', matriculaId, page],
+  // No reutilizar respuestas previas al contrato de valoraciones y períodos ordenados.
+  queryKey: ['evaluacion', 'recuperaciones', matriculaId, page, 'presentation-v2'],
   queryFn: () => api.get<RecuperacionesResponse>(`${base}?${new URLSearchParams({opaque: '1', matricula_token: matriculaId, page: String(page)})}`)
     .then(response => fromOpaqueAcademic<RecuperacionesResponse>(response)),
   enabled: !!matriculaId,
@@ -71,9 +85,10 @@ export const useCrearRecuperacion = (matriculaId: string) => {
 export const useRegistrarRecuperacion = (matriculaId: string) => {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: ({id, grade, manual, reason, version}: {id: string; grade: string; manual: string; reason: string; version: number}) =>
+    mutationFn: ({id, grade, manual, reason, version, choice, manualChoice}: RecoveryInput & {id: string; version: number}) =>
       api.put(`${base}/${encodeURIComponent(id)}?opaque=1`, {
-        nota_recuperacion: grade, nota_manual: manual || null, motivo: reason, version,
+        nota_recuperacion: grade || null, nota_manual: manual || null, motivo: reason, version,
+        escala_opcion_token: choice || null, escala_opcion_manual_token: manualChoice || null,
       }),
     onSuccess: () => {
       client.invalidateQueries({queryKey: ['evaluacion', 'recuperaciones', matriculaId]})

@@ -87,6 +87,7 @@ export const useGuardarResultadoManualAnual = () => {
 }
 
 export type CatalogoFilters = {
+  enabled?: boolean
   view?: 'planillas' | 'matriculas' | 'boletines'
   yearId?: string
   groupId?: string
@@ -105,6 +106,7 @@ export type CatalogoFilters = {
 export const useCatalogoEvaluacion = (filters: CatalogoFilters = {}) => {
   return useQuery<EvaluacionCatalogoResponse>({
     queryKey: ['evaluacion', 'catalogo', filters],
+    enabled: filters.enabled ?? true,
     queryFn: () => {
       const params = new URLSearchParams({opaque: '1'})
       if (filters.view) params.set('vista', filters.view)
@@ -122,17 +124,6 @@ export const useCatalogoEvaluacion = (filters: CatalogoFilters = {}) => {
       if (filters.enrollmentToken) params.set('matricula_token', filters.enrollmentToken)
       const query = params.toString()
       return api.get<{data: unknown}>(`${EVAL_URL}/catalogo?${query}`).then((res) => fromOpaqueAcademic<EvaluacionCatalogoResponse>(res.data))
-    },
-  })
-}
-
-export const useMatricular = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (data: {grupo_id: string; estudiante_id: string}) =>
-      api.post(`${EVAL_URL}/matriculas?opaque=1`, toOpaqueAcademic(data)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
     },
   })
 }
