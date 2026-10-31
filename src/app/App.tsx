@@ -6,6 +6,7 @@ import {MasterInit} from '../_metronic/layout/MasterInit'
 import {AuthInit} from './modules/auth'
 import {ThemeModeProvider} from '../_metronic/partials'
 import {WebSocketManager} from './modules/auth/core/WebSocketManager'
+import {WorkDraftProvider} from '@/lib/drafts/WorkDrafts'
 
 const App = () => {
   return (
@@ -15,7 +16,7 @@ const App = () => {
           <ThemeModeProvider>
             <AuthInit>
               <WebSocketManager />
-              <Outlet />
+              <WorkDraftProvider><Outlet /></WorkDraftProvider>
               <MasterInit />
             </AuthInit>
           </ThemeModeProvider>
