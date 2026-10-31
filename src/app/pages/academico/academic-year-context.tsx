@@ -1,7 +1,9 @@
 import {createContext, useContext, useEffect, type ReactNode} from 'react'
-import {Link, useSearchParams} from 'react-router-dom'
+import {Link} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 import {useAnosLectivos} from './anos-lectivos/anos-lectivos.api'
+import {useCatalogoEvaluacion} from './evaluacion/evaluacion.api'
+import {useAcademicSearchParams} from './shared/useAcademicSearchParams'
 
 type AcademicYearContextValue = {
   yearId: string
@@ -14,10 +16,14 @@ type AcademicYearContextValue = {
 
 const AcademicYearContext = createContext<AcademicYearContextValue | null>(null)
 
-export function AcademicYearProvider({children}: {children: ReactNode}) {
-  const {data} = useAnosLectivos()
-  const [params, setParams] = useSearchParams()
-  const years = data?.data ?? []
+export function AcademicYearProvider({children, source = 'management', filterScope}: {
+  children: ReactNode; source?: 'management' | 'evaluation'; filterScope?: string
+}) {
+  const {data} = useAnosLectivos(source === 'management')
+  const {data: evaluation} = useCatalogoEvaluacion({view: 'planillas', enabled: source === 'evaluation'})
+  const [params, setParams] = useAcademicSearchParams(filterScope)
+  const years = source === 'evaluation' ? (evaluation?.anos ?? []).map(item => ({...item, id: item.url_token,
+    legacy_url_token: undefined})) : data?.data ?? []
   const requested = params.get('ano')
   const selected = years.find(item => item.url_token === requested || item.legacy_url_token === requested || String(item.id) === requested)
     ?? years.find(item => item.estado === 'en_curso')
@@ -31,19 +37,22 @@ export function AcademicYearProvider({children}: {children: ReactNode}) {
     next.set('ano', selected.url_token)
     setParams(next, {replace: true})
   }, [selected, requested, params, setParams])
+  const changeYear = (token: string) => {
+    const next = new URLSearchParams(params)
+    if (filterScope && token !== yearToken) {
+      for (const field of ['grado', 'grupo', 'materia', 'asignacion', 'periodo']) next.delete(field)
+    }
+    next.set('ano', token)
+    setParams(next)
+  }
   const setYearId = (id: string) => {
     const year = years.find(item => String(item.id) === id)
-    if (!year) return
-    const next = new URLSearchParams(params)
-    next.set('ano', year.url_token)
-    setParams(next)
+    if (year) changeYear(year.url_token)
   }
   const setYearToken = (token: string) => {
     const year = years.find(item => item.url_token === token)
     if (!year) return
-    const next = new URLSearchParams(params)
-    next.set('ano', year.url_token)
-    setParams(next)
+    changeYear(year.url_token)
   }
 
   return <AcademicYearContext.Provider value={{yearId, yearToken, years, setYearId, setYearToken,

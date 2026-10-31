@@ -4,7 +4,6 @@ import {useAuth} from './Auth'
 import {getCurrentUser} from './_requests'
 import {ApiError, discardPendingReads} from '@/lib/api/client'
 import {trackQueryReads} from '@/lib/api/academic-cache'
-import {initializeEcho, disconnectEcho} from '@/lib/echo'
 import {isOwnChange, onLocalChange, refreshesIdentity, shouldRefreshQuery, type RealtimeScope} from '@/lib/realtime'
 import {clearImpersonation, useImpersonation} from '../../impersonation/impersonation.store'
 
@@ -20,6 +19,7 @@ export function WebSocketManager() {
   useEffect(() => {
     if (!auth?.authenticated || !userId) return
     let disposed = false
+    let disconnect = () => {}
     let timer: ReturnType<typeof setTimeout> | undefined
     let remoteTimer: ReturnType<typeof setTimeout> | undefined
     let nextRemoteRefresh = 0
@@ -136,7 +136,10 @@ export function WebSocketManager() {
     document.addEventListener('visibilitychange', recover)
     document.addEventListener('visibilitychange', resumeDeferred)
     window.addEventListener('online', recover)
-    try {
+    // Load the transport only for an authenticated session, once across page changes.
+    void import('@/lib/echo').then(({initializeEcho, disconnectEcho}) => {
+      if (disposed) return
+      disconnect = disconnectEcho
       const echo = initializeEcho(tenantChannel, platform)
       const liveScopes = new Set<RealtimeScope>()
       hasLiveUpdates = () => echo.connector.pusher.connection.state === 'connected'
@@ -166,9 +169,9 @@ export function WebSocketManager() {
       }
       if (platform) subscribe('platform', 'platform')
       if (tenantChannel) subscribe(`tenant.${tenantChannel}`, 'tenant')
-    } catch (error) {
+    }).catch(error => {
       console.error('[WS] Connection failed', error)
-    }
+    })
     return () => {
       disposed = true
       if (timer) clearTimeout(timer)
@@ -179,7 +182,7 @@ export function WebSocketManager() {
       window.removeEventListener('online', recover)
       reads.unsubscribe()
       unsubscribeLocal()
-      disconnectEcho()
+      disconnect()
     }
     // Recreate only for identity/context changes, not when /me refreshes the profile.
     // eslint-disable-next-line react-hooks/exhaustive-deps

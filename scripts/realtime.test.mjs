@@ -17,11 +17,35 @@ test('the originating tab recognizes its own broadcast without hiding another ta
 })
 
 test('a school year change refreshes selectors and dependent academic views', () => {
-  for (const root of ['anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'siee', 'evaluacion', 'boletines']) {
+  for (const root of ['anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'siee', 'evaluacion', 'boletines', 'asistencias', 'indicadores']) {
     assert.equal(shouldRefreshQuery([root, 'year-token', 'group-token'], ['academic'], 'tenant'), true, root)
   }
   assert.equal(shouldRefreshQuery(['horarios'], ['events'], 'tenant'), true)
   assert.equal(shouldRefreshQuery(['evaluacion', 'planillas'], ['schedule'], 'tenant'), true)
+})
+
+test('grade and indicator writes refresh their data without invalidating unrelated navigation caches', () => {
+  assert.equal(resourceForPath('/indicadores/tabla/opaque?opaque=1'), 'indicators')
+  assert.equal(resourceForPath('/indicadores/politica/opaque?opaque=1'), 'indicators')
+  for (const section of ['planillas', 'componentes', 'actividades', 'recuperaciones', 'areas', 'anuales']) {
+    assert.equal(resourceForPath(`/evaluacion/${section}/opaque?opaque=1`), 'grades')
+  }
+  assert.equal(resourceForPath('/evaluacion/matriculas/opaque'), 'evaluation')
+  for (const resource of ['grades', 'indicators', 'attendance']) assert.equal(refreshesIdentity([resource]), false)
+  for (const key of [['horarios'], ['estructura'], ['asistencias'], ['indicadores', 'tabla']]) {
+    assert.equal(shouldRefreshQuery(key, ['grades'], 'tenant'), false)
+  }
+  assert.equal(shouldRefreshQuery(['evaluacion', 'planillas'], ['grades'], 'tenant'), true)
+  assert.equal(shouldRefreshQuery(['boletines', 'emisiones'], ['indicators'], 'tenant'), true)
+  for (const key of [['evaluacion', 'catalogo'], ['asistencias'], ['boletines', 'observaciones-grupo']]) {
+    assert.equal(shouldRefreshQuery(key, ['indicators'], 'tenant'), false)
+  }
+  for (const resource of ['academic', 'schedule', 'curriculum', 'structure', 'users', 'evaluation', 'enrollment-intake', 'rbac', 'access']) {
+    for (const root of ['indicadores', 'asistencias', 'evaluacion']) {
+      assert.equal(shouldRefreshQuery([root, 'planilla'], [resource], 'tenant'), true, `${root} must follow ${resource}`)
+    }
+  }
+  assert.equal(shouldRefreshQuery(['indicadores'], ['indicators'], 'platform'), false)
 })
 
 test('publishing or moving Aula resources refreshes the calendar without opening event permissions', () => {
@@ -31,11 +55,19 @@ test('publishing or moving Aula resources refreshes the calendar without opening
   assert.equal(shouldRefreshQuery(['evento', 'event-token'], ['aula-grade'], 'tenant'), false)
 })
 
-test('issuing a bulletin refreshes reports without refetching unrelated school modules', () => {
-  assert.equal(resourceForPath('/boletines/emisiones/opaque/preparar?opaque=1'), 'bulletins')
-  assert.equal(shouldRefreshQuery(['boletines', 'emisiones'], ['bulletins'], 'tenant'), true)
-  assert.equal(shouldRefreshQuery(['evaluacion', 'planillas'], ['bulletins'], 'tenant'), false)
-  assert.equal(shouldRefreshQuery(['eventos', 'mes'], ['bulletins'], 'tenant'), false)
+test('issuing a bulletin refreshes its history, not observations, templates or identity', () => {
+  assert.equal(resourceForPath('/boletines/emisiones/opaque/preparar?opaque=1'), 'bulletin-issues')
+  assert.equal(shouldRefreshQuery(['boletines', 'emisiones'], ['bulletin-issues'], 'tenant'), true)
+  for (const key of [['boletines', 'observaciones'], ['boletines', 'observaciones-grupo'], ['boletines', 'plantillas'],
+    ['evaluacion', 'catalogo'], ['eventos', 'mes']]) assert.equal(shouldRefreshQuery(key, ['bulletin-issues'], 'tenant'), false)
+  assert.equal(refreshesIdentity(['bulletin-issues']), false)
+  assert.equal(resourceForPath('/boletines/observaciones/opaque'), 'bulletin-observations')
+  assert.equal(shouldRefreshQuery(['boletines', 'observaciones-grupo'], ['bulletin-observations'], 'tenant'), true)
+  assert.equal(shouldRefreshQuery(['boletines', 'plantillas'], ['bulletin-observations'], 'tenant'), false)
+  assert.equal(resourceForPath('/boletines/plantillas/opaque/publicar'), 'bulletin-templates')
+  assert.equal(shouldRefreshQuery(['boletines', 'plantillas'], ['bulletin-templates'], 'tenant'), true)
+  assert.equal(shouldRefreshQuery(['boletines', 'observaciones-grupo'], ['bulletin-templates'], 'tenant'), false)
+  assert.equal(shouldRefreshQuery(['boletines', 'observaciones-grupo'], ['academic'], 'tenant'), true)
 })
 
 test('platform events do not refresh another active school, and tenant events do not touch the central cache', () => {

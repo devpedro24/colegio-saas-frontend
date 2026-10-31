@@ -108,6 +108,8 @@ type MutationOptions = {notifyLocalChange?: boolean};
 
 function request<TResponse>(method: HttpMethod, path: string, body?: unknown, options?: MutationOptions): Promise<TResponse> {
   if (method !== 'GET') {
+    // Private draft backups never change queried academic data.
+    if (/^\/(platform\/)?work-draft/.test(path) || /\/planillas\/[^/]+\/[^/]+\/vista-previa(?:\?|$)/.test(path)) return performRequest<TResponse>(method, path, body, options);
     // A read started before a write must not be reused by the post-save refresh.
     pendingReads.clear();
     return performRequest<TResponse>(method, path, body, options).finally(() => pendingReads.clear());

@@ -8,10 +8,15 @@ const dependencies: Record<string, string[]> = {
   curriculum: ['plan-estudios', 'horarios', 'asistencias', 'evaluacion', 'boletines', 'siee', 'aula'],
   schedule: ['horarios', 'asistencias', 'evaluacion', 'boletines', 'eventos', 'evento', 'eventos-catalogo'],
   attendance: ['asistencias'],
-  evaluation: ['evaluacion', 'boletines', 'horarios', 'estructura', 'aula', 'eventos-catalogo'],
+  evaluation: ['evaluacion', 'boletines', 'horarios', 'estructura', 'asistencias', 'aula', 'eventos-catalogo'],
+  grades: ['evaluacion', 'boletines', 'aula'],
+  indicators: ['indicadores', 'boletines:emisiones'],
   bulletins: ['boletines'],
+  'bulletin-issues': ['boletines:emisiones'],
+  'bulletin-observations': ['boletines:observaciones', 'boletines:observaciones-grupo', 'boletines:emisiones'],
+  'bulletin-templates': ['boletines:plantillas', 'boletines:emisiones'],
   aula: ['aula', 'eventos'],
-  'enrollment-intake': ['ingreso'],
+  'enrollment-intake': ['ingreso', 'matriculas', 'evaluacion', 'boletines', 'asistencias'],
   'school-mail': ['school-mail', 'ingreso'],
   'school-mail-requests': ['school-mail-requests', 'school-mail'],
   'aula-grade': ['aula', 'evaluacion', 'eventos'],
@@ -36,6 +41,10 @@ export function shouldRefreshQuery(key: readonly unknown[], resources: readonly 
   if (scope === 'platform' && !platformRoots.has(root) && root !== 'account' && root !== 'institution-context') return false
   if (scope === 'tenant' && resources.includes('rbac')) return true
   if (resources.some(resource => resource === 'all' || resource === 'access' || !dependencies[resource])) return true
+  if (root === 'indicadores') {
+    return resources.some(resource => ['indicators', 'academic', 'structure', 'curriculum', 'schedule', 'users', 'academic-config', 'evaluation', 'enrollment-intake', 'plans'].includes(resource))
+  }
+  if (root === 'asistencias' && resources.includes('users')) return true
   if (root === 'academic-options' || root === 'academic-options-all') {
     return resources.some(resource => ['academic', 'structure', 'curriculum', 'schedule', 'users'].includes(resource))
   }
@@ -43,7 +52,8 @@ export function shouldRefreshQuery(key: readonly unknown[], resources: readonly 
     const detail = String(key[1] ?? '')
     if ((key.length === 2 && detail !== 'catalogo') || ['recurso', 'entregas'].includes(detail)) return true
   }
-  return resources.some(resource => dependencies[resource].includes(root))
+  // A root refreshes its whole module; root:section targets only that query family.
+  return resources.some(resource => dependencies[resource].includes(root) || dependencies[resource].includes(`${root}:${key[1]}`))
 }
 
 export function refreshesIdentity(resources: readonly string[]): boolean {
@@ -51,6 +61,9 @@ export function refreshesIdentity(resources: readonly string[]): boolean {
 }
 
 export function resourceForPath(path: string): string {
+  const [root, section] = path.split('?')[0].split('/').filter(Boolean)
+  if (root === 'evaluacion' && ['planillas', 'componentes', 'actividades', 'recuperaciones', 'areas', 'anuales'].includes(section)) return 'grades'
+  if (root === 'boletines') return ({emisiones: 'bulletin-issues', observaciones: 'bulletin-observations', plantillas: 'bulletin-templates'} as Record<string, string>)[section] ?? 'bulletins'
   if (/^\/?(?:platform\/correo-solicitudes|correo-institucional\/solicitudes)(?:\/|$|\?)/.test(path)) return 'school-mail-requests'
   if (/^\/?siee\/[^/]+\/curriculo(?:\/|$|\?)/.test(path)) return 'curriculum'
   // El autosalvado y la navegación de un examen actualizan su estado local;
@@ -59,11 +72,10 @@ export function resourceForPath(path: string): string {
   if (/^\/?aula\/recursos\/[^/]+\/abrir(?:\/|$|\?)/.test(path)) return 'aula-progress'
   if (/^\/?aula\/(?:(?:recursos|entregas)\/[^/]+\/adjuntos|adjuntos\/[^/]+)(?:\/|$|\?)/.test(path)) return 'aula-content'
   if (/^\/?aula\/(?:secciones\/[^/]+\/recursos|recursos\/[^/]+|entregas\/[^/]+\/calificar|intentos\/[^/]+\/(?:finalizar|calificar))(?:$|\?)/.test(path)) return 'aula-grade'
-  const root = path.split('?')[0].split('/').filter(Boolean)[0]
   return ({'anos-lectivos': 'academic', periodos: 'academic', estructura: 'structure', 'plan-estudios': 'curriculum',
-    ingreso: 'enrollment-intake', 'ingreso-publico': 'enrollment-intake',
+    ingreso: 'enrollment-intake', matriculas: 'enrollment-intake', 'ingreso-publico': 'enrollment-intake', indicadores: 'indicators',
     'correo-institucional': 'school-mail',
-    horarios: 'schedule', asignaciones: 'schedule', asistencias: 'attendance', evaluacion: 'evaluation', boletines: 'bulletins', aula: 'aula', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
+    horarios: 'schedule', asignaciones: 'schedule', asistencias: 'attendance', evaluacion: 'evaluation', aula: 'aula', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
     onboarding: 'institution', branding: 'institution', usuarios: 'users', rbac: 'rbac', colegios: 'schools', plans: 'plans',
     planes: 'plans', account: 'account', mfa: 'account', storage: 'storage'} as Record<string, string>)[root] ?? 'all'
 }

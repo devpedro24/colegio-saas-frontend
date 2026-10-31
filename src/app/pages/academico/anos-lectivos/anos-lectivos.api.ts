@@ -50,9 +50,10 @@ const withPublicPeriodSelector = (period: PublicPeriod): Periodo => ({
 })
 
 /** GET /anos-lectivos - lista los anos lectivos del colegio. */
-export function useAnosLectivos() {
+export function useAnosLectivos(enabled = true) {
   return useQuery({
     queryKey: ANOS_LECTIVOS_KEY,
+    enabled,
     queryFn: async () => {
       const response = await api.get<{data: PublicYear[]}>('/anos-lectivos?opaque=1')
       return {data: response.data.map(withPublicYearSelector)}

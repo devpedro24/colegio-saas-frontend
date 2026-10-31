@@ -12,9 +12,9 @@ const {readCatalogFilters} = await import('data:text/javascript;base64,' + Buffe
 
 test('catalog filters retain only opaque selectors and ignore raw IDs or unrelated data', () => {
   const token = 'a'.repeat(24)
-  assert.deepEqual(readCatalogFilters(new URLSearchParams({ano: token, grupo: token, materia: token, nombre: 'private'})), {ano: token, grupo: token, materia: token})
+  assert.deepEqual(readCatalogFilters(new URLSearchParams({ano: token, grupo: token, materia: token, periodo: token, nombre: 'private'})), {ano: token, grupo: token, materia: token, periodo: token})
   for (const invalid of ['1', '2026', 'abc', '<script>', 'a'.repeat(64)]) {
-    assert.deepEqual(readCatalogFilters(new URLSearchParams({ano: invalid, grupo: invalid, materia: invalid})), {ano: '', grupo: '', materia: ''})
+    assert.deepEqual(readCatalogFilters(new URLSearchParams({ano: invalid, grupo: invalid, materia: invalid, periodo: invalid})), {ano: '', grupo: '', materia: '', periodo: ''})
   }
   assert.equal(/localStorage|sessionStorage/.test(source), false)
 })

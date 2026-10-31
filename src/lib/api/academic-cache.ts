@@ -6,6 +6,7 @@ import type {AcademicPaged} from '@/app/pages/academico/estructura/estructura.ap
 export const academicCacheRoots = [
   'anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'siee', 'preinformes', 'config',
   'academic-options', 'academic-options-all', 'eventos-catalogo',
+  'evaluacion', 'boletines', 'asistencias', 'indicadores',
 ] as const
 
 export function configureAcademicCache(client: QueryClient) {
