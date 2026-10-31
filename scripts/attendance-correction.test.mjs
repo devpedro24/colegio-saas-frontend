@@ -11,8 +11,18 @@ const module = {exports: {}}
 new Function('exports', ts.transpileModule(source, {
   compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022},
 }).outputText)(module.exports)
-const {attendanceToday, canEditAttendanceMark, nextAttendanceMark} = module.exports
+const {attendanceToday, canEditAttendanceMark, nextAttendanceMark, preferredAttendanceColumn} = module.exports
 const column = {fecha: '2026-02-02', editable: true, matriculas: ['student'], marcas: {student: 'ausente'}}
+
+test('compact attendance opens today or the closest available class without changing the sheet', () => {
+  const columns = ['2026-02-01', '2026-02-02', '2026-02-04'].map(fecha => ({...column, fecha}))
+  assert.equal(preferredAttendanceColumn(columns, '2026-02-02'), columns[1])
+  assert.equal(preferredAttendanceColumn(columns, '2026-02-03'), columns[1])
+  assert.equal(preferredAttendanceColumn(columns, '2026-01-31'), columns[0])
+  assert.equal(preferredAttendanceColumn(columns, '2026-02-05'), columns[2])
+  assert.equal(preferredAttendanceColumn([], '2026-02-02'), undefined)
+  assert.deepEqual(columns.map(item => item.fecha), ['2026-02-01', '2026-02-02', '2026-02-04'])
+})
 
 test('absence correction expires at midnight Colombia, not midnight UTC', () => {
   const before = attendanceToday(new Date('2026-02-03T04:59:59Z'))
@@ -64,6 +74,9 @@ test('real attendance grid enables same-day absence buttons and locks historical
         resumen: {faltas_equivalentes: 1, registradas: 1, porcentaje: 100, alerta: false}}]},
   }))
   const today = render({})
+  assert.match(today, /id="attendance-class-date"/)
+  assert.match(today, /is-selected is-mobile-date/)
+  assert.match(today, /class="attendance-mobile-summary"/)
   assert.match(today, /aria-pressed="false" tabindex="0"[^>]*aria-label="attendance.presente"/)
   const yesterday = render({fecha: '2026-02-01'})
   assert.match(yesterday, /aria-pressed="false" disabled="" tabindex="0"[^>]*aria-label="attendance.presente"/)

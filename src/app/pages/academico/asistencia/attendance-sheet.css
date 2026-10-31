@@ -186,16 +186,106 @@
   color: #6a7891;
 }
 
+.attendance-date-navigation,
+.attendance-mobile-summary {
+  display: none;
+}
+
 @media (max-width: 767px) {
+  .attendance-sheet-card > .card-body {
+    padding: 20px 16px;
+    min-width: 0;
+  }
+
+  .attendance-date-navigation {
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .attendance-date-controls {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .attendance-date-controls > .btn {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 12px;
+  }
+
+  .attendance-date-controls > .btn i {
+    padding: 0;
+    color: inherit;
+  }
+
+  .attendance-date-controls .form-select {
+    min-width: 0;
+    min-height: 44px;
+    padding-left: 10px;
+    font-size: 12px;
+  }
+
+  .attendance-sheet-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
   .attendance-sheet-table .attendance-sheet-student {
-    min-width: 185px;
-    max-width: 185px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    position: static;
+    width: calc(100% - 116px);
+    min-width: 0;
+    max-width: none;
+    padding: 12px 9px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: middle;
+  }
+
+  .attendance-sheet-number {
+    width: 20px;
+  }
+
+  .attendance-sheet-table .attendance-sheet-date:not(.is-mobile-date),
+  .attendance-sheet-table .attendance-sheet-cell:not(.is-mobile-date),
+  .attendance-sheet-table .attendance-sheet-total {
+    display: none;
   }
 
   .attendance-sheet-date,
   .attendance-sheet-table .attendance-sheet-cell {
-    min-width: 92px;
+    width: 116px;
+    min-width: 0;
+  }
+
+  .attendance-sheet-table tbody .is-selected {
+    box-shadow: none;
+  }
+
+  .attendance-sheet-choices {
+    height: auto;
+    padding: 6px;
+    gap: 5px;
+  }
+
+  .attendance-sheet-choices button {
+    min-width: 0;
+    min-height: 44px;
+    border-radius: 10px;
+    font-size: 19px;
+  }
+
+  .attendance-mobile-summary {
+    display: block;
+    margin-top: 6px;
+    color: #60718d;
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1.5;
   }
 }

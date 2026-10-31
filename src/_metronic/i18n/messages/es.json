@@ -313,6 +313,7 @@
     "attendance.sheet.choose": "Elige un grupo y una asignatura para abrir su planilla.",
     "attendance.sheet.title": "Planilla del período",
     "attendance.sheet.help": "Elige ✓ o X; vuelve a pulsar la misma opción para dejarla en blanco. Navega con Tab, Mayús+Tab o las flechas; Enter/Espacio marcan. Blanco no cuenta como asistencia ni falta. Las fechas sin guardar son proyecciones del horario; festivos y clases canceladas aún no se excluyen automáticamente.",
+    "attendance.sheet.mobileDateHelp": "En móvil se muestra una franja a la vez. Cambia la fecha con las flechas o el selector. Pulsa el encabezado de la fecha para solicitar una justificación.",
     "attendance.sheet.selectYear": "Selecciona un año lectivo",
     "attendance.sheet.periodClosed": "Este período está cerrado. Puedes consultar las asistencias, pero no agregar ni editar marcas.",
     "attendance.sheet.noClasses": "Esta asignatura no tiene franjas programadas ni asistencias históricas en el período.",

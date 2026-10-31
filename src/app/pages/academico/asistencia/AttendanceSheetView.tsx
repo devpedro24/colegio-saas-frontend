@@ -7,7 +7,7 @@ import {ApiError, api} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {AttendancePolicySettings} from './AttendancePolicyPanel'
 import {TeacherCorrectionForm} from './AttendanceRequests'
-import {attendanceToday, canEditAttendanceMark, nextAttendanceMark} from './attendanceCorrection'
+import {attendanceToday, canEditAttendanceMark, nextAttendanceMark, preferredAttendanceColumn} from './attendanceCorrection'
 import {useAttendance, useAttendanceCatalog, useAttendanceSheet,
   type AttendanceSheet, type AttendanceSheetColumn, type AttendanceState} from './asistencia.api'
 import './attendance-sheet.css'
@@ -50,8 +50,10 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
   useEffect(() => { setDrafts({}) }, [assignment, sheet.periodo.token, revision])
   useEffect(() => { if (periodClosed) setDrafts({}) }, [periodClosed])
   useEffect(() => { onDirtyChange(Object.keys(drafts).length > 0) }, [drafts, onDirtyChange])
-  const columns = sheet.columnas
-  const selectedColumn = columns.find(column => columnKey(column) === selected)
+  const columns = useMemo(() => [...sheet.columnas].sort((a, b) =>
+    `${a.fecha}:${a.hora_inicio}:${a.sesion_token}`.localeCompare(`${b.fecha}:${b.hora_inicio}:${b.sesion_token}`)), [sheet.columnas])
+  const selectedColumn = columns.find(column => columnKey(column) === selected) ?? preferredAttendanceColumn(columns, today)
+  const selectedIndex = selectedColumn ? columns.indexOf(selectedColumn) : -1
   const dirtyKeys = Object.keys(drafts)
   const recovery = useWorkDraft({context: `attendance:${assignment}:${sheet.periodo.token}`, title: t('attendance.sheet.title'),
     value: drafts, dirty: dirtyKeys.length > 0, enabled: !periodClosed,
@@ -91,7 +93,7 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
     const target = gridRef.current?.querySelector<HTMLButtonElement>(
       `button[data-attendance-row="${row}"][data-attendance-col="${col}"][data-attendance-choice="${choice}"]`,
     )
-    if (!target || target.disabled) return false
+    if (!target || target.disabled || !target.getClientRects().length) return false
     target.focus()
     return true
   }
@@ -165,7 +167,7 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
     }
   }
 
-  return <section className='card mb-6'><div className='card-body'>
+  return <section className='card attendance-sheet-card mb-6'><div className='card-body'>
     {recovery.notice}
     {periodClosed && <div className='alert alert-danger mb-4' role='alert'>{t('attendance.sheet.periodClosed')}</div>}
     <div className='d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4'>
@@ -190,12 +192,32 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
     </div>}
     {!columns.length && <div className='alert alert-info'>{t('attendance.sheet.noClasses')}</div>}
     {!!columns.length && !sheet.estudiantes.length && <div className='alert alert-info'>{t('attendance.sheet.noStudents')}</div>}
+    {!!columns.length && <div className='attendance-date-navigation'>
+      <label htmlFor='attendance-class-date' className='form-label mb-2'>{t('attendance.date')}</label>
+      <div className='attendance-date-controls'>
+        <button type='button' className='btn btn-light-primary' disabled={selectedIndex <= 0}
+          aria-label={t('attendance.previous')} onClick={() => onSelect(columnKey(columns[selectedIndex - 1]))}>
+          <i className='bi bi-chevron-left' aria-hidden='true' />
+        </button>
+        <select id='attendance-class-date' className='form-select' value={selectedColumn ? columnKey(selectedColumn) : ''}
+          onChange={event => onSelect(event.target.value)}>
+          {columns.map(column => <option key={columnKey(column)} value={columnKey(column)}>
+            {dateLabel(column.fecha)} · {column.hora_inicio}–{column.hora_fin}
+          </option>)}
+        </select>
+        <button type='button' className='btn btn-light-primary' disabled={selectedIndex >= columns.length - 1}
+          aria-label={t('attendance.next')} onClick={() => onSelect(columnKey(columns[selectedIndex + 1]))}>
+          <i className='bi bi-chevron-right' aria-hidden='true' />
+        </button>
+      </div>
+      <p className='text-muted fs-7 mt-2 mb-3'>{t('attendance.sheet.mobileDateHelp')}</p>
+    </div>}
     {!!columns.length && <div className='attendance-sheet-scroll' tabIndex={0} aria-label={t('attendance.sheet.title')}>
       <table ref={gridRef} className='attendance-sheet-table'>
         <thead><tr>
           <th className='attendance-sheet-student'>{t('attendance.student')}</th>
-          {columns.map(column => <th key={columnKey(column)} className={`attendance-sheet-date ${selected === columnKey(column) ? 'is-selected' : ''}`}>
-            <button type='button' onClick={() => onSelect(columnKey(column))} aria-pressed={selected === columnKey(column)}
+          {columns.map(column => <th key={columnKey(column)} className={`attendance-sheet-date ${selectedColumn === column ? 'is-selected is-mobile-date' : ''}`}>
+            <button type='button' onClick={() => onSelect(columnKey(column))} aria-pressed={selectedColumn === column}
               title={t('attendance.sheet.selectDate')}>
               <span>{dateLabel(column.fecha)}</span>
               <small>{column.hora_inicio}–{column.hora_fin}</small>
@@ -208,13 +230,17 @@ function AttendanceGrid({sheet, assignment, selected, onSelect, onDirtyChange}: 
         <tbody>{sheet.estudiantes.map((student, index) => <tr key={student.matricula_token}>
           <th scope='row' className='attendance-sheet-student'>
             <span className='attendance-sheet-number'>{index + 1}</span>{student.nombre}
+            <small className='attendance-mobile-summary'>
+              {t('attendance.absenceSummary')}: <strong>{student.resumen.faltas_equivalentes} / {student.resumen.registradas}</strong> · {student.resumen.porcentaje} %
+              {student.resumen.alerta && <span className='badge badge-light-warning ms-1'>{t('attendance.alert')}</span>}
+            </small>
           </th>
           {columns.map((column, columnIndex) => {
             const key = columnKey(column)
             const state = cellState(column, student.matricula_token)
             const belongs = column.matriculas.includes(student.matricula_token)
             const locked = !student.activa || !canEditAttendanceMark(column, student.matricula_token, today)
-            return <td key={key} className={`attendance-sheet-cell attendance-sheet-${state} ${selected === key ? 'is-selected' : ''}`}>
+            return <td key={key} className={`attendance-sheet-cell attendance-sheet-${state} ${selectedColumn === column ? 'is-selected is-mobile-date' : ''}`}>
               {belongs && (state === 'tarde' || state === 'justificada'
                 ? <span className='attendance-sheet-legacy' title={t(`attendance.${state}`)}>{state === 'tarde' ? 'T' : 'J'}</span>
                 : <div className='attendance-sheet-choices' role='group'

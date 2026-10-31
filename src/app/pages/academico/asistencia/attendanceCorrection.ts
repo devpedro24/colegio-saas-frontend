@@ -10,6 +10,13 @@ export function attendanceToday(now = new Date()): string {
   return `${part('year')}-${part('month')}-${part('day')}`
 }
 
+export function preferredAttendanceColumn(columns: AttendanceSheetColumn[], today: string): AttendanceSheetColumn | undefined {
+  // Prefer today's first class, then the most recent past class, then the first future class.
+  return columns.find(column => column.fecha === today)
+    ?? [...columns].reverse().find(column => column.fecha < today)
+    ?? columns[0]
+}
+
 export function canEditAttendanceMark(column: AttendanceSheetColumn, token: string, today: string): boolean {
   const original = column.marcas[token] ?? 'sin_marcar'
   return column.editable && column.matriculas.includes(token)

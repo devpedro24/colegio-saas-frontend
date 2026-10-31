@@ -313,6 +313,7 @@
     "attendance.sheet.choose": "Choose a group and subject to open its attendance sheet.",
     "attendance.sheet.title": "Period attendance sheet",
     "attendance.sheet.help": "Choose ✓ or X; click the same option again to clear it. Navigate with Tab, Shift+Tab or arrow keys; Enter/Space marks. Blank counts as neither presence nor absence. Unsaved dates are timetable projections; holidays and cancelled classes are not excluded automatically yet.",
+    "attendance.sheet.mobileDateHelp": "On mobile, one class is shown at a time. Change the date with the arrows or selector. Tap the date heading to request a justification.",
     "attendance.sheet.selectYear": "Select a school year",
     "attendance.sheet.periodClosed": "This period is closed. You can view attendance, but you cannot add or edit marks.",
     "attendance.sheet.noClasses": "This subject has no scheduled or historical classes in this period.",
