@@ -1,5 +1,7 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useState, type FormEvent} from 'react'
 import {useIntl} from 'react-intl'
+import {useAulaFeedback} from './useAulaFeedback'
 import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
 import {useDraftFiles} from '@/lib/drafts/files'
 import {AulaRichEditor} from './AulaRichEditor'
@@ -61,6 +63,7 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
 }) {
   const save = useGuardarRecurso()
   const upload = useSubirAdjunto()
+  const feedback = useAulaFeedback()
   const [form, setForm] = useState<ResourceInput>(() => initial(resource, section))
   const [html, setHtml] = useState(() => priorHtml(resource))
   const [files, setFiles] = useState<File[]>([])
@@ -157,7 +160,8 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
       setSavedVersion(nextVersion)
       for (const file of files) {
         setProgress(`Subiendo ${file.name}…`)
-        await upload.mutateAsync({token, archivo: file, destino: 'recursos'})
+        const uploaded = await upload.mutateAsync({token, archivo: file, destino: 'recursos'})
+        setSavedFiles(current => [...current.filter(item => item.token !== uploaded.data.token), uploaded.data])
         setFiles(current => current.filter(item => item !== file))
       }
       if (publishAfterFiles) {
@@ -168,11 +172,13 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
       }
       setPendingPublication(false)
       finishDraft(true)
+      feedback.success(resource ? 'resourceSaved' : 'resourceCreated', resource ? 'updated' : 'success')
       onSaved(token)
-    } catch (cause) {setProgress(''); setError(`${cause instanceof Error ? cause.message : 'No se pudo completar la operación.'}${resourceSaved
-      ? publishAfterFiles ? ' El recurso quedó guardado como borrador: revisa los archivos pendientes y vuelve a guardar para publicarlo.'
-        : ' El recurso sí se guardó, pero puede haber archivos pendientes. Revisa el resultado antes de reintentar.'
-      : ''}`)} finally {setSubmitting(false)}
+    } catch (cause) {
+      setProgress('')
+      feedback.error(cause, 'resourceSaveFailed')
+      if (resourceSaved) setError(feedback.text(publishAfterFiles ? 'resourcePartialDraft' : 'resourcePartialFiles'))
+    } finally {setSubmitting(false)}
   }
 
   return <section className='aula-editor-page'>
@@ -265,7 +271,7 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
             </div>}
           </>}
           <label className='form-label mt-3'>Peso (%) {selectedComponent?.modo === 'WEIGHTED_AVERAGE' ? 'obligatorio' : 'si la planilla es ponderada'}
-            <input className='form-control mt-2' type='number' min='0.01' max='100' step='0.01' value={form.peso ?? ''}
+            <NumberInput className='form-control mt-2' type='number' min='0.01' max='100' step='0.01' value={form.peso ?? ''}
               disabled={!!resource?.actividad_token} onChange={event => set({peso: event.target.value || null})} /></label>
         </div>}
       </div>}
@@ -302,16 +308,16 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
             onChange={event => setOption('mezclar_respuestas', event.target.checked)} />Mezclar respuestas</label></div>
         <p className='text-muted fs-7 mt-2 mb-3'>Cada estudiante recibe un orden fijo y diferente por intento. Las respuestas de emparejamiento y ordenamiento siempre se presentan mezcladas.</p>
         <div className='row g-3 mt-1'><div className='col-sm-3'><label className='form-label'>Intentos
-          <input className='form-control mt-2' type='number' min='1' max='10' value={Number(form.configuracion?.intentos ?? 1)}
+          <NumberInput className='form-control mt-2' type='number' min='1' max='10' value={Number(form.configuracion?.intentos ?? 1)}
             onChange={event => setOption('intentos', Number(event.target.value))} /></label></div>
           <div className='col-sm-3'><label className='form-label'>Tiempo mínimo (min)
-            <input className='form-control mt-2' type='number' min='0' max='480' value={Number(form.configuracion?.duracion_minima_minutos ?? 0)}
+            <NumberInput className='form-control mt-2' type='number' min='0' max='480' value={Number(form.configuracion?.duracion_minima_minutos ?? 0)}
               onChange={event => setOption('duracion_minima_minutos', Number(event.target.value))} /></label></div>
           <div className='col-sm-3'><label className='form-label'>Tiempo máximo (min)
-            <input className='form-control mt-2' type='number' min='1' max='480' value={Number(form.configuracion?.duracion_minutos ?? 60)}
+            <NumberInput className='form-control mt-2' type='number' min='1' max='480' value={Number(form.configuracion?.duracion_minutos ?? 60)}
               onChange={event => setOption('duracion_minutos', Number(event.target.value))} /></label></div>
           <div className='col-sm-3'><label className='form-label'>Incidentes permitidos
-            <input className='form-control mt-2' type='number' min='0' max='20'
+            <NumberInput className='form-control mt-2' type='number' min='0' max='20'
               value={Number(form.configuracion?.incidentes_permitidos ?? 2)}
               onChange={event => setOption('incidentes_permitidos', Number(event.target.value))} /></label></div></div>
         <div className='d-flex flex-wrap gap-5 mt-4'><label className='form-check form-switch'>
@@ -324,7 +330,7 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
             checked={Boolean(form.configuracion?.permitir_editar_respuestas ?? true)}
             onChange={event => setOption('permitir_editar_respuestas', event.target.checked)} />Editar respuestas</label></div>
         <label className='form-label mt-4'>Preguntas por página
-          <input className='form-control mt-2' type='number' min='1' max='100'
+          <NumberInput className='form-control mt-2' type='number' min='1' max='100'
             value={Number(form.configuracion?.preguntas_por_pagina ?? 10)}
             onChange={event => setOption('preguntas_por_pagina', Number(event.target.value))} /></label>
         {form.llevar_planilla && <label className='form-label d-block mt-4'>Transferencia a planilla

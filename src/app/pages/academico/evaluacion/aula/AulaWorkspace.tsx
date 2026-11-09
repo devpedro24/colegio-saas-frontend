@@ -1,15 +1,16 @@
-import {useState, type ReactNode} from 'react'
+import {type ReactNode} from 'react'
 import {useNavigate} from 'react-router-dom'
 import {aulaPortadaUrl, useSubirPortadaAula, type AulaDetail, type AulaResource} from './aula.api'
 import {periodAccent, preinformeAccent} from './aula.colors'
 import {useAulaAccordionState} from './useAulaAccordionState'
+import {useAulaFeedback} from './useAulaFeedback'
 
 const icons: Record<AulaResource['tipo'], string> = {texto: '▤', archivo: '▣', tarea: '✓', cuestionario: '☷'}
 
 export function AulaWorkspace({aula, activeResource, children}: {aula: AulaDetail; activeResource?: string; children: ReactNode}) {
   const navigate = useNavigate()
   const upload = useSubirPortadaAula()
-  const [error, setError] = useState('')
+  const feedback = useAulaFeedback()
   const {values: expandedSections, toggle: toggleSidebarSection} = useAulaAccordionState(aula.token, 'sidebar')
   const count = aula.secciones.reduce((total, section) => total + section.recursos.filter(resource => !resource.eliminado).length, 0)
 
@@ -22,11 +23,11 @@ export function AulaWorkspace({aula, activeResource, children}: {aula: AulaDetai
         <div className='aula-sidebar-summary'>{aula.secciones.filter(section => !section.eliminado).length} secciones · {count} recursos</div>
         {aula.puede_gestionar && <label className='aula-cover-action mt-3'>Cambiar portada
           <input className='visually-hidden' type='file' accept='image/png,image/jpeg,image/webp' disabled={upload.isPending}
-            onChange={event => {const file = event.target.files?.[0]; if (!file) return
-              void upload.mutateAsync({token: aula.token, archivo: file}).catch(cause =>
-                setError(cause instanceof Error ? cause.message : 'No se pudo guardar la portada.'))
+            onChange={event => {const file = event.target.files?.[0]; event.currentTarget.value = ''; if (!file) return
+              void upload.mutateAsync({token: aula.token, archivo: file})
+                .then(() => feedback.success('coverSaved', aula.portada_token ? 'updated' : 'success'))
+                .catch(cause => feedback.error(cause, 'coverSaveFailed'))
             }} /></label>}
-        {error && <div className='text-danger fs-7 mt-2' role='alert'>{error}</div>}
       </div>
       <nav className='aula-sidebar-nav' aria-label='Secciones y recursos'>
         <button className={`aula-nav-title aula-nav-home ${!activeResource ? 'is-active' : ''}`}

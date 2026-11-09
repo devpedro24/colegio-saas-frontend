@@ -324,8 +324,9 @@ export const useMiIntento = (token: string, enabled: boolean) => useQuery({query
   enabled: !!token && enabled,
   queryFn: () => api.get<{data: Attempt | null}>(`${base}/recursos/${token}/mi-intento?opaque=1`).then(r => r.data)})
 export const useGuardarRespuestas = () => {const client = useQueryClient(); return useMutation({
-  mutationFn: (input: {token: string; respuestas: Attempt['respuestas']}) =>
-    api.put(`${base}/intentos/${input.token}/respuestas?opaque=1`, {respuestas: input.respuestas}),
+  mutationFn: (input: {token: string; respuestas: Attempt['respuestas']; manual?: boolean}) =>
+    api.put(`${base}/intentos/${input.token}/respuestas?opaque=1`, {respuestas: input.respuestas,
+      ...(input.manual === true ? {registrar_accion: true} : {})}),
   onSuccess: (_, input) => client.setQueryData<Attempt>(['aula', 'intento', input.token],
     current => current ? {...current, respuestas: input.respuestas} : current),
 })}

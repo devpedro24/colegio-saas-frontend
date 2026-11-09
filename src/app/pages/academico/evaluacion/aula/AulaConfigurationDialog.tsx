@@ -1,12 +1,12 @@
 import {useEffect, useState, type FormEvent} from 'react'
 import Modal from 'react-bootstrap/Modal'
-import {useToast} from '@/lib/ui/toast'
+import {useAulaFeedback} from './useAulaFeedback'
 import {useAulaConfiguration, useGuardarAulaConfiguration} from './aula.api'
 
 export function AulaConfigurationDialog({show, onHide}: {show: boolean; onHide: () => void}) {
   const {data, isLoading, error} = useAulaConfiguration(show)
   const save = useGuardarAulaConfiguration()
-  const toast = useToast()
+  const feedback = useAulaFeedback()
   const [allowClosed, setAllowClosed] = useState(true)
   const [periodColors, setPeriodColors] = useState<Record<string, string>>({})
   const [preinformeColor, setPreinformeColor] = useState('#64748B')
@@ -22,9 +22,9 @@ export function AulaConfigurationDialog({show, onHide}: {show: boolean; onHide: 
     try {
       await save.mutateAsync({permitir_edicion_periodos_cerrados: allowClosed,
         ...(data?.puede_configurar_colores ? {colores_periodos: periodColors, color_preinforme: preinformeColor} : {})})
-      toast.success('Configuración del Aula guardada.')
+      feedback.success('configurationSaved')
       onHide()
-    } catch (cause) {toast.error(cause instanceof Error ? cause.message : 'No se pudo guardar la configuración.')}
+    } catch (cause) {feedback.error(cause, 'configurationSaveFailed')}
   }
 
   return <Modal show={show} onHide={onHide} centered className='aula-configuration-modal' aria-labelledby='aula-configuration-title'>

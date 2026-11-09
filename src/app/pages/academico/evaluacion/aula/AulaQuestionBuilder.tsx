@@ -1,5 +1,7 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useState, type FormEvent} from 'react'
 import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
+import {useAulaFeedback} from './useAulaFeedback'
 import {aulaPreguntaMedioUrl, type Question, type QuestionMedia, useGuardarPreguntas,
   useQuitarMedioPregunta, useSubirMedioPregunta} from './aula.api'
 
@@ -28,6 +30,7 @@ export function QuestionMediaList({medios, canRemove, onRemove}: {medios: Questi
 export function AulaQuestionBuilder({token, current, version, locked, lockReason}: {
   token: string; current: Question[]; version: number; locked: boolean; lockReason?: string}) {
   const save = useGuardarPreguntas()
+  const feedback = useAulaFeedback()
   const uploadMedium = useSubirMedioPregunta()
   const removeMedium = useQuitarMedioPregunta()
   const [savedVersion, setSavedVersion] = useState(version)
@@ -92,16 +95,22 @@ export function AulaQuestionBuilder({token, current, version, locked, lockReason
     setMessage('')
     try {const medium = await uploadMedium.mutateAsync({pregunta: item.token, archivo: file, opcion_indice: optionIndex})
       update({medios: [...item.medios, medium]})
-    } catch (error) {setMessage(error instanceof Error ? error.message : 'No se pudo subir el medio.')}
+      feedback.success('questionMediaAdded', 'success')
+    } catch (error) {feedback.error(error, 'questionMediaUploadFailed')}
   }
   const deleteMedium = async (mediumToken: string) => {
+    setMessage('')
     try {await removeMedium.mutateAsync(mediumToken)
       update({medios: item.medios.filter(medium => medium.token !== mediumToken)})
-    } catch (error) {setMessage(error instanceof Error ? error.message : 'No se pudo quitar el medio.')}
+      feedback.success('questionMediaRemoved', 'deleted')
+    } catch (error) {feedback.error(error, 'questionMediaRemoveFailed')}
   }
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setMessage('')
     const finishDraft = recovery.afterSave()
+    const previous = JSON.parse(baseline) as Draft[]
+    const hasDeleted = previous.some(question => question.token && !questions.some(item => item.token === question.token))
+    const hasCreated = questions.some(question => !question.token)
     try {const result = await save.mutateAsync({token, version: savedVersion, preguntas: questions.map(question => ({token: question.token,
       tipo: question.tipo,
       enunciado: question.enunciado.trim(), opciones: question.opciones.map(option => option.trim()).filter(Boolean),
@@ -111,8 +120,8 @@ export function AulaQuestionBuilder({token, current, version, locked, lockReason
       setSavedVersion(result.version)
       finishDraft(); setBaseline(JSON.stringify(fromCurrent(result.preguntas)))
       setQuestions(fromCurrent(result.preguntas))
-      setMessage('Preguntas guardadas.')
-    } catch (error) {setMessage(error instanceof Error ? error.message : 'No se pudieron guardar las preguntas.')}
+      feedback.success('questionsSaved', hasDeleted && !hasCreated ? 'deleted' : hasCreated && !hasDeleted ? 'success' : 'updated')
+    } catch (error) {feedback.error(error, 'questionsSaveFailed')}
   }
 
   return <section className='aula-question-builder mt-8'>
@@ -151,7 +160,7 @@ export function AulaQuestionBuilder({token, current, version, locked, lockReason
                   : tipo === 'correspondencia' ? item.opciones.map(() => '') : ''})}}>
               {Object.entries(labels).map(([type, label]) => <option key={type} value={type}>{label}</option>)}</select>
           </label></div><div className='col-md-4'><label className='form-label'>Puntos de la pregunta
-            <input className='form-control mt-2' type='number' min='0.001' max='100' step='0.001' required value={item.puntos}
+            <NumberInput className='form-control mt-2' type='number' min='0.001' max='100' step='0.001' required value={item.puntos}
               onChange={event => update({puntos: event.target.value})} />
             <small className='text-muted'>Máximo que esta pregunta aporta al total del cuestionario.</small></label></div></div>
           <label className='form-label mt-5'>Enunciado
@@ -179,7 +188,7 @@ export function AulaQuestionBuilder({token, current, version, locked, lockReason
                 onChange={event => setOption(index, event.target.value)} placeholder={`Opción ${index + 1}`} />
               <button className='btn btn-sm btn-light-danger' type='button' aria-label={`Quitar opción ${index + 1}`}
                 disabled={item.opciones.length <= 2} onClick={() => removeOption(index)}>×</button>
-              {item.puntajes && <label className='aula-option-points'>Puntos<input className='form-control' type='number' min='0'
+              {item.puntajes && <label className='aula-option-points'>Puntos<NumberInput className='form-control' type='number' min='0'
                 max={item.puntos} step='0.001' value={item.puntajes[option] ?? '0'}
                 onChange={event => update({puntajes: {...item.puntajes, [option]: event.target.value}})} /></label>}
               <div className='aula-option-media'><QuestionMediaList medios={item.medios.filter(medium => medium.opcion_indice === index)}
@@ -196,7 +205,7 @@ export function AulaQuestionBuilder({token, current, version, locked, lockReason
               className={`aula-boolean-choice ${item.respuesta === value ? 'is-correct' : ''}`}>
               <input type='radio' name={`bool-${item.id}`} checked={item.respuesta === value}
                 onChange={() => update({respuesta: value})} />{value}
-              {item.puntajes && <input className='form-control' type='number' min='0' max={item.puntos} step='0.001'
+              {item.puntajes && <NumberInput className='form-control' type='number' min='0' max={item.puntos} step='0.001'
                 aria-label={`Puntos para ${value}`} value={item.puntajes[value] ?? '0'}
                 onChange={event => update({puntajes: {...item.puntajes, [value]: event.target.value}})} />}</label>)}</div></div>}
           {['unica', 'multiple', 'booleano'].includes(item.tipo) && <label className='form-check form-switch mt-4'>
@@ -249,7 +258,7 @@ export function AulaQuestionBuilder({token, current, version, locked, lockReason
               <label className='form-label flex-grow-1'>Criterio<input className='form-control mt-1' maxLength={160}
                 value={criterion.nombre} onChange={event => update({rubrica: item.rubrica.map((entry, at) => at === index
                   ? {...entry, nombre: event.target.value} : entry)})} /></label>
-              <label className='form-label'>Máximo<input className='form-control mt-1' type='number' min='0.001'
+              <label className='form-label'>Máximo<NumberInput className='form-control mt-1' type='number' min='0.001'
                 max={item.puntos} step='0.001' value={criterion.puntos}
                 onChange={event => update({rubrica: item.rubrica.map((entry, at) => at === index
                   ? {...entry, puntos: event.target.value} : entry)})} /></label>

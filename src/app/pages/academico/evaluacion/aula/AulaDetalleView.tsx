@@ -4,7 +4,7 @@ import {AulaWorkspace} from './AulaWorkspace'
 import {useAulaAccordionState} from './useAulaAccordionState'
 import {periodAccent, preinformeAccent} from './aula.colors'
 import {AulaResourceComposer} from './AulaResourceComposer'
-import {useToast} from '@/lib/ui/toast'
+import {useAulaFeedback} from './useAulaFeedback'
 import {useAula, useArchivarRecurso, useCrearSeccion, useEditarSeccion, useEliminarRecurso,
   useEliminarSeccion, useRestaurarRecurso, useRestaurarSeccion, type AulaResource} from './aula.api'
 import './aula.css'
@@ -27,7 +27,7 @@ export function AulaDetalleView() {
   const deleteSection = useEliminarSeccion()
   const restoreResource = useRestaurarRecurso()
   const restoreSection = useRestaurarSeccion()
-  const toast = useToast()
+  const feedback = useAulaFeedback()
   const [editor, setEditorState] = useState<Editor>(null)
   const setEditor = (next: Editor) => {
     setEditorState(next)
@@ -89,26 +89,28 @@ export function AulaDetalleView() {
         periodo_token: sectionForm.periodo_token, preinforme_token: sectionForm.preinforme_token || null,
         visible_estudiantes: sectionForm.visible_estudiantes})
       finishDraft(); setEditor(null)
-      toast.success('Sección guardada.')
-    } catch (cause) {toast.error(cause instanceof Error ? cause.message : 'No se pudo guardar la sección.')}
+      feedback.success(editor.token ? 'sectionSaved' : 'sectionCreated', editor.token ? 'updated' : 'success')
+    } catch (cause) {feedback.error(cause, 'sectionSaveFailed')}
   }
   const toggleSection = async (token: string, visible: boolean) => {
-    try {await editSection.mutateAsync({token, visible_estudiantes: visible})}
-    catch (cause) {toast.error(cause instanceof Error ? cause.message : 'No se pudo cambiar la visibilidad.')}
+    try {await editSection.mutateAsync({token, visible_estudiantes: visible})
+      feedback.success(visible ? 'sectionPublished' : 'sectionHidden')}
+    catch (cause) {feedback.error(cause, 'visibilityFailed')}
   }
   const archive = async (resource: AulaResource) => {
     if (!window.confirm(`¿Archivar «${resource.titulo}»? Dejará de mostrarse a los estudiantes y conservará su historial.`)) return
     try {await archiveResource.mutateAsync({token: resource.token, version: resource.version})
-      toast.success('Recurso archivado. Puedes restaurarlo desde Editar.')}
-    catch (cause) {toast.error(cause instanceof Error ? cause.message : 'No se pudo archivar el recurso.')}
+      feedback.success('resourceArchived')}
+    catch (cause) {feedback.error(cause, 'archiveFailed')}
   }
   const changeDeleted = async (kind: 'section' | 'resource', token: string, restore: boolean) => {
     if (!restore && !window.confirm(`¿Eliminar ${kind === 'section' ? 'la sección y sus recursos' : 'el recurso'}? Se conservarán archivos y registros para poder restaurarlos.`)) return
     try {
       if (kind === 'section') await (restore ? restoreSection : deleteSection).mutateAsync(token)
       else await (restore ? restoreResource : deleteResource).mutateAsync(token)
-      toast.success(restore ? 'Contenido restaurado.' : 'Contenido eliminado. Puede restaurarse con el permiso correspondiente.')
-    } catch (cause) {toast.error(cause instanceof Error ? cause.message : 'No se pudo completar la operación.')}
+      feedback.success(kind === 'section' ? restore ? 'sectionRestored' : 'sectionDeleted'
+        : restore ? 'resourceRestored' : 'resourceDeleted', restore ? 'updated' : 'deleted')
+    } catch (cause) {feedback.error(cause, 'contentChangeFailed')}
   }
 
   return <AulaWorkspace aula={data}>

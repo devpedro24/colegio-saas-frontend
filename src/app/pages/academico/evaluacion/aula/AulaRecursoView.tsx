@@ -1,8 +1,10 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useEffect, useRef, useState, type FormEvent} from 'react'
 import {useNavigate, useParams} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
 import {useDraftFiles} from '@/lib/drafts/files'
+import {aulaErrorMessage, useAulaFeedback} from './useAulaFeedback'
 import {AulaWorkspace} from './AulaWorkspace'
 import {AulaQuestionBuilder} from './AulaQuestionBuilder'
 import {AulaAttachmentGallery} from './AulaAttachmentGallery'
@@ -22,7 +24,7 @@ function GradeField({scale, value, onChange, label}: {scale?: AulaScale; value: 
     onChange={event => onChange(event.target.value)}><option value=''>Selecciona una carita</option>
     {scale.opciones.map(option => <option key={option.url_token} value={option.url_token}>
       {option.emoji ? `${option.emoji} ` : ''}{option.nombre}</option>)}</select>
-    : <input type='number' step='0.01' className='form-control' aria-label={label} value={value}
+    : <NumberInput type='number' step='0.01' className='form-control' aria-label={label} value={value}
       onChange={event => onChange(event.target.value)} />
 }
 
@@ -57,6 +59,7 @@ function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired
   const review = useRevisarEntrega()
   const upload = useSubirAdjunto()
   const remove = useQuitarAdjunto()
+  const feedback = useAulaFeedback()
   const submissions = useEntregas(token, canManage)
   const [text, setText] = useState(existing?.texto ?? '')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
@@ -99,6 +102,7 @@ function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired
       setMessage('Escribe una respuesta o selecciona al menos un archivo.'); return
     }
     const finishDraft = submissionRecovery.afterSave(); setSending(true)
+    let hasUploadedFiles = !!existing?.adjuntos.length
     try {
       let attachmentTarget = draftToken || existing?.token || ''
       if (selectedFiles.length && !attachmentTarget && !existing) {
@@ -109,13 +113,16 @@ function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired
       for (const file of selectedFiles) {
         if (!attachmentTarget) throw new Error('No se pudo preparar la entrega para adjuntar archivos.')
         await upload.mutateAsync({token: attachmentTarget, archivo: file, destino: 'entregas'})
+        hasUploadedFiles = true
         setSelectedFiles(current => current.filter(item => item !== file))
       }
       await submit.mutateAsync({token, texto: text, version: editVersion.current})
       finishDraft(true)
-      setDraftToken(''); setMessage('Entrega enviada.')
+      setDraftToken('')
+      feedback.success('submissionSent', existing && existing.estado !== 'borrador' ? 'updated' : 'success')
     } catch (error) {
-      setMessage(`${error instanceof Error ? error.message : 'No se pudo entregar.'} Revisa los archivos ya adjuntados antes de reintentar para no subirlos dos veces.`)
+      feedback.error(error, 'submissionFailed')
+      if (hasUploadedFiles) setMessage(feedback.text('submissionPartialFiles'))
     } finally {setSending(false)}
   }
   if (canManage) return <section className='mt-8'><h3>Entregas</h3>
@@ -144,7 +151,8 @@ function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired
               : {nota: gradeForm[item.token]?.nota ?? item.nota ?? ''}),
             retroalimentacion: gradeForm[item.token]?.retroalimentacion ?? item.retroalimentacion ?? '',
             motivo: gradeForm[item.token]?.motivo})
-            .then(() => {finishFeedback(item.token); setMessage('Calificación guardada.')}).catch(error => setMessage(error instanceof Error ? error.message : 'Error al calificar.'))}>Calificar</button></div>}
+            .then(() => {finishFeedback(item.token); feedback.success('gradeSaved')})
+            .catch(error => feedback.error(error, 'gradeFailed'))}>Calificar</button></div>}
         {!gradeable && <div className='d-flex flex-wrap gap-3 align-items-end'><label className='flex-grow-1'>Retroalimentación
           <input className='form-control' value={gradeForm[item.token]?.retroalimentacion ?? item.retroalimentacion ?? ''}
             onChange={event => setGradeForm({...gradeForm, [item.token]: {...(gradeForm[item.token] ?? {nota: ''}),
@@ -152,11 +160,12 @@ function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired
           <button className='btn btn-success' disabled={review.isPending || item.estado === 'revisada'}
             onClick={() => void review.mutateAsync({token: item.token, version: gradeForm[item.token]?.version ?? item.version,
               retroalimentacion: gradeForm[item.token]?.retroalimentacion ?? item.retroalimentacion ?? ''})
-              .then(() => {finishFeedback(item.token); setMessage('Entrega revisada.')}).catch(error => setMessage(error instanceof Error ? error.message : 'No se pudo revisar.'))}>
+              .then(() => {finishFeedback(item.token); feedback.success('submissionReviewed')})
+              .catch(error => feedback.error(error, 'submissionReviewFailed'))}>
             {item.estado === 'revisada' ? 'Revisada' : 'Marcar como revisada'}</button></div>}
         </fieldset>
       </article>)}</div> : <p className='text-muted'>Todavía no hay entregas.</p>}
-    {message && <div className='alert alert-info mt-4'>{message}</div>}</section>
+    </section>
   if (!isStudent) return <div className='alert alert-light mt-7'>Esta tarea está disponible en solo lectura para tu perfil.</div>
   return <section className='mt-8'><h3>Tu entrega</h3>
     {submissionRecovery.notice}
@@ -182,13 +191,14 @@ function TaskPanel({token, canManage, gradeable, existing, scale, reasonRequired
           {canEditEvidence && <button className='btn btn-sm btn-light-danger' type='button'
             disabled={remove.isPending} onClick={() => {
               if (!window.confirm(`¿Quitar «${file.nombre}» de tu entrega?`)) return
-              void remove.mutateAsync(file.token).then(() => setMessage('Archivo quitado.'))
-                .catch(error => setMessage(error instanceof Error ? error.message : 'No se pudo quitar.'))
+              void remove.mutateAsync(file.token).then(() => feedback.success('fileRemoved', 'deleted'))
+                .catch(error => feedback.error(error, 'fileRemoveFailed'))
             }}>Quitar</button>}</span>)}</div>}</div>}
     {message && <div className='alert alert-info mt-4'>{message}</div>}</section>
 }
 
 function AttemptSession({attempt}: {attempt: Attempt}) {
+  const feedback = useAulaFeedback()
   const save = useGuardarRespuestas()
   const uploadResponse = useSubirRespuestaMedio()
   const saveAnswers = save.mutateAsync
@@ -219,9 +229,9 @@ function AttemptSession({attempt}: {attempt: Attempt}) {
     document.addEventListener('fullscreenchange', syncFocus)
     return () => document.removeEventListener('fullscreenchange', syncFocus)
   }, [])
-  const persist = async () => {
+  const persist = async (manual = false) => {
     if (uploadingRef.current) throw new Error('Espera a que termine de subir la respuesta multimedia.')
-    await save.mutateAsync({token: attempt.token, respuestas: answersRef.current})
+    await save.mutateAsync({token: attempt.token, respuestas: answersRef.current, manual})
     if (!attempt.permitir_editar_respuestas) setLockedAnswers(new Set(Object.keys(answersRef.current)))
   }
   useEffect(() => {
@@ -233,13 +243,14 @@ function AttemptSession({attempt}: {attempt: Attempt}) {
   }, [attempt.token, attempt.permitir_editar_respuestas, saveAnswers])
   const uploadAnswer = async (question: Question, file: File) => {
     setMessage(''); uploadingRef.current = true
+    const replacing = !!answersRef.current[question.token]
     try {
       const result = await uploadResponse.mutateAsync({intento: attempt.token, pregunta: question.token, archivo: file})
       const updated = {...answersRef.current, [question.token]: result.token}
       answersRef.current = updated; setAnswers(updated)
       if (!attempt.permitir_editar_respuestas) setLockedAnswers(current => new Set([...current, question.token]))
-      setMessage('Respuesta multimedia subida y guardada.')
-    } catch (error) {setMessage(error instanceof Error ? error.message : 'No se pudo subir la respuesta.')}
+      feedback.success('answerUploaded', replacing ? 'updated' : 'success')
+    } catch (error) {feedback.error(error, 'answerUploadFailed')}
     finally {uploadingRef.current = false}
   }
   useEffect(() => {
@@ -261,17 +272,18 @@ function AttemptSession({attempt}: {attempt: Attempt}) {
     setMessage('')
     try {await persist(); const result = await finish.mutateAsync(attempt.token)
       active.current = false; setStatus(result.estado); const outcome = result.valoracion
-        ? `Intento enviado. Valoración: ${result.valoracion.emoji ?? ''} ${result.valoracion.nombre}`
-        : result.nota ? `Intento enviado. Nota: ${result.nota}` : 'Intento enviado. Pendiente de revisión docente.'
+        ? `Valoración: ${result.valoracion.emoji ?? ''} ${result.valoracion.nombre}`
+        : result.nota ? `Nota: ${result.nota}` : 'Pendiente de revisión docente.'
       setMessage(result.estado_planilla === 'pendiente' ? `${outcome} La nota todavía no está en la planilla; el docente debe revisar el vínculo o reintentar la transferencia.`
         : result.estado_planilla === 'nota_oficial_existente' ? `${outcome} Ya existe una nota oficial y no fue reemplazada.` : outcome)
-    } catch (error) {setMessage(error instanceof Error ? error.message : 'No se pudo finalizar.')}
+      feedback.success('attemptFinished')
+    } catch (error) {feedback.error(error, 'attemptFinishFailed')}
   }
   const goPage = async (target: number) => {
     setMessage('')
     try {await persist(); const result = await changePage.mutateAsync({token: attempt.token, pagina: target})
       setPage(result.pagina_actual); setQuestions(result.preguntas)
-    } catch (error) {setMessage(error instanceof Error ? error.message : 'No se pudo cambiar de página.')}
+    } catch (error) {setMessage(aulaErrorMessage(error, 'No se pudo cambiar de página.'))}
   }
   const pageCount = Math.max(1, Math.ceil(attempt.preguntas_total / attempt.preguntas_por_pagina))
   const visibleQuestions = questions
@@ -358,8 +370,8 @@ function AttemptSession({attempt}: {attempt: Attempt}) {
       {page < pageCount && <button className='btn btn-light-primary' disabled={changePage.isPending || save.isPending || uploadResponse.isPending}
         onClick={() => void goPage(page + 1)}>Guardar y avanzar →</button>}
       <button className='btn btn-light-success' disabled={save.isPending || uploadResponse.isPending}
-        onClick={() => void persist().then(() => setMessage('Respuestas guardadas.'))
-          .catch(error => setMessage(error instanceof Error ? error.message : 'No se pudieron guardar.'))}>Guardar respuestas</button>
+        onClick={() => {setMessage(''); void persist(true).then(() => feedback.success('answersSaved'))
+          .catch(error => feedback.error(error, 'answersSaveFailed'))}}>Guardar respuestas</button>
       <button className='btn btn-success' disabled={finish.isPending || save.isPending || uploadResponse.isPending} onClick={() => void complete()}>Finalizar intento</button></div>}
     {message && <div className='alert alert-info mt-4'>{message}</div>}
   </section>
@@ -367,6 +379,7 @@ function AttemptSession({attempt}: {attempt: Attempt}) {
 
 function QuestionReview({attempt, onSaved}: {attempt: Attempt; onSaved: () => void}) {
   const intl = useIntl()
+  const feedback = useAulaFeedback()
   const review = useRevisarPreguntas()
   const manual = attempt.preguntas.filter(question => ['abierta', 'audio', 'video'].includes(question.tipo))
   const [scores, setScores] = useState<Record<string, {puntos: string; retroalimentacion: string; criterios: string[]}>>(() =>
@@ -376,7 +389,6 @@ function QuestionReview({attempt, onSaved}: {attempt: Attempt; onSaved: () => vo
       criterios: attempt.revision_preguntas?.[question.token]?.criterios ?? (question.rubrica ?? []).map(() => '0'),
     }])))
   const [reason, setReason] = useState('')
-  const [message, setMessage] = useState('')
   const initialScores = useRef(JSON.stringify(scores))
   const recovery = useWorkDraft({context: `aula-review:${attempt.token}`, title: intl.formatMessage({id: 'drafts.feedback'}),
     value: {scores, reason}, dirty: !!reason || JSON.stringify(scores) !== initialScores.current,
@@ -384,15 +396,14 @@ function QuestionReview({attempt, onSaved}: {attempt: Attempt; onSaved: () => vo
     restore: value => {setScores(value.scores); setReason(value.reason)},
     reset: () => {setScores(JSON.parse(initialScores.current)); setReason('')}})
   const saveReview = async () => {
-    setMessage('')
     const finishDraft = recovery.afterSave()
     try {
       await review.mutateAsync({token: attempt.token, version: attempt.version, motivo: reason,
         evaluaciones: manual.map(question => ({pregunta_token: question.token,
           puntos: scores[question.token]?.puntos ?? '0', retroalimentacion: scores[question.token]?.retroalimentacion ?? '',
           criterios: scores[question.token]?.criterios ?? []}))})
-      finishDraft(); onSaved()
-    } catch (error) {setMessage(error instanceof Error ? error.message : 'No se pudo guardar la revisión.')}
+      finishDraft(); feedback.success('reviewSaved'); onSaved()
+    } catch (error) {feedback.error(error, 'reviewSaveFailed')}
   }
   return <div className='aula-question-review'>
     {recovery.notice}
@@ -413,14 +424,14 @@ function QuestionReview({attempt, onSaved}: {attempt: Attempt; onSaved: () => vo
         {isManual && form && <div className='aula-review-fields'>
           {(question.rubrica ?? []).map((criterion, criterionIndex) => <label key={criterionIndex}>
             {criterion.nombre} (máximo {criterion.puntos})
-            <input type='number' min='0' max={criterion.puntos} step='0.01' className='form-control'
+            <NumberInput type='number' min='0' max={criterion.puntos} step='0.01' className='form-control'
               disabled={attempt.estado !== 'pendiente_revision'} value={form.criterios[criterionIndex] ?? '0'}
               onChange={event => {const criteria = [...form.criterios]; criteria[criterionIndex] = event.target.value
                 const total = Math.round(criteria.reduce((sum, value) => sum + (Number(value) || 0), 0) * 10000) / 10000
                 setScores({...scores, [question.token]: {...form, criterios: criteria, puntos: String(total)}})}} />
           </label>)}
           <label>Puntos otorgados (máximo {question.puntos})
-            <input type='number' min='0' max={question.puntos} step='0.01' className='form-control'
+            <NumberInput type='number' min='0' max={question.puntos} step='0.01' className='form-control'
               readOnly={!!question.rubrica?.length} disabled={attempt.estado !== 'pendiente_revision'}
               value={form.puntos} onChange={event => setScores({...scores,
                 [question.token]: {...form, puntos: event.target.value}})} /></label>
@@ -438,7 +449,6 @@ function QuestionReview({attempt, onSaved}: {attempt: Attempt; onSaved: () => vo
       <button type='button' className='btn btn-success' disabled={review.isPending || reason.trim().length < 8}
         onClick={() => void saveReview()}>Guardar revisión y calcular nota</button>
     </div>}
-    {message && <div className='alert alert-danger mt-3' role='alert'>{message}</div>}
   </div>
 }
 
@@ -447,6 +457,7 @@ function QuizPanel({token, canEdit, canGrade, canReactivate, canLinkGradebook, h
   hasAttempts: boolean; current: Question[]; version: number;
   scale?: AulaScale; canInteract?: boolean; isStudent: boolean}) {
   const start = useIniciarIntento()
+  const feedback = useAulaFeedback()
   const [attemptToken, setAttemptToken] = useState('')
   const own = useMiIntento(token, isStudent)
   const attempt = useIntento(attemptToken)
@@ -458,7 +469,14 @@ function QuizPanel({token, canEdit, canGrade, canReactivate, canLinkGradebook, h
   const [grades, setGrades] = useState<Record<string, string>>({})
   const [reviewToken, setReviewToken] = useState('')
   const review = useIntento(reviewToken)
-  const [message, setMessage] = useState('')
+  const startAttempt = async () => {
+    try {
+      const result = await start.mutateAsync(token)
+      const resumed = result.token === own.data?.token || result.token === attemptToken
+      setAttemptToken(result.token)
+      feedback.success(resumed ? 'attemptContinued' : 'attemptStarted', resumed ? 'updated' : 'success')
+    } catch (error) {feedback.error(error, 'attemptStartFailed')}
+  }
   return <>
     {canEdit || canGrade ? <>{canEdit && <AulaQuestionBuilder token={token} current={current} version={version} locked={hasAttempts}
       lockReason='Este cuestionario ya tiene intentos. Sus preguntas históricas son de solo lectura.' />}
@@ -471,8 +489,8 @@ function QuizPanel({token, canEdit, canGrade, canReactivate, canLinkGradebook, h
           disabled={retryGradebook.isPending} onClick={() => {
             const motivo = window.prompt('Motivo del reintento (mínimo 8 caracteres):')
             if (motivo) void retryGradebook.mutateAsync({token: item.token, motivo})
-              .then(() => setMessage('Nota incorporada a la planilla.'))
-              .catch(error => setMessage(error instanceof Error ? error.message : 'No se pudo reintentar la transferencia.'))
+              .then(() => feedback.success('gradebookRetried'))
+              .catch(error => feedback.error(error, 'gradebookRetryFailed'))
           }}>Reintentar planilla</button>}
         {['finalizado', 'tiempo_agotado'].includes(item.estado) && <div className='d-flex gap-2 align-items-center'>
           <GradeField scale={scale} label={`Valoración de ${item.estudiante}`}
@@ -484,13 +502,13 @@ function QuizPanel({token, canEdit, canGrade, canReactivate, canLinkGradebook, h
               ...(scale?.tipo === 'imagenes'
                 ? {escala_opcion_token: grades[item.token] ?? item.escala_opcion_token ?? ''}
                 : {nota: grades[item.token] ?? item.nota ?? ''})})
-              .then(() => setMessage('Nota confirmada en el Aula y, si se vinculó, en la planilla.'))
-              .catch(error => setMessage(error instanceof Error ? error.message : 'No se pudo calificar.'))
+              .then(() => feedback.success('gradeSaved'))
+              .catch(error => feedback.error(error, 'gradeFailed'))
           }}>Confirmar nota</button></div>}
         {item.estado === 'bloqueado' && canReactivate && <button className='btn btn-sm btn-light-success' disabled={reactivate.isPending} onClick={() => {
           const motivo = window.prompt('Motivo de reactivación (mínimo 8 caracteres):')
-          if (motivo) void reactivate.mutateAsync({token: item.token, motivo}).then(() => setMessage('Intento reactivado.'))
-            .catch(error => setMessage(error instanceof Error ? error.message : 'No se pudo reactivar.'))
+          if (motivo) void reactivate.mutateAsync({token: item.token, motivo}).then(() => feedback.success('attemptReactivated'))
+            .catch(error => feedback.error(error, 'attemptReactivateFailed'))
         }}>Reactivar</button>}</div>) : <p className='text-muted'>No hay intentos todavía.</p>}
         {reviewToken && <div className='border rounded p-5 mt-5'><div className='d-flex justify-content-between align-items-center gap-3'>
           <h4 className='mb-0'>Respuestas del intento</h4><button className='btn btn-sm btn-light' onClick={() => setReviewToken('')}>Cerrar</button></div>
@@ -498,20 +516,18 @@ function QuizPanel({token, canEdit, canGrade, canReactivate, canLinkGradebook, h
             ? <QuestionReview key={`${review.data.token}:${review.data.version}`} attempt={review.data} onSaved={() => setReviewToken('')} />
             : <p className='text-danger mt-4'>No se pudieron cargar las respuestas.</p>}</div>}</section>}</>
       : !isStudent ? <div className='alert alert-light mt-7'>Este cuestionario está disponible en solo lectura para tu perfil.</div>
-      : !attemptToken ? <button className='btn btn-success mt-8' disabled={start.isPending || !canInteract} onClick={() => void start.mutateAsync(token)
-        .then(data => setAttemptToken(data.token)).catch(error => setMessage(error instanceof Error ? error.message : 'No se pudo iniciar.'))}>Iniciar o continuar cuestionario</button>
+      : !attemptToken ? <button className='btn btn-success mt-8' disabled={start.isPending || !canInteract}
+        onClick={() => void startAttempt()}>Iniciar o continuar cuestionario</button>
         : attempt.data ? <><AttemptSession key={attempt.data.token} attempt={attempt.data} />
           {canInteract && ['finalizado', 'tiempo_agotado'].includes(attempt.data.estado) &&
-            <button className='btn btn-light-success mt-4' disabled={start.isPending} onClick={() => void start.mutateAsync(token)
-              .then(data => setAttemptToken(data.token))
-              .catch(error => setMessage(error instanceof Error ? error.message : 'No hay otro intento disponible.'))}>
+            <button className='btn btn-light-success mt-4' disabled={start.isPending} onClick={() => void startAttempt()}>
               Iniciar otro intento si está permitido</button>}</> : <p className='mt-7'>Cargando intento…</p>}
-    {message && <div className='alert alert-info mt-4'>{message}</div>}
   </>
 }
 
 export function AulaRecursoView() {
   const intl = useIntl()
+  const feedback = useAulaFeedback()
   const {recursoToken = ''} = useParams()
   const navigate = useNavigate()
   const {data, isLoading, error} = useAulaRecurso(recursoToken)
@@ -520,8 +536,6 @@ export function AulaRecursoView() {
   const openingTokens = useRef(new Set<string>())
   const upload = useSubirAdjunto()
   const linkGradebook = useVincularPlanilla()
-  const [uploadMessage, setUploadMessage] = useState('')
-  const [linkMessage, setLinkMessage] = useState('')
   useEffect(() => {
     if (data?.estudiante && data.progreso === 'sin_iniciar' && data.completar_al === 'abrir'
       && !openingTokens.current.has(recursoToken)) {
@@ -577,9 +591,9 @@ export function AulaRecursoView() {
     {data.estado_vinculo_planilla === 'pendiente_configuracion' && data.puede_planilla &&
       <div className='d-flex flex-wrap align-items-center gap-3 mt-3'><button className='btn btn-light-primary'
         disabled={linkGradebook.isPending} onClick={() => void linkGradebook.mutateAsync(recursoToken)
-          .then(() => setLinkMessage('Actividad vinculada a la planilla.'))
-          .catch(error => setLinkMessage(error instanceof Error ? error.message : 'No se pudo vincular la planilla.'))}>
-        Reintentar vínculo con planilla</button>{linkMessage && <span role='status'>{linkMessage}</span>}</div>}
+          .then(() => feedback.success('gradebookLinkRequested'))
+          .catch(error => feedback.error(error, 'gradebookLinkFailed'))}>
+        Reintentar vínculo con planilla</button></div>}
     {data.contenido?.html !== null && data.contenido?.html !== undefined
       ? <div className='aula-rich-content aula-resource-content'
           dangerouslySetInnerHTML={{__html: data.contenido.html}} />
@@ -589,8 +603,8 @@ export function AulaRecursoView() {
     {canManage && !canChangeFiles && <div className='alert alert-danger mt-4'>El período está cerrado. Puedes consultar los archivos, pero no modificarlos.</div>}
     {canChangeFiles && <div className='mt-5'><label className='form-label'>Agregar archivo a este recurso<input className='form-control' type='file'
       disabled={upload.isPending} onChange={event => {const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) void upload.mutateAsync({token: recursoToken,
-        archivo: file, destino: 'recursos'}).then(() => setUploadMessage('Archivo agregado.')).catch(error => setUploadMessage(error instanceof Error ? error.message : 'No se pudo agregar.'))}} /></label>
-      {uploadMessage && <div className='alert alert-info mt-2'>{uploadMessage}</div>}</div>}
+        archivo: file, destino: 'recursos'}).then(() => feedback.success('fileAdded', 'success'))
+          .catch(error => feedback.error(error, 'fileUploadFailed'))}} /></label></div>}
     {data.tipo === 'tarea' && <TaskPanel key={recursoToken} token={recursoToken}
       canManage={data.puede_calificar === true} isStudent={data.estudiante === true}
       gradeable={data.calificable} existing={data.entrega} scale={data.escala}

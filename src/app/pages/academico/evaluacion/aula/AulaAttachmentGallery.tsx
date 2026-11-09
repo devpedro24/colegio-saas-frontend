@@ -1,6 +1,7 @@
 import {useEffect, useId, useRef, useState} from 'react'
 import {useQuery} from '@tanstack/react-query'
 import Modal from 'react-bootstrap/Modal'
+import {useAulaFeedback} from './useAulaFeedback'
 import {aulaAdjuntoUrl, aulaImagenUrl, aulaMedioUrl, aulaOficinaUrl,
   useQuitarAdjunto, type AulaAttachment} from './aula.api'
 
@@ -117,22 +118,21 @@ function Preview({file}: {file: AulaAttachment}) {
 export function AulaAttachmentGallery({files, canRemove = false, onRemoved}: {files: AulaAttachment[];
   canRemove?: boolean; onRemoved?: (token: string) => void}) {
   const remove = useQuitarAdjunto()
+  const feedback = useAulaFeedback()
   const [active, setActive] = useState<string | null>(null)
-  const [error, setError] = useState('')
   const activeIndex = files.findIndex(file => file.token === active)
   const selected = files[activeIndex]
   const change = (step: number) => setActive(files[(activeIndex + step + files.length) % files.length]?.token ?? null)
   const discard = async (file: AulaAttachment) => {
     if (!window.confirm(`¿Quitar «${file.nombre}» de este recurso?`)) return
-    setError('')
     try {
       await remove.mutateAsync(file.token)
       if (active === file.token) setActive(null)
       onRemoved?.(file.token)
-    } catch (cause) {setError(cause instanceof Error ? cause.message : 'No se pudo quitar el archivo.')}
+      feedback.success('fileRemoved', 'deleted')
+    } catch (cause) {feedback.error(cause, 'fileRemoveFailed')}
   }
   return <>
-    {error && <div className='alert alert-danger mt-3' role='alert'>{error}</div>}
     <div className={`aula-material-grid ${files.length === 1 ? 'is-single' : ''}`}>
       {files.map(file => <article className='aula-material' key={file.token}>
       <button type='button' className='aula-material-open' onClick={() => setActive(file.token)}
