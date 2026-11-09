@@ -1,3 +1,4 @@
+import {sedesFixture, runSedesSmoke, runSedesPlatformSmoke, contactOptions} from './sedes-smoke.mjs'
 import {calendarNotificationsFixture, runCalendarNotificationsSmoke} from './calendar-notifications-smoke.mjs'
 import {commercialFixture, runCommercialSmoke} from './commercial-smoke.mjs'
 import {runRbacResponsiveSmoke} from './rbac-responsive-smoke.mjs'
@@ -27,6 +28,7 @@ import {eventsFixture, runEventsSmoke} from './events-smoke.mjs'
 import {runAcademicNavigationSmoke} from './academic-navigation-smoke.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
+const sedesMode = process.argv.includes('--sedes')
 const toastMode = process.argv.includes('--toast')
 const yearNotificationsMode = process.argv.includes('--year-notifications')
 const yearNotificationsApi = yearNotificationsMode ? yearNotificationsFixture() : null
@@ -46,6 +48,7 @@ const paginationMode = process.argv.includes('--pagination')
 const commercialMode = process.argv.includes('--commercial')
 const commercialApi = commercialMode || process.argv.includes('--mobile-navigation') ? commercialFixture() : null
 const platformMode = process.argv.includes('--platform') || commercialMode
+const sedesApi = sedesMode || (platformMode && !commercialMode) ? sedesFixture() : null
 const performanceMode = process.argv.includes('--performance')
 const cacheMode = process.argv.includes('--cache')
 const gradingMode = process.argv.includes('--grading')
@@ -95,6 +98,7 @@ const artifacts = path.join(root, 'artifacts', 'ui-smoke')
 fs.mkdirSync(artifacts, {recursive: true})
 const today = new Date().toLocaleDateString('en-CA')
 const user = {id: 'u'.repeat(24), tenant_channel: 't'.repeat(24), name: 'Rector de prueba', email: 'rector@example.test', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.anos.transicionar', 'academico.periodos.transicionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
+if (sedesMode) user.institution = {name: 'Colegio de prueba', plan: {name: 'Premium', features: ['nucleo', 'academico', 'multi_sede']}}
 if (workflowMode || paginationMode) user.institution = {name: 'Colegio de prueba', plan: {name: 'Premium', features: ['nucleo', 'academico']}}
 if (platformMode) { user.is_platform = true; user.tenant_channel = null; user.roles = ['superadmin']; user.permissions = [] }
 if (rbacMode) user.permissions.push('usuarios.ajustar_permisos')
@@ -276,6 +280,7 @@ const hasPrivateIdKey = value => Array.isArray(value) ? value.some(hasPrivateIdK
   : value && typeof value === 'object' ? Object.entries(value).some(([key, field]) => key === 'id' || key.endsWith('_id') || hasPrivateIdKey(field))
     : false
 const fixtures = {
+  '/api/contact-options': contactOptions,
   '/api/notification-updates': {data: [], meta: {current_page: 1, last_page: 1, total: 0}},
   '/api/me': {user, csrf_token: 'smoke-csrf'},
   '/api/platform/impersonar/estado': {data: {colegio: null}},
@@ -552,6 +557,7 @@ const calendarNotificationsApi = calendarNotificationsMode ? calendarNotificatio
 const attendanceNotificationsApi = attendanceNotificationsMode ? attendanceNotificationsFixture({user}) : null
 try {
   server = await createServer({root, logLevel: 'error', server: {host: '127.0.0.1', port: 5197, strictPort: true}, plugins: [{name: 'smoke-api', configureServer(vite) {
+    if (sedesApi) vite.middlewares.use(sedesApi.middleware)
     if (commercialApi) vite.middlewares.use(commercialApi.middleware)
     if (intakeFixture) vite.middlewares.use(intakeFixture.middleware)
     if (calendarNotificationsApi) vite.middlewares.use(calendarNotificationsApi.middleware)
@@ -1015,7 +1021,9 @@ try {
     assert.ok(Math.abs(geometry.before.left - geometry.after.left) <= 2, `Permission column moved horizontally: ${JSON.stringify(geometry)}`)
     assert.ok(geometry.before.roleLeft - geometry.after.roleLeft >= 100, `Role columns should scroll horizontally: ${JSON.stringify(geometry)}`)
   }
-  if (toastMode) {
+  if (sedesMode) {
+    await runSedesSmoke({fixture:sedesApi,user,navigate,evaluate,until,command,screenshot,errors})
+  } else if (toastMode) {
     await navigate('/scripts/fixtures/toast-preview.html','Avisos')
     await runToastSmoke({evaluate,until,command,screenshot,sleep,errors})
   } else if (yearNotificationsMode) {
@@ -1845,22 +1853,9 @@ try {
   } else if (commercialMode) {
     await runCommercialSmoke({navigate,evaluate,until,screenshot,command,errors,requests:commercialApi.requests,sleep})
   } else if (platformMode) {
-    await navigate('/configuracion/colegios', 'Colegio de prueba')
-    assert.equal(apiReads.filter(path => path === '/api/estructura/sedes').length, 0,
-      'La plataforma sin suplantación no necesita cargar sedes del colegio en la barra lateral.')
+    await runSedesPlatformSmoke({fixture:sedesApi,navigate,evaluate,until,command})
     assert.equal(await evaluate(`localStorage.getItem('colegio-saas.auth-token')`), null)
-    await evaluate(`document.querySelector('table tbody tr td:last-child button:nth-of-type(3)').click()`)
-    await until(`document.querySelector('#kt_modal_colegio_sedes')?.innerText.includes('Sede Norte')`)
     assert.ok(writes.every(write => !write.path.includes('/colegios/1')))
-    const sedeRead = '/api/colegios/colegio-prueba/sedes'
-    assert.ok(await evaluate(`!!document.querySelector('#kt_modal_colegio_sedes tr')`))
-    await evaluate(`document.querySelector('#kt_modal_colegio_sedes tbody tr td:last-child button').click()`)
-    await until(`!!document.querySelector('#kt_modal_colegio_sedes form')`)
-    await evaluate(`(()=>{const input=document.querySelector('#kt_modal_colegio_sedes form input[type="text"]');input.focus();input.select()})()`)
-    await command('Input.insertText', {text: 'Sede Norte Renovada'})
-    await evaluate(`document.querySelector('#kt_modal_colegio_sedes form button[type="submit"]').click()`)
-    for (let i = 0; i < 30 && !writes.some(write => write.path === `${sedeRead}/${urlTokens.sede}`); i++) await sleep(100)
-    assert.ok(writes.some(write => write.method === 'PUT' && write.path === `${sedeRead}/${urlTokens.sede}` && write.body.nombre === 'Sede Norte Renovada'))
     await navigate('/configuracion/auditoria', 'Auditoría')
     await until(`document.querySelector('#audit-tenant')?.options.length > 1`)
     await evaluate(`(()=>{const select=document.querySelector('#audit-tenant');select.value='colegio-prueba';select.dispatchEvent(new Event('change',{bubbles:true}));select.closest('form').requestSubmit()})()`)
