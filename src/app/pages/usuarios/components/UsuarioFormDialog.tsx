@@ -80,7 +80,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
           },
         },
         {
-          onSuccess: () => { toast.success(t('common.toast.updated')); onClose() },
+          onSuccess: () => { toast.success(t('common.toast.updated'), 'updated'); onClose() },
           onError,
         }
       )

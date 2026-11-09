@@ -170,6 +170,31 @@ test('failed shared reads can be retried with a new network request', async () =
   assert.equal(calls, 2)
 })
 
+test('plan quote preserves shared catalog reads and never emits a write notification', async () => {
+  const calls = [], changes = []
+  const stop = onLocalChange(change => changes.push(change))
+  globalThis.smokeContext.state = {activeColegio: null}
+  globalThis.fetch = (url, options) => new Promise(resolve => calls.push({url, options, resolve}))
+  try {
+    const first = api.get('/plans')
+    const quote = api.post('/plans/quote?preview=1', {plan: 'estandar', subscription: {students: 30, sites: 1, addons: []}})
+    assert.equal(calls[1].options.headers['X-CSRF-Token'], 'csrf-value')
+    assert.equal(calls[1].options.headers['X-Client-Change-ID'], undefined)
+    calls[1].resolve(new Response('{}', {headers: {'Content-Type': 'application/json'}}))
+    await quote
+    const shared = api.get('/plans')
+    assert.equal(calls.length, 2, 'A quote must not clear a pending catalog read.')
+    assert.deepEqual(changes, [])
+    calls[0].resolve(new Response('{}', {headers: {'Content-Type': 'application/json'}}))
+    await Promise.all([first, shared])
+    const save = api.put('/plans/estandar', {name: 'Estándar'})
+    calls[2].resolve(new Response('{}', {headers: {'Content-Type': 'application/json'}}))
+    await save
+    assert.equal(changes.length, 1, 'Saving an actual plan must still refresh its subscribers.')
+    assert.equal(changes[0].resource, 'plans')
+  } finally { stop() }
+})
+
 test.after(() => {
   globalThis.fetch = originalFetch
   globalThis.localStorage = originalStorage

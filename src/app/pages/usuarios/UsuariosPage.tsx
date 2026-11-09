@@ -72,7 +72,7 @@ const TenantUsuariosPage: FC = () => {
   const onDelete = () => {
     if (!deleteUser) return
     del.mutate({id: deleteUser.url_token, sedeToken: deleteUser.sede_url_token}, {
-      onSuccess: () => { toast.success(t('common.toast.deleted')); setDeleteUser(null) },
+      onSuccess: () => { toast.success(t('common.toast.deleted'), 'deleted'); setDeleteUser(null) },
       onError: () => { toast.error(t('common.toast.deleteError')); setDeleteUser(null) },
     })
   }

@@ -1,0 +1,4 @@
+{
+  "es": {"region": "Avisos de la aplicación", "dismiss": "Cerrar aviso", "success": "Completado", "updated": "Actualizado", "deleted": "Eliminado", "info": "Información", "warning": "Advertencia", "danger": "Error"},
+  "en": {"region": "Application notifications", "dismiss": "Dismiss notification", "success": "Completed", "updated": "Updated", "deleted": "Deleted", "info": "Information", "warning": "Warning", "danger": "Error"}
+}

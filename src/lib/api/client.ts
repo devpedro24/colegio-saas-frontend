@@ -106,10 +106,16 @@ export class ApiError extends Error {
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type MutationOptions = {notifyLocalChange?: boolean};
 
+/** POST transports for calculations do not write or invalidate cached data. */
+function isReadOnlyPost(method: HttpMethod, path: string): boolean {
+  return method === 'POST' && (path.split('?')[0] === '/plans/quote'
+    || /\/planillas\/[^/]+\/[^/]+\/vista-previa(?:\?|$)/.test(path));
+}
+
 function request<TResponse>(method: HttpMethod, path: string, body?: unknown, options?: MutationOptions): Promise<TResponse> {
   if (method !== 'GET') {
     // Private draft backups never change queried academic data.
-    if (/^\/(platform\/)?work-draft/.test(path) || /\/planillas\/[^/]+\/[^/]+\/vista-previa(?:\?|$)/.test(path)) return performRequest<TResponse>(method, path, body, options);
+    if (/^\/(platform\/)?work-draft/.test(path) || isReadOnlyPost(method, path)) return performRequest<TResponse>(method, path, body, options);
     // A read started before a write must not be reused by the post-save refresh.
     pendingReads.clear();
     return performRequest<TResponse>(method, path, body, options).finally(() => pendingReads.clear());
@@ -131,8 +137,8 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
   const generation = sessionGeneration;
   const intakePublic = path.startsWith('/ingreso-publico/');
   const csrf = method === 'GET' ? null : getCsrfToken(intakePublic ? 'ingreso_csrf' : CSRF_COOKIE);
-  const socketId = method === 'GET' ? undefined : socketIdProvider();
-  const changeId = method === 'GET' ? undefined : globalThis.crypto?.randomUUID?.();
+  const socketId = method === 'GET' || isReadOnlyPost(method, path) ? undefined : socketIdProvider();
+  const changeId = method === 'GET' || isReadOnlyPost(method, path) ? undefined : globalThis.crypto?.randomUUID?.();
   if (changeId) rememberOwnChange(changeId);
 
   const response = await fetch(`/api${path}`, {
@@ -157,6 +163,10 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
     throw new DOMException('Authentication context changed', 'AbortError');
   }
 
+  if (response.headers.has('X-Notification-Record')) {
+    void queryClient.invalidateQueries({queryKey: ['notification-records']});
+  }
+
   if (!response.ok) {
     const message = (data?.message as string | undefined) ?? `Error ${response.status}`;
 
@@ -168,7 +178,7 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
     throw new ApiError(response.status, message, data?.errors, data);
   }
 
-  if (method !== 'GET' && !intakePublic && options?.notifyLocalChange !== false
+  if (method !== 'GET' && !isReadOnlyPost(method, path) && !intakePublic && options?.notifyLocalChange !== false
     && !['/login', '/logout', '/forgot-password', '/broadcasting/auth', '/tenant-broadcasting/auth'].includes(path)) {
     notifyLocalChange({resource: resourceForPath(path),
       scope: isPlatformPath(path) ? 'platform' : 'tenant',

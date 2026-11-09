@@ -244,7 +244,7 @@ const EmailPreferences: FC = () => {
               <FormattedMessage id='account.discard' />
             </button>
             <button type='button' onClick={click} className='btn btn-primary'>
-              {!loading && <FormattedMessage id='common.save' />}
+              {!loading && <FormattedMessage id='common.saveChanges' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>
                   <FormattedMessage id='common.pleaseWait' />{' '}
