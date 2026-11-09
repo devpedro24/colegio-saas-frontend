@@ -1,4 +1,5 @@
-﻿import {FC, useState} from 'react'
+import {NumberInput} from '@/app/shared/components/NumberInput'
+import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -70,7 +71,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<FormState>) => setForm((prev) => ({...prev, ...patch}))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     const input: CreateAnoLectivoInput = {
@@ -85,7 +86,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
         setError(err)
-        if (!err.errors) toast.error(err.message)
+        toast.error(Object.values(err.errors ?? {}).flat()[0] ?? err.message)
       } else {
         toast.error(t('common.toast.saveError'))
       }
@@ -96,7 +97,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
         {id: ano.id, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated', {name: input.nombre}))
+            toast.success(t('common.toast.updated', {name: input.nombre}), 'updated')
             onClose()
           },
           onError,
@@ -176,7 +177,7 @@ const AnoLectivoForm: FC<{ano: AnoLectivo | null; onClose: () => void}> = ({ano,
         {/* Numero de periodos */}
         <div className='fv-row mb-7'>
           <label className='required fs-6 fw-semibold mb-2'>{t('academico.anos.field.numPeriodos')}</label>
-          <input
+          <NumberInput
             type='number'
             min={1}
             max={12}

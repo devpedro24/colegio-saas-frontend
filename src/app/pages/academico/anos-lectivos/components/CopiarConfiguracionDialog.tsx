@@ -19,7 +19,6 @@ function CopyForm({target, years, onClose}: {
   const [sourceId, setSourceId] = useState('')
   const [selected, setSelected] = useState<Record<string, boolean>>(
     Object.fromEntries(options.map(key => [key, false])))
-  const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
   const sources = years.filter(year => year.id !== target.id)
   const previousSourceId = status.data?.data.origen_token ?? ''
@@ -34,10 +33,9 @@ function CopyForm({target, years, onClose}: {
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    setError('')
     copy.mutate({id: target.id, origenId: sourceId, opciones: selected}, {
       onSuccess: () => {toast.success(t('academico.anos.copyLater.success')); onClose()},
-      onError: err => setError(err instanceof ApiError
+      onError: err => toast.error(err instanceof ApiError
         ? err.fieldError('origen_token') ?? err.fieldError('opciones') ?? err.message
         : t('common.toast.genericError')),
     })
@@ -49,7 +47,6 @@ function CopyForm({target, years, onClose}: {
       {status.isLoading && <div className='text-muted mb-4'>{t('academico.anos.copyLater.loading')}</div>}
       {status.isError && <div className='alert alert-danger'>{t('academico.anos.copyLater.loadError')}</div>}
       {switchingBlocked && <div className='alert alert-warning'>{t('academico.anos.copyLater.locked')}</div>}
-      {error && <div className='alert alert-danger' role='alert'>{error}</div>}
       <label className='form-label required' htmlFor='copy-year-source'>{t('academico.anos.copyLater.source')}</label>
       <select id='copy-year-source' className='form-select mb-6' required value={sourceId}
         onChange={event => setSourceId(event.target.value)}>

@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {FC, useEffect, useState} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -110,11 +111,11 @@ export const PromocionesDialog: FC<Props> = ({ano, onClose}) => {
           <div className='row g-3'>
             <div className='col-md-4'>
               <label className='form-label'>{t('academico.promocion.maxFailed')} <span className='text-danger'>*</span></label>
-              <input type='number' min={0} max={12} className='form-control' value={maxFailed} onChange={(e) => setMaxFailed(Number(e.target.value))} />
+              <NumberInput type='number' min={0} max={12} className='form-control' value={maxFailed} onChange={(e) => setMaxFailed(Number(e.target.value))} />
             </div>
             <div className='col-md-4'>
               <label className='form-label'>{t('academico.promocion.minAverage')} ({t('academico.promocion.optional')})</label>
-              <input type='number' step='0.01' className='form-control' value={minimum} onChange={(e) => setMinimum(e.target.value)} />
+              <NumberInput type='number' step='0.01' className='form-control' value={minimum} onChange={(e) => setMinimum(e.target.value)} />
             </div>
           </div>
           <div className='d-flex justify-content-between align-items-center gap-3 flex-wrap mt-3'>

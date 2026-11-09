@@ -99,7 +99,7 @@ const AnosLectivosPage: FC = () => {
 
     eliminar.mutate(eliminando.id, {
       onSuccess: () => {
-        toast.success(t('common.toast.deleted'))
+        toast.success(t('common.toast.deleted'), 'deleted')
         setEliminando(null)
       },
       onError: (err) => {

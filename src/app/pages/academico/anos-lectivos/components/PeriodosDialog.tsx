@@ -1,4 +1,5 @@
-﻿import {FC, useState} from 'react'
+import {NumberInput} from '@/app/shared/components/NumberInput'
+import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -115,7 +116,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
     label: intl.formatMessage({id: `academico.periodos.estado.${estado}`}),
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     const input: CreatePeriodoInput = {
@@ -129,7 +130,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
         setError(err)
-        if (!err.errors) toast.error(err.message)
+        toast.error(Object.values(err.errors ?? {}).flat()[0] ?? err.message)
       } else {
         toast.error(t('common.toast.saveError'))
       }
@@ -140,7 +141,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
         {id: editing.id, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             startCreate()
           },
           onError,
@@ -160,7 +161,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
   const handleDelete = (p: Periodo) => {
     del.mutate(p.id, {
       onSuccess: () => {
-        toast.success(t('common.toast.deleted'))
+        toast.success(t('common.toast.deleted'), 'deleted')
         if (editing?.id === p.id) startCreate()
       },
       onError: (err) => {
@@ -364,7 +365,7 @@ const PeriodosContent: FC<{ano: AnoLectivo}> = ({ano}) => {
           </div>
           {mostrarPeso && <div className='col-md-6 fv-row mb-5'>
             <label className='fs-7 fw-semibold mb-2'>{t('academico.periodos.field.peso')}</label>
-            <input
+            <NumberInput
               type='number'
               min={0}
               max={100}

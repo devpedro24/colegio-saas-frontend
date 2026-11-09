@@ -31,25 +31,24 @@ function DuplicarForm({source, onClose}: {source: AnoLectivo; onClose: () => voi
   const [end, setEnd] = useState(nextDate(source.fecha_fin))
   const [selected, setSelected] = useState<Record<string, boolean>>(
     Object.fromEntries(options.map(key => [key, key !== 'aulas'])))
-  const [error, setError] = useState('')
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    setError('')
     duplicate.mutate({id: source.id, input: {
       nombre: name.trim(), tipo_calendario: calendar, fecha_inicio: start, fecha_fin: end,
       num_periodos: source.num_periodos, periodo_sumatorio: source.periodo_sumatorio,
       opciones: selected,
     }}, {
       onSuccess: () => {toast.success(t('academico.anos.duplicate.success')); onClose()},
-      onError: err => setError(err instanceof ApiError ? err.message : t('common.toast.genericError')),
+      onError: err => toast.error(err instanceof ApiError
+        ? Object.values(err.errors ?? {}).flat()[0] ?? err.message
+        : t('common.toast.genericError')),
     })
   }
 
   return <form onSubmit={submit}>
     <Modal.Body>
       <p className='text-muted'>{t('academico.anos.duplicate.help')}</p>
-      {error && <div className='alert alert-danger' role='alert'>{error}</div>}
       <div className='row g-4 mb-6'>
         <div className='col-md-6'><label className='form-label required'>{t('academico.anos.field.nombre')}</label>
           <input className='form-control' required value={name} onChange={e => setName(e.target.value)} /></div>
