@@ -148,13 +148,17 @@ export async function runEventsSmoke({navigate, evaluate, until, screenshot: cap
   const heights = await evaluate(`[document.querySelector('.event-recent-card').getBoundingClientRect().height, document.querySelector('.event-calendar-grid').closest('.card').getBoundingClientRect().height]`)
   assert.ok(Math.abs(heights[0] - heights[1]) < 3, `Cards must match height: ${heights}`)
   await screenshot('events-dense-calendar')
-  const octoberReads = fixture.readUrls.filter(url => url.includes('/api/eventos/resumen') && url.includes('desde=2026-10-01')).length
+  const currentMonth = await evaluate(`document.querySelector('input[type=month]').value`)
+  const [year, month] = currentMonth.split('-').map(Number)
+  const next = new Date(year, month, 1)
+  const nextMonth = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}`
+  const monthReads = fixture.readUrls.filter(url => url.includes('/api/eventos/resumen') && url.includes(`desde=${currentMonth}-01`)).length
   await evaluate(`document.querySelector('button[aria-label="Next month"]').click()`)
-  await until(`document.querySelector('input[type=month]').value==='2026-11'`)
+  await until(`document.querySelector('input[type=month]').value===${JSON.stringify(nextMonth)}`)
   await evaluate(`document.querySelector('button[aria-label="Previous month"]').click()`)
-  await until(`document.querySelector('input[type=month]').value==='2026-10'`)
-  assert.equal(fixture.readUrls.filter(url => url.includes('/api/eventos/resumen') && url.includes('desde=2026-10-01')).length,
-    octoberReads, 'Returning to a loaded month reuses the in-memory query cache.')
+  await until(`document.querySelector('input[type=month]').value===${JSON.stringify(currentMonth)}`)
+  assert.equal(fixture.readUrls.filter(url => url.includes('/api/eventos/resumen') && url.includes(`desde=${currentMonth}-01`)).length,
+    monthReads, 'Returning to a loaded month reuses the in-memory query cache.')
   await evaluate(`document.querySelector('.event-day.today').click()`)
   await until(`document.querySelectorAll('.event-preview').length===50`)
   const firstPageTitles = await evaluate(`[...document.querySelectorAll('.event-preview h4')].map(node=>node.textContent)`)

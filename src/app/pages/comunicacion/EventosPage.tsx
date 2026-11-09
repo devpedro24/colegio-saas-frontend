@@ -5,7 +5,7 @@ import { Modal } from "react-bootstrap";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { KTIcon } from "@/_metronic/helpers";
 import { useToast } from "@/lib/ui/toast";
-import { api } from "@/lib/api/client";
+import { api, ApiError } from "@/lib/api/client";
 import { formatSchoolTime } from "@/lib/format/schoolTime";
 import { PageTitle } from "@/_metronic/layout/core";
 import { Content } from "@/_metronic/layout/components/content";
@@ -39,6 +39,7 @@ type EventItem = {
   zona_horaria?: string;
 };
 type Detail = EventItem & {
+  eliminado?: boolean;
   puede_editar: boolean;
   correos?: Record<"pendiente" | "enviando" | "enviado" | "fallido" | "cancelado", number>;
   archivos: {
@@ -82,6 +83,8 @@ const categoryBadgeStyle = (category: string) => ({
   color: colorInk[category] ?? colorInk.actividad,
 });
 const groupLabel = (group: Group) => group.grado?.nombre ? `${group.grado.nombre} · ${group.nombre}` : group.nombre;
+const eventError = (cause: Error) => cause instanceof ApiError
+  ? Object.values(cause.errors ?? {}).flat()[0] ?? cause.message : cause.message;
 
 function dayDots(marks: DaySummary["marcas"], maximum: number) {
   const remaining = marks.map((mark) => ({...mark}));
@@ -136,6 +139,13 @@ function Calendar() {
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Notification links also open when the calendar route is already mounted.
+  const linkedEvent = params.get("evento");
+  useEffect(() => {
+    setSelected(linkedEvent && /^[A-Za-z0-9_-]{24}$/.test(linkedEvent) ? linkedEvent : null);
+    setConfirmDelete(false);
+    setForm(null);
+  }, [linkedEvent]);
   const catalog = useQuery({
     queryKey: ["eventos-catalogo"],
     queryFn: async () =>
@@ -226,7 +236,7 @@ function Calendar() {
       await client.invalidateQueries({ queryKey: ["evento", selected] });
       toast.success(t("events.actionDone"));
     },
-    onError: (cause) => toast.error(cause.message),
+    onError: (cause) => toast.error(eventError(cause)),
   });
   const saveMutation = useMutation({
     mutationFn: async ({body, publish}: {body: unknown; publish: boolean}) => {
@@ -253,7 +263,7 @@ function Calendar() {
       await client.invalidateQueries({ queryKey: ["eventos"] });
       await client.invalidateQueries({ queryKey: ["evento", result.url_token] });
     },
-    onError: (cause) => { setError(cause.message); toast.error(cause.message); },
+    onError: (cause) => { const message = eventError(cause); setError(message); toast.error(message); },
   });
   const cells = useMemo(() => {
     const first = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -313,7 +323,7 @@ function Calendar() {
   }
   function closeDetail() {
     setSelected(null); setConfirmDelete(false);
-    if (params.has("evento")) setParams({}, {replace: true});
+    if (params.has("evento")) { const next = new URLSearchParams(params); next.delete("evento"); setParams(next, {replace: true}); }
   }
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -581,8 +591,9 @@ function Calendar() {
           )}
           {detail.data && (
             <>
+              {detail.data.eliminado && <div className="alert alert-warning" role="status">{t("events.deletedNotice")}</div>}
               <div className="d-flex flex-wrap gap-3 align-items-center mb-4">
-                <span className={`badge ${detail.data.estado === "borrador" ? "badge-light-warning" : "badge-light-success"}`}>{t(`events.state.${detail.data.estado || "publicado"}`)}</span>
+                {!detail.data.eliminado && <span className={`badge ${detail.data.estado === "borrador" ? "badge-light-warning" : "badge-light-success"}`}>{t(`events.state.${detail.data.estado || "publicado"}`)}</span>}
                 <span className="badge" style={categoryBadgeStyle(detail.data.categoria)}>{t(`events.category.${detail.data.categoria}`)}</span>
                 {detail.data.publicado_en && <small className="text-muted">{t("events.publishedOn")}: {intl.formatDate(detail.data.publicado_en, {timeZone: detail.data.zona_horaria || "America/Bogota", dateStyle: "medium", timeStyle: "short"})}</small>}
               </div>
