@@ -1,4 +1,7 @@
-﻿import {FC, useState} from 'react'
+import '../../planes/commercial.scss'
+import SubscriptionConfigurator from '../../planes/components/SubscriptionConfigurator'
+import type {SubscriptionInput} from '../../planes/planes.types'
+import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import type {FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
@@ -48,7 +51,8 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
   const [slug, setSlug] = useState(colegio.slug)
   const [legalName, setLegalName] = useState(colegio.legal_name ?? '')
   const [nit, setNit] = useState(colegio.nit ?? '')
-  const [plan, setPlan] = useState(colegio.plan)
+  const [plan, setPlan] = useState(colegio.subscription?.customized ? 'personalizado' : colegio.plan)
+  const [subscription, setSubscription] = useState<SubscriptionInput>({students: colegio.subscription?.students ?? 30, sites: colegio.subscription?.sites ?? 1, addons: colegio.subscription?.addons ?? [], discount_percent: colegio.subscription?.discount_percent ?? 0, customized: colegio.subscription?.customized ?? false, pricing_override: colegio.subscription?.pricing_override ?? null})
   const [error, setError] = useState<ApiError | null>(null)
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
@@ -64,12 +68,13 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
           slug,
           legal_name: legalName.trim() || null,
           nit: nit.trim() || null,
-          plan,
+          plan: plan === 'personalizado' ? 'estandar' : plan,
+          subscription,
         },
       },
       {
         onSuccess: () => {
-          toast.success(t('common.toast.updated', {name}))
+          toast.success(t('common.toast.updated', {name}), 'updated')
           onClose()
         },
         onError: (err) => {
@@ -85,7 +90,7 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className='school-contract-form'>
       <div className='modal-body py-lg-10 px-lg-10'>
         {/* Nombre */}
         <div className='fv-row mb-7'>
@@ -152,7 +157,7 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
           <select
             className={`form-select form-select-solid ${fe('plan') ? 'is-invalid' : ''}`}
             value={plan}
-            onChange={(e) => setPlan(e.target.value)}
+            onChange={(e) => {setPlan(e.target.value); setSubscription({...subscription, addons: [], customized: e.target.value === 'personalizado', pricing_override: null})}}
           >
             <option value='' disabled>
               {t('colegios.field.selectPlan')}
@@ -162,9 +167,11 @@ const EditForm: FC<{colegio: Colegio; onClose: () => void}> = ({colegio, onClose
                 {p.name}
               </option>
             ))}
-          </select>
+          <option value='personalizado'>{t('header.upgrade.custom')}</option>
+              </select>
           {fe('plan') && <div className='invalid-feedback'>{fe('plan')}</div>}
         </div>
+        <SubscriptionConfigurator planKey={plan === 'personalizado' ? 'estandar' : plan} value={subscription} onChange={setSubscription} />
       </div>
 
       <div className='modal-footer'>
@@ -194,7 +201,8 @@ const EditColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
       id='kt_modal_edit_colegio'
       tabIndex={-1}
       aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-650px'
+      dialogClassName='modal-dialog modal-dialog-centered mw-650px school-contract-dialog'
+      scrollable
       show={show}
       onHide={onClose}
       backdrop={true}

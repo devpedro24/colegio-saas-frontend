@@ -108,7 +108,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
         {slug, sedeToken: editingId, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             closeForm()
           },
           onError: (err) => {
@@ -148,7 +148,7 @@ const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
       {slug, sedeToken: sede.url_token},
       {
         onSuccess: () => {
-          toast.success(t('common.toast.deleted'))
+          toast.success(t('common.toast.deleted'), 'deleted')
           setDeleteId(null)
         },
         onError: (err) => {

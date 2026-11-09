@@ -1,3 +1,4 @@
+import type {SubscriptionInput, SubscriptionQuote} from '../planes/planes.types'
 // Tipos del feature Colegios (tenants), alineados con el backend real
 // (App\Http\Controllers\Api\Platform\ColegioController). Fase 2: datos reales.
 
@@ -17,6 +18,7 @@ export type ColegioStatus = 'active' | 'configuring' | 'provisioning' | 'suspend
  * gestiona aparte, via reset de contrasena).
  */
 export interface Colegio {
+  subscription?: SubscriptionInput & {quote?: SubscriptionQuote}
   name: string
   slug: string
   legal_name: string | null
@@ -29,6 +31,7 @@ export interface Colegio {
 
 /** Body de POST /colegios (store). */
 export interface CreateColegioInput {
+  subscription?: SubscriptionInput
   name: string
   slug: string
   rector_email: string
@@ -47,6 +50,7 @@ export interface CreateColegioResponse {
 
 /** Body de PUT /colegios/{slug} (update). */
 export interface UpdateColegioInput {
+  subscription?: SubscriptionInput
   name: string
   slug: string
   legal_name: string | null

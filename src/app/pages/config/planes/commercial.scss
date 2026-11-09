@@ -1,0 +1,155 @@
+.school-contract-dialog {
+  height: calc(100dvh - 2rem);
+  margin-block: 1rem;
+  .modal-content { max-height: 100%; overflow: hidden; }
+  .modal-header, .modal-footer { flex-shrink: 0; }
+  .school-contract-form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .modal-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+}
+
+.plans-management {
+  min-width: 0;
+  .card-body { min-width: 0; }
+  .card-body > p, .badge { overflow-wrap: anywhere; }
+  @media (max-width: 575.98px) {
+    .card-body { padding-inline: 1.25rem !important; }
+    .fs-3x { font-size: 2rem !important; }
+    .badge { white-space: normal; }
+  }
+}
+
+// Plan comparison keeps the SaaS palette and fixed desktop detail height.
+.upgrade-plan-dialog {
+  height: calc(100dvh - 2rem);
+  margin-block: 1rem;
+  color: var(--bs-body-color);
+  .modal-content { max-height: 100%; overflow: hidden; }
+  .modal-header { flex-shrink: 0; }
+  .modal-body { overflow-y: auto; overscroll-behavior: contain; }
+  .upgrade-plan-comparison { display: flex; flex-direction: column; }
+  .upgrade-capacity-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .upgrade-capacity-card {
+    --capacity-accent: #7239ea;
+    --capacity-soft: #f1eaff;
+    padding: 1.15rem 1.4rem 1rem;
+    border: 1px solid #e7ddfb;
+    border-radius: 1.25rem;
+    background: linear-gradient(130deg, #faf7ff, var(--bs-body-bg) 80%);
+    &.capacity-sites { --capacity-accent: #13976a; --capacity-soft: #e1f8ee; border-color: #d7eee4; background: linear-gradient(130deg, #f3fcf8, var(--bs-body-bg) 80%); }
+  }
+  .upgrade-capacity-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .7rem; }
+  .upgrade-capacity-heading label { display: flex; align-items: center; gap: .75rem; font-weight: 600; margin: 0; font-size: .95rem; }
+  .upgrade-capacity-icon { display: grid; place-items: center; flex-shrink: 0; width: 2.6rem; height: 2.6rem; border-radius: .8rem; color: var(--capacity-accent); background: var(--capacity-soft); }
+  .upgrade-capacity-value {
+    width: 6ch; min-width: 3ch; border: 0; border-bottom: 1px dashed transparent; border-radius: .25rem; text-align: right; background: transparent;
+    color: var(--bs-body-color); font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; padding: .1rem 0; appearance: textfield;
+    &:hover { border-bottom-color: var(--capacity-accent); }
+    &:focus-visible { outline: 2px solid var(--capacity-accent); outline-offset: 3px; }
+    &::-webkit-inner-spin-button, &::-webkit-outer-spin-button { appearance: none; margin: 0; }
+  }
+  .upgrade-capacity-range {
+    display: block; width: 100%; height: .55rem; margin: 1.25rem 0 .85rem; appearance: none; cursor: pointer; border-radius: 1rem;
+    background: linear-gradient(to right, var(--capacity-accent) 0 var(--upgrade-range-fill), var(--capacity-soft) var(--upgrade-range-fill) 100%);
+    &::-webkit-slider-thumb { appearance: none; width: 1.65rem; height: 1.65rem; background: var(--bs-body-bg); border: 3px solid var(--capacity-accent); border-radius: .55rem; box-shadow: 0 2px 6px #31205d22; }
+    &::-moz-range-thumb { width: 1.35rem; height: 1.35rem; background: var(--bs-body-bg); border: 3px solid var(--capacity-accent); border-radius: .55rem; box-shadow: 0 2px 6px #31205d22; }
+    &:focus-visible { outline: 2px solid var(--capacity-accent); outline-offset: 6px; }
+  }
+  .upgrade-range-labels { position: relative; display: flex; justify-content: space-between; color: var(--bs-gray-600); font-size: .8rem; font-variant-numeric: tabular-nums; }
+  .upgrade-simulation-help { display: block; margin: -.3rem 0 1.25rem; color: var(--bs-gray-600); font-size: .8rem; }
+  .upgrade-plans-stage { min-height: 27.8rem; }
+  .upgrade-choices { display: flex; flex-direction: column; gap: 1.5rem; padding-top: .7rem; }
+  .upgrade-choice {
+    position: relative; display: flex; align-items: center; justify-content: space-between; gap: .7rem; width: 100%; min-height: 7rem;
+    padding: 1.5rem 1.25rem; border: 1px solid var(--bs-gray-300); border-radius: 1.5rem; background: var(--bs-body-bg); color: var(--bs-body-color);
+    text-align: left; font: inherit; cursor: pointer; transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
+    &:hover { background: #faf7ff; color: var(--bs-body-color); border-color: #b38df5; }
+    &:focus-visible { outline: 3px solid #b38df5; outline-offset: 4px; }
+    &.is-recommended { border: 2px solid #7239ea; }
+    &.is-selected, &.is-selected:hover, &.is-selected:active { background: #0fc64f; border-color: #0fc64f; color: #fff; }
+    &.is-selected .upgrade-plan-name, &.is-selected .upgrade-unit-price, &.is-selected .upgrade-plan-price { color: #fff; }
+  }
+  .upgrade-choice-info { display: flex; align-items: center; gap: .9rem; min-width: 0; }
+  .upgrade-radio { width: 1.25rem; height: 1.25rem; border: 2px solid currentColor; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; }
+  .upgrade-radio::after { content: ''; width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; transform: scale(0); }
+  [aria-selected=true] .upgrade-radio::after { transform: scale(1); }
+  .upgrade-plan-name { display: block; font-size: 1.4rem; line-height: 1.25; font-weight: 700; }
+  .upgrade-unit-price { display: block; margin-top: .5rem; font-size: .85rem; line-height: 1.4; }
+  .upgrade-plan-price { text-align: right; flex-shrink: 0; }
+  .upgrade-plan-price strong { display: block; font-size: 1.35rem; line-height: 1.4; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .upgrade-plan-price > span { font-size: .85rem; }
+  .upgrade-price-pending { font-size: .95rem; font-weight: 600; }
+  .upgrade-recommendation { position: absolute; top: -.8rem; right: 1rem; z-index: 1; border-radius: .55rem; padding: .3rem .65rem; background: #7239ea; color: #fff; font-size: .72rem; font-weight: 700; white-space: nowrap; pointer-events: none; }
+  .upgrade-current-pin { position: absolute; bottom: -.7rem; left: 1.3rem; padding: .25rem .7rem; border-radius: .5rem; background: #1b6ad7; border: 2px solid var(--bs-body-bg); color: #fff; font-size: .72rem; font-weight: 700; pointer-events: none; }
+  .upgrade-choice-art { color: currentColor; background: #7239ea12; border-radius: .9rem; padding: .6rem; }
+  .upgrade-choice-art svg { width: 1.75rem; height: 1.75rem; }
+  .is-selected .upgrade-choice-art { background: #ffffff26; }
+  .upgrade-custom-total { font-size: .85rem; font-weight: 700; }
+  .upgrade-details { height: 100%; padding: 1.5rem; background: #f8f7fc; border: 1px solid #eee9fa; border-radius: 1.5rem; }
+  .upgrade-details h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: .75rem; }
+  .upgrade-description { height: 2.75rem; overflow: hidden; margin-bottom: 1rem; }
+  .upgrade-features { height: 20rem; max-height: 20rem; overflow-y: auto; overscroll-behavior: contain; padding-right: .5rem; scrollbar-width: thin; scrollbar-color: #d5c5f4 transparent; }
+  .upgrade-feature { display: flex; align-items: flex-start; gap: .7rem; margin-bottom: 1.2rem; }
+  .upgrade-feature > i { margin-top: .1rem; flex-shrink: 0; }
+  .upgrade-details.is-custom { padding: 0; background: linear-gradient(145deg, #f4ecff, #f3f9ff); overflow: hidden; }
+  .upgrade-custom-scroll { height: 27.8rem; max-height: 27.8rem; padding: 0; }
+  .upgrade-custom-scroll > .upgrade-feature { margin: 0 1.5rem 1.2rem; }
+  .upgrade-custom-panel { position: relative; isolation: isolate; padding: 1.3rem 1.5rem; text-align: center; overflow: hidden; animation: upgrade-custom-in .3s ease-out; }
+  .upgrade-custom-panel h2 { font-size: 1.6rem; font-weight: 700; margin: .5rem 0 .75rem; color: #27144d; }
+  .upgrade-custom-panel > p { font-size: .9rem; line-height: 1.55; color: #685782; margin-bottom: 1rem; }
+  .upgrade-custom-eyebrow { color: #7239ea; font-size: .7rem; letter-spacing: .11em; font-weight: 700; text-transform: uppercase; }
+  .upgrade-custom-art { position: relative; display: grid; place-items: center; width: 7.5rem; height: 5rem; margin: 0 auto .4rem; color: #7239ea; }
+  .upgrade-school-mark { position: relative; display: grid; place-items: center; background: #fff; width: 4.1rem; height: 4.1rem; border-radius: 1.2rem; transform: rotate(-7deg); box-shadow: 0 8px 20px #7239ea22; }
+  .upgrade-school-mark svg { width: 2.5rem; height: 2.5rem; }
+  .upgrade-orbit { position: absolute; border-radius: 50%; width: 4.5rem; height: 4.5rem; }
+  .orbit-one { background: #d8c5ff; left: .25rem; top: .35rem; }
+  .orbit-two { background: #bcefd8; right: .3rem; bottom: 0; }
+  .upgrade-spark { position: absolute; font-size: 1.4rem; animation: upgrade-spark-float 3.5s ease-in-out infinite; }
+  .spark-one { right: 0; top: 0; color: #e9a12c; }
+  .spark-two { left: 0; bottom: 0; color: #34b8bc; animation-delay: -.8s; }
+  .upgrade-custom-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin: 1rem 0; }
+  .upgrade-custom-tiles > div { padding: .75rem .3rem; background: #ffffffaa; border: 1px solid #e8dcfa; border-radius: .9rem; }
+  .upgrade-custom-tiles svg { display: block; width: 1.5rem; height: 1.5rem; margin: 0 auto .4rem; color: #7239ea; }
+  .upgrade-custom-tiles > div:nth-child(2) svg { color: #13976a; }
+  .upgrade-custom-tiles > div:nth-child(3) svg { color: #269cc1; }
+  .upgrade-custom-tiles span { display: block; font-size: .7rem; font-weight: 600; color: #473464; }
+  .upgrade-proposal-button { display: inline-flex; align-items: center; justify-content: center; gap: .7rem; border: 0; border-radius: .85rem; background: #7239ea; color: #fff; font-weight: 700; }
+  .upgrade-proposal-button:hover, .upgrade-proposal-button:focus-visible { background: #8650ef; color: #fff; }
+  .upgrade-proposal-button svg { width: 1.3rem; height: 1.3rem; }
+  .upgrade-custom-panel > small { display: block; font-size: .75rem; margin-top: .7rem; color: #806e99; }
+  .upgrade-custom-panel-large { display: flex; flex-direction: column; justify-content: center; min-height: 27.8rem; border: 1px solid #d5bcfa; border-radius: 1.5rem; background: linear-gradient(130deg, #f4ebff, #ecfbf4 110%); padding: 1.5rem 3rem; }
+  .upgrade-custom-panel-large h2 { font-size: 2rem; }
+  .upgrade-custom-panel-large .upgrade-custom-tiles, .upgrade-custom-panel-large .upgrade-proposal-button { width: min(100%, 30rem); margin-left: auto; margin-right: auto; }
+  .upgrade-proposal-quantities { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
+  .upgrade-proposal-quantities span { padding: .3rem .8rem; border-radius: .7rem; background: #fff; color: #4d2c87; font-size: .85rem; font-weight: 600; }
+  .upgrade-contact-note { display: flex; align-items: center; gap: .8rem; padding: 1rem; background: #eaf6ff; border: 1px solid #cbe7ff; border-radius: 1rem; color: #265c88; font-size: .9rem; margin-top: 1rem; }
+  .upgrade-contact-note svg { width: 2rem; height: 2rem; flex-shrink: 0; }
+  .upgrade-comparison-footer { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; margin-top: 1.2rem; }
+  .upgrade-comparison-footer small { color: var(--bs-gray-600); font-size: .75rem; }
+  .upgrade-footer-actions { display: flex; gap: .6rem; flex-shrink: 0; }
+}
+@keyframes upgrade-custom-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes upgrade-spark-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) {
+  .upgrade-plan-dialog .upgrade-custom-panel, .upgrade-plan-dialog .upgrade-spark { animation: none; }
+  .upgrade-plan-dialog .upgrade-choice { transition: none; }
+}
+@media (max-width: 575.98px) {
+  .school-contract-dialog, .upgrade-plan-dialog { height: calc(100dvh - 1rem); margin: .5rem; max-width: calc(100% - 1rem); }
+  .upgrade-plan-dialog {
+    .upgrade-capacity-grid { grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+    .upgrade-capacity-card { padding: .9rem 1.1rem; }
+    .upgrade-capacity-value { font-size: 1.8rem; }
+    .upgrade-choice { padding: 1.3rem 1rem; }
+    .upgrade-plan-price strong { font-size: 1.15rem; }
+    .upgrade-plan-name { font-size: 1.25rem; }
+    .upgrade-choice-info { gap: .65rem; }
+    .upgrade-unit-price { font-size: .75rem; }
+    .upgrade-recommendation { font-size: .65rem; }
+    .upgrade-features { height: 18rem; max-height: 18rem; }
+    .upgrade-custom-scroll { height: 27rem; max-height: 27rem; }
+    .upgrade-custom-panel-large { padding: 1.3rem; }
+    .upgrade-custom-panel-large h2 { font-size: 1.65rem; }
+    .upgrade-comparison-footer { align-items: stretch; flex-direction: column; gap: .75rem; }
+    .upgrade-footer-actions { justify-content: flex-end; }
+  }
+}

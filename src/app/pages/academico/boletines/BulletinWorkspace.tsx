@@ -33,7 +33,7 @@ export default function BulletinWorkspace() {
   const running = useRef(false)
   const cache = useQueryClient()
   const query = useCatalogoEvaluacion({view: 'boletines', yearId: year, groupId: group, enabled: canObserve || canEmit})
-  const canTemplates = hasFeature('boletines_personalizables') && (hasPermission('boletines.plantillas.ver') || hasPermission('boletines.plantillas.gestionar'))
+  const canTemplates = (hasFeature('boletines_personalizables') || hasFeature('boletines_predefinidos')) && (hasPermission('boletines.plantillas.ver') || hasPermission('boletines.plantillas.gestionar'))
   const data = query.data
   const groups = data?.grupos.filter(item => item.ano_lectivo_id === year) ?? []
   const periods = data?.periodos.filter(item => item.ano_lectivo_id === year) ?? []

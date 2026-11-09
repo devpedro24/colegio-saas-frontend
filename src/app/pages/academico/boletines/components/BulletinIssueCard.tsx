@@ -11,7 +11,7 @@ export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: st
   const {hasPermission, hasFeature} = useAuthz()
   const canPrepare = hasPermission('boletines.emisiones.preparar')
   const canPublish = hasPermission('boletines.emisiones.publicar')
-  const canReadTemplates = hasFeature('boletines_personalizables') &&
+  const canReadTemplates = (hasFeature('boletines_personalizables') || hasFeature('boletines_predefinidos')) &&
     (hasPermission('boletines.plantillas.ver') || hasPermission('boletines.plantillas.gestionar'))
   const [page, setPage] = useState(1)
   const issues = useBulletinIssues(matriculaToken, page)

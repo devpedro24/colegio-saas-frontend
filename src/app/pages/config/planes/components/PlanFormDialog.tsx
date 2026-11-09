@@ -1,4 +1,7 @@
-﻿import {FC, useState} from 'react'
+import '../commercial.scss'
+import {NumberInput} from '@/app/shared/components/NumberInput'
+import {useCommercialText} from '../useCommercialText'
+import {FC, useState} from 'react'
 import {createPortal} from 'react-dom'
 import type {FormEvent} from 'react'
 import {Modal} from 'react-bootstrap'
@@ -6,7 +9,7 @@ import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {usePlanes, useCreatePlan, useUpdatePlan} from '../planes.api'
-import {Plan} from '../planes.types'
+import {Plan, type PricingRules} from '../planes.types'
 
 const modalsRoot = document.getElementById('root-modals') || document.body
 
@@ -27,15 +30,13 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-const priceToInput = (v: string | null): string => (v == null ? '' : String(Number(v)))
 const intToInput = (v: number | null): string => (v == null ? '' : String(v))
 const numOrNull = (v: string): number | null => (v.trim() === '' ? null : Number(v))
 
 // Formulario interno: se remonta (via key) por plan, asi el estado arranca precargado.
 const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose}) => {
   const intl = useIntl()
-  const t = (id: string, values?: Record<string, string | number>) =>
-    intl.formatMessage({id}, values)
+  const t = useCommercialText()
   const isEdit = plan !== null
   const toast = useToast()
   const create = useCreatePlan()
@@ -54,13 +55,12 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
   const [name, setName] = useState(plan?.name ?? '')
   const [description, setDescription] = useState(plan?.description ?? '')
   const [isActive, setIsActive] = useState(plan?.is_active ?? true)
-  const [priceMonthly, setPriceMonthly] = useState(priceToInput(plan?.price_monthly ?? null))
-  const [priceAnnual, setPriceAnnual] = useState(priceToInput(plan?.price_annual ?? null))
   const [maxEstudiantes, setMaxEstudiantes] = useState(intToInput(plan?.max_estudiantes ?? null))
   const [storageGb, setStorageGb] = useState(intToInput(plan?.storage_gb ?? null))
   const [maxSedes, setMaxSedes] = useState(intToInput(plan?.max_sedes ?? null))
   const [maxPasarelas, setMaxPasarelas] = useState(intToInput(plan?.max_pasarelas ?? null))
   const [maxCustomRoles, setMaxCustomRoles] = useState(intToInput(plan?.max_roles_personalizados ?? (plan ? null : 0)))
+  const [pricing, setPricing] = useState<PricingRules>(plan?.pricing ?? {currency: 'COP', student_monthly: 1500, minimum_students: 30, included_sites: 1, additional_site_monthly: 15000, addons: {asistencia: 200, preinformes: 200, boletines_personalizables: 300, aula: 300, soporte_prioritario: 100}})
   const [selected, setSelected] = useState<string[]>(Array.from(new Set(['nucleo', ...(plan?.features ?? [])])))
   const [error, setError] = useState<ApiError | null>(null)
 
@@ -81,14 +81,15 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
       name,
       description: description.trim() || null,
       is_active: isActive,
-      price_monthly: numOrNull(priceMonthly),
-      price_annual: numOrNull(priceAnnual),
+      price_monthly: null,
+      price_annual: null,
       max_estudiantes: numOrNull(maxEstudiantes),
       storage_gb: numOrNull(storageGb),
       max_sedes: numOrNull(maxSedes),
       max_pasarelas: numOrNull(maxPasarelas),
       max_roles_personalizados: numOrNull(maxCustomRoles),
       features: selected,
+      pricing,
     }
 
     const onError = (err: unknown) => {
@@ -105,7 +106,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
         {key: plan.key, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated', {name}))
+            toast.success(t('common.toast.updated', {name}), 'updated')
             onClose()
           },
           onError,
@@ -126,7 +127,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className='school-contract-form'>
       <div className='modal-body py-lg-10 px-lg-10'>
         {/* Nombre + Key */}
         <div className='row'>
@@ -176,40 +177,20 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
           {fe('description') && <div className='invalid-feedback'>{fe('description')}</div>}
         </div>
 
-        {/* Precios */}
-        <div className='row'>
-          <div className='col-md-6 fv-row mb-7'>
-            <label className='fs-6 fw-semibold mb-2'>{t('planes.field.priceMonthly')}</label>
-            <div className='input-group'>
-              <span className='input-group-text'>$</span>
-              <input
-                type='number'
-                min='0'
-                step='1000'
-                className={`form-control form-control-solid ${fe('price_monthly') ? 'is-invalid' : ''}`}
-                placeholder={t('planes.field.priceMonthlyPh')}
-                value={priceMonthly}
-                onChange={(e) => setPriceMonthly(e.target.value)}
-              />
-            </div>
-            {fe('price_monthly') && <div className='text-danger fs-7 mt-1'>{fe('price_monthly')}</div>}
-          </div>
-          <div className='col-md-6 fv-row mb-7'>
-            <label className='fs-6 fw-semibold mb-2'>{t('planes.field.priceAnnual')}</label>
-            <div className='input-group'>
-              <span className='input-group-text'>$</span>
-              <input
-                type='number'
-                min='0'
-                step='1000'
-                className={`form-control form-control-solid ${fe('price_annual') ? 'is-invalid' : ''}`}
-                placeholder={t('planes.field.priceAnnualPh')}
-                value={priceAnnual}
-                onChange={(e) => setPriceAnnual(e.target.value)}
-              />
-            </div>
-            {fe('price_annual') && <div className='text-danger fs-7 mt-1'>{fe('price_annual')}</div>}
-          </div>
+        <h4>{t('commercial.tariffs')}</h4>
+        <p className='text-muted fs-7'>{t('commercial.monthlyHelp')}</p>
+        <div className='row g-4 mb-7'>
+          {(['student_monthly','minimum_students','included_sites','additional_site_monthly'] as const).map(field =>
+            <label className='col-sm-6' key={field}>{t(`commercial.${field}`)}
+              <NumberInput className='form-control mt-2' type='number' step='1' min={field === 'minimum_students' ? 30 : field === 'included_sites' ? 1 : 0} required
+                value={pricing[field]} onChange={event => setPricing({...pricing, [field]: Number(event.target.value)})} />
+              {fe(`pricing.${field}`) && <span className='text-danger'>{fe(`pricing.${field}`)}</span>}
+            </label>)}
+          {Object.entries(pricing.addons).map(([feature, amount]) => <label key={feature} className='col-sm-6'>
+            {featureLabel(feature)} · {t('commercial.perStudent')}
+            <NumberInput className='form-control mt-2' type='number' min='0' step='1' required value={amount}
+              onChange={event => setPricing({...pricing, addons: {...pricing.addons, [feature]: Number(event.target.value)}})} />
+          </label>)}
         </div>
 
         {/* Limites cuantitativos (vacio = ilimitado) */}
@@ -218,7 +199,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
         <div className='row'>
           <div className='col-md-3 fv-row mb-7'>
             <label className='fs-7 fw-semibold text-muted mb-2'>{t('plan.limit.maxEstudiantes')}</label>
-            <input
+            <NumberInput
               type='number'
               min='1'
               className={`form-control form-control-solid ${fe('max_estudiantes') ? 'is-invalid' : ''}`}
@@ -230,7 +211,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
           </div>
           <div className='col-md-3 fv-row mb-7'>
             <label className='fs-7 fw-semibold text-muted mb-2'>{t('plan.limit.storageGb')}</label>
-            <input
+            <NumberInput
               type='number'
               min='1'
               className={`form-control form-control-solid ${fe('storage_gb') ? 'is-invalid' : ''}`}
@@ -242,7 +223,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
           </div>
           <div className='col-md-3 fv-row mb-7'>
             <label className='fs-7 fw-semibold text-muted mb-2'>{t('plan.limit.maxSedes')}</label>
-            <input
+            <NumberInput
               type='number'
               min='1'
               className={`form-control form-control-solid ${fe('max_sedes') ? 'is-invalid' : ''}`}
@@ -254,7 +235,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
           </div>
           <div className='col-md-3 fv-row mb-7'>
             <label className='fs-7 fw-semibold text-muted mb-2'>{t('plan.limit.maxPasarelas')}</label>
-            <input
+            <NumberInput
               type='number'
               min='1'
               className={`form-control form-control-solid ${fe('max_pasarelas') ? 'is-invalid' : ''}`}
@@ -266,7 +247,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
           </div>
           <div className='col-md-3 fv-row mb-7'>
             <label className='fs-7 fw-semibold text-muted mb-2'>{t('plan.limit.maxCustomRoles')}</label>
-            <input type='number' min='0' className={`form-control form-control-solid ${fe('max_roles_personalizados') ? 'is-invalid' : ''}`}
+            <NumberInput type='number' min='0' className={`form-control form-control-solid ${fe('max_roles_personalizados') ? 'is-invalid' : ''}`}
               placeholder={t('common.unlimited')} value={maxCustomRoles} onChange={(e) => setMaxCustomRoles(e.target.value)} />
             {fe('max_roles_personalizados') && <div className='invalid-feedback'>{fe('max_roles_personalizados')}</div>}
           </div>
@@ -289,7 +270,7 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
         <div className='fv-row'>
           <label className='fs-6 fw-semibold mb-2'>{t('planes.features.title')}</label>
           <div className='text-muted fs-7 mb-4'>
-            {t('planes.features.help', {count: selected.length})}
+            {t('planes.features.help', {count: selected.filter(key => key !== 'aula_colores').length})}<br />{t('commercial.futureHelp')}
           </div>
           <div className='mh-300px overflow-auto pe-2'>
             {(catalog?.features ?? []).length === 0 && (
@@ -302,6 +283,8 @@ const PlanForm: FC<{plan: Plan | null; onClose: () => void}> = ({plan, onClose})
               >
                 <span>
                   <span className='fw-semibold text-gray-800 fs-6'>{featureLabel(f.key)}</span>
+                  <span className='d-block text-muted fs-8'>{t(f.description)}</span>
+                  {f.available === false && <span className='badge badge-light-warning'>{t('commercial.comingSoon')}</span>}
                   {f.required && <span className='d-block text-muted fs-8'>{t('planes.features.required')}</span>}
                 </span>
                 <span className='form-check form-switch form-check-custom form-check-solid ms-3'>
@@ -348,7 +331,8 @@ const PlanFormDialog: FC<Props> = ({show, plan, onClose}) => {
       id='kt_modal_plan_form'
       tabIndex={-1}
       aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-650px'
+      dialogClassName='modal-dialog modal-dialog-centered mw-650px school-contract-dialog'
+      scrollable
       show={show}
       onHide={onClose}
       backdrop={true}

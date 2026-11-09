@@ -109,7 +109,7 @@ const ColegiosPage: FC = () => {
                 <input
                   type='text'
                   className='form-control form-control-solid w-250px ps-12'
-                  placeholder={t('common.search')}
+                  placeholder={t('common.search', {name: t('entity.colegio')})}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -171,7 +171,7 @@ const ColegiosPage: FC = () => {
                       const rowPending =
                         updateStatus.isPending && updateStatus.variables?.slug === c.slug
                       const status = statusBadge(c.status)
-                      const plan = planBadge(c.plan)
+                      const plan = c.subscription?.customized ? {className: 'badge badge-light-primary', label: t('header.upgrade.custom')} : planBadge(c.plan)
                       return (
                         <tr key={c.slug}>
                           {/* Nombre + razon social */}

@@ -1,4 +1,7 @@
-﻿import {FC, useState} from 'react'
+import '../../planes/commercial.scss'
+import SubscriptionConfigurator from '../../planes/components/SubscriptionConfigurator'
+import type {SubscriptionInput} from '../../planes/planes.types'
+import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -61,6 +64,7 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
   const {data: planesData} = usePlanes()
   const planOptions = (planesData?.data ?? []).filter((p) => p.is_active)
   const [form, setForm] = useState<FormState>(EMPTY)
+  const [subscription, setSubscription] = useState<SubscriptionInput>({students: 30, sites: 1, addons: []})
   const [error, setError] = useState<ApiError | null>(null)
   const [created, setCreated] = useState<{data: CreateColegioResponse; rectorEmail: string} | null>(
     null
@@ -70,6 +74,7 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
 
   const reset = () => {
     setForm(EMPTY)
+    setSubscription({students: 30, sites: 1, addons: []})
     setError(null)
     setCreated(null)
     create.reset()
@@ -82,7 +87,7 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
 
   const set = (patch: Partial<FormState>) => setForm((prev) => ({...prev, ...patch}))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     create.mutate(
@@ -93,7 +98,8 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
         rector_name: form.rector_name.trim() || undefined,
         legal_name: form.legal_name.trim() || null,
         nit: form.nit.trim() || null,
-        plan: form.plan,
+        plan: form.plan === 'personalizado' ? 'estandar' : form.plan,
+        subscription,
       },
       {
         onSuccess: (data) => {
@@ -117,13 +123,14 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
       id='kt_modal_create_colegio'
       tabIndex={-1}
       aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-650px'
+      dialogClassName='modal-dialog modal-dialog-centered mw-650px school-contract-dialog'
+      scrollable
       show={show}
       onHide={handleClose}
       backdrop={true}
     >
       <div className='modal-header'>
-        <h2 className='fw-bold'>{created ? t('colegios.created.title') : t('colegios.created.title')}</h2>
+        <h2 className='fw-bold'>{created ? t('colegios.created.title') : t('colegios.new')}</h2>
         <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={handleClose}>
           <i className='ki-duotone ki-cross fs-1'>
             <span className='path1'></span>
@@ -166,7 +173,7 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
           </div>
         </>
       ) : (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className='school-contract-form'>
           <div className='modal-body py-lg-10 px-lg-10'>
             {/* Nombre */}
             <div className='fv-row mb-7'>
@@ -200,7 +207,7 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
                 <span className='input-group-text'>.localhost</span>
               </div>
               {fe('slug') && <div className='text-danger fs-7 mt-1'>{fe('slug')}</div>}
-              <div className='text-muted fs-8 mt-1'>{t('academico.estructura.sede.slugHelp')}</div>
+              <div className='text-muted fs-8 mt-1'>{t('academico.estructura.sede.slugHelp', {domain: `${form.slug || t('colegios.field.subdomainPh')}.localhost`})}</div>
             </div>
 
             {/* Razon social + NIT (opcionales) */}
@@ -241,7 +248,7 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
               <select
                 className={`form-select form-select-solid ${fe('plan') ? 'is-invalid' : ''}`}
                 value={form.plan}
-                onChange={(e) => set({plan: e.target.value})}
+                onChange={(e) => {set({plan: e.target.value}); setSubscription({...subscription, addons: [], customized: e.target.value === 'personalizado', pricing_override: null})}}
               >
                 <option value='' disabled>
                   {t('colegios.field.selectPlan')}
@@ -251,10 +258,12 @@ const CreateColegioDialog: FC<Props> = ({show, onClose}) => {
                     {p.name}
                   </option>
                 ))}
+              <option value='personalizado'>{t('header.upgrade.custom')}</option>
               </select>
               {fe('plan') && <div className='invalid-feedback'>{fe('plan')}</div>}
             </div>
 
+            {form.plan && <SubscriptionConfigurator planKey={form.plan === 'personalizado' ? 'estandar' : form.plan} value={subscription} onChange={setSubscription} />}
             {/* Rector */}
             <div className='row'>
               <div className='col-md-6 fv-row mb-7'>

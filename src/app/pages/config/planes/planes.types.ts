@@ -6,6 +6,7 @@
  * Ojo: los precios llegan como string (cast decimal de Laravel) o null.
  */
 export interface Plan {
+  pricing: PricingRules
   /** Clave (slug) unica del plan; el colegio referencia el plan por esta key. */
   key: string
   name: string
@@ -33,6 +34,7 @@ export interface PlanCategory {
 
 /** Una feature del catalogo cerrado. `label`/`description` son claves i18n. */
 export interface PlanFeature {
+  available?: boolean
   key: string
   category: string
   label: string
@@ -62,6 +64,7 @@ export interface PlanesResponse {
 
 /** Payload para crear/actualizar un plan (POST /plans, PUT /plans/{id}). */
 export interface PlanInput {
+  pricing?: PricingRules
   key: string
   name: string
   description: string | null
@@ -76,3 +79,12 @@ export interface PlanInput {
   features: string[]
   sort_order?: number
 }
+
+export type PricingRules = {currency: 'COP'; student_monthly: number; minimum_students: number;
+  included_sites: number; additional_site_monthly: number; addons: Record<string, number>}
+export type SubscriptionInput = {students: number; sites: number; addons: string[]; discount_percent?: number; customized?: boolean; pricing_override?: Pick<PricingRules, 'student_monthly' | 'included_sites' | 'additional_site_monthly'> | null}
+export type SubscriptionQuote = {currency: string; students: number; sites: number; addons: string[];
+  base_student_monthly: number; student_monthly: number; students_total: number;
+  addon_lines: {key: string; unit: number; quantity: number; total: number}[];
+  additional_sites: number; sites_total: number; subtotal: number; discount_percent: number; discount_total: number;
+  monthly_total: number; annual_reference: number}

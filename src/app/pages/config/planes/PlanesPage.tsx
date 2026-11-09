@@ -1,19 +1,17 @@
-﻿import {FC, useMemo, useState} from 'react'
+import {useCommercialText} from './useCommercialText'
+import {FC, useMemo, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
 import {usePlanes} from './planes.api'
 import {Plan, PlanLimit} from './planes.types'
 import {PlanFormDialog} from './components/PlanFormDialog'
-
-// Formatea un precio (string numerico del backend) en pesos colombianos.
-const formatPrice = (value: string | null): string | null =>
-  value == null ? null : `$${Number(value).toLocaleString('es-CO')}`
+import './commercial.scss'
 
 const PlanesPage: FC = () => {
   const intl = useIntl()
-  const t = (id: string, values?: Record<string, string | number>) =>
-    intl.formatMessage({id}, values)
+  const formatPrice = (value: string | null) => value == null ? null : intl.formatNumber(Number(value), {style: 'currency', currency: 'COP', maximumFractionDigits: 0})
+  const t = useCommercialText()
 
   const configBreadCrumbs: Array<PageLink> = [
     {
@@ -24,12 +22,11 @@ const PlanesPage: FC = () => {
     },
   ]
 
-  const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<Plan | null>(null)
 
   const {data, isLoading, isError} = usePlanes()
   const planes = data?.data ?? []
-  const limits = data?.catalog.limits ?? []
+  const limits = (data?.catalog.limits ?? []).filter(limit => ['storage_gb', 'max_roles_personalizados'].includes(limit.key))
 
   // key de feature -> id i18n de su label (el backend manda el id en catalog.features).
   const featureLabelId = useMemo(() => {
@@ -46,23 +43,21 @@ const PlanesPage: FC = () => {
   // Valor de un limite del plan: numero formateado o "Ilimitado" (null).
   const limitValue = (plan: Plan, key: PlanLimit['key']): string => {
     const v = plan[key]
-    return v == null ? t('common.unlimited') : v.toLocaleString('es-CO')
+    return v == null ? t('common.unlimited') : intl.formatNumber(v)
   }
 
   return (
     <>
       <PageTitle breadcrumbs={configBreadCrumbs}>{t('common.plans')}</PageTitle>
       <Content>
+        <div className='plans-management'>
         {/* begin::Cabecera */}
-        <div className='d-flex flex-wrap align-items-center justify-content-between gap-3 mb-6'>
-          <div className='d-flex flex-column'>
+        <div className='card mb-6'>
+          <div className='card-body d-flex flex-column py-6'>
             <h3 className='fw-bold text-gray-900 mb-1'>{t('common.plans')}</h3>
             <span className='text-muted fs-7'>{t('planes.subtitle')}</span>
           </div>
-          <button type='button' className='btn btn-primary' onClick={() => setShowCreate(true)}>
-            <i className='ki-duotone ki-plus fs-2'></i>
-            {t('planes.new')}
-          </button>
+
         </div>
         {/* end::Cabecera */}
 
@@ -95,13 +90,13 @@ const PlanesPage: FC = () => {
               </div>
             )}
             {planes.map((plan) => {
-              const monthly = formatPrice(plan.price_monthly)
-              const annual = formatPrice(plan.price_annual)
+              const monthly = formatPrice(String(plan.pricing?.student_monthly ?? 0))
+              const annual = null
               return (
-                <div className='col-md-6 col-lg-4' key={plan.key}>
+                <div className='col-lg-6' key={plan.key}>
                   {/* begin::Card plan */}
                   <div className='card h-100'>
-                    <div className='card-body d-flex flex-column p-9'>
+                    <div className='card-body d-flex flex-column p-6 p-xl-9'>
                       {/* Nombre + estado */}
                       <div className='d-flex align-items-center justify-content-between mb-3'>
                         <h2 className='fw-bold text-gray-900 mb-0'>{plan.name}</h2>
@@ -119,10 +114,10 @@ const PlanesPage: FC = () => {
                       {/* Precio mensual grande + anual */}
                       <div className='mb-4'>
                         {monthly ? (
-                          <div className='d-flex align-items-baseline'>
+                          <div className='d-flex flex-wrap align-items-baseline gap-2'>
                             <span className='fs-3x fw-bold text-gray-900'>{monthly}</span>
                             <span className='fs-6 fw-semibold text-muted ms-2'>
-                              {t('planes.perMonth')}
+                              {t('commercial.perStudent')}
                             </span>
                           </div>
                         ) : (
@@ -135,6 +130,8 @@ const PlanesPage: FC = () => {
                         )}
                       </div>
 
+                      <p>{t('commercial.minimumHelp', {minimum: plan.pricing?.minimum_students ?? 30})}</p>
+                      <p>{t('commercial.includedSites')}: {plan.pricing?.included_sites} · {t('commercial.extraSitePrice')}: {formatPrice(String(plan.pricing?.additional_site_monthly ?? 0))}</p>
                       {/* Descripcion */}
                       {plan.description && (
                         <p className='text-muted fs-6 mb-2'>{plan.description}</p>
@@ -160,15 +157,20 @@ const PlanesPage: FC = () => {
                       {/* Features con check-circle */}
                       <div className='mb-8 flex-grow-1'>
                         <div className='text-muted fw-semibold fs-7 text-uppercase mb-4'>
-                          {t('planes.featuresCount', {count: plan.features.length})}
+                          {t('planes.featuresCount', {count: plan.features.filter(key => key !== 'aula_colores').length})}
                         </div>
-                        {plan.features.map((key) => (
+                        {plan.features.filter(key => key !== 'aula_colores').map((key) => (
                           <div className='d-flex align-items-center mb-4' key={key}>
                             <i className='ki-duotone ki-check-circle fs-3 text-success me-3'>
                               <span className='path1'></span>
                               <span className='path2'></span>
                             </i>
-                            <span className='fw-semibold text-gray-700 fs-6'>{featureLabel(key)}</span>
+                            <span className='fw-semibold text-gray-700 fs-6'>{featureLabel(key)}
+                              {data?.catalog.features.find(feature => feature.key === key)?.available === false && <span className='badge badge-light-warning ms-2'>{t('commercial.comingSoon')}</span>}
+                              {['academico', 'comunicacion_basica', 'aula'].includes(key) && <small className='d-block text-muted fw-normal fs-8 mt-1'>
+                                {t(data?.catalog.features.find(feature => feature.key === key)?.description ?? 'plan.f.academico.desc')}
+                              </small>}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -194,10 +196,10 @@ const PlanesPage: FC = () => {
           </div>
         )}
         {/* end::Grid de planes */}
+        </div>
       </Content>
 
       {/* Modales conectados al backend real */}
-      <PlanFormDialog show={showCreate} plan={null} onClose={() => setShowCreate(false)} />
       <PlanFormDialog show={editing !== null} plan={editing} onClose={() => setEditing(null)} />
     </>
   )
