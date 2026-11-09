@@ -66,7 +66,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
         setError(err)
-        if (!err.errors) toast.error(err.message)
+        toast.error(Object.values(err.errors ?? {}).flat()[0] ?? err.message)
       } else {
         toast.error(t('common.toast.saveError'))
       }
@@ -77,7 +77,7 @@ const NivelFormDialog: FC<{show: boolean; nivel: Nivel | null; onClose: () => vo
         {id: nivel.id, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             onClose()
           },
           onError,
@@ -328,12 +328,11 @@ const NivelesTab: FC = () => {
           if (!deleteId) return
           del.mutate(deleteId.id, {
             onSuccess: () => {
-              toast.success(t('common.toast.deleted'))
+              toast.success(t('common.toast.deleted'), 'deleted')
               setDeleteId(null)
             },
-            onError: () => {
-              toast.error(t('common.toast.deleteError'))
-              setDeleteId(null)
+            onError: (cause) => {
+              toast.error(cause instanceof ApiError ? cause.message : t('common.toast.deleteError'))
             },
           })
         }}

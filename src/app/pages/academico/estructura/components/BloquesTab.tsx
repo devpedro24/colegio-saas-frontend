@@ -78,7 +78,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
         setError(err)
-        if (!err.errors) toast.error(err.message)
+        toast.error(Object.values(err.errors ?? {}).flat()[0] ?? err.message)
       } else {
         toast.error(t('common.toast.saveError'))
       }
@@ -89,7 +89,7 @@ const BloqueFormDialog: FC<{show: boolean; bloque: BloqueHorario | null; onClose
         {id: bloque.id, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             onClose()
           },
           onError,
@@ -412,12 +412,11 @@ const BloquesTab: FC = () => {
           if (!deleteId) return
           del.mutate(deleteId.id, {
             onSuccess: () => {
-              toast.success(t('common.toast.deleted'))
+              toast.success(t('common.toast.deleted'), 'deleted')
               setDeleteId(null)
             },
             onError: (error) => {
               toast.error(error instanceof ApiError ? error.message : t('common.toast.deleteError'))
-              setDeleteId(null)
             },
           })
         }}

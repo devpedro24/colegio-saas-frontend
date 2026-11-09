@@ -15,12 +15,10 @@ export function GroupDirectorDialog({group, onClose}: {group: Grupo | null; onCl
   const save = useSaveGroupDirector(group?.id ?? '')
   const [teacherToken, setTeacherToken] = useState('')
   const [reason, setReason] = useState('')
-  const [error, setError] = useState('')
 
   useEffect(() => {
     setTeacherToken(detail.data?.docente_token ?? '')
     setReason('')
-    setError('')
   }, [group?.id, detail.data?.version])
 
   const changed = teacherToken !== (detail.data?.docente_token ?? '')
@@ -53,15 +51,16 @@ export function GroupDirectorDialog({group, onClose}: {group: Grupo | null; onCl
           </ul>
         </div>}
       </>}
-      {error && <div className='alert alert-danger mt-4' role='alert'>{error}</div>}
     </Modal.Body>
     <Modal.Footer>
       <button type='button' className='btn btn-light' onClick={onClose}>{t('common.cancel')}</button>
       <button type='button' className='btn btn-primary' disabled={!detail.data || !changed || save.isPending || (reasonRequired && reason.trim().length < 8)}
         onClick={() => save.mutate({docente_token: teacherToken || null, version: detail.data!.version,
           ...(reasonRequired ? {motivo: reason.trim()} : {})}, {
-          onSuccess: () => {toast.success(t('academico.estructura.director.saved')); onClose()},
-          onError: cause => setError(cause instanceof ApiError ? cause.message : t('common.toast.saveError')),
+          onSuccess: () => {toast.success(t('academico.estructura.director.saved'), 'updated'); onClose()},
+          onError: cause => toast.error(cause instanceof ApiError
+            ? Object.values(cause.errors ?? {}).flat()[0] ?? cause.message
+            : t('common.toast.saveError')),
         })}>{t('academico.estructura.director.save')}</button>
     </Modal.Footer>
   </Modal>

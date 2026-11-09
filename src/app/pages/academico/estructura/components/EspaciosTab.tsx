@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {useEffect} from 'react'
@@ -88,7 +89,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
         setError(err)
-        if (!err.errors) toast.error(err.message)
+        toast.error(Object.values(err.errors ?? {}).flat()[0] ?? err.message)
       } else {
         toast.error(t('common.toast.saveError'))
       }
@@ -99,7 +100,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
         {id: espacio.id, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             onClose()
           },
           onError,
@@ -174,7 +175,7 @@ const EspacioFormDialog: FC<{show: boolean; espacio: EspacioFisico | null; onClo
               <label className='fs-6 fw-semibold mb-2'>
                 {t('academico.estructura.espacio.capacidad')}
               </label>
-              <input
+              <NumberInput
                 type='number'
                 min={1}
                 max={9999}
@@ -425,12 +426,11 @@ const EspaciosTab: FC = () => {
           if (!deleteId) return
           del.mutate(deleteId.id, {
             onSuccess: () => {
-              toast.success(t('common.toast.deleted'))
+              toast.success(t('common.toast.deleted'), 'deleted')
               setDeleteId(null)
             },
-            onError: () => {
-              toast.error(t('common.toast.deleteError'))
-              setDeleteId(null)
+            onError: (cause) => {
+              toast.error(cause instanceof ApiError ? cause.message : t('common.toast.deleteError'))
             },
           })
         }}
