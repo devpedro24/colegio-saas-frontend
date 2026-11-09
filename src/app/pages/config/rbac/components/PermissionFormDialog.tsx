@@ -82,7 +82,7 @@ const PermForm: FC<{
         {key: permission.key, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             onClose()
           },
           onError,
@@ -218,7 +218,8 @@ const PermissionFormDialog: FC<Props> = ({show, permission, features, onClose}) 
       id='kt_modal_rbac_permission'
       tabIndex={-1}
       aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-650px'
+      dialogClassName='modal-dialog modal-dialog-centered mw-650px rbac-dialog'
+      scrollable
       show={show}
       onHide={onClose}
       backdrop={true}

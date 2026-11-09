@@ -12,6 +12,7 @@ import {PermissionFormDialog} from './components/PermissionFormDialog'
 import {RoleFormDialog} from './components/RoleFormDialog'
 import {DeleteRbacDialog} from './components/DeleteRbacDialog'
 import {MatrixCellDialog} from './components/MatrixCellDialog'
+import {MobilePermissionMatrix} from './components/MobilePermissionMatrix'
 import './rbac-matrix.css'
 
 type TabKey = 'permissions' | 'roles' | 'matrix'
@@ -141,7 +142,7 @@ const RbacPage: FC = () => {
     const mutation = deleting.kind === 'permiso' ? deletePermission : deleteRole
     mutation.mutate(deleting.key, {
       onSuccess: () => {
-        toast.success(t(deleting.kind === 'permiso' ? 'common.toast.deleted' : 'common.toast.deleted'))
+        toast.success(t(deleting.kind === 'permiso' ? 'common.toast.deleted' : 'common.toast.deleted'), 'deleted')
         setDeleting(null)
       },
       onError: (err) => {
@@ -155,7 +156,7 @@ const RbacPage: FC = () => {
       <PageTitle breadcrumbs={configBreadCrumbs}>{t('rbac.title')}</PageTitle>
       <Content>
         {/* begin::Card */}
-        <div className='card'>
+        <div className='card rbac-management'>
           {/* begin::Card header */}
           <div className='card-header border-0 pt-6'>
             <div className='card-title flex-column align-items-start'>
@@ -190,7 +191,7 @@ const RbacPage: FC = () => {
             {!isLoading && !isError && (
               <>
                 {/* begin::Tabs */}
-                <ul className='nav nav-tabs nav-line-tabs nav-line-tabs-2x mb-6 fs-6 fw-bold'>
+                <ul className='nav nav-tabs nav-line-tabs nav-line-tabs-2x mb-6 fs-6 fw-bold rbac-tabs'>
                   <li className='nav-item'>
                     <a
                       className={`nav-link cursor-pointer ${tab === 'permissions' ? 'active' : ''}`}
@@ -231,7 +232,7 @@ const RbacPage: FC = () => {
                         {t('rbac.perm.new')}
                       </button>
                     </div>
-                    <div className='table-responsive'>
+                    <div className='table-responsive rbac-responsive-list'>
                       <table className='table table-row-dashed align-middle gs-0 gy-4'>
                         <thead>
                           <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
@@ -245,12 +246,12 @@ const RbacPage: FC = () => {
                         <tbody className='text-gray-600 fw-semibold'>
                           {permissions.map((p) => (
                             <tr key={p.key}>
-                              <td className='text-gray-700'>{rbacModuleLabel(intl, p.module)}</td>
-                              <td className='text-gray-800 fw-bold'>{rbacActionLabel(intl, p.key, p.action)}</td>
-                              <td>
+                              <td data-label={t('rbac.perm.module')} className='text-gray-700'>{rbacModuleLabel(intl, p.module)}</td>
+                              <td data-label={t('rbac.perm.col.action')} className='text-gray-800 fw-bold'>{rbacActionLabel(intl, p.key, p.action)}</td>
+                              <td data-label={t('common.field.key')}>
                                 <span className='text-muted font-monospace fs-7'>{p.key}</span>
                               </td>
-                              <td>
+                              <td data-label={t('rbac.perm.col.feature')}>
                                 {p.feature_key ? (
                                   <span
                                     className='badge badge-light-info'
@@ -263,7 +264,7 @@ const RbacPage: FC = () => {
                                   <span className='text-muted'>-</span>
                                 )}
                               </td>
-                              <td>
+                              <td data-label={t('common.actions')}>
                                 <div className='d-flex align-items-center justify-content-end flex-shrink-0'>
                                   <button
                                     type='button'
@@ -326,7 +327,7 @@ const RbacPage: FC = () => {
                         {t('rbac.role.new')}
                       </button>
                     </div>
-                    <div className='table-responsive'>
+                    <div className='table-responsive rbac-responsive-list'>
                       <table className='table table-row-dashed align-middle gs-0 gy-4'>
                         <thead>
                           <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
@@ -338,11 +339,11 @@ const RbacPage: FC = () => {
                         <tbody className='text-gray-600 fw-semibold'>
                           {roles.map((r) => (
                             <tr key={r.key}>
-                              <td className='text-gray-800 fw-bold'>{r.label}</td>
-                              <td>
+                              <td data-label={t('common.field.rol')} className='text-gray-800 fw-bold'>{r.label}</td>
+                              <td data-label={t('common.field.key')}>
                                 <span className='text-muted font-monospace fs-7'>{r.key}</span>
                               </td>
-                              <td>
+                              <td data-label={t('common.actions')}>
                                 <div className='d-flex align-items-center justify-content-end flex-shrink-0'>
                                   <button
                                     type='button'
@@ -414,7 +415,13 @@ const RbacPage: FC = () => {
                       </span>
                     </div>
 
-                    <div className='table-responsive rbac-matrix-scroll' role='region' tabIndex={0} aria-label={t('rbac.tab.matrix')}>
+                    <MobilePermissionMatrix roles={roles} groups={grouped} featureLabel={featureLabel}
+                      renderCell={(role, permission) => <button type='button' className='btn btn-sm btn-light'
+                        aria-label={`${t('rbac.cell.title')}: ${rbacActionLabel(intl, permission.key, permission.action)} · ${role.label}`}
+                        onClick={() => openCell(role, permission)}>
+                        <CellBadge state={toCellState(cellMap.get(`${role.key}|${permission.key}`))} />
+                      </button>} />
+                    <div className='table-responsive rbac-matrix-scroll rbac-matrix-desktop' role='region' tabIndex={0} aria-label={t('rbac.tab.matrix')}>
                       <table className='table table-row-bordered table-row-gray-200 align-middle gs-0 gy-3 mb-0'>
                         <thead>
                           <tr className='fw-bold fs-8 text-uppercase text-muted'>

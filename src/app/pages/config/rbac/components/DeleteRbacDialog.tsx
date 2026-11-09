@@ -28,7 +28,8 @@ const DeleteRbacDialog: FC<Props> = ({show, entity, name, onConfirm, pending, on
       id='kt_modal_delete_rbac'
       tabIndex={-1}
       aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-500px'
+      dialogClassName='modal-dialog modal-dialog-centered mw-500px rbac-dialog'
+      scrollable
       show={show}
       onHide={onClose}
       backdrop={true}

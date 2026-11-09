@@ -61,7 +61,7 @@ const RoleForm: FC<{role: RbacRole | null; onClose: () => void}> = ({role, onClo
         {key: role.key, input: {label}},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             onClose()
           },
           onError,
@@ -153,7 +153,8 @@ const RoleFormDialog: FC<Props> = ({show, role, onClose}) => {
       id='kt_modal_rbac_role'
       tabIndex={-1}
       aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-550px'
+      dialogClassName='modal-dialog modal-dialog-centered mw-550px rbac-dialog'
+      scrollable
       show={show}
       onHide={onClose}
       backdrop={true}

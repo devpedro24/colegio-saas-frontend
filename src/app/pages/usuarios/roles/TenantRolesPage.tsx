@@ -5,6 +5,7 @@ import {PageTitle} from '@/_metronic/layout/core'
 import {Content} from '@/_metronic/layout/components/content'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import {rbacActionLabel, rbacModuleLabel} from '@/app/pages/config/rbac/rbac.labels'
+import {MobilePermissionMatrix} from '@/app/pages/config/rbac/components/MobilePermissionMatrix'
 import '@/app/pages/config/rbac/rbac-matrix.css'
 import {useToast} from '@/lib/ui/toast'
 import {useTenantRoleActions, useTenantRoles, type TenantRole, type TenantRoleCell} from './tenant-roles.api'
@@ -24,8 +25,8 @@ export default function TenantRolesPage() {
 
   if (!allowed) return <Navigate to='/dashboard' replace />
 
-  const run = async (operation: Promise<unknown>, success: string) => {
-    try { await operation; toast.success(success) }
+  const run = async (operation: Promise<unknown>, success: string, variant: 'success' | 'updated' | 'deleted' = 'success') => {
+    try { await operation; toast.success(success, variant) }
     catch (err) { toast.error(err instanceof Error ? err.message : t('common.error')) }
   }
   const createRole = (event: FormEvent) => {
@@ -36,11 +37,11 @@ export default function TenantRolesPage() {
   const saveName = (role: TenantRole) => {
     if (!role.custom || !editLabel.trim() || editLabel.trim() === role.label) return
     void run(rename.mutateAsync({key: role.key, label: editLabel.trim()})
-      .then(() => setEditingRole(null)), t('common.toast.updated'))
+      .then(() => setEditingRole(null)), t('common.toast.updated'), 'updated')
   }
   const deleteRole = (role: TenantRole) => {
     if (!role.custom || !window.confirm(t('tenantRbac.deleteRole') + '?')) return
-    void run(remove.mutateAsync(role.key).then(() => setEditingRole(null)), t('common.toast.deleted'))
+    void run(remove.mutateAsync(role.key).then(() => setEditingRole(null)), t('common.toast.deleted'), 'deleted')
   }
   const limit = data?.custom_role_limit
   const reached = limit !== null && limit !== undefined && (data?.custom_role_count ?? 0) >= limit
@@ -67,7 +68,7 @@ export default function TenantRolesPage() {
   }
 
   return <><PageTitle>{t('tenantRbac.title')}</PageTitle><Content>
-    <div className='card'>
+    <div className='card rbac-management'>
       <div className='card-header border-0 pt-6'>
         <div className='card-title flex-column align-items-start'>
           <h2 className='fw-bold mb-1'>{t('tenantRbac.title')}</h2>
@@ -78,7 +79,7 @@ export default function TenantRolesPage() {
         {isLoading && <p role='status'>{t('common.loading', {name: t('rbac.title')})}</p>}
         {error && <div className='alert alert-danger' role='alert'>{error.message}</div>}
         {data && <>
-          <ul className='nav nav-tabs nav-line-tabs nav-line-tabs-2x mb-6 fs-6 fw-bold'>
+          <ul className='nav nav-tabs nav-line-tabs nav-line-tabs-2x mb-6 fs-6 fw-bold rbac-tabs'>
             <li className='nav-item'><button type='button' className={`nav-link ${tab === 'matrix' ? 'active' : ''}`}
               onClick={() => setTab('matrix')}>{t('rbac.tab.matrix')}</button></li>
             <li className='nav-item'><button type='button' className={`nav-link ${tab === 'roles' ? 'active' : ''}`}
@@ -86,7 +87,6 @@ export default function TenantRolesPage() {
           </ul>
           {tab === 'matrix' && <>
             <p className='text-muted fs-7 mb-4'>{t('tenantRbac.matrixHelp')}</p>
-            <p className='text-info fs-8 d-md-none mb-3'>{t('tenantRbac.scrollHint')}</p>
             <div className='d-flex flex-wrap align-items-center gap-4 mb-5 fs-8'>
               <span className='badge badge-light-primary'>{t('tenantRbac.structural')}</span>
               <span className='badge badge-light-success'>{t('tenantRbac.active')}</span>
@@ -94,7 +94,9 @@ export default function TenantRolesPage() {
               <span className='badge badge-light-warning'>{t('tenantRbac.planLocked')}</span>
               <span className='text-muted'>— {t('tenantRbac.denied')}</span>
             </div>
-            <div className='table-responsive rbac-matrix-scroll' role='region' tabIndex={0} aria-label={t('rbac.tab.matrix')}>
+            <MobilePermissionMatrix roles={data.roles} groups={data.data}
+              renderCell={(role, permission) => cellContent(role, permission, permission.cells[role.key])} />
+            <div className='table-responsive rbac-matrix-scroll rbac-matrix-desktop' role='region' tabIndex={0} aria-label={t('rbac.tab.matrix')}>
               <table className='table table-row-bordered table-row-gray-200 align-middle gs-0 gy-3 mb-0'
                 style={{minWidth: Math.max(850, 300 + data.roles.length * 150)}}>
                 <thead><tr className='fw-bold fs-8 text-uppercase text-muted'>
@@ -132,19 +134,19 @@ export default function TenantRolesPage() {
               <button className='btn btn-primary' disabled={reached || !newLabel.trim() || create.isPending}>{t('tenantRbac.newRole')}</button>
             </form>
             {reached && <div className='text-muted fs-7 mb-4'>{t('tenantRbac.planLocked')}</div>}
-            <div className='table-responsive'><table className='table table-row-dashed align-middle gs-0 gy-4'>
+            <div className='table-responsive rbac-responsive-list'><table className='table table-row-dashed align-middle gs-0 gy-4'>
               <thead><tr className='text-muted fw-bold fs-7 text-uppercase'>
                 <th>{t('common.field.rol')}</th><th>{t('common.field.key')}</th>
                 <th className='text-end'>{t('tenantRbac.roleActions')}</th>
               </tr></thead>
               <tbody>{data.roles.map(role => <tr key={role.key}>
-                <td>{editingRole === role.key ? <input className='form-control' value={editLabel} maxLength={120}
+                <td data-label={t('common.field.rol')}>{editingRole === role.key ? <input className='form-control' value={editLabel} maxLength={120}
                   aria-label={t('tenantRbac.roleName')} onChange={e => setEditLabel(e.target.value)} />
                   : <span className='fw-bold text-gray-800'>{role.label}</span>}
                   {role.locked_by_plan && <span className='badge badge-light-warning ms-2'>{t('tenantRbac.planLocked')}</span>}
                 </td>
-                <td className='text-muted font-monospace fs-7'>{role.key}</td>
-                <td className='text-end'>{role.custom && (editingRole === role.key ? <div className='d-flex justify-content-end gap-2'>
+                <td data-label={t('common.field.key')} className='text-muted font-monospace fs-7'>{role.key}</td>
+                <td data-label={t('tenantRbac.roleActions')} className='text-end'>{role.custom && (editingRole === role.key ? <div className='d-flex justify-content-end gap-2'>
                   <button type='button' className='btn btn-sm btn-light-primary' onClick={() => saveName(role)}
                     disabled={rename.isPending || !editLabel.trim()}>{t('tenantRbac.saveRole')}</button>
                   <button type='button' className='btn btn-sm btn-light' onClick={() => setEditingRole(null)}>{t('common.cancel')}</button>

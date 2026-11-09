@@ -149,7 +149,8 @@ const MatrixCellDialog: FC<Props> = ({show, role, permission, state, levels, onC
       id='kt_modal_matrix_cell'
       tabIndex={-1}
       aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-500px'
+      dialogClassName='modal-dialog modal-dialog-centered mw-500px rbac-dialog'
+      scrollable
       show={show}
       onHide={onClose}
       backdrop={true}

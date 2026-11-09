@@ -29,8 +29,55 @@
   display: inline-block;
 }
 
-@media (max-width: 767.98px) {
-  .rbac-matrix-scroll {
-    max-height: min(60vh, 560px);
-  }
+.rbac-management, .rbac-management .card-body { min-width: 0; }
+.rbac-management .card-title { min-width: 0; }
+.rbac-tabs { display: flex; flex-wrap: nowrap; gap: 1.5rem; }
+.rbac-tabs .nav-item { margin: 0; }
+.rbac-tabs .nav-link { white-space: nowrap; margin: 0; }
+.rbac-mobile-matrix { display: none; }
+.rbac-dialog { height: calc(100dvh - 2rem); margin-block: 1rem; }
+.rbac-dialog .modal-content { max-height: 100%; overflow: hidden; }
+.rbac-dialog .modal-header, .rbac-dialog .modal-footer { flex-shrink: 0; }
+.rbac-dialog form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.rbac-dialog .modal-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.rbac-dialog .modal-header h2 { min-width: 0; margin-bottom: 0; }
+.rbac-dialog .modal-header > .btn { flex-shrink: 0; }
+.rbac-dialog .btn-group { flex-wrap: wrap; gap: .4rem; }
+.rbac-dialog .btn-group > .btn { border-radius: .75rem !important; white-space: normal; }
+
+@media (max-width: 991.98px) {
+  .rbac-matrix-desktop { display: none; }
+  .rbac-mobile-matrix { display: block; }
+  .rbac-mobile-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+  .rbac-mobile-filters label { min-width: 0; }
+  .rbac-mobile-filters .form-label { display: block; }
+  .rbac-mobile-module { margin-bottom: 1.5rem; }
+  .rbac-mobile-module > h4 { font-size: .9rem; color: var(--bs-gray-700); margin-bottom: .65rem; }
+  .rbac-mobile-permission { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: 1rem; border: 1px solid var(--bs-gray-200); border-radius: 1rem; margin-bottom: .65rem; }
+  .rbac-mobile-permission > div:first-child { min-width: 0; }
+  .rbac-mobile-permission strong, .rbac-mobile-permission small { display: block; overflow-wrap: anywhere; }
+  .rbac-mobile-permission small { font-size: .75rem; margin-top: .25rem; }
+  .rbac-mobile-cell { flex-shrink: 0; max-width: 45%; text-align: center; }
+  .rbac-mobile-cell button { min-height: 44px; min-width: 44px; }
+  .rbac-mobile-cell .badge, .rbac-mobile-cell button { white-space: normal; overflow-wrap: anywhere; }
+  .rbac-responsive-list { overflow: visible; }
+  .rbac-responsive-list table, .rbac-responsive-list tbody { display: block; width: 100%; }
+  .rbac-responsive-list thead { display: none; }
+  .rbac-responsive-list tbody tr { display: block; padding: .6rem 1rem; border: 1px solid var(--bs-gray-200) !important; border-radius: 1.1rem; margin-bottom: 1rem; }
+  .rbac-responsive-list td { display: grid; grid-template-columns: minmax(5.5rem, 30%) minmax(0, 1fr); gap: .8rem; align-items: center; min-width: 0 !important; width: 100%; padding: .55rem 0 !important; text-align: start !important; border: 0 !important; overflow-wrap: anywhere; }
+  .rbac-responsive-list .table tbody tr:last-child { border-bottom: 1px solid var(--bs-gray-200) !important; }
+  .rbac-responsive-list .btn-icon { min-width: 40px; min-height: 40px; }
+  .rbac-responsive-list td::before { content: attr(data-label); color: var(--bs-gray-600); font-size: .75rem; font-weight: 500; font-family: var(--bs-body-font-family); }
+  .rbac-responsive-list td[colspan] { display: block; }
+  .rbac-responsive-list td[colspan]::before { display: none; }
+  .rbac-responsive-list td > .d-flex { flex-wrap: wrap; justify-content: flex-start !important; gap: .4rem; }
+  .rbac-responsive-list .badge { white-space: normal; width: fit-content; }
+}
+@media (max-width: 575.98px) {
+  .rbac-management > .card-header, .rbac-management > .card-body { padding-inline: 1.25rem; }
+  .rbac-tabs { gap: 1rem; font-size: .9rem !important; justify-content: space-between; }
+  .rbac-tabs .nav-link { padding-inline: 0; }
+  .rbac-mobile-filters { grid-template-columns: minmax(0, 1fr); }
+  .rbac-mobile-permission { padding: .85rem; }
+  .rbac-dialog { height: calc(100dvh - 1rem); margin: .5rem; max-width: calc(100% - 1rem); }
 }

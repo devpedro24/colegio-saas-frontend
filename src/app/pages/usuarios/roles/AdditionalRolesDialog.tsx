@@ -1,3 +1,4 @@
+import '@/app/pages/config/rbac/rbac-matrix.css'
 import {useEffect, useState} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -22,7 +23,7 @@ export function AdditionalRolesDialog({user, onClose}: {user: Usuario | null; on
     })
   }
 
-  return <Modal show={!!user} onHide={onClose} centered>
+  return <Modal show={!!user} onHide={onClose} centered scrollable dialogClassName='rbac-dialog'>
     <div className='modal-header'><h2 className='modal-title'>{t('tenantRbac.assignRoles')}</h2>
       <button type='button' className='btn-close' onClick={onClose} aria-label={t('common.close')} /></div>
     <div className='modal-body'>
@@ -38,6 +39,6 @@ export function AdditionalRolesDialog({user, onClose}: {user: Usuario | null; on
       {data && !data.roles.some(role => role.custom) && <p className='text-muted'>{t('tenantRbac.noCustomRoles')}</p>}
     </div>
     <div className='modal-footer'><button type='button' className='btn btn-light' onClick={onClose}>{t('common.cancel')}</button>
-      <button type='button' className='btn btn-primary' disabled={assign.isPending || isLoading || !data} onClick={save}>{t('common.save')}</button></div>
+      <button type='button' className='btn btn-primary' disabled={assign.isPending || isLoading || !data} onClick={save}>{t('common.saveChanges')}</button></div>
   </Modal>
 }
