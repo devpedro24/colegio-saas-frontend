@@ -58,10 +58,9 @@ const annualUrl = (path: string, yearId: string, key?: string, value?: string | 
  * â†’ base = colegio-rbac.localhost.
  */
 export function sedeSubdomainUrl(tenantDomain: string): string {
-  const host = window.location.hostname
-  const parts = host.split('.')
-  const base = parts.length > 1 ? parts.slice(1).join('.') : host
-  return `${window.location.protocol}//${tenantDomain}.${base}`
+  const suffix = window.location.port ? `:${window.location.port}` : ''
+  const domain = tenantDomain.includes('.') ? tenantDomain : `${tenantDomain}.${window.location.hostname.split('.').slice(1).join('.') || window.location.hostname}`
+  return `${window.location.protocol}//${domain}${suffix}`
 }
 
 // ---- Sedes ----
@@ -102,20 +101,20 @@ export interface SedeCreateResult {
   coordinador_password?: string | null
 }
 
-export function useCreateSede() {
+export function useCreateSede(schoolSlug?: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: CreateSedeInput) => api.post<SedeCreateResult>('/estructura/sedes?opaque=1', input),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: SEDES_KEY}),
+    mutationFn: (input: CreateSedeInput) => api.post<SedeCreateResult>(schoolSlug ? `/colegios/${encodeURIComponent(schoolSlug)}/sedes?opaque=1` : '/estructura/sedes?opaque=1', input),
+    onSuccess: () => {queryClient.invalidateQueries({queryKey: SEDES_KEY}); queryClient.invalidateQueries({queryKey: ['colegios']})},
   })
 }
 
-export function useUpdateSede() {
+export function useUpdateSede(schoolSlug?: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({id, input}: {id: string; input: CreateSedeInput}) =>
-      api.put<{data: Sede}>(`/estructura/sedes/${encodeURIComponent(id)}?opaque=1`, input),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: SEDES_KEY}),
+      api.put<{data: Sede}>(`${schoolSlug ? `/colegios/${encodeURIComponent(schoolSlug)}` : '/estructura'}/sedes/${encodeURIComponent(id)}?opaque=1`, input),
+    onSuccess: () => {queryClient.invalidateQueries({queryKey: SEDES_KEY}); queryClient.invalidateQueries({queryKey: ['colegios']})},
   })
 }
 
@@ -123,7 +122,7 @@ export function useDeleteSede() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete<{data: null}>(`/estructura/sedes/${encodeURIComponent(id)}?opaque=1`),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: SEDES_KEY}),
+    onSuccess: () => {queryClient.invalidateQueries({queryKey: SEDES_KEY}); queryClient.invalidateQueries({queryKey: ['colegios']})},
   })
 }
 
@@ -428,6 +427,6 @@ export function useHeredarSede() {
   return useMutation({
     mutationFn: ({id, categorias}: {id: string; categorias: string[]}) =>
       api.post(`/estructura/sedes/${encodeURIComponent(id)}/heredar?opaque=1`, {categorias}),
-    onSuccess: () => queryClient.invalidateQueries({queryKey: SEDES_KEY}),
+    onSuccess: () => {queryClient.invalidateQueries({queryKey: SEDES_KEY}); queryClient.invalidateQueries({queryKey: ['colegios']})},
   })
 }

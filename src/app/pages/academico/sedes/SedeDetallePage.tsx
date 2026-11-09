@@ -1,3 +1,4 @@
+import {useSedeMessages} from '../configuracion/components/useSedeMessages'
 ﻿import {FC} from 'react'
 import {useIntl} from 'react-intl'
 import {Link, Navigate, useParams} from 'react-router-dom'
@@ -7,23 +8,12 @@ import {useImpersonation} from '../../../modules/impersonation/impersonation.sto
 import {useAuthz} from '../../../modules/auth/core/authz'
 import {sedeSubdomainUrl, useSede} from '../estructura/estructura.api'
 
-const tenantStatusBadge = (status: string | null): {cls: string; label: string} => {
-  switch (status) {
-    case 'active':
-      return {cls: 'badge badge-light-success', label: 'common.active'}
-    case 'in_retention':
-      return {cls: 'badge badge-light-warning', label: 'academico.estructura.sede.tenantStatus.cuarentena'}
-    default:
-      return {cls: 'badge badge-light-secondary', label: 'common.inactive'}
-  }
-}
-
 // Pagina propia de una sede (/ajustes-institucionales/sedes/:id). Muestra los datos de la sede, su state
 // de tenant hijo (subdominio, coordinador, tenant id) y permite abrir el subdominio en otra
 // pestaña. Los modulos de la estructura se habilitaran proximamente.
 const SedeDetallePage: FC = () => {
   const intl = useIntl()
-  const t = (id: string) => intl.formatMessage({id})
+  const t = useSedeMessages()
   const {id} = useParams<{id: string}>()
   const {activeColegio} = useImpersonation()
   const {isPlatform} = useAuthz()
@@ -53,7 +43,7 @@ const SedeDetallePage: FC = () => {
     },
   ]
 
-  const canOpen = !!sede?.tenant_domain && sede.tenant_status === 'active'
+  const canOpen = !!sede?.tenant_domain
 
   const openCampus = () => {
     if (sede?.tenant_domain) {
@@ -140,9 +130,7 @@ const SedeDetallePage: FC = () => {
                       }
                     >
                       {t(
-                        sede.estado === 'activa'
-                          ? 'common.active'
-                          : 'common.inactive'
+                        sede.estado === 'activa' ? 'common.active' : sede.estado === 'mantenimiento' ? 'sede.maintenance' : 'common.inactive'
                       )}
                     </span>
                   </div>
@@ -174,35 +162,11 @@ const SedeDetallePage: FC = () => {
               </div>
             </div>
 
-            {sede.tenant_slug && (
-              <div className='card mb-6'>
-                <div className='card-header border-0 pt-6'>
-                  <div className='card-title flex-column align-items-start'>
-                    <h3 className='fw-bold mb-1'>{t('academico.sede.detail.tenant')}</h3>
-                    <span className='text-muted fs-7'>{t('academico.estructura.sede.tenantInfo')}</span>
-                  </div>
-                </div>
-                <div className='card-body pt-4'>
-                  <div className='row g-6'>
-                    <div className='col-md-4'>
-                      <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
-                        {t('common.subdomain')}
-                      </div>
-                      <div className='text-gray-800 fw-semibold'>{sede.tenant_domain ?? '—'}</div>
-                    </div>
-                    <div className='col-md-4'>
-                      <div className='fs-8 fw-semibold text-muted text-uppercase mb-1'>
-                        {t('common.status')}
-                      </div>
-                      {(() => {
-                        const badge = tenantStatusBadge(sede.tenant_status)
-                        return <span className={badge.cls}>{t(badge.label)}</span>
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className='card mb-6'><div className='card-body row g-6'>
+              <div className='col-md-8'><div className='text-muted fs-7 mb-2'>{t('common.subdomain')}</div>
+                <span className='text-break'>{sede.tenant_domain ? new URL(sedeSubdomainUrl(sede.tenant_domain)).host : '—'}</span></div>
+              <div className='col-md-4'><div className='text-muted fs-7 mb-2'>{t('sede.capacity')}</div>{sede.capacidad_maxima ?? '—'}</div>
+            </div></div>
 
             <div className='card'>
               <div className='card-header border-0 pt-6'>

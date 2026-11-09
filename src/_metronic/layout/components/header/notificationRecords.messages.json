@@ -139,7 +139,10 @@
     "event.calendar.event.destroy": "Evento eliminado",
     "event.calendar.attachment.upload": "Archivo del evento subido",
     "event.calendar.configuration.save": "Configuración de eventos guardada",
-    "event.calendar.mail.retry": "Correos del evento reenviados"
+    "event.calendar.mail.retry": "Correos del evento reenviados",
+    "event.structure.sede.store": "Sede creada",
+    "event.structure.sede.update": "Sede actualizada",
+    "event.structure.sede.destroy": "Sede eliminada"
   },
   "en": {
     "scope.attendance": "Attendance",
@@ -281,6 +284,9 @@
     "event.calendar.event.destroy": "Event deleted",
     "event.calendar.attachment.upload": "Event attachment uploaded",
     "event.calendar.configuration.save": "Event settings saved",
-    "event.calendar.mail.retry": "Event emails retried"
+    "event.calendar.mail.retry": "Event emails retried",
+    "event.structure.sede.store": "Campus created",
+    "event.structure.sede.update": "Campus updated",
+    "event.structure.sede.destroy": "Campus deleted"
   }
 }

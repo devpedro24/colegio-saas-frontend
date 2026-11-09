@@ -13,6 +13,12 @@ export interface Sede {
   telefono: string | null
   coordinador_name: string | null
   coordinador_email: string | null
+  principal?: boolean
+  slug?: string
+  departamento?: string | null
+  municipio?: string | null
+  capacidad_maxima?: number | null
+  coordinador_token?: string | null
   tenant_id: string | null
   tenant_slug: string | null
   tenant_domain: string | null
@@ -28,6 +34,11 @@ export interface CreateSedeInput {
   telefono?: string | null
   coordinador_email?: string | null
   coordinador_name?: string | null
+  departamento?: string | null
+  municipio?: string | null
+  capacidad_maxima?: number
+  coordinador_token?: string | null
+  categorias?: string[]
   heredar?: boolean
   estado?: string
 }

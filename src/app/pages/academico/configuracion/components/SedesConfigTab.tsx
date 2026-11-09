@@ -1,370 +1,27 @@
-﻿import {FC, useState, type FormEvent} from 'react'
-import {createPortal} from 'react-dom'
-import {Modal} from 'react-bootstrap'
+import {useSedeMessages} from './useSedeMessages'
+﻿import {FC, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {useNavigate} from 'react-router-dom'
-import {ApiError, api} from '@/lib/api/client'
+import {api} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {
   sedeSubdomainUrl,
-  useCreateSede,
   useDeleteSede,
-  useHeredarSede,
-  useUpdateSede,
 } from '../../estructura/estructura.api'
 import type {AcademicPaged} from '../../estructura/estructura.api'
-import type {CreateSedeInput, Sede} from '../../estructura/estructura.types'
+import type {Sede} from '../../estructura/estructura.types'
 import {AcademicListFilters} from '../../estructura/components/AcademicListFilters'
 import {useAcademicPagedList} from '../../estructura/useAcademicPagedList'
 import {DeleteConfirmDialog} from '../../estructura/components/DeleteConfirmDialog'
-import {HeredarDialog} from './HeredarDialog'
+import {SedeFormDialog} from './SedeFormDialog'
 import {fromOpaqueAcademic} from '../../shared/opaqueAcademic'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 
-const modalsRoot = document.getElementById('root-modals') || document.body
-
-const emptyForm = (): CreateSedeInput => ({
-  nombre: '',
-  slug: '',
-  direccion: '',
-  telefono: '',
-  coordinador_name: '',
-  coordinador_email: '',
-  heredar: true,
-  estado: 'activa',
-})
-
-const fromSede = (s: Sede): CreateSedeInput => ({
-  nombre: s.nombre,
-  slug: '',
-  direccion: s.direccion ?? '',
-  telefono: s.telefono ?? '',
-  coordinador_name: '',
-  coordinador_email: s.coordinador_email ?? '',
-  heredar: true,
-  estado: s.estado,
-})
-
-/** Modal con las credenciales del coordinador de una sede recién creada. */
-const CoordinadorCredentialsDialog: FC<{
-  show: boolean
-  email: string | null
-  password: string | null
-  url: string | null
-  onClose: () => void
-}> = ({show, email, password, url, onClose}) => {
-  const intl = useIntl()
-  const t = (id: string) => intl.formatMessage({id})
-
-  return createPortal(
-    <Modal
-      tabIndex={-1}
-      aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-500px'
-      show={show}
-      onHide={onClose}
-      backdrop={true}
-    >
-      <div className='modal-header'>
-        <h2 className='fw-bold'>{t('academico.estructura.sede.password.title')}</h2>
-        <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={onClose}>
-          <i className='ki-duotone ki-cross fs-1'>
-            <span className='path1'></span>
-            <span className='path2'></span>
-          </i>
-        </div>
-      </div>
-      <div className='modal-body py-lg-10 px-lg-10'>
-        <div className='alert alert-info d-flex align-items-center mb-7'>
-          <i className='ki-duotone ki-information-3 fs-2 me-3'>
-            <span className='path1'></span>
-            <span className='path2'></span>
-            <span className='path3'></span>
-          </i>
-          <span>{t('academico.estructura.sede.password.text')}</span>
-        </div>
-
-        <div className='fv-row mb-6'>
-          <label className='fs-6 fw-semibold mb-2 text-muted'>
-            {t('common.email')}
-          </label>
-          <input type='text' className='form-control form-control-solid' value={email ?? '—'} readOnly />
-        </div>
-        <div className='fv-row mb-6'>
-          <label className='fs-6 fw-semibold mb-2 text-muted'>
-            {t('common.password')}
-          </label>
-          <input type='text' className='form-control form-control-solid' value={password ?? '—'} readOnly />
-        </div>
-        <div className='fv-row'>
-          <label className='fs-6 fw-semibold mb-2 text-muted'>
-            {t('academico.estructura.sede.password.url')}
-          </label>
-          <input type='text' className='form-control form-control-solid' value={url ?? '—'} readOnly />
-        </div>
-      </div>
-      <div className='modal-footer'>
-        <button type='button' className='btn btn-primary' onClick={onClose}>
-          {t('common.close')}
-        </button>
-      </div>
-    </Modal>,
-    modalsRoot
-  )
-}
-
-// Modal crear/editar sede. Crear provisiona el tenant hijo (slug + coordinador + herencia).
-const SedeFormDialog: FC<{
-  show: boolean
-  sede: Sede | null
-  onClose: () => void
-  onCreated: (email: string | null, password: string | null, url: string | null) => void
-}> = ({show, sede, onClose, onCreated}) => {
-  const intl = useIntl()
-  const t = (id: string, values?: Record<string, string>) => intl.formatMessage({id}, values)
-  const toast = useToast()
-  const create = useCreateSede()
-  const update = useUpdateSede()
-  const isEdit = sede !== null
-  const pending = create.isPending || update.isPending
-
-  const [form, setForm] = useState<CreateSedeInput>(sede ? fromSede(sede) : emptyForm())
-  const [error, setError] = useState<ApiError | null>(null)
-
-  const fe = (field: string): string | undefined => error?.fieldError(field)
-  const set = (patch: Partial<CreateSedeInput>) => setForm((prev) => ({...prev, ...patch}))
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
-    const input: CreateSedeInput = isEdit
-      ? {
-          ...form,
-          nombre: form.nombre.trim(),
-          direccion: form.direccion?.trim() || null,
-          telefono: form.telefono?.trim() || null,
-        }
-      : {
-          ...form,
-          nombre: form.nombre.trim(),
-          slug: form.slug?.trim().toLowerCase() || undefined,
-          direccion: form.direccion?.trim() || null,
-          telefono: form.telefono?.trim() || null,
-          coordinador_name: form.coordinador_name?.trim() || null,
-          coordinador_email: form.coordinador_email?.trim() || null,
-          heredar: form.heredar ?? true,
-        }
-
-    const onError = (err: unknown) => {
-      if (err instanceof ApiError) {
-        setError(err)
-        if (!err.errors) toast.error(err.message)
-      } else {
-        toast.error(t('common.toast.saveError'))
-      }
-    }
-
-    if (isEdit && sede) {
-      update.mutate(
-        {id: sede.id, input},
-        {
-          onSuccess: () => {
-            toast.success(t('common.toast.updated'), 'updated')
-            onClose()
-          },
-          onError,
-        }
-      )
-    } else {
-      create.mutate(input, {
-        onSuccess: (res) => {
-          toast.success(t('common.toast.created'))
-          onClose()
-          onCreated(
-            res.data.coordinador_email,
-            res.coordinador_password ?? null,
-            res.data.tenant_domain ? sedeSubdomainUrl(res.data.tenant_domain) : null
-          )
-        },
-        onError,
-      })
-    }
-  }
-
-  return createPortal(
-    <Modal
-      tabIndex={-1}
-      aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-650px'
-      show={show}
-      onHide={onClose}
-      backdrop={true}
-    >
-      <div className='modal-header'>
-        <h2 className='fw-bold'>
-          {isEdit
-            ? t('academico.estructura.sede.edit.title')
-            : t('colegios.sedes.add')}
-        </h2>
-        <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={onClose}>
-          <i className='ki-duotone ki-cross fs-1'>
-            <span className='path1'></span>
-            <span className='path2'></span>
-          </i>
-        </div>
-      </div>
-      <form onSubmit={handleSubmit}>
-        <div className='modal-body py-lg-10 px-lg-10'>
-          <div className='fv-row mb-7'>
-            <label className='required fs-6 fw-semibold mb-2'>
-              {t('colegios.sedes.field.name')}
-            </label>
-            <input
-              type='text'
-              className={`form-control form-control-solid ${fe('nombre') ? 'is-invalid' : ''}`}
-              value={form.nombre}
-              onChange={(e) => set({nombre: e.target.value})}
-            />
-            {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
-          </div>
-
-          {!isEdit && (
-            <div className='fv-row mb-7'>
-              <label className='required fs-6 fw-semibold mb-2'>
-                {t('academico.estructura.sede.slug')}
-              </label>
-              <input
-                type='text'
-                className={`form-control form-control-solid ${fe('slug') ? 'is-invalid' : ''}`}
-                value={form.slug ?? ''}
-                placeholder={t('academico.estructura.sede.slugPh')}
-                onChange={(e) => set({slug: e.target.value})}
-              />
-              {fe('slug') && <div className='invalid-feedback'>{fe('slug')}</div>}
-              {!fe('slug') && (
-                <div className='form-text'>
-                  {t('academico.estructura.sede.slugHelp', {
-                    domain: form.slug ? `${form.slug.toLowerCase()}.${window.location.hostname}` : '...',
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className='row'>
-            <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('common.address')}</label>
-              <input
-                type='text'
-                className={`form-control form-control-solid ${fe('direccion') ? 'is-invalid' : ''}`}
-                value={form.direccion ?? ''}
-                onChange={(e) => set({direccion: e.target.value})}
-              />
-              {fe('direccion') && <div className='invalid-feedback'>{fe('direccion')}</div>}
-            </div>
-            <div className='col-md-6 fv-row mb-7'>
-              <label className='fs-6 fw-semibold mb-2'>{t('common.phone')}</label>
-              <input
-                type='text'
-                className={`form-control form-control-solid ${fe('telefono') ? 'is-invalid' : ''}`}
-                value={form.telefono ?? ''}
-                onChange={(e) => set({telefono: e.target.value})}
-              />
-              {fe('telefono') && <div className='invalid-feedback'>{fe('telefono')}</div>}
-            </div>
-          </div>
-
-          {!isEdit && (
-            <>
-              <div className='separator separator-dashed my-8'></div>
-
-              <div className='row'>
-                <div className='col-md-6 fv-row mb-7'>
-                  <label className='required fs-6 fw-semibold mb-2'>
-                    {t('academico.estructura.sede.coordinadorNombre')}
-                  </label>                  <input
-                    type='text'
-                    className={`form-control form-control-solid ${fe('coordinador_nombre') ? 'is-invalid' : ''}`}
-                    value={form.coordinador_name ?? ''}
-                    placeholder={t('academico.estructura.sede.coordinadorNombrePh')}
-                    onChange={(e) => set({coordinador_name: e.target.value})}
-                  />
-                  {fe('coordinador_name') && (
-                    <div className='invalid-feedback'>{fe('coordinador_name')}</div>
-                  )}
-                </div>
-                <div className='col-md-6 fv-row mb-7'>
-                  <label className='required fs-6 fw-semibold mb-2'>
-                    {t('academico.estructura.sede.coordinadorEmail')}
-                  </label>
-                  <input
-                    type='email'
-                    className={`form-control form-control-solid ${fe('coordinador_email') ? 'is-invalid' : ''}`}
-                    value={form.coordinador_email ?? ''}
-                    placeholder={t('academico.estructura.sede.coordinadorEmailPh')}
-                    onChange={(e) => set({coordinador_email: e.target.value})}
-                  />
-                  {fe('coordinador_email') && (
-                    <div className='invalid-feedback'>{fe('coordinador_email')}</div>
-                  )}
-                </div>
-              </div>
-
-              <div className='fv-row'>
-                <label className='form-check form-switch form-check-custom form-check-solid'>
-                  <input
-                    className='form-check-input'
-                    type='checkbox'
-                    checked={form.heredar ?? true}
-                    onChange={(e) => set({heredar: e.target.checked})}
-                  />
-                  <span className='form-check-label fw-semibold text-gray-700'>
-                    {t('academico.estructura.sede.heredar')}
-                  </span>
-                </label>
-                <div className='form-text'>{t('academico.estructura.sede.heredarHelp')}</div>
-              </div>
-            </>
-          )}
-
-        </div>
-        <div className='modal-footer'>
-          <button type='button' className='btn btn-light' onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button type='submit' className='btn btn-primary' disabled={pending}>
-            {pending ? (
-              <span className='spinner-border spinner-border-sm align-middle'></span>
-            ) : (
-              intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.sede'})})
-            )}
-          </button>
-        </div>
-      </form>
-    </Modal>,
-    modalsRoot
-  )
-}
-
-const tenantStatusBadge = (status: string | null): {cls: string; label: string} => {
-  switch (status) {
-    case 'active':
-      return {cls: 'badge badge-light-success', label: 'common.active'}
-    case 'in_retention':
-      return {cls: 'badge badge-light-warning', label: 'academico.estructura.sede.tenantStatus.cuarentena'}
-    default:
-      return {cls: 'badge badge-light-secondary', label: 'common.inactive'}
-  }
-}
-
-// Sección Sedes (Ajustes institucionales): card + toolbar + modal con provisionamiento
-// de tenant hijo (slug, coordinador, herencia) + credenciales generadas.
 const SedesConfigTab: FC = () => {
   const {hasFeature} = useAuthz()
   const intl = useIntl()
-  const t = (id: string) => intl.formatMessage({id})
+  const t = useSedeMessages()
   const toast = useToast()
   const navigate = useNavigate()
   const {
@@ -384,13 +41,10 @@ const SedesConfigTab: FC = () => {
     },
   })
   const del = useDeleteSede()
-  const heredar = useHeredarSede()
 
   const [formOpen, setFormOpen] = useState(false)
   const [sedeEdit, setSedeEdit] = useState<Sede | null>(null)
   const [deleteId, setDeleteId] = useState<Sede | null>(null)
-  const [heredarSede, setHeredarSede] = useState<Sede | null>(null)
-  const [creds, setCreds] = useState<{email: string | null; password: string | null; url: string | null} | null>(null)
 
   const openCreate = () => {
     setSedeEdit(null)
@@ -410,7 +64,6 @@ const SedesConfigTab: FC = () => {
       },
       onError: () => {
         toast.error(t('common.toast.deleteError'))
-        setDeleteId(null)
       },
     })
   }
@@ -462,6 +115,7 @@ const SedesConfigTab: FC = () => {
                 <option value=''>{t('academic.filter.allStatuses')}</option>
                 <option value='activa'>{t('common.active')}</option>
                 <option value='inactiva'>{t('common.inactive')}</option>
+                <option value='mantenimiento'>{t('sede.maintenance')}</option>
               </select>
             </AcademicListFilters>
             <div className='table-responsive' aria-busy={isFetching}>
@@ -472,13 +126,11 @@ const SedesConfigTab: FC = () => {
                     <th className='min-w-150px'>{t('academico.sede.detail.coordinador')}</th>
                     <th className='min-w-150px'>{t('common.subdomain')}</th>
                     <th className='min-w-100px'>{t('common.status')}</th>
-                    <th className='min-w-120px'>{t('academico.estructura.sede.col.tenant')}</th>
                     <th className='min-w-150px text-end'>{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className='text-gray-600 fw-semibold'>
                   {list.map((s) => {
-                    const tenant = s.tenant_status ? tenantStatusBadge(s.tenant_status) : null
                     return (
                       <tr key={s.id}>
                         <td>
@@ -494,12 +146,12 @@ const SedesConfigTab: FC = () => {
                         </td>
                         <td>
                           <div className='d-flex flex-column'>
-                            <span className='text-gray-700'>{s.coordinador_email ?? '—'}</span>
+                            <span className='text-gray-800'>{s.coordinador_name ?? '—'}</span><span className='text-muted fs-7'>{s.coordinador_email}</span>
                           </div>
                         </td>
                         <td>
                           {s.tenant_domain ? (
-                            <span className='text-gray-700'>{s.tenant_domain}</span>
+                            <span className='text-gray-700'>{new URL(sedeSubdomainUrl(s.tenant_domain)).host}</span>
                           ) : (
                             <span className='text-muted'>—</span>
                           )}
@@ -507,24 +159,13 @@ const SedesConfigTab: FC = () => {
                         <td>
                           <span
                             className={
-                              s.estado === 'activa'
-                                ? 'badge badge-light-success'
-                                : 'badge badge-light-secondary'
+                              s.estado === 'activa' ? 'badge badge-light-success' : s.estado === 'mantenimiento' ? 'badge badge-light-warning' : 'badge badge-light-secondary'
                             }
                           >
                             {t(
-                              s.estado === 'activa'
-                                ? 'common.active'
-                                : 'common.inactive'
+                              s.estado === 'activa' ? 'common.active' : s.estado === 'mantenimiento' ? 'sede.maintenance' : 'common.inactive'
                             )}
                           </span>
-                        </td>
-                        <td>
-                          {tenant ? (
-                            <span className={tenant.cls}>{t(tenant.label)}</span>
-                          ) : (
-                            <span className='text-muted'>—</span>
-                          )}
                         </td>
                         <td>
                           <div className='d-flex align-items-center justify-content-end flex-shrink-0 gap-2'>
@@ -547,19 +188,7 @@ const SedesConfigTab: FC = () => {
                                 <span className='path2'></span>
                               </i>
                             </button>
-                            <button
-                              type='button'
-                              className='btn btn-icon btn-light-success btn-sm'
-                              title={intl.formatMessage({id: 'academico.estructura.sede.heredar'})}
-                              onClick={() => setHeredarSede(s)}
-                            >
-                              <i className='ki-duotone ki-copy fs-5'>
-                                <span className='path1'></span>
-                                <span className='path2'></span>
-                                <span className='path3'></span>
-                              </i>
-                            </button>
-                            <button
+                            {!s.principal && <button
                               type='button'
                               className='btn btn-icon btn-light-danger btn-sm'
                               title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.sede'})})}
@@ -572,7 +201,7 @@ const SedesConfigTab: FC = () => {
                                 <span className='path4'></span>
                                 <span className='path5'></span>
                               </i>
-                            </button>
+                            </button>}
                           </div>
                         </td>
                       </tr>
@@ -580,7 +209,7 @@ const SedesConfigTab: FC = () => {
                   })}
                   {list.length === 0 && (
                     <tr>
-                      <td colSpan={6} className='text-center text-muted py-10'>
+                      <td colSpan={5} className='text-center text-muted py-10'>
                         {intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.sede'})})}
                       </td>
                     </tr>
@@ -600,22 +229,7 @@ const SedesConfigTab: FC = () => {
         </div>
       </div>
 
-      <SedeFormDialog
-        show={formOpen}
-        sede={sedeEdit}
-        onClose={() => {
-          setFormOpen(false)
-          setSedeEdit(null)
-        }}
-        onCreated={(email, password, url) => setCreds({email, password, url})}
-      />
-      <CoordinadorCredentialsDialog
-        show={creds !== null}
-        email={creds?.email ?? null}
-        password={creds?.password ?? null}
-        url={creds?.url ?? null}
-        onClose={() => setCreds(null)}
-      />
+      {formOpen && <SedeFormDialog sede={sedeEdit} onClose={() => {setFormOpen(false); setSedeEdit(null)}} />}
       <DeleteConfirmDialog
         show={deleteId !== null}
         title={t('academico.estructura.deleteConfirm.title')}
@@ -624,24 +238,7 @@ const SedesConfigTab: FC = () => {
         onConfirm={onDelete}
         onClose={() => setDeleteId(null)}
       />
-      <HeredarDialog
-        show={heredarSede !== null}
-        sedeNombre={heredarSede?.nombre ?? ''}
-        pending={heredar.isPending}
-        onConfirm={(categorias) => {
-          if (!heredarSede) return
-          heredar.mutate({id: heredarSede.id, categorias}, {
-            onSuccess: () => {
-              toast.success(intl.formatMessage({id: 'academico.estructura.sede.heredarOk'}))
-              setHeredarSede(null)
-            },
-            onError: (err) => {
-              toast.error(err instanceof ApiError ? err.message : intl.formatMessage({id: 'common.toast.genericError'}))
-            },
-          })
-        }}
-        onClose={() => setHeredarSede(null)}
-      />
+
     </>
   )
 }

@@ -1,412 +1,146 @@
-﻿import {FC, useEffect, useState} from 'react'
-import {createPortal} from 'react-dom'
-import type {FormEvent} from 'react'
+import {useSedeMessages} from '../../../academico/configuracion/components/useSedeMessages'
+import {useState} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {ApiError} from '@/lib/api/client'
+import {useColegioSedes, useDeleteColegioSede} from '../colegios.api'
+import type {Colegio} from '../colegios.types'
+import type {Sede} from '../../../academico/estructura/estructura.types'
+import {SedeFormDialog} from '../../../academico/configuracion/components/SedeFormDialog'
+import {sedeSubdomainUrl} from '../../../academico/estructura/estructura.api'
+import {DeleteConfirmDialog} from '../../../academico/estructura/components/DeleteConfirmDialog'
+import {fromOpaqueAcademic} from '../../../academico/shared/opaqueAcademic'
 import {useToast} from '@/lib/ui/toast'
-import {
-  useColegioSedes,
-  useCreateColegioSede,
-  useDeleteColegioSede,
-  useUpdateColegioSede,
-} from '../colegios.api'
-import {Colegio, ColegioSede, ColegioSedeInput} from '../colegios.types'
 
-const modalsRoot = document.getElementById('root-modals') || document.body
+type Props = {show: boolean; colegio: Colegio | null; onClose: () => void}
 
-type Props = {
-  show: boolean
-  colegio: Colegio | null
-  onClose: () => void
-}
-
-const EMPTY_FORM: ColegioSedeInput = {
-  nombre: '',
-  direccion: '',
-  telefono: '',
-  estado: 'activa',
-}
-
-// Modal "Sedes del colegio": el superadmin lista y administra las sedes de un
-// colegio (viven en la BD del tenant) via /colegios/{slug}/sedes.
-const SedesColegioDialog: FC<Props> = ({show, colegio, onClose}) => {
+const SedesColegioDialog = ({show, colegio, onClose}: Props) => {
   const intl = useIntl()
-  const t = (id: string) => intl.formatMessage({id})
+  const t = useSedeMessages()
   const toast = useToast()
-
-  const slug = show ? colegio?.slug ?? null : null
-  const {data, isLoading, isError} = useColegioSedes(slug)
-  const create = useCreateColegioSede()
-  const update = useUpdateColegioSede()
+  const query = useColegioSedes(show ? (colegio?.slug ?? null) : null)
   const remove = useDeleteColegioSede()
-
-  const [form, setForm] = useState<ColegioSedeInput>(EMPTY_FORM)
-  const [creating, setCreating] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [error, setError] = useState<ApiError | null>(null)
-
-  useEffect(() => {
-    if (!show) {
-      setForm(EMPTY_FORM)
-      setCreating(false)
-      setEditingId(null)
-      setDeleteId(null)
-      setError(null)
-      create.reset()
-      update.reset()
-      remove.reset()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [show])
-
-  const sedes = data?.data ?? []
-
-  const startCreate = () => {
-    setCreating(true)
-    setEditingId(null)
-    setForm(EMPTY_FORM)
-    setError(null)
-  }
-
-  const startEdit = (sede: ColegioSede) => {
-    setCreating(false)
-    setDeleteId(null)
-    setEditingId(sede.url_token)
-    setForm({
-      nombre: sede.nombre,
-      direccion: sede.direccion ?? '',
-      telefono: sede.telefono ?? '',
-      estado: sede.estado,
-    })
-    setError(null)
-  }
-
-  const closeForm = () => {
-    setCreating(false)
-    setEditingId(null)
-    setForm(EMPTY_FORM)
-  }
-
-  const set = (patch: Partial<ColegioSedeInput>) => setForm((prev) => ({...prev, ...patch}))
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    if (!slug) return
-
-    const input: ColegioSedeInput = {
-      ...form,
-      nombre: form.nombre.trim(),
-      direccion: form.direccion?.trim() || null,
-      telefono: form.telefono?.trim() || null,
-    }
-
-    if (editingId !== null) {
-      update.mutate(
-        {slug, sedeToken: editingId, input},
-        {
-          onSuccess: () => {
-            toast.success(t('common.toast.updated'), 'updated')
-            closeForm()
-          },
-          onError: (err) => {
-            if (err instanceof ApiError) {
-              setError(err)
-              if (!err.errors) toast.error(err.message)
-            } else {
-              toast.error(t('common.toast.genericError'))
-            }
-          },
-        }
-      )
-    } else {
-      create.mutate(
-        {slug, input},
-        {
-          onSuccess: () => {
-            toast.success(t('common.toast.created'))
-            setForm(EMPTY_FORM)
-          },
-          onError: (err) => {
-            if (err instanceof ApiError) {
-              setError(err)
-              if (!err.errors) toast.error(err.message)
-            } else {
-              toast.error(t('common.toast.genericError'))
-            }
-          },
-        }
-      )
-    }
-  }
-
-  const handleDelete = (sede: ColegioSede) => {
-    if (!slug) return
-    remove.mutate(
-      {slug, sedeToken: sede.url_token},
-      {
-        onSuccess: () => {
-          toast.success(t('common.toast.deleted'), 'deleted')
-          setDeleteId(null)
-        },
-        onError: (err) => {
-          const message = err instanceof ApiError ? err.message : t('common.toast.genericError')
-          toast.error(message)
-          setDeleteId(null)
-        },
-      }
+  const [editing, setEditing] = useState<Sede | null | undefined>(undefined)
+  const [deleting, setDeleting] = useState<Sede | null>(null)
+  const rows = fromOpaqueAcademic<Sede[]>(query.data?.data ?? [])
+  if (!show || !colegio) return null
+  if (editing !== undefined)
+    return (
+      <SedeFormDialog
+        schoolSlug={colegio.slug}
+        sede={editing}
+        onClose={saved => {
+          setEditing(undefined)
+          if (saved?.principal && saved.slug !== colegio.slug) onClose()
+          else query.refetch()
+        }}
+      />
     )
-  }
-
-  const fe = (field: string): string | undefined => error?.fieldError(field)
-
-  const pending =
-    (create.isPending || update.isPending) && (create.variables ?? update.variables)?.slug === slug
-
-  return createPortal(
-    <Modal
-      id='kt_modal_colegio_sedes'
-      tabIndex={-1}
-      aria-hidden='true'
-      dialogClassName='modal-dialog modal-dialog-centered mw-700px'
-      show={show}
-      onHide={onClose}
-      backdrop={true}
-    >
-      <div className='modal-header'>
-        <h2 className='fw-bold'>{t('colegios.sedes.title')}</h2>
-        <div className='btn btn-sm btn-icon btn-active-color-primary' onClick={onClose}>
-          <i className='ki-duotone ki-cross fs-1'>
-            <span className='path1'></span>
-            <span className='path2'></span>
-          </i>
-        </div>
-      </div>
-
-      <div className='modal-body py-lg-10 px-lg-10'>
-        <div className='text-muted fs-7 mb-6'>
-          {intl.formatMessage({id: 'colegios.sedes.subtitle'}, {name: colegio?.name ?? ''})}
-        </div>
-
-        {isLoading && (
-          <div className='d-flex justify-content-center align-items-center py-10'>
-            <span className='spinner-border text-primary' role='status'></span>
+  return (
+    <>
+      <Modal show={!deleting} onHide={onClose} centered scrollable size='lg'>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {t('academico.estructura.tab.sedes')} · {colegio.name}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className='p-6'>
+          <div className='d-flex justify-content-end mb-5'>
+            <button className='btn btn-primary' onClick={() => setEditing(null)}>
+              {t('sede.create')}
+            </button>
           </div>
-        )}
-
-        {isError && !isLoading && (
-          <div className='alert alert-danger d-flex align-items-center py-3'>
-            <i className='ki-duotone ki-information fs-2 text-danger me-3'>
-              <span className='path1'></span>
-              <span className='path2'></span>
-              <span className='path3'></span>
-            </i>
-            <span>{intl.formatMessage({id: 'common.loadError'}, {name: intl.formatMessage({id: 'entity.sede'})})}</span>
-          </div>
-        )}
-
-        {!isLoading && !isError && (
-          <>
-            {/* Formulario crear/editar */}
-            {creating || editingId !== null ? (
-              <form onSubmit={handleSubmit} className='mb-7'>
-                <div className='rounded border border-dashed border-gray-300 p-4'>
-                  <div className='row'>
-                    <div className='col-12 fv-row mb-4'>
-                      <label className='required fs-7 fw-semibold mb-2'>
-                        {t('colegios.sedes.field.name')}
-                      </label>
-                      <input
-                        type='text'
-                        className={`form-control form-control-solid ${fe('nombre') ? 'is-invalid' : ''}`}
-                        placeholder={t('colegios.sedes.field.namePh')}
-                        value={form.nombre}
-                        onChange={(e) => set({nombre: e.target.value})}
-                      />
-                      {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
-                    </div>
-                  </div>
-                  <div className='row'>
-                    <div className='col-md-8 fv-row mb-4'>
-                      <label className='fs-7 fw-semibold mb-2'>
-                        {t('common.address')}
-                      </label>
-                      <input
-                        type='text'
-                        className={`form-control form-control-solid ${fe('direccion') ? 'is-invalid' : ''}`}
-                        value={form.direccion ?? ''}
-                        onChange={(e) => set({direccion: e.target.value})}
-                      />
-                      {fe('direccion') && (
-                        <div className='invalid-feedback'>{fe('direccion')}</div>
-                      )}
-                    </div>
-                    <div className='col-md-4 fv-row mb-4'>
-                      <label className='fs-7 fw-semibold mb-2'>
-                        {t('common.phone')}
-                      </label>
-                      <input
-                        type='text'
-                        className={`form-control form-control-solid ${fe('telefono') ? 'is-invalid' : ''}`}
-                        value={form.telefono ?? ''}
-                        onChange={(e) => set({telefono: e.target.value})}
-                      />
-                      {fe('telefono') && <div className='invalid-feedback'>{fe('telefono')}</div>}
-                    </div>
-                  </div>
-                  <div className='d-flex align-items-center justify-content-between flex-wrap gap-3'>
-                    <div className='d-flex align-items-center gap-6'>
-                      <select
-                        className='form-select form-select-solid w-150px'
-                        value={form.estado ?? 'activa'}
-                        onChange={(e) =>
-                          set({estado: e.target.value as ColegioSedeInput['estado']})
-                        }
+          {query.isPending && <div role='status'>{t('sede.loading')}</div>}
+          {query.isError && <div className='alert alert-danger'>{t('sede.loadError')}</div>}
+          <div className='table-responsive'>
+            <table className='table table-row-dashed align-middle'>
+              <thead>
+                <tr>
+                  <th>{t('colegios.sedes.field.name')}</th>
+                  <th>{t('common.subdomain')}</th>
+                  <th>{t('common.status')}</th>
+                  <th>{t('common.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((sede) => (
+                  <tr key={sede.id}>
+                    <td>
+                      {sede.nombre}
+                      <div className='text-muted fs-7'>{sede.coordinador_name}</div>
+                    </td>
+                    <td>
+                      {sede.tenant_domain
+                        ? new URL(sedeSubdomainUrl(sede.tenant_domain)).host
+                        : '—'}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${sede.estado === 'activa' ? 'badge-light-success' : 'badge-light-warning'}`}
                       >
-                        <option value='activa'>{t('common.active')}</option>
-                        <option value='inactiva'>{t('common.inactive')}</option>
-                      </select>
-                    </div>
-                    <div className='d-flex gap-2'>
-                      <button type='button' className='btn btn-light btn-sm' onClick={closeForm}>
-                        {t('common.cancel')}
-                      </button>
-                      <button type='submit' className='btn btn-primary btn-sm' disabled={pending}>
-                        {pending ? (
-                          <span className='indicator-progress d-block'>
-                            {t('common.pleaseWait')}
-                            <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
-                          </span>
-                        ) : (
-                          intl.formatMessage({id: 'common.save'}, {name: intl.formatMessage({id: 'entity.sede'})})
+                        {t(
+                          sede.estado === 'activa'
+                            ? 'common.active'
+                            : sede.estado === 'mantenimiento'
+                              ? 'sede.maintenance'
+                              : 'common.inactive'
                         )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </form>
-            ) : (
-              <button type='button' className='btn btn-light-primary btn-sm mb-6' onClick={startCreate}>
-                <i className='ki-duotone ki-plus fs-4'>
-                  <span className='path1'></span>
-                  <span className='path2'></span>
-                </i>
-                {t('colegios.sedes.add')}
-              </button>
-            )}
-
-            {/* Lista */}
-            {sedes.length === 0 ? (
-              <div className='text-center text-muted py-10 fs-6'>{intl.formatMessage({id: 'common.empty'}, {name: intl.formatMessage({id: 'entity.sede'})})}</div>
-            ) : (
-              <div className='table-responsive'>
-                <table className='table table-row-dashed align-middle gs-0 gy-4'>
-                  <thead>
-                    <tr className='text-start text-muted fw-bold fs-7 text-uppercase gs-0'>
-                      <th className='min-w-200px'>{t('common.name')}</th>
-                      <th>{t('common.address')}</th>
-                      <th className='text-end min-w-140px'>{t('common.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className='text-gray-600 fw-semibold'>
-                    {sedes.map((sede) => (
-                      <tr key={sede.url_token}>
-                        <td>
-                          <div className='d-flex flex-column'>
-                            <div className='d-flex align-items-center gap-2'>
-                              <span className='text-gray-800 fw-bold'>{sede.nombre}</span>
-                              <span
-                                className={
-                                  sede.estado === 'activa'
-                                    ? 'badge badge-light-success'
-                                    : 'badge badge-light-secondary'
-                                }
-                              >
-                                {sede.estado === 'activa'
-                                  ? t('common.active')
-                                  : t('common.inactive')}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className='text-gray-700'>{sede.direccion ?? '—'}</span>
-                          {sede.telefono && (
-                            <span className='text-muted fs-7 d-block'>{sede.telefono}</span>
-                          )}
-                        </td>
-                        <td>
-                          {deleteId === sede.url_token ? (
-                            <div className='d-flex align-items-center justify-content-end gap-2'>
-                              <span className='text-muted fs-7'>
-                                {intl.formatMessage(
-                                  {id: 'common.confirmDelete'},
-                                  {name: sede.nombre}
-                                )}
-                              </span>
-                              <button
-                                type='button'
-                                className='btn btn-sm btn-light'
-                                onClick={() => setDeleteId(null)}
-                              >
-                                {t('common.cancel')}
-                              </button>
-                              <button
-                                type='button'
-                                className='btn btn-sm btn-danger'
-                                disabled={remove.isPending}
-                                onClick={() => handleDelete(sede)}
-                              >
-                                {intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.sede'})})}
-                              </button>
-                            </div>
-                          ) : (
-                            <div className='d-flex align-items-center justify-content-end flex-shrink-0'>
-                              <button
-                                type='button'
-                                className='btn btn-icon btn-light-primary btn-sm me-2'
-                                title={intl.formatMessage({id: 'common.edit'}, {name: intl.formatMessage({id: 'entity.sede'})})}
-                                onClick={() => startEdit(sede)}
-                              >
-                                <i className='ki-duotone ki-pencil fs-5'>
-                                  <span className='path1'></span>
-                                  <span className='path2'></span>
-                                </i>
-                              </button>
-                              <button
-                                type='button'
-                                className='btn btn-icon btn-light btn-sm'
-                                title={intl.formatMessage({id: 'common.delete'}, {name: intl.formatMessage({id: 'entity.sede'})})}
-                                onClick={() => setDeleteId(sede.url_token)}
-                              >
-                                <i className='ki-duotone ki-trash fs-5'>
-                                  <span className='path1'></span>
-                                  <span className='path2'></span>
-                                </i>
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className='modal-footer'>
-        <button type='button' className='btn btn-light' onClick={onClose}>
-          {t('common.close')}
-        </button>
-      </div>
-    </Modal>,
-    modalsRoot
+                      </span>
+                    </td>
+                    <td>
+                      <div className='d-flex gap-2'>
+                        <button
+                          className='btn btn-sm btn-light-primary'
+                          onClick={() => setEditing(sede)}
+                        >
+                          {t('sede.edit')}
+                        </button>
+                        {!sede.principal && (
+                          <button
+                            className='btn btn-sm btn-light-danger'
+                            onClick={() => setDeleting(sede)}
+                            aria-label={intl.formatMessage(
+                              {id: 'common.delete'},
+                              {name: sede.nombre}
+                            )}
+                          >
+                            <i className='bi bi-trash' />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <button className='btn btn-light' onClick={onClose}>
+            {t('common.close')}
+          </button>
+        </Modal.Footer>
+      </Modal>
+      <DeleteConfirmDialog
+        show={!!deleting}
+        title={t('academico.estructura.deleteConfirm.title')}
+        text={t('academico.estructura.deleteConfirm.text')}
+        pending={remove.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          if (!deleting) return
+          remove.mutate(
+            {slug: colegio.slug, sedeToken: deleting.id},
+            {
+              onSuccess: () => {
+                setDeleting(null)
+                toast.success(t('common.toast.deleted'), 'deleted')
+              },
+              onError: (error) => toast.error(error.message)
+            }
+          )
+        }}
+      />
+    </>
   )
 }
-
 export {SedesColegioDialog}
