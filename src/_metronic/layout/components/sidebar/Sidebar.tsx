@@ -1,6 +1,6 @@
-import {useEffect, useMemo} from 'react'
+import {useEffect, useMemo, useRef} from 'react'
 import {useIntl} from 'react-intl'
-import {Link} from 'react-router-dom'
+import {Link, useLocation} from 'react-router-dom'
 import {ILayout, useLayout} from '../../core'
 import {reInitMenu, withBase} from '../../../helpers'
 import {getHeaderMenuHtml} from '../header/_HeaderMenuContent'
@@ -13,6 +13,8 @@ import {useColegios} from '@/app/pages/config/colegios/colegios.api'
 import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 import {useEnterColegio, useExitColegio} from '@/app/modules/impersonation/impersonation.api'
 import {useSedes, sedeSubdomainUrl} from '@/app/pages/academico/estructura/estructura.api'
+import {DrawerComponent} from '../../../assets/ts/components'
+import {syncSidebarRoute} from './sidebarNavigation'
 
 // id sintético de la carita FIJA "Plataforma" (modo superadmin, sin colegio activo).
 const PLATFORM_ID = '__platform__'
@@ -170,6 +172,8 @@ const SedeMobileSelector = () => {
 }
 
 const Sidebar = () => {
+  const {pathname} = useLocation()
+  const menuRef = useRef<HTMLDivElement>(null)
   const {config} = useLayout()
   const intl = useIntl()
   const {currentUser} = useAuth()
@@ -209,14 +213,26 @@ const Sidebar = () => {
     reInitMenu()
   }, [activeColegio, isPlatform, isTenantUser])
 
-  if (!config.app?.sidebar?.display || !showSidebar) {
+  useEffect(() => {
+    const selectCurrent = () => {
+      if (menuRef.current) syncSidebarRoute(menuRef.current, pathname)
+    }
+    selectCurrent()
+    DrawerComponent.getInstance('kt_app_sidebar')?.hide()
+    // Opening the drawer restores the current route's parent, even if it was collapsed.
+    const toggle = document.getElementById('kt_app_sidebar_mobile_toggle')
+    toggle?.addEventListener('click', selectCurrent)
+    return () => toggle?.removeEventListener('click', selectCurrent)
+  }, [pathname, intl, activeColegio, currentUser])
+
+  if (!config.app?.sidebar?.display) {
     return null
   }
 
   return (
     <div
       id='kt_app_sidebar'
-      className='app-sidebar flex-column'
+      className={`app-sidebar flex-column${showSidebar ? '' : ' d-lg-none'}`}
       data-kt-drawer='true'
       data-kt-drawer-name='app-sidebar'
       data-kt-drawer-activate='{default: true, lg: false}'
@@ -228,6 +244,7 @@ const Sidebar = () => {
       {/* begin::Sidebar navbar */}
       <div
         className='app-sidebar-navbar flex-grow-1 hover-scroll-overlay-y'
+        style={{minHeight: 0}}
         id='kt_app_sidebar_primary_navbar'
         data-kt-scroll='true'
         data-kt-scroll-height='auto'
@@ -262,13 +279,14 @@ const Sidebar = () => {
         {/* ===================== MOVIL: selector Thunder + menu Apps ===================== */}
         <div className='d-flex d-lg-none flex-column w-100 p-4'>
           {/* Selector de caritas */}
-          {(isPlatform && !activeColegio) ? <PlatformMobileSelector /> : <SedeMobileSelector />}
+          {(isPlatform && !activeColegio) ? <PlatformMobileSelector /> : sedesAdicionales > 0 ? <SedeMobileSelector /> : null}
 
           <div className='separator my-4'></div>
 
           {/* Menu Apps (reusa HEADER_MENU_HTML) en vertical/acordeon. id distinto del header. */}
           <div
             id='kt_app_sidebar_menu'
+            ref={menuRef}
             className='menu menu-column menu-rounded menu-sub-indention menu-active-bg menu-state-primary menu-title-gray-800 menu-icon-gray-500 menu-arrow-gray-500 menu-bullet-gray-500 fw-semibold'
             data-kt-menu='true'
             dangerouslySetInnerHTML={{
@@ -305,18 +323,17 @@ const Sidebar = () => {
       </div>
       {/* end::Sidebar navbar */}
 
-      {/* Upgrade al FONDO del drawer, solo en pantallas muy chicas (<sm): libera espacio en el
-          navbar del header para que el menú de usuario no se salga. Abre el modal vía la
-          delegación de HeaderWrapper (data-bs-toggle). Oculto en ≥sm (y en desktop). */}
-      <div className='d-sm-none p-4 pt-2'>
-        <a
-          href='#'
+      {/* Shared upgrade modal; the mobile menu remains available without a campus rail. */}
+      <div className='d-lg-none flex-shrink-0 p-4 pt-2 pb-5'>
+        <button
+          type='button'
           className='btn btn-primary w-100'
           data-bs-toggle='modal'
           data-bs-target='#kt_modal_upgrade_plan'
+          onClick={() => DrawerComponent.getInstance('kt_app_sidebar')?.hide()}
         >
-          Upgrade Plan
-        </a>
+          {intl.formatMessage({id: 'header.navbar.upgrade'})}{' '}{intl.formatMessage({id: 'header.navbar.planWord'})}
+        </button>
       </div>
     </div>
   )

@@ -18,7 +18,7 @@ export function SchoolMailRequestsNotification() {
   const count = query.isError ? undefined : query.data?.pendientes
   const label = count === undefined ? t('intake.ui.emailConnectionRequests') : t('schoolMail.pendingCount', {count})
   return <div className='app-navbar-item ms-1 ms-lg-3'>
-    <Link to='/configuracion/correo-solicitudes' className='btn btn-icon btn-light position-relative' aria-label={label} title={query.isError ? t('intake.ui.couldNotLoadTheCountOpenRequests') : label} data-testid='school-mail-notification'>
+    <Link to='/configuracion/correo-solicitudes' className='btn btn-icon btn-light position-relative w-35px h-35px w-md-40px h-md-40px' aria-label={label} title={query.isError ? t('intake.ui.couldNotLoadTheCountOpenRequests') : label} data-testid='school-mail-notification'>
       <i className='ki-solid ki-sms fs-2' aria-hidden='true' />
       {count !== undefined && count > 0 && <span className='position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger' aria-hidden='true'>{count > 99 ? '99+' : count}</span>}
     </Link>

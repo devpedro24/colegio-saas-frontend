@@ -75,24 +75,27 @@ export function HeaderWrapper() {
               id: 'header.toggle.sidebarMenu',
             })}
           >
-            <div
+            <button
+              type='button'
+              aria-label={intl.formatMessage({id: 'header.toggle.sidebarMenu'})}
+              aria-controls='kt_app_sidebar'
               className='btn btn-icon btn-color-white btn-active-color-primary w-35px h-35px'
               id='kt_app_sidebar_mobile_toggle'
             >
               <KTIcon iconName='abstract-14' className='fs-2' />
-            </div>
+            </button>
           </div>
         )}
         {/* end::Header mobile toggle */}
 
         {/* begin::Logo */}
-        <div className='d-flex align-items-center flex-grow-1 flex-lg-grow-0 me-5 me-lg-0'>
+        <div className='d-flex align-items-center flex-grow-1 flex-lg-grow-0 me-1 me-lg-0'>
           <Link to='/dashboard' className='d-flex align-items-center' aria-label='Ir al inicio'>
             <img
               src={branding.data?.logo_url ?? '/media/logo-colegio-transparent.png'}
               alt='Logo del colegio'
               className='h-55px w-auto'
-              style={{minWidth: 55, maxWidth: 165, objectFit: 'contain'}}
+              style={{minWidth: 55, maxWidth: 'min(165px, 25vw)', objectFit: 'contain'}}
             />
           </Link>
         </div>

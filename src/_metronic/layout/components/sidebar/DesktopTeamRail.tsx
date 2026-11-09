@@ -167,7 +167,7 @@ const DesktopTeamRail = ({items, activeId, onSelect, searchTitle, searchPlacehol
         type='button'
         title={
           searchTitle ??
-          intl.formatMessage({id: 'common.search'})
+          intl.formatMessage({id: 'common.search'}, {name: intl.formatMessage({id: 'entity.colegio'})})
         }
         className={`btn btn-icon btn-color-gray-600 btn-active-color-primary w-40px h-40px mx-auto mb-4${
           searchOpen ? ' active' : ''
