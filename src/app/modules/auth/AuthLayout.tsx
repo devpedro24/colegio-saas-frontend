@@ -1,11 +1,12 @@
 
 import { useEffect, useState } from 'react'
+import type {ReactNode} from 'react'
 import {Outlet, Link} from 'react-router-dom'
 import {FormattedMessage} from 'react-intl'
 import {toAbsoluteUrl} from '../../../_metronic/helpers'
 import { api } from '@/lib/api/client'
 
-const AuthLayout = () => {
+const AuthLayout = ({children}: {children?: ReactNode} = {}) => {
   const [loading, setLoading] = useState(true)
   const [invalid, setInvalid] = useState(false)
 
@@ -43,7 +44,7 @@ const AuthLayout = () => {
         <div className='d-flex flex-center flex-column flex-lg-row-fluid'>
           {/* begin::Wrapper */}
           <div className='w-lg-500px p-10'>
-            <Outlet />
+            {children ?? <Outlet />}
           </div>
           {/* end::Wrapper */}
         </div>

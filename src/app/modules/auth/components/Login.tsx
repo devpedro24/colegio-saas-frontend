@@ -268,6 +268,7 @@ export function Login() {
         </button>
       </div>
       {/* end::Action */}
+      {window.location.hostname.endsWith('.localhost') || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') ? <Link to='/ingreso' className='d-flex align-items-center gap-4 p-5 rounded-4 bg-light-primary text-gray-900'><i className='bi bi-mortarboard fs-2 text-primary' /><span><strong><FormattedMessage id='intake.flow.admissionsPortal' /></strong><small className='d-block mt-1 text-gray-600'><FormattedMessage id='intake.flow.loginEntry' /></small></span><i className='bi bi-arrow-right ms-auto' /></Link> : null}
 
     </form>
   )

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import {createHash} from 'node:crypto'
+import {readFileSync} from 'node:fs'
 
 // Every mail endpoint is served in memory. Unknown mail routes fail closed.
 function mailFixture(user, writes) {
@@ -80,7 +81,7 @@ function mailFixture(user, writes) {
     state: (state, expires = null) => {Object.assign(latest(), {estado: state, vence_en: expires})}}
 }
 
-export function enrollmentFixture(user) {
+export function enrollmentFixture(user, {modern = false} = {}) {
   user.permissions.push('config.correo', 'academico.configurar')
   user.permissions.push(...['ver','configurar','revisar','decidir','cambiar_grado','asignar'].map(p => `ingreso.${p}`))
   const token = 'E'.repeat(24), application = 'S'.repeat(24), grade = 'G'.repeat(24), group = 'Q'.repeat(24)
@@ -116,12 +117,23 @@ export function enrollmentFixture(user) {
     })
     return campaign
   }
+  if (modern) {
+    campaign.configuracion.pin_manual = true
+    app.pin_manual = true
+    app.estado = 'pin_pendiente'
+    app.correcciones = []
+  }
   presentCampaign()
   let session = false, rejectNextSubmission = false
   const writes = []
   const mail = mailFixture(user, writes)
   const middleware = (req, res, next) => {
     const url = new URL(req.url, 'http://localhost')
+    if (url.pathname === '/api/branding/logo' && req.method === 'GET') {
+      res.setHeader('Content-Type', 'image/png')
+      res.end(readFileSync(new URL('../public/media/logo-colegio-transparent.png', import.meta.url)))
+      return
+    }
     if (!url.pathname.startsWith('/api/ingreso') && !url.pathname.startsWith('/api/matriculas')) return mail.middleware(req, res, next)
     const reply = (data, status = 200) => {res.statusCode = status; res.setHeader('Content-Type','application/json'); res.end(JSON.stringify(data))}
     if (req.method === 'GET') {
@@ -132,17 +144,53 @@ export function enrollmentFixture(user) {
       if (url.pathname === `/api/matriculas/${'M'.repeat(24)}`) return reply({data: {nombre: 'Ana Pruebas', email: app.email, grupo: 'Primero / 01A', sede: 'Principal', datos: app.datos, documentos: app.documentos}})
       if (url.pathname === '/api/ingreso-publico/ubicaciones') return reply({data: [{codigo: '41', nombre: 'HUILA', municipios: [{codigo: '41001', nombre: 'NEIVA'}]}, {codigo: '05', nombre: 'ANTIOQUIA', municipios: [{codigo: '05001', nombre: 'MEDELLÍN'}]}]})
       if (url.pathname === '/api/ingreso/configuracion') return user.permissions.includes('ingreso.configurar') ? reply({data: settings}) : reply({message: 'Forbidden'}, 403)
-      if (url.pathname === '/api/ingreso-publico/catalogo') return reply({colegio: 'Colegio de prueba', zona_horaria: settings.zona_horaria,
+      if (url.pathname === '/api/ingreso-publico/catalogo') return reply({colegio: 'Colegio de prueba', campanas: modern ? [presentCampaign()] : [], zona_horaria: settings.zona_horaria,
         limites_envio: {max_file_bytes: 1000000000, max_submission_bytes: 1000000000, max_archivos: 20}})
       if (url.pathname === `/api/ingreso-publico/campanas/${token}`) return reply({data: presentCampaign()})
       if (url.pathname === '/api/ingreso-publico/solicitud') return session ? reply({data: app}) : reply({message:'Ingresa con correo y PIN'},401)
-      if (url.pathname === '/api/ingreso/catalogo') return reply({...catalog, campanas: [presentCampaign()]})
+      if (url.pathname === '/api/ingreso/catalogo') return reply({...catalog, campanas: [presentCampaign()], conteos: {[app.estado]: 1}})
+      if (url.pathname === '/api/ingreso/notificaciones') return reply({data: [], page: 1, last_page: 1, total: 0})
       if (url.pathname.endsWith('/solicitudes')) return reply({data: [app], page: 1, last_page: 1, total: 1, grupos: [{token: group, grado_token: grade, nombre: 'Primero / 01A', cupo: 30}]})
-      return reply({data: app})
+      return reply({data: app, grupos: [{token: group, grado_token: grade, nombre: 'Primero / 01A', cupo: 30}]})
     }
     let body = ''; req.on('data', c => {body += c}); req.on('end', () => {
       const upload = (req.headers['content-type'] ?? '').startsWith('multipart/form-data')
       const d = body && !upload ? JSON.parse(body) : {}; writes.push({path: url.pathname, data: d, csrf: req.headers['x-csrf-token']})
+      if (modern) {
+        if (url.pathname.endsWith('/iniciar')) {
+          assert.equal(d.numero_documento, '1234567')
+          assert.equal(d.email, app.email)
+          return reply({radicado: app.radicado}, 202)
+        }
+        if (url.pathname.endsWith('/pin')) {
+          assert.equal(app.estado, 'pin_pendiente')
+          app.estado = 'borrador'
+          return reply({data: app, pin: '12345678'})
+        }
+        if (url.pathname === '/api/ingreso-publico/salir') {session = false; return reply({ok: true})}
+        if (url.pathname === '/api/ingreso-publico/consultar') {
+          assert.equal(d.numero_documento, '1234567')
+          assert.equal(d.pin, '12345678')
+          session = true
+          res.setHeader('Set-Cookie', 'ingreso_csrf=intake-csrf; Path=/; SameSite=Strict')
+          return reply({data: app})
+        }
+        if (url.pathname.endsWith('/correcciones')) {
+          app.estado = 'correcciones'
+          app.correcciones.push({key: 'C'.repeat(24), campo: d.campo, motivo: d.motivo, hasta: d.hasta, resuelta: false})
+          return reply({data: app})
+        }
+        if (url.pathname === '/api/ingreso-publico/solicitud' || url.pathname === '/api/ingreso-publico/solicitud/borrador') {
+          app.datos = d.datos
+          if (d.enviar) {app.estado = 'enviada'; app.correcciones.forEach(c => {c.resuelta = true})}
+          return reply({data: app})
+        }
+        if (url.pathname.endsWith('/validar')) {
+          assert.ok(app.documentos.every(doc => doc.estado === 'aprobado'))
+          app.estado = 'validada'
+          return reply({data: app})
+        }
+      }
       if (url.pathname === '/api/ingreso/configuracion') {
         if (!user.permissions.includes('ingreso.configurar')) return reply({message: 'Forbidden'}, 403)
         if (d.version !== settings.version) return reply({message: 'Version conflict'}, 409)

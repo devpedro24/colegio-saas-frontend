@@ -1,29 +1,30 @@
-import {Route, Routes, Navigate, useLocation} from 'react-router-dom'
+import {Route, Routes, Navigate} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 import {Content} from '@/_metronic/layout/components/content'
 import {PageTitle} from '@/_metronic/layout/core'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import EnrollmentManagement from './EnrollmentManagement'
-import EnrollmentRoster from './EnrollmentRoster'
-import {AcademicPageHeader} from '@/app/shared/components/AcademicPageHeader'
+import CampaignPage from './CampaignPage'
 
 export default function AdmisionesPage() {
-  const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
-
-  const intl = useIntl()
-  const {pathname} = useLocation()
-  const {hasPermission} = useAuthz()
+  const intl = useIntl(), {hasPermission} = useAuthz()
+  const read = hasPermission('ingreso.ver'), configure = hasPermission('ingreso.configurar')
   const intake = ['ingreso.ver', 'ingreso.configurar', 'ingreso.revisar', 'ingreso.decidir', 'ingreso.asignar'].some(hasPermission)
-  const enrollments = hasPermission('academico.matriculas.gestionar')
-  if (!intake && !enrollments) return <Navigate to='/dashboard' replace />
-  const title = pathname.endsWith('/matriculas') ? t('evaluacion.matriculas.title')
-    : pathname.endsWith('/seleccion') ? t('intake.ui.admissions') : t('intake.ui.enrollmentByLink')
-  return <Content><PageTitle>{title}</PageTitle>
+  const enrolled = hasPermission('academico.matriculas.gestionar')
+  if (!intake && !enrolled) return <Navigate to='/dashboard' replace />
+  const home = read ? '/admisiones/solicitudes' : intake ? '/admisiones/convocatorias' : '/admisiones/matriculas'
+  const fallback = <Navigate to={home} replace />
+  return <Content><PageTitle>{intl.formatMessage({id: 'intake.flow.managementTitle'})}</PageTitle>
     <Routes>
-      <Route path='solicitudes' element={intake ? <EnrollmentManagement /> : <Navigate to='../matriculas' replace />} />
-      <Route path='matriculas' element={enrollments ? <EnrollmentRoster /> : <Navigate to='../solicitudes' replace />} />
-      <Route path='seleccion' element={<AcademicPageHeader title={t('intake.ui.admissions')} description={t('intake.ui.preselectionInterviewsAndTestsComingSoonCurrentRoundsAllowDirectEnrollmentApplications')} />} />
-      <Route index element={<Navigate to='solicitudes' replace />} />
+      <Route path='solicitudes' element={read ? <EnrollmentManagement /> : fallback} />
+      <Route path='pines' element={read ? <EnrollmentManagement section='pins' /> : fallback} />
+      <Route path='convocatorias' element={intake ? <EnrollmentManagement section='campaigns' /> : fallback} />
+      <Route path='convocatorias/nueva' element={configure ? <CampaignPage /> : fallback} />
+      <Route path='convocatorias/:token/editar' element={configure ? <CampaignPage /> : fallback} />
+      <Route path='convocatorias/:token/reutilizar' element={configure ? <CampaignPage /> : fallback} />
+      <Route path='matriculas' element={enrolled ? <EnrollmentManagement section='enrolled' /> : fallback} />
+      <Route path='notificaciones' element={read ? <EnrollmentManagement section='notifications' /> : fallback} />
+      <Route path='*' element={fallback} />
     </Routes>
   </Content>
 }

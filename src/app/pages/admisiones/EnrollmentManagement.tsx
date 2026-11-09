@@ -1,117 +1,573 @@
-import {useIntl} from 'react-intl'
 import {useState} from 'react'
 import {useQuery, useQueryClient} from '@tanstack/react-query'
-import {Modal} from 'react-bootstrap'
-import {Link} from 'react-router-dom'
+import {Link, useNavigate, useSearchParams} from 'react-router-dom'
+import {useIntl} from 'react-intl'
 import {api} from '@/lib/api/client'
-import {useToast} from '@/lib/ui/toast'
 import {useAuthz} from '@/app/modules/auth/core/authz'
+import {useToast} from '@/lib/ui/toast'
 import {AcademicPageHeader} from '@/app/shared/components/AcademicPageHeader'
-import {CampaignEditor} from './CampaignEditor'
+import {CampaignPreview} from './CampaignPreview'
+import EnrollmentRoster from './EnrollmentRoster'
+import {EnrollmentApplication} from './EnrollmentApplication'
 import {enrollmentSettingsPath, useEnrollmentScope} from './enrollmentSettings.api'
-import type {Allocation, Application, ApplicationsPage, Campaign, Catalog, DocumentVersion} from './ingreso.types'
-import {getCampaignStatus, getEnrollmentStates} from './ingreso.types'
+import {IntakeIcon, IntakeModal, IntakeNotice, IntakePayments} from './IntakeUI'
+import {studentName, useIntakeText} from './intakeWorkflow'
+import {
+  getCampaignStatus,
+  getEnrollmentStates,
+  type Allocation,
+  type Application,
+  type ApplicationsPage,
+  type Catalog,
+  type Campaign,
+} from './ingreso.types'
 import './ingreso.css'
 
-export default function EnrollmentManagement() {
-  const intl = useIntl()
-  const toast = useToast()
-  const states = getEnrollmentStates(intl)
-  const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
+type Notice = {
+  key: string
+  email: string
+  asunto: string
+  enviada_en?: string
+  creada_en: string
+  contenido?: string
+}
+const statusFilters = [
+  'pin_pendiente',
+  'borrador',
+  'enviada',
+  'revision',
+  'correcciones',
+  'validada',
+  'espera',
+  'aprobada',
+  'rechazada',
+  'anulada',
+  'matriculada',
+]
 
-  const {hasPermission} = useAuthz(), qc = useQueryClient()
-  const can = (p: string) => hasPermission(`ingreso.${p}`)
-  const scope = useEnrollmentScope()
-  const [campaign, setCampaign] = useState(''), [filter, setFilter] = useState(''), [page, setPage] = useState(1)
-  const [editor, setEditor] = useState<{initial?: Campaign; duplicate?: boolean}>(), [detail, setDetail] = useState<Application>()
-  const [proposal, setProposal] = useState<{asignaciones: Allocation[]; sin_cupo: number}>()
-  const [grade, setGrade] = useState(''), [group, setGroup] = useState(''), [reason, setReason] = useState('')
-  const [review, setReview] = useState<DocumentVersion>(), [reviewReason, setReviewReason] = useState('')
-  const [busy, setBusy] = useState(false)
-  const catalog = useQuery({queryKey: ['ingreso', scope, 'catalogo'], queryFn: () => api.get<Catalog>('/ingreso/catalogo'), staleTime: 30000})
-  const active = campaign || catalog.data?.campanas[0]?.url_token || ''
-  const selected = catalog.data?.campanas.find(c => c.url_token === active)
-  const list = useQuery({queryKey: ['ingreso', scope, active, filter, page], enabled: !!active && can('ver'),
-    queryFn: () => api.get<ApplicationsPage>(`/ingreso/campanas/${active}/solicitudes?page=${page}&estado=${filter}`), staleTime: 15000})
+const sectionPaths: Record<string, string> = {applications: 'solicitudes', pins: 'pines', campaigns: 'convocatorias', enrolled: 'matriculas', notifications: 'notificaciones'}
+
+export default function EnrollmentManagement({section = 'applications'}: {section?: string}) {
+  const t = useIntakeText(),
+    intl = useIntl(),
+    toast = useToast(),
+    qc = useQueryClient(),
+    scope = useEnrollmentScope()
+  const {hasPermission} = useAuthz(),
+    [params, setParams] = useSearchParams()
+  const can = (action: string) => hasPermission(`ingreso.${action}`)
+  const states = getEnrollmentStates(intl)
+  const navigate = useNavigate()
+  const tab = section
+  const canEnroll = hasPermission('academico.matriculas.gestionar')
+  const canIntake = ['ver', 'configurar', 'revisar', 'decidir', 'asignar'].some(can)
+  const [campaign, setCampaign] = useState(''),
+    [state, setState] = useState(''),
+    [grade, setGrade] = useState('')
+  const [search, setSearch] = useState(''),
+    [query, setQuery] = useState(''),
+    [page, setPage] = useState(1),
+    [busy, setBusy] = useState(false)
+  const [previewCampaign, setPreviewCampaign] = useState<Campaign>()
+  const [proposal, setProposal] = useState<{
+    asignaciones: Allocation[]
+    sin_cupo: number
+  }>()
+  const catalog = useQuery({
+    queryKey: ['ingreso', scope, 'catalogo'],
+    enabled: canIntake,
+    queryFn: () => api.get<Catalog>('/ingreso/catalogo'),
+    staleTime: 30000,
+  })
+  const activeCampaign = catalog.data?.campanas.find((item) => item.url_token === campaign)
+  const listState = tab === 'pins' ? 'pin_pendiente' : state
+  const path = campaign ? `/ingreso/campanas/${campaign}/solicitudes` : '/ingreso/solicitudes'
+  const list = useQuery({
+    queryKey: ['ingreso', scope, 'solicitudes', campaign, listState, grade, query, page],
+    enabled: can('ver') && ['applications', 'pins'].includes(tab),
+    staleTime: 15000,
+    queryFn: () =>
+      api.get<ApplicationsPage>(
+        `${path}?${new URLSearchParams({page: String(page), estado: listState, grado_token: grade, buscar: query})}`,
+      ),
+  })
+  const applicationToken = params.get('solicitud') ?? ''
+  const detail = useQuery({
+    queryKey: ['ingreso', scope, 'solicitud', applicationToken],
+    enabled: !!applicationToken && can('ver'),
+    staleTime: 15000,
+    queryFn: () => api.get<{data: Application; grupos: ApplicationsPage['grupos']}>(`/ingreso/solicitudes/${applicationToken}`),
+  })
+  const notices = useQuery({
+    queryKey: ['ingreso', scope, 'notificaciones'],
+    enabled: tab === 'notifications' && can('ver'),
+    staleTime: 30000,
+    queryFn: () => api.get<{data: Notice[]}>('/ingreso/notificaciones'),
+  })
   const refresh = () => qc.invalidateQueries({queryKey: ['ingreso', scope]})
-  async function run(fn: () => Promise<void>) {setBusy(true); try {await fn()} catch (e) {toast.error(e instanceof Error ? e.message : t('intake.ui.theOperationCouldNotBeCompleted'))} finally {setBusy(false)}}
-  const open = (token: string) => run(async () => {const {data} = await api.get<{data: Application}>(`/ingreso/solicitudes/${token}`); setDetail(data); setReview(undefined); setReviewReason(''); setGrade(data.grado_aprobado_token ?? data.grado_token); setReason(''); setGroup('')})
-  const documentsApproved = detail?.campana.configuracion.documentos
-    .filter(r => !r.grados.length || r.grados.includes(grade))
-    .every(r => {const doc = detail.documentos.find(d => d.requisito === r.key); return doc?.estado === 'retirado' ? !r.obligatorio : doc ? doc.estado === 'aprobado' : !r.obligatorio}) ?? false
-  const decision = (state: string) => run(async () => {
-    if (!detail) return
-    const res = await api.post<{data: Application}>(`/ingreso/solicitudes/${detail.url_token}/decision`, {estado: state, grado_token: grade, observacion: reason}, {notifyLocalChange: false})
-    setDetail(res.data); await refresh(); toast.success(t('intake.ui.decisionSavedTheNotificationHasBeenQueued'))
-  })
-  const reviewDoc = (state: string) => run(async () => {
-    if (!detail || !review) return
-    const res = await api.put<{data: Application}>(`/ingreso/solicitudes/${detail.url_token}/documentos/${review.url_token}`, {estado: state, observacion: reviewReason}, {notifyLocalChange: false})
-    setDetail(res.data); setReview(undefined); await refresh(); toast.success(t('intake.ui.documentReviewSaved'))
-  })
-  return <div className='d-flex flex-column gap-6'>
-    <AcademicPageHeader title={t('intake.ui.enrollmentByLink')} description={t('intake.ui.enrollmentRoundsDocumentsDecisionsAndGroupAssignments')}>
-      {can('configurar') && <div className='d-flex flex-wrap align-items-center justify-content-end gap-3 ms-auto'>
-        <button className='btn btn-primary' disabled={busy || !catalog.data?.anos.length} onClick={() => setEditor({})}>{t('intake.ui.enrollmentRound')}</button>
-        <Link className='btn btn-light-primary' to={enrollmentSettingsPath}><i className='ki-solid ki-setting-2 fs-3' aria-hidden='true' />{t('intake.settings.title')}</Link>
-      </div>}
-    </AcademicPageHeader>
-    {(catalog.error || list.error) && <div className='alert alert-danger' role='alert'>{catalog.error?.message || list.error?.message}</div>}
-    {catalog.data?.correo_operativo === false && <div className='alert alert-warning' role='status'>{t('intake.ui.outgoingEmailIsInTestModeNoPinsOrCredentialsWillBe')}{' '}{hasPermission('config.correo') && <Link to='/ajustes-institucionales/correo'>{t('intake.ui.connectGmailStepByStep')}</Link>}</div>}
-    {catalog.isPending ? <p role='status'>{t('intake.ui.loadingEnrollmentRounds')}</p> : <section className='card'><div className='card-body'>
-      <div className='row g-3 align-items-end'><div className='col-12 col-sm-6'><label className='form-label fw-semibold' htmlFor='manage-campaign'>{t('intake.ui.enrollmentRoundLabel')}</label><select id='manage-campaign' className='form-select form-select-solid' value={active} onChange={e => {setCampaign(e.target.value); setPage(1); setProposal(undefined)}}>
-        <option value=''>{t('intake.ui.select')}</option>{catalog.data?.campanas.map(c => <option key={c.url_token} value={c.url_token}>{c.nombre} · {getCampaignStatus(intl, c)}</option>)}</select></div>
-        <div className='col-12 col-sm-6'><label className='form-label fw-semibold' htmlFor='manage-filter'>{t('intake.ui.applicationStatus')}</label><select id='manage-filter' className='form-select form-select-solid' value={filter} onChange={e => {setFilter(e.target.value); setPage(1)}}><option value=''>{t('intake.ui.all')}</option>{['borrador','enviada','revision','correcciones','espera','aprobada','rechazada','matriculada'].map(s => <option key={s} value={s}>{states[s]}</option>)}</select></div></div>
-      {!catalog.data?.campanas.length && <p className='text-muted mt-5 mb-0'>{t('intake.ui.thereAreNoEnrollmentRoundsYetSetUpGradesDocumentsAndDates')}</p>}
-      {selected && <><div className='ingreso-actions'><a className='btn btn-light-primary' href={selected.enlace} target='_blank' rel='noreferrer'>{t('intake.ui.openPublicLink')}</a>
-        <button className='btn btn-light' onClick={() => void run(async () => {await navigator.clipboard.writeText(selected.enlace ?? ''); toast.success(t('intake.ui.linkCopied'))})}>{t('intake.ui.copyLink')}</button>
-        {can('configurar') && <button className='btn btn-light-warning' onClick={() => setEditor({initial: selected})}>{t('intake.ui.configure')}</button>}
-        {can('configurar') && catalog.data?.anos.some(y => y.nombre > (catalog.data?.anos.find(source => source.token === selected.ano_token)?.nombre ?? '')) &&
-          <button className='btn btn-light-primary' onClick={() => setEditor({initial: selected, duplicate: true})}>{t('intake.renewal.copyRound')}</button>}
-        {can('asignar') && can('ver') && <button disabled={busy} className='btn btn-light-success' onClick={() => void run(async () => {setProposal(await api.post(`/ingreso/campanas/${active}/distribuir`, {confirmar: false}, {notifyLocalChange: false}))})}>{t('intake.ui.suggestGroupAssignments')}</button>}</div>
-        <p className='text-muted mt-4 mb-0'>{selected.hasta ? t('intake.dateRange', {start: selected.desde, end: selected.hasta}) : t('intake.openEnded', {start: selected.desde})}{t('intake.ui.paymentsComingSoon')}</p></>}
-    </div></section>}
-    {can('ver') && active && <section className='card'><div className='card-header'><h3 className='card-title'>{t('intake.ui.applications')}{' '}{list.data?.total ?? 0}</h3></div><div className='card-body'><div className='table-responsive'><table className='table table-row-dashed align-middle gy-4'><thead><tr className='text-muted fw-bold'><th>{t('intake.ui.referenceNumber')}</th><th>{t('intake.ui.studentEmail')}</th><th>{t('intake.ui.status')}</th><th className='text-end'>{t('intake.ui.review')}</th></tr></thead>
-      <tbody>{list.data?.data.map(s => <tr key={s.url_token}><td>{s.radicado}</td><td>{s.datos.primer_nombre} {s.datos.primer_apellido}<div className='text-muted'>{s.email}</div></td><td><span className='badge badge-light-primary'>{states[s.estado]}</span></td><td className='text-end'><button className='btn btn-sm btn-light-primary' disabled={busy} onClick={() => void open(s.url_token)}>{t('intake.ui.viewApplication')}</button></td></tr>)}</tbody></table></div>
-      {list.isFetching && <p role='status'>{t('intake.ui.refreshingApplications')}</p>}{!list.isFetching && !list.data?.data.length && <p>{t('intake.ui.noApplicationsMatchThisFilter')}</p>}
-      <div className='ingreso-actions'><button className='btn btn-sm btn-light' disabled={page <= 1 || list.isFetching} onClick={() => setPage(page-1)}>{t('intake.ui.previous')}</button><span>{t('intake.page', {page, total: list.data?.last_page ?? 1})}</span><button className='btn btn-sm btn-light' disabled={page >= (list.data?.last_page ?? 1) || list.isFetching} onClick={() => setPage(page+1)}>{t('intake.ui.next')}</button></div>
-    </div></section>}
-    {editor && catalog.data && <CampaignEditor key={`${editor.initial?.url_token ?? 'new'}:${editor.duplicate ? 'copy' : 'edit'}`} catalog={catalog.data} initial={editor.initial} duplicate={editor.duplicate} busy={busy} close={() => setEditor(undefined)} save={c => void run(async () => {
-      const {data} = c.url_token ? await api.put<{data: Campaign}>(`/ingreso/campanas/${c.url_token}`, c, {notifyLocalChange: false}) : await api.post<{data: Campaign}>('/ingreso/campanas', c, {notifyLocalChange: false})
-      setEditor(undefined); setCampaign(data.url_token ?? ''); await refresh(); toast.success(t('intake.ui.enrollmentRoundSaved'))
-    })} />}
-    <Modal show={!!detail} onHide={() => !busy && setDetail(undefined)} size='xl' centered scrollable><Modal.Header closeButton closeLabel={t('intake.ui.close')}><Modal.Title>{t('intake.ui.reviewLabel')}{' '}{detail?.radicado}</Modal.Title></Modal.Header><Modal.Body className='ingreso'>
-      {detail && <><span className='ingreso-status' data-status={detail.estado}>{states[detail.estado]}</span><h3 className='mt-5'>{detail.datos.primer_nombre} {detail.datos.segundo_nombre} {detail.datos.primer_apellido} {detail.datos.segundo_apellido}</h3>
-        <div className='ingreso-grid'><p>{t('intake.ui.email')}{' '}{detail.email}</p><p>{t('intake.ui.documentLabel')}{' '}{detail.datos.tipo_documento} {detail.datos.numero_documento}</p><p>{t('intake.ui.dateOfBirth')}{' '}{detail.datos.nacimiento}</p><p>{t('intake.ui.phone')}{' '}{detail.datos.telefono || t('intake.ui.notProvided')}</p><p>{t('intake.ui.address')}{' '}{detail.datos.direccion || t('intake.ui.notSpecified')}</p></div>
-        {detail.campana.configuracion.campos.map(f => <p key={f.key}>{f.nombre}: {detail.datos.adicionales?.[f.key] || t('intake.ui.notProvided')}</p>)}
-        <h3 className='mt-6'>{t('intake.ui.documentsAndVersions')}</h3>{detail.campana.configuracion.documentos.filter(r => !r.grados.length || r.grados.includes(detail.grado_aprobado_token ?? detail.grado_token)).map(req => {
-          const versions = detail.documentos.filter(d => d.requisito === req.key)
-          return <section className='ingreso-row' key={req.key}><h4>{req.nombre}{req.obligatorio && ' *'}</h4>{(!versions.length || versions[0].estado === 'retirado') && <p>{t('intake.ui.awaitingUpload')}</p>}{versions.map((d) => <div className='d-flex flex-wrap align-items-center gap-4 mb-3' key={d.url_token}>
-            <a href={`/api/ingreso/solicitudes/${detail.url_token}/documentos/${d.url_token}`}>{d.nombre} · v{d.version}</a><span className='ingreso-status' data-status={d.estado}>{states[d.estado] ?? t('intake.ui.withdrawn')}</span>{d.observacion && <span>{d.observacion}</span>}
-            {d.estado !== 'retirado' && d.url_token === versions[0]?.url_token && can('revisar') && ['enviada','revision','correcciones','espera'].includes(detail.estado) && <button className='btn btn-sm btn-light-primary' onClick={() => {setReview(d); setReviewReason(d.observacion ?? '')}}>{t('intake.ui.reviewDocument')}</button>}</div>)}</section>
-        })}
-        {review && <section className='ingreso-card mt-4'><h4>{t('intake.ui.reviewDocument')}{' '}{review.nombre}</h4><label htmlFor='document-reason'>{t('intake.ui.commentRequiredToReject')}</label><textarea id='document-reason' className='form-control' maxLength={2000} value={reviewReason} onChange={e => setReviewReason(e.target.value)} /><div className='ingreso-actions'>
-          <button className='btn btn-light-success' disabled={busy} onClick={() => void reviewDoc('aprobado')}>{t('intake.ui.approveDocument')}</button><button className='btn btn-light-warning' disabled={busy || !reviewReason.trim()} onClick={() => void reviewDoc('rechazado')}>{t('intake.ui.requestCorrection')}</button><button className='btn btn-light' onClick={() => setReview(undefined)}>{t('intake.ui.cancelReview')}</button></div></section>}
-        {can('decidir') && ['enviada','revision','correcciones','espera'].includes(detail.estado) && <section className='ingreso-card mt-6'><h3>{t('intake.ui.enrollmentDecision')}</h3>
-          <label htmlFor='approved-grade'>{t('intake.ui.gradeToApprove')}</label><select id='approved-grade' className='form-select' disabled={!can('cambiar_grado')} value={grade} onChange={e => setGrade(e.target.value)}>{detail.campana.configuracion.grados.map(g => <option key={g.token} value={g.token}>{g.nombre}</option>)}</select>
-          <label htmlFor='decision-reason' className='mt-4'>{t('intake.ui.reasonComment')}</label><textarea id='decision-reason' className='form-control' maxLength={2000} value={reason} onChange={e => setReason(e.target.value)} />
-          <p className='ingreso-help mt-4'>{t(detail.renovacion ? 'intake.renewal.approvalHelp' : 'intake.ui.approvalCreatesAStudentAccountAndSendsTemporaryCredentialsTheGroupIs')}</p>
-          {can('cambiar_grado') && grade !== (detail.grado_aprobado_token ?? detail.grado_token) && <button className='btn btn-light-warning' disabled={busy || !reason.trim()} onClick={() => void run(async () => {
-            const res = await api.put<{data: Application}>(`/ingreso/solicitudes/${detail.url_token}/grado`, {grado_token: grade, observacion: reason}, {notifyLocalChange: false}); setDetail(res.data); await refresh(); toast.success(t('intake.ui.gradeProposalSaved'))
-          })}>{t('intake.ui.proposeThisGradeAndRequestTheRelevantDocuments')}</button>}
-          {(!documentsApproved || detail.estado === 'correcciones') && <p className='ingreso-help'>{t('intake.ui.beforeApprovalDocumentsMustBeApprovedAndTheApplicationMustBeResubmitted')}</p>}
-          <div className='ingreso-actions'><button className='btn btn-primary' disabled={busy || !documentsApproved || detail.estado === 'correcciones' || (grade !== detail.grado_token && !reason.trim())} onClick={() => void decision('aprobada')}>{t('intake.ui.approveApplication')}</button>
-            {['correcciones','espera','rechazada'].map(s => <button key={s} className='btn btn-light-warning' disabled={busy || !reason.trim()} onClick={() => void decision(s)}>{states[s]}</button>)}</div></section>}
-        {can('asignar') && detail.estado === 'aprobada' && <section className='ingreso-card mt-6'><h3>{t('intake.ui.individualAssignment')}</h3><label htmlFor='approved-group'>{t('intake.ui.group')}</label><select id='approved-group' className='form-select' value={group} onChange={e => setGroup(e.target.value)}><option value=''>{t('intake.ui.select')}</option>{list.data?.grupos.filter(g => g.grado_token === detail.grado_aprobado_token).map(g => <option key={g.token} value={g.token}>{g.nombre} {' '}{t('intake.ui.capacity')}{' '}{g.cupo ?? t('intake.ui.unlimited')}</option>)}</select>
-          <button className='btn btn-primary mt-4' disabled={busy || !group} onClick={() => setProposal({asignaciones: [{solicitud_token: detail.url_token, nombre: `${detail.datos.primer_nombre} ${detail.datos.primer_apellido}`, grupo_token: group, grupo: list.data?.grupos.find(g => g.token === group)?.nombre ?? ''}], sin_cupo: 0})}>{t('intake.ui.reviewAssignment')}</button></section>}
-        <details className='mt-6'><summary>{t('intake.ui.processHistory')}</summary>{detail.historial.map((h,i) => <p key={i}>{h.created_at} · {states[h.evento] ?? t('intake.historyUpdate')} {h.observacion}</p>)}</details>
-      </>}
-    </Modal.Body><Modal.Footer><button className='btn btn-light' disabled={busy} onClick={() => {setDetail(undefined); setReview(undefined)}}>{t('intake.ui.close')}</button></Modal.Footer></Modal>
-    <Modal show={!!proposal} onHide={() => !busy && setProposal(undefined)} size='lg' centered><Modal.Header closeButton closeLabel={t('intake.ui.close')}><Modal.Title>{t('intake.ui.confirmGroupAssignments')}</Modal.Title></Modal.Header><Modal.Body className='ingreso'>
-      <p>{t('intake.ui.reviewTheProposalCapacityIsCheckedAgainOnConfirmationOpeningThisWindow')}</p>
-      <ul>{proposal?.asignaciones.map(a => <li key={a.solicitud_token}>{a.nombre} → {a.grupo}</li>)}</ul>{!!proposal?.sin_cupo && <aside>{proposal.sin_cupo} {' '}{t('intake.ui.applicationsRemainPendingBecauseTheGroupsHaveNoAvailablePlaces')}</aside>}
-    </Modal.Body><Modal.Footer><button className='btn btn-light' disabled={busy} onClick={() => setProposal(undefined)}>{t('intake.ui.cancel')}</button><button className='btn btn-primary' disabled={busy || !proposal?.asignaciones.length} onClick={() => void run(async () => {
-      await api.post(`/ingreso/campanas/${active}/distribuir`, {confirmar: true, asignaciones: proposal?.asignaciones}, {notifyLocalChange: false}); setProposal(undefined); setDetail(undefined); await refresh(); toast.success(t('intake.ui.groupsAssignedAndEnrollmentsConfirmed'))
-    })}>{t('intake.ui.confirmEnrollments')}</button></Modal.Footer></Modal>
-  </div>
+  async function run(action: () => Promise<void>) {
+    if (busy) return
+    setBusy(true)
+    try {
+      await action()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const update = async (next: Application) => {
+    qc.setQueryData(['ingreso', scope, 'solicitud', next.url_token], {
+      ...qc.getQueryData<{data: Application; grupos: ApplicationsPage['grupos']}>(['ingreso', scope, 'solicitud', next.url_token]),
+      data: next,
+    })
+    await Promise.all([
+      qc.invalidateQueries({queryKey: ['ingreso', scope, 'solicitudes']}),
+      qc.invalidateQueries({queryKey: ['ingreso', scope, 'notificaciones']}),
+      qc.invalidateQueries({queryKey: ['ingreso', scope, 'catalogo']}),
+      qc.invalidateQueries({queryKey: ['matriculas']}),
+    ])
+    toast.success(t('saved'))
+  }
+  const changeTab = (next: string) => {
+    navigate(`/admisiones/${sectionPaths[next]}`)
+    setPage(1)
+    setState('')
+  }
+  const counts = catalog.data?.conteos ?? list.data?.conteos ?? {}
+  const metrics = [
+    ['totalApplications', 'files', Object.values(counts).reduce((total, count) => total + Number(count), 0)],
+    ['pendingReview', 'file-earmark-check', Number(counts.enviada ?? 0) + Number(counts.revision ?? 0)],
+    ['pendingPins', 'ticket-perforated', counts.pin_pendiente ?? 0],
+    ['enrolled', 'mortarboard', counts.matriculada ?? 0],
+  ] as const
+  return (
+    <div className='intake-next intake-stack'>
+      {previewCampaign && <CampaignPreview name={previewCampaign.nombre} configuration={previewCampaign.configuracion} close={() => setPreviewCampaign(undefined)} />}
+      <AcademicPageHeader title={t('managementTitle')} description={t('managementHelp')}>
+        <div className='intake-actions ms-auto'>
+          <Link className='btn btn-light-info' to='/ingreso' target='_blank' rel='noreferrer'><IntakeIcon name='box-arrow-up-right' />{t('publicAccess')}</Link>
+          {can('configurar') && (
+            <>
+              <button
+                className='btn btn-primary'
+                disabled={busy || !catalog.data?.anos.length}
+                onClick={() => navigate('/admisiones/convocatorias/nueva')}
+              >
+                <IntakeIcon name='plus-lg' />
+                {t('newCampaign')}
+              </button>
+              <Link className='btn btn-light-primary' to={enrollmentSettingsPath}>
+                <IntakeIcon name='gear' />
+                {t('enrollmentSettings')}
+              </Link>
+            </>
+          )}
+        </div>
+      </AcademicPageHeader>
+      {(catalog.error || list.error || detail.error || notices.error) && (
+        <IntakeNotice kind='danger'>
+          {catalog.error?.message || list.error?.message || detail.error?.message || notices.error?.message}
+        </IntakeNotice>
+      )}
+      {catalog.data?.correo_operativo === false && (
+        <IntakeNotice kind='warning'>
+          {intl.formatMessage({
+            id: 'intake.ui.outgoingEmailIsInTestModeNoPinsOrCredentialsWillBe',
+          })}
+          {hasPermission('config.correo') && (
+            <Link to='/ajustes-institucionales/correo' className='ms-3'>
+              {intl.formatMessage({id: 'intake.ui.connectGmailStepByStep'})}
+            </Link>
+          )}
+        </IntakeNotice>
+      )}
+      {applicationToken ? (
+        detail.data ? (
+          <EnrollmentApplication
+            key={applicationToken}
+            application={detail.data.data}
+            groups={detail.data.grupos ?? list.data?.grupos ?? []}
+            can={can}
+            busy={busy}
+            run={run}
+            update={update}
+            back={() => setParams({})}
+          />
+        ) : (
+          <section className='intake-card' role='status'>
+            {t('loading')}
+          </section>
+        )
+      ) : (
+        <>
+          <section className='intake-card'>
+            <nav className='intake-tabs' aria-label={t('managementSections')}>
+              {[...(can('ver') ? ['applications', 'pins'] : []), ...(canIntake ? ['campaigns'] : []), ...(canEnroll ? ['enrolled'] : []), ...(can('ver') ? ['notifications'] : [])].map((name) => (
+                <button
+                  key={name}
+                  className={tab === name ? 'active' : ''}
+                  onClick={() => changeTab(name)}
+                >
+                  <IntakeIcon
+                    name={
+                      {
+                        applications: 'files',
+                        pins: 'ticket-perforated',
+                        campaigns: 'calendar-event',
+                        notifications: 'envelope',
+                        enrolled: 'mortarboard',
+                      }[name] ?? 'files'
+                    }
+                  />
+                  {t(name)}
+                </button>
+              ))}
+            </nav>
+            {can('ver') && ['applications', 'pins'].includes(tab) && (
+              <>
+                <form
+                  className='intake-filters'
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    setQuery(search.trim())
+                    setPage(1)
+                  }}
+                >
+                  <div className='intake-field'>
+                    <label htmlFor='filter-campaign'>{t('campaign')}</label>
+                    <select
+                      id='filter-campaign'
+                      className='form-select form-select-solid'
+                      value={campaign}
+                      onChange={(e) => {
+                        setCampaign(e.target.value)
+                        setGrade('')
+                        setPage(1)
+                      }}
+                    >
+                      <option value=''>{t('allCampaigns')}</option>
+                      {catalog.data?.campanas.map((item) => (
+                        <option key={item.url_token} value={item.url_token}>
+                          {item.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className='intake-field'>
+                    <label htmlFor='filter-state'>{t('status')}</label>
+                    <select
+                      id='filter-state'
+                      className='form-select form-select-solid'
+                      disabled={tab === 'pins'}
+                      value={listState}
+                      onChange={(e) => {
+                        setState(e.target.value)
+                        setPage(1)
+                      }}
+                    >
+                      <option value=''>{t('allStates')}</option>
+                      {statusFilters.map((value) => (
+                        <option key={value} value={value}>
+                          {states[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className='intake-field'>
+                    <label htmlFor='filter-grade'>{t('grade')}</label>
+                    <select
+                      id='filter-grade'
+                      className='form-select form-select-solid'
+                      value={grade}
+                      onChange={(e) => {
+                        setGrade(e.target.value)
+                        setPage(1)
+                      }}
+                    >
+                      <option value=''>{t('allGrades')}</option>
+                      {catalog.data?.grados
+                        .filter((item) => !activeCampaign || item.ano_token === activeCampaign.ano_token)
+                        .map((item) => (
+                          <option key={item.token} value={item.token}>
+                            {item.nombre} · {catalog.data?.anos.find((year) => year.token === item.ano_token)?.nombre}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className='intake-field'>
+                    <label htmlFor='filter-search'>{t('searchStudent')}</label>
+                    <div className='input-group'>
+                      <input
+                        id='filter-search'
+                        className='form-control'
+                        maxLength={100}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
+                      <button className='btn btn-light-info' type='submit' aria-label={t('search')}>
+                        <IntakeIcon name='search' />
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </>
+            )}
+          </section>
+          {can('ver') && (
+            <div className='intake-metrics'>
+              {metrics.map(([label, icon, count]) => (
+                <article key={label}>
+                  <IntakeIcon name={icon} />
+                  <div>
+                    <strong>{count}</strong>
+                    <small>{t(label)}</small>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+          {tab === 'enrolled' && <EnrollmentRoster embedded />}
+          {tab !== 'enrolled' && <section className='intake-card'>
+            {can('ver') && ['applications', 'pins'].includes(tab) && (
+              <>
+                <div className='intake-heading'><h2>{t(tab === 'pins' ? 'pins' : 'applications')}</h2><small className='intake-muted'>{t('resultCount', {count: list.data?.total ?? 0})}</small></div>
+                {tab === 'pins' && <IntakeNotice>{t('manualPinHelp')}</IntakeNotice>}
+                <div aria-busy={list.isFetching}>
+                  <table className='intake-table'>
+                    <thead>
+                      <tr>
+                        <th>{t('reference')}</th>
+                        <th>{t('student')}</th>
+                        <th>{t('grade')}</th>
+                        <th>{t('status')}</th>
+                        <th>{t('updatedAt')}</th>
+                        <th>{t('actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {list.data?.data.map((item) => (
+                        <tr key={item.url_token}>
+                          <td>
+                            <small>{item.radicado}</small>
+                          </td>
+                          <td className='intake-student-cell'>
+                            <div className='intake-person'><span className='intake-avatar' aria-hidden='true'>{[item.datos.primer_nombre, item.datos.primer_apellido].map(name => name?.[0] ?? '').join('')}</span><div><strong>{studentName(item)}</strong><small>{item.email}</small></div></div>
+                          </td>
+                          <td>
+                            {catalog.data?.grados.find((candidate) => candidate.token === item.grado_token)?.nombre ??
+                              '—'}
+                          </td>
+                          <td className='intake-status-cell'>
+                            <span className='intake-badge' data-status={item.estado}>
+                              {states[item.estado]}
+                            </span>
+                          </td>
+                          <td className='intake-updated-cell'><small>{item.actualizada_en ? intl.formatDate(item.actualizada_en, {dateStyle: 'short', timeStyle: 'short', timeZone: catalog.data?.zona_horaria}) : '—'}</small></td>
+                          <td className='intake-action-cell'>
+                            <button
+                              className='btn btn-sm btn-light-primary'
+                              disabled={busy}
+                              onClick={() => setParams({solicitud: item.url_token})}
+                            >
+                              <IntakeIcon name='folder2-open' />
+                              {t('openApplication')}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {list.isPending ? (
+                  <p role='status'>{t('loading')}</p>
+                ) : (
+                  !list.data?.data.length && <p className='intake-muted py-6'>{t('noApplications')}</p>
+                )}
+                <div className='intake-actions mt-6'>
+                  <small className='intake-muted me-auto'>
+                    {t('pagination', {
+                      page,
+                      total: list.data?.last_page ?? 1,
+                    })}
+                  </small>
+                  <button
+                    className='btn btn-sm btn-light'
+                    disabled={page <= 1 || list.isFetching}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    {t('previous')}
+                  </button>
+                  <button
+                    className='btn btn-sm btn-light'
+                    disabled={page >= (list.data?.last_page ?? 1) || list.isFetching}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    {t('next')}
+                  </button>
+                </div>
+              </>
+            )}
+            {tab === 'campaigns' && (
+              <div className='intake-campaign-grid'>
+                {catalog.data?.campanas.map((item) => (
+                  <article className='intake-document intake-campaign' key={item.url_token}>
+                    <div className='intake-heading'>
+                      <h2>{item.nombre}</h2>
+                      <span className='intake-badge'>{getCampaignStatus(intl, item)}</span>
+                    </div>
+                    <p className='intake-muted'>
+                      {item.apertura_en?.replace('T', ' ') ?? item.desde} —{' '}
+                      {item.cierre_en?.replace('T', ' ') ?? item.hasta ?? t('noClosingDate')}
+                    </p>
+                    <p className='intake-muted'>{t('campaignSummary', {grades: item.configuracion.grados.length, documents: item.configuracion.documentos.length, fields: item.configuracion.campos.length})}</p>
+                    <p>{item.configuracion.grados.map((candidate) => candidate.nombre).join(' · ')}</p>
+                    <div className='intake-actions'>
+                      <button className='btn btn-sm btn-light-info' title={t('previewForm')} onClick={() => setPreviewCampaign(item)}><IntakeIcon name='eye' />{t('previewForm')}</button>
+                      <a className='btn btn-sm btn-light-info' href={item.enlace} target='_blank' rel='noreferrer'>
+                        <IntakeIcon name='box-arrow-up-right' />
+                        {t('publicLink')}
+                      </a>
+                      <button
+                        className='btn btn-sm btn-light'
+                        onClick={() =>
+                          void run(async () => {
+                            await navigator.clipboard.writeText(item.enlace ?? '')
+                            toast.success(t('linkCopied'))
+                          })
+                        }
+                      >
+                        {t('copyLink')}
+                      </button>
+                      {can('configurar') && (
+                        <>
+                          <button className='btn btn-sm btn-light-primary' onClick={() => navigate(`/admisiones/convocatorias/${item.url_token}/editar`)}>
+                            {t('configure')}
+                          </button>
+                          {catalog.data?.anos.some(
+                            (year) =>
+                              year.nombre >=
+                              (catalog.data.anos.find((year) => year.token === item.ano_token)?.nombre ?? ''),
+                          ) && (
+                            <button
+                              className='btn btn-sm btn-light-primary'
+                              onClick={() => navigate(`/admisiones/convocatorias/${item.url_token}/reutilizar`)}
+                            >
+                              {t('reuseCampaign')}
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {can('asignar') && can('ver') && (
+                        <button
+                          className='btn btn-sm btn-light-info'
+                          disabled={busy}
+                          onClick={() =>
+                            void run(async () => {
+                              setCampaign(item.url_token ?? '')
+                              setProposal(
+                                await api.post(
+                                  `/ingreso/campanas/${item.url_token}/distribuir`,
+                                  {confirmar: false},
+                                  {notifyLocalChange: false},
+                                ),
+                              )
+                            })
+                          }
+                        >
+                          {t('suggestGroups')}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+                {catalog.isPending ? (
+                  <p role='status'>{t('loading')}</p>
+                ) : (
+                  !catalog.data?.campanas.length && <IntakeNotice>{t('noCampaignsAdmin')}</IntakeNotice>
+                )}
+              </div>
+            )}
+            {tab === 'notifications' && (
+              <>
+                {notices.isPending ? (
+                  <p role='status'>{t('loading')}</p>
+                ) : (
+                  <>
+                    <IntakeNotice>{t('notificationsHelp')}</IntakeNotice>
+                    {notices.data?.data.map((notice) => (
+                      <article className='intake-document' key={notice.key}>
+                        <div className='intake-heading'>
+                          <h3>{notice.asunto}</h3>
+                          <span className={`intake-badge ${notice.enviada_en ? 'text-success' : ''}`}>
+                            {t(notice.enviada_en ? 'delivered' : 'queued')}
+                          </span>
+                        </div>
+                        <p className='intake-muted'>
+                          {notice.email} ·{' '}
+                          {intl.formatDate(notice.creada_en, {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                            timeZone: catalog.data?.zona_horaria,
+                          })}
+                        </p>
+                        {notice.contenido && <p style={{whiteSpace: 'pre-wrap'}}>{notice.contenido}</p>}
+                      </article>
+                    ))}
+                    {!notices.data?.data.length && <p className='intake-muted'>{t('noNotifications')}</p>}
+                  </>
+                )}
+              </>
+            )}
+          </section>}
+          <section className='intake-card'>
+            <IntakePayments />
+          </section>
+        </>
+      )}
+      {proposal && (
+        <IntakeModal
+          title={t('confirmEnrollment')}
+          close={() => !busy && setProposal(undefined)}
+          footer={
+            <>
+              <button className='btn btn-light' disabled={busy} onClick={() => setProposal(undefined)}>
+                {t('cancel')}
+              </button>
+              <button
+                className='btn btn-primary'
+                disabled={busy || !proposal.asignaciones.length}
+                onClick={() =>
+                  void run(async () => {
+                    await api.post(
+                      `/ingreso/campanas/${campaign}/distribuir`,
+                      {confirmar: true, asignaciones: proposal.asignaciones},
+                      {notifyLocalChange: false},
+                    )
+                    setProposal(undefined)
+                    await refresh()
+                    toast.success(t('saved'))
+                  })
+                }
+              >
+                {busy ? t('processing') : t('confirm')}
+              </button>
+            </>
+          }
+        >
+          <IntakeNotice>{t('credentialsHelp')}</IntakeNotice>
+          <ul>
+            {proposal.asignaciones.map((pair) => (
+              <li key={pair.solicitud_token}>
+                {pair.nombre} → {pair.grupo}
+              </li>
+            ))}
+          </ul>
+          {proposal.sin_cupo > 0 && (
+            <IntakeNotice kind='warning'>{t('withoutCapacity', {count: proposal.sin_cupo})}</IntakeNotice>
+          )}
+        </IntakeModal>
+      )}
+    </div>
+  )
 }

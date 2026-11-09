@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useState} from 'react'
 import {useIntl} from 'react-intl'
 import {useQueryClient} from '@tanstack/react-query'
@@ -64,7 +65,7 @@ export function EnrollmentSettingsCard() {
               <label className='form-check-label' htmlFor={`age-enabled-${g.url_token}`}>{t('intake.settings.enableRange', {grade: g.nombre})}</label></div>
             {g.enabled ? <div className='row g-4'>{(['edad_min', 'edad_max'] as const).map(key => <div className='col-6' key={key}>
               <label className='form-label required' htmlFor={`${g.url_token}-${key}`}>{t(`intake.validation.${key}`)}</label>
-              <input id={`${g.url_token}-${key}`} className='form-control' type='number' step={1} required min={key === 'edad_max' ? g.edad_min ?? 1 : 1} max={120} value={g[key] ?? ''}
+              <NumberInput id={`${g.url_token}-${key}`} className='form-control' type='number' step={1} required min={key === 'edad_max' ? g.edad_min ?? 1 : 1} max={120} value={g[key] ?? ''}
                 onChange={e => changeGrade(g.url_token, {[key]: e.target.value === '' ? null : Number(e.target.value)})} />
             </div>)}</div> : <p className='text-muted mb-0'>{t('intake.settings.unrestricted')}</p>}
           </div>

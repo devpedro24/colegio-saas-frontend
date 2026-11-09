@@ -5,6 +5,8 @@ import {api} from '@/lib/api/client'
 import {AcademicPageHeader} from '@/app/shared/components/AcademicPageHeader'
 import {EnrollmentAddress, type Department} from './EnrollmentAddress'
 import type {Campaign, StudentData, DocumentVersion} from './ingreso.types'
+import {useEnrollmentScope} from './enrollmentSettings.api'
+import {IntakeIcon} from './IntakeUI'
 
 type Row = {token: string; nombre: string; email: string; estado: string; grupo: string; sede: string; convocatoria: string | null; origen: string}
 type Catalog = {data: Row[]; page: number; last_page: number; total: number; ano_token: string | null;
@@ -73,13 +75,13 @@ function ManualEnrollment({catalog, onClose, onSaved}: {catalog: Catalog; onClos
       </div>
       {geography.error && <div role='alert' className='alert alert-danger'>{geography.error.message}</div>}
       {campaign?.configuracion.campos.map(field => <div className='mb-4' key={field.key}><label className='form-label' htmlFor={`manual-extra-${field.key}`}>{field.nombre}</label>
-        <input id={`manual-extra-${field.key}`} className='form-control' required={field.obligatorio} type={field.tipo === 'fecha' ? 'date' : 'text'}
-          inputMode={field.tipo === 'numero' ? 'numeric' : undefined} pattern={field.tipo === 'numero' ? '[0-9]+' : undefined}
-          value={data.adicionales[field.key] ?? ''} onChange={e => setData({...data, adicionales: {...data.adicionales, [field.key]: field.tipo === 'numero' ? e.target.value.replace(/\D/g, '') : e.target.value}})} /></div>)}
+        {field.tipo === 'seleccion' ? <select id={`manual-extra-${field.key}`} className='form-select' required={field.obligatorio} value={data.adicionales[field.key] ?? ''} onChange={e => setData({...data, adicionales: {...data.adicionales, [field.key]: e.target.value}})}><option value=''>{text('Selecciona', 'Select')}</option>{field.opciones?.map(option => <option key={option}>{option}</option>)}</select> : <input id={`manual-extra-${field.key}`} className='form-control' required={field.obligatorio} type={field.tipo === 'fecha' ? 'date' : field.tipo === 'email' ? 'email' : field.tipo === 'telefono' ? 'tel' : 'text'}
+          inputMode={['numero', 'telefono'].includes(field.tipo) ? 'numeric' : undefined} pattern={['numero', 'telefono'].includes(field.tipo) ? '[0-9]+' : undefined}
+          value={data.adicionales[field.key] ?? ''} onChange={e => setData({...data, adicionales: {...data.adicionales, [field.key]: ['numero', 'telefono'].includes(field.tipo) ? e.target.value.replace(/\D/g, '') : e.target.value}})} />}</div>)}
       {requirements.map(requirement => <div className='mb-4' key={`${campaignToken}-${requirement.key}`}><label className='form-label' htmlFor={`manual-file-${requirement.key}`}>{requirement.nombre}</label>
         <input id={`manual-file-${requirement.key}`} className='form-control' type='file' required={requirement.obligatorio} accept={requirement.formatos.map(format => `.${format}`).join(',')}
           onChange={e => setFiles(current => {const next = {...current}; if (e.target.files?.[0]) next[requirement.key] = e.target.files[0]; else delete next[requirement.key]; return next})} />
-        <p className='text-muted mt-2'>{requirement.instrucciones}</p></div>)}
+        <p className='text-muted mt-2'>{requirement.instrucciones}</p>{requirement.vigencia && <p className='text-muted'>{requirement.vigencia}</p>}</div>)}
       {campaign && <><p className='text-muted' style={{whiteSpace: 'pre-wrap'}}>{campaign.configuracion.privacidad}</p>
         <label className='form-check d-flex gap-3 my-5'><input type='checkbox' required className='form-check-input' /><span>{text('Confirmo que recibí y revisé los documentos y la autorización del representante legal.', 'I confirm receipt and review of the documents and legal representative authorization.')}</span></label></>}
       {save.error && <div className='alert alert-danger' role='alert'>{save.error.message}</div>}
@@ -91,7 +93,8 @@ function ManualEnrollment({catalog, onClose, onSaved}: {catalog: Catalog; onClos
 function StudentFile({token, onClose}: {token: string; onClose: () => void}) {
   const intl = useIntl()
   const en = intl.locale.startsWith('en')
-  const query = useQuery({queryKey: ['matriculas', 'ficha', token], queryFn: () => api.get<{data: Row & {datos: StudentData; documentos: DocumentVersion[]}}>(`/matriculas/${encodeURIComponent(token)}`)})
+  const scope = useEnrollmentScope()
+  const query = useQuery({queryKey: ['matriculas', scope, 'ficha', token], queryFn: () => api.get<{data: Row & {datos: StudentData; documentos: DocumentVersion[]}}>(`/matriculas/${encodeURIComponent(token)}`)})
   const item = query.data?.data
   const labels: Record<string, string> = en ? {primer_nombre: 'First name', segundo_nombre: 'Middle name', primer_apellido: 'First surname', segundo_apellido: 'Second surname', nacimiento: 'Birth date', tipo_documento: 'Document type', numero_documento: 'Document number', telefono: 'Phone', direccion: 'Address', pais: 'Country', departamento: 'Department', municipio: 'Municipality'}
     : {primer_nombre: 'Primer nombre', segundo_nombre: 'Segundo nombre', primer_apellido: 'Primer apellido', segundo_apellido: 'Segundo apellido', nacimiento: 'Nacimiento', tipo_documento: 'Tipo de documento', numero_documento: 'Documento', telefono: 'Teléfono', direccion: 'Dirección', pais: 'País', departamento: 'Departamento', municipio: 'Municipio'}
@@ -104,8 +107,9 @@ function StudentFile({token, onClose}: {token: string; onClose: () => void}) {
   </section>
 }
 
-export default function EnrollmentRoster() {
+export default function EnrollmentRoster({embedded = false}: {embedded?: boolean}) {
   const intl = useIntl()
+  const scope = useEnrollmentScope()
   const en = intl.locale.startsWith('en')
   const text = (es: string, english: string) => en ? english : es
   const cache = useQueryClient()
@@ -113,15 +117,16 @@ export default function EnrollmentRoster() {
   const [manual, setManual] = useState(false)
   const [detail, setDetail] = useState('')
   const [notice, setNotice] = useState('')
-  const query = useQuery({queryKey: ['matriculas', 'listado', filters], queryFn: () => api.get<Catalog>(`/matriculas?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value))}`)})
+  const query = useQuery({queryKey: ['matriculas', scope, 'listado', filters], staleTime: 30000, queryFn: () => api.get<Catalog>(`/matriculas?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value))}`)})
   const catalog = query.data
   const change = (key: keyof typeof filters, value: string) => {setFilters(current => ({...current, [key]: value, page: '1'})); setDetail(''); setManual(false)}
-  return <div className='d-flex flex-column gap-5'><AcademicPageHeader title={text('Gestión de matrículas', 'Enrollment management')}
+  const manualButton = <button className='btn btn-primary' disabled={!catalog || catalog.anos.find(year => year.token === catalog.ano_token)?.estado === 'cerrado'} onClick={() => {setManual(true); setDetail(''); setNotice('')}}><IntakeIcon name='plus-lg' />{text('Matrícula manual', 'Manual enrollment')}</button>
+  return <div className={`d-flex flex-column gap-5 ${embedded ? 'intake-roster-embedded' : ''}`}>{!embedded && <AcademicPageHeader title={text('Gestión de matrículas', 'Enrollment management')}
     description={text('Estudiantes matriculados por año, convocatoria y grupo. Consulta su ficha o registra una matrícula manual.', 'Students enrolled by year, campaign and group. View their file or register a manual enrollment.')}>
-    <button className='btn btn-primary' disabled={!catalog || catalog.anos.find(year => year.token === catalog.ano_token)?.estado === 'cerrado'} onClick={() => {setManual(true); setDetail(''); setNotice('')}}>{text('Matrícula manual', 'Manual enrollment')}</button>
-  </AcademicPageHeader>
+    {manualButton}
+  </AcademicPageHeader>}
     {notice && <div className='alert alert-info' role='status'>{notice}</div>}
-    <div className='card card-body'><div className='row g-4'>
+    <div className={embedded ? 'intake-card' : 'card card-body'}>{embedded && <div className='intake-heading mb-5'><h2>{text('Estudiantes matriculados', 'Enrolled students')}</h2>{manualButton}</div>}<div className='row g-4'>
       <div className='col-md-3'><label className='form-label' htmlFor='roster-year'>{text('Año lectivo', 'School year')}</label><select id='roster-year' className='form-select' value={filters.ano_token || catalog?.ano_token || ''} onChange={e => {setFilters({...filters, ano_token: e.target.value, grupo_token: '', campana_token: '', page: '1'}); setManual(false); setDetail('')}}>
         {catalog?.anos.map(year => <option key={year.token} value={year.token}>{year.nombre}</option>)}</select></div>
       <div className='col-md-3'><label className='form-label' htmlFor='roster-group'>{text('Grupo', 'Group')}</label><select id='roster-group' className='form-select' value={filters.grupo_token} onChange={e => change('grupo_token', e.target.value)}><option value=''>{text('Todos', 'All')}</option>
@@ -135,8 +140,8 @@ export default function EnrollmentRoster() {
     {manual && catalog && <ManualEnrollment catalog={catalog} onClose={() => setManual(false)} onSaved={mail => {setManual(false); void cache.invalidateQueries({queryKey: ['matriculas']});
       setNotice(mail ? text('Matrícula registrada. El envío del acceso quedó en la cola de correo.', 'Enrollment registered. Access delivery was queued.') : text('Matrícula registrada. Configura el correo institucional para entregar el acceso.', 'Enrollment registered. Configure school mail to deliver access.'))}} />}
     {detail && <StudentFile token={detail} onClose={() => setDetail('')} />}
-    <div className='card card-body'><div className='table-responsive'><table className='table align-middle table-row-dashed'><thead><tr>{[text('Estudiante', 'Student'), text('Grupo / sede', 'Group / campus'), text('Convocatoria / origen', 'Campaign / source'), text('Estado', 'Status'), ''].map((label, index) => <th key={index}>{label}</th>)}</tr></thead>
-      <tbody>{catalog?.data.map(row => <tr key={row.token}><td><strong>{row.nombre}</strong><div className='text-muted'>{row.email}</div></td><td>{row.grupo}<div className='text-muted'>{row.sede}</div></td><td>{row.convocatoria ?? '—'}<div className='text-muted'>{row.origen === 'manual' ? 'Manual' : text('Por enlace', 'Public link')}</div></td><td>{row.estado}</td><td><button className='btn btn-light-primary btn-sm' onClick={() => {setDetail(row.token); setManual(false)}}>{text('Ver ficha', 'View file')}</button></td></tr>)}</tbody></table></div>
+    <div className={embedded ? 'intake-card' : 'card card-body'}><div className='table-responsive'><table className={embedded ? 'intake-table' : 'table align-middle table-row-dashed'}><thead><tr>{[text('Estudiante', 'Student'), text('Grupo / sede', 'Group / campus'), text('Convocatoria / origen', 'Campaign / source'), text('Estado', 'Status'), ''].map((label, index) => <th key={index}>{label}</th>)}</tr></thead>
+      <tbody>{catalog?.data.map(row => <tr key={row.token}><td className='intake-student-cell'><strong>{row.nombre}</strong><div className='text-muted'>{row.email}</div></td><td>{row.grupo}<div className='text-muted'>{row.sede}</div></td><td>{row.convocatoria ?? '—'}<div className='text-muted'>{row.origen === 'manual' ? 'Manual' : text('Por enlace', 'Public link')}</div></td><td className='intake-status-cell'><span className='intake-badge'>{row.estado}</span></td><td className='intake-action-cell'><button className='btn btn-light-primary btn-sm' onClick={() => {setDetail(row.token); setManual(false)}}>{text('Ver ficha', 'View file')}</button></td></tr>)}</tbody></table></div>
       {query.isFetching && <p role='status'>…</p>}
       {catalog && <div className='d-flex gap-4 align-items-center'><button className='btn btn-light btn-sm' disabled={catalog.page <= 1 || query.isFetching} onClick={() => setFilters({...filters, page: String(catalog.page - 1)})}>{text('Anterior', 'Previous')}</button>
         <span>{catalog.page} / {catalog.last_page} · {catalog.total}</span><button className='btn btn-light btn-sm' disabled={catalog.page >= catalog.last_page || query.isFetching} onClick={() => setFilters({...filters, page: String(catalog.page + 1)})}>{text('Siguiente', 'Next')}</button></div>}

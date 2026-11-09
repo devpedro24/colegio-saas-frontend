@@ -57,31 +57,28 @@ test('dropdown escapes translated labels and route attributes', () => {
   assert.ok(!html.includes(' onclick="bad'))
 })
 
-test('enrollment roster and link intake have separate authorized destinations', () => {
+test('enrollment has one authorized menu entry and keeps its internal routes', () => {
   const html = getHeaderMenuHtml(intl('es'), {isTenantUser: true, canManageIntake: true, canManageEnrollments: true})
-  const icons = [['solicitudes', 'document'], ['seleccion', 'user-tick'], ['matriculas', 'people']]
-  const font = fs.readFileSync(new URL('../src/_metronic/assets/keenicons/solid/style.css', import.meta.url), 'utf8')
-  for (const [route, icon] of icons) {
-    const link = html.match(new RegExp(`<a[^>]+href="/admisiones/${route}"[^>]*>(.*?)</a>`))?.[1]
-    assert.ok(link?.includes(`ki-solid ki-${icon}`), `${route} uses its own icon`)
-    assert.ok(font.includes(`.ki-${icon}.ki-solid:before`), `${icon} exists in bundled font`)
-  }
+  assert.equal((html.match(/href="\/admisiones\//g) ?? []).length, 1)
+  assert.ok(html.includes('/admisiones/solicitudes'))
+  assert.ok(html.includes('Matrículas'))
   const page = fs.readFileSync(new URL('../src/app/pages/admisiones/AdmisionesPage.tsx', import.meta.url), 'utf8')
-  assert.ok(!page.includes('<nav'), 'Navigation stays in the header, not duplicated above page content')
-  assert.ok(!page.includes('NavLink'))
-  for (const [route] of icons) assert.ok(page.includes(`path='${route}'`), 'Enrollment routes remain available')
-  assert.ok(page.includes("path='matriculas' element={enrollments ? <EnrollmentRoster />"))
+  for (const route of ['solicitudes', 'pines', 'convocatorias', 'matriculas', 'notificaciones']) assert.ok(page.includes(`path='${route}'`), 'Enrollment routes remain available')
+  assert.ok(page.includes("path='matriculas' element={enrolled ?"), 'The roster still requires its own permission')
   const roster = fs.readFileSync(new URL('../src/app/pages/admisiones/EnrollmentRoster.tsx', import.meta.url), 'utf8')
   assert.ok(!roster.includes('ver_boletin') && !roster.includes('recuperaciones'))
   assert.ok(getHeaderMenuHtml(intl('es'), {isTenantUser: true, canManageEnrollments: true}).includes('/admisiones/matriculas'))
   assert.ok(!getHeaderMenuHtml(intl('es'), {isTenantUser: true, canManageEnrollments: true}).includes('/admisiones/solicitudes'))
 })
 
-test('active enrollment views share the academic header instead of custom card styling', () => {
-  for (const file of ['admisiones/AdmisionesPage.tsx', 'admisiones/EnrollmentManagement.tsx']) {
+test('enrollment list uses the academic header and campaign editing uses a full page', () => {
+  for (const file of ['admisiones/EnrollmentManagement.tsx']) {
     const source = fs.readFileSync(new URL(`../src/app/pages/${file}`, import.meta.url), 'utf8')
     assert.ok(source.includes('<AcademicPageHeader'), file)
   }
+  const editor = fs.readFileSync(new URL('../src/app/pages/admisiones/CampaignEditor.tsx', import.meta.url), 'utf8')
+  assert.ok(editor.includes("flow('backCampaigns')"))
+  assert.ok(editor.includes('data-campaign-tab'))
   assert.equal(messages('es')['admisiones.title'], 'Gestión de Matrículas')
   assert.equal(messages('en')['admisiones.title'], 'Enrollment Management')
 })
