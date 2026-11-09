@@ -3,6 +3,7 @@ import {useSearchParams, useNavigate} from 'react-router-dom'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 import {AcademicPageHeader} from '@/app/shared/components/AcademicPageHeader'
 import {AcademicOptionSelect} from '../../shared/AcademicOptionSelect'
 import {useCatalogoEvaluacion, useGuardarResultadoManualAnual, useManualAnnualSheet, type ManualAnnualSheet} from '../evaluacion.api'
@@ -56,8 +57,8 @@ export const ManualAnnualView = () => {
       valor: annul || visual ? null : gradeDecimal(value),
       escalaOpcionToken: annul || !visual ? null : value,
       motivo: reason.trim(), version: editor.resultado.manual_version ?? 0}, {
-      onSuccess: () => {toast.success(t('grading.saved')); setEditor(null)},
-      onError: error => toast.error(error.message),
+      onSuccess: () => {toast.success(t('grading.saved'), 'updated'); setEditor(null)},
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
     })
   }
 
@@ -121,7 +122,6 @@ export const ManualAnnualView = () => {
           onChange={e => setValue(e.target.value.replace(',', '.'))} /><small className='d-block text-muted mb-4'>{data?.valor_min} – {data?.valor_max}</small></>}
         <label className='form-label required' htmlFor='manual-annual-reason'>{t('grading.manualReason')}</label>
         <textarea id='manual-annual-reason' className='form-control' rows={3} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} />
-        {save.error && <div className='alert alert-danger mt-4' role='alert'>{save.error.message}</div>}
       </Modal.Body>
       <Modal.Footer className='justify-content-between'>
         <div>{editor?.resultado.estado === 'calculado' && <button className='btn btn-light-danger' disabled={save.isPending || reason.trim().length < 10}

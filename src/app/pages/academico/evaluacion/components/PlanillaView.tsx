@@ -5,6 +5,7 @@ import {useCatalogoEvaluacion, usePlanilla, useGuardarNotas, useActividadPlanill
 import {KTIcon} from '@/_metronic/helpers'
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 import type {NotaUpdate, SeccionPlanilla, ActividadEvaluacion, PlanillaResponse, Matricula, ResultadoEstudiante} from '../evaluacion.types'
 import {gradeDecimal, validGrade} from '../gradeDecimal'
 import {VisualChoice} from './VisualChoice'
@@ -164,8 +165,8 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
     if (data.requiere_motivo && reason.trim().length < 3) return
     const finishDraft = recovery.afterSave()
     save.mutate(values.map(v => ({...v, valor: visual || v.valor == null ? null : gradeDecimal(v.valor), motivo: reason.trim()})), {
-      onSuccess: () => {finishDraft(); setDraft({}); setReason(''); toast.success(t('grading.saved'))},
-      onError: error => toast.error(error.message),
+      onSuccess: () => {finishDraft(); setDraft({}); setReason(''); toast.success(t('grading.saved'), 'updated')},
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
     })
   }
   const openActivity = (section: SeccionPlanilla, activity?: ActividadEvaluacion) => {
@@ -181,7 +182,8 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
       componente_token: editor.section.componente_token, preinforme_token: editor.section.preinforme_token,
       actividad_token: editor.activity?.url_token ?? editor.activity?.id, version: editor.activity?.version ?? 0,
       ...(!remove ? {...activityForm, peso: activityForm.peso ? gradeDecimal(activityForm.peso) : null} : {}),
-    }, {onSuccess: () => {finishDraft(); setEditor(null); toast.success(t('grading.saved'))}, onError: error => toast.error(error.message)})
+    }, {onSuccess: () => {finishDraft(); setEditor(null); toast.success(t(remove ? 'common.toast.deleted' : 'grading.saved'), remove ? 'deleted' : editor.activity ? 'updated' : 'success')},
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message)})
   }
   const openManualComponent = (section: SeccionPlanilla, student: Matricula) => {
     if (dirty) {toast.show(t('grading.saveFirst'), 'info'); return}
@@ -201,8 +203,8 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
       matriculaId: manualEditor.student.url_token, valor: annul || visual ? null : gradeDecimal(manualValue),
       escalaOpcionToken: !annul && visual ? manualValue : null,
       motivo: manualReason.trim(), version: manualEditor.result?.manual_version ?? 0}, {
-      onSuccess: () => {finishDraft(); setManualEditor(null); toast.success(t('grading.saved'))},
-      onError: error => toast.error(error.message),
+      onSuccess: () => {finishDraft(); setManualEditor(null); toast.success(t('grading.saved'), 'updated')},
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
     })
   }
 
@@ -256,7 +258,10 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
           <select id={`grade-mode-${sectionKey(section)}`} className='form-select form-select-sm grade-component-mode' value={section.modo}
             disabled={!editable || !data.permisos.configurar || dirty}
             onChange={e => activityMutation.mutate({operacion: 'modo', componente_token: section.componente_token, preinforme_token: section.preinforme_token,
-              version: section.version, modo: e.target.value as SeccionPlanilla['modo']}, {onError: error => toast.error(error.message)})}>
+              version: section.version, modo: e.target.value as SeccionPlanilla['modo']}, {
+                onSuccess: () => toast.success(t('grading.saved'), 'updated'),
+                onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
+              })}>
             <option value='SIMPLE_AVERAGE'>{t('grading.modeSimple')}</option>
             <option value='WEIGHTED_AVERAGE'>{t('grading.modeWeighted')}</option>
             <option value='MANUAL'>{t('grading.modeManual')}</option>
@@ -366,7 +371,6 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
           <input id='grade-activity-weight' inputMode='decimal' className='form-control' aria-invalid={!activityWeightValid} value={activityForm.peso} onChange={e => setActivityForm(p => ({...p, peso: e.target.value.replace(',', '.')}))} />
           <p className='text-gray-700 fs-7 mt-2'>{intl.formatMessage({id: 'grading.availableWeight'}, {weight: remainingWeight})}</p>
           {!activityWeightValid && <div className='alert alert-warning text-gray-800' role='alert'>{t('grading.weightExceeded')}</div>}</>}
-        {activityMutation.error && <div className='alert alert-danger mt-4' role='alert'>{activityMutation.error.message}</div>}
       </Modal.Body>
       <Modal.Footer className='justify-content-between'>
         <div>{editor?.activity && data.permisos.eliminar && <button className='btn btn-light-danger' disabled={activityMutation.isPending} onClick={() => commitActivity(true)}><KTIcon iconName='trash' className='fs-3' />{t('grading.delete')}</button>}</div>
@@ -390,7 +394,6 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
         <label className='form-label required' htmlFor='manual-component-reason'>{t('grading.manualReason')}</label>
         <textarea id='manual-component-reason' className='form-control' rows={3} maxLength={1000} value={manualReason}
           onChange={e => setManualReason(e.target.value)} />
-        {manualComponent.error && <div className='alert alert-danger mt-4' role='alert'>{manualComponent.error.message}</div>}
       </Modal.Body>
       <Modal.Footer className='justify-content-between'>
         <div>{manualEditor?.result?.estado === 'calculado' && <button className='btn btn-light-danger' disabled={manualComponent.isPending || manualReason.trim().length < 10}
@@ -437,8 +440,8 @@ function ManualSubjectSheet({assignment, period, data, subject, back}: {
     save.mutate({matriculaId: editing.student.url_token, valor: annul || visual ? null : gradeDecimal(value),
       escalaOpcionToken: !annul && visual ? value : null,
       motivo: reason.trim(), version: editing.result.manual_version ?? 0}, {
-      onSuccess: () => {finishDraft(); setEditing(null); toast.success(t('grading.saved'))},
-      onError: error => toast.error(error.message),
+      onSuccess: () => {finishDraft(); setEditing(null); toast.success(t('grading.saved'), 'updated')},
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
     })
   }
   return <div className='card grade-sheet'><div className='card-body'>
@@ -479,7 +482,6 @@ function ManualSubjectSheet({assignment, period, data, subject, back}: {
         <label className='form-label required' htmlFor='manual-subject-reason'>{t('grading.manualReason')}</label>
         <textarea id='manual-subject-reason' className='form-control' rows={3} maxLength={1000} value={reason}
           onChange={event => setReason(event.target.value)} />
-        {save.error && <div className='alert alert-danger mt-4' role='alert'>{save.error.message}</div>}
       </Modal.Body>
       <Modal.Footer className='justify-content-between'>
         <div>{editing?.result.estado === 'calculado' && <button className='btn btn-light-danger' disabled={save.isPending || reason.trim().length < 10}

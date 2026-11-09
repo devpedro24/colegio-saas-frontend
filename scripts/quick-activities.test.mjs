@@ -6,6 +6,8 @@ import React from 'react'
 import {renderToStaticMarkup} from 'react-dom/server'
 import ts from 'typescript'
 
+class TestApiError extends Error {}
+
 const require = createRequire(import.meta.url)
 const root = '../src/app/pages/academico/evaluacion/'
 const compile = (path, extra = '') => ts.transpileModule(
@@ -207,6 +209,7 @@ function harness(overrides = {}) {
     react: hooks.react,
     'react-intl': {useIntl: () => ({formatMessage})},
     '../activityEditing': editing,
+    '@/lib/api/client': {ApiError: TestApiError},
     '../evaluacion.api': {useActividadPlanilla: (assignment, period) => {
       assert.equal(assignment, props.assignment); assert.equal(period, props.period)
       return mutation
@@ -380,11 +383,26 @@ test('failed writes retain the draft, show the server error and allow retrying t
   h.mutations[0].callbacks.onError(error); h.render()
   assert.equal(input(h, 'name').props.value, 'Conservar al fallar')
   assert.equal(h.draft().dirty, true)
-  assert.equal(elements(h.tree(), node => node.props.role === 'alert' && textOf(node) === error.message).length, 1)
+  assert.equal(elements(h.tree(), node => node.props.role === 'alert' && textOf(node) === error.message).length, 0, 'The server error appears once, in the toast')
   assert.deepEqual(h.events, ['draft.afterSave'])
   assert.deepEqual(h.toasts, [['error', error.message]])
   invokeSave(h)
   assert.equal(h.mutations.length, 2)
+  assert.deepEqual(h.mutations[1].body, h.mutations[0].body)
+})
+
+test('field validation errors use the specific reason in one toast and retain the batch for retry', () => {
+  const h = harness()
+  change(h, 'name', 'Conservar validación')
+  invokeSave(h)
+  const error = Object.assign(new TestApiError('Datos inválidos'), {errors: {'actividades.0.fecha': ['La fecha está fuera del preinforme.']}})
+  h.mutation.error = error
+  h.mutations[0].callbacks.onError(error); h.render()
+  assert.deepEqual(h.toasts, [['error', 'La fecha está fuera del preinforme.']])
+  assert.equal(input(h, 'name').props.value, 'Conservar validación')
+  assert.equal(h.draft().dirty, true)
+  assert.equal(elements(h.tree(), node => node.props.role === 'alert').length, 0)
+  invokeSave(h)
   assert.deepEqual(h.mutations[1].body, h.mutations[0].body)
 })
 
@@ -471,6 +489,7 @@ function planillaHarness() {
     calificaciones: [], resultados: [], pagination: {matriculas: {total: 1}}}
   const mutation = {isPending: false, mutate: body => mutations.push(body)}
   const {PlanillaView} = evaluate(planillaJs, {
+    '@/lib/api/client': {ApiError: TestApiError},
     react: {...hooks.react, useEffect() {}},
     'react-router-dom': {useParams: () => ({asignacionId: 'assignment/public', periodoId: 'period/public'}), useNavigate: () => value => navigations.push(value)},
     'react-bootstrap': {Modal},

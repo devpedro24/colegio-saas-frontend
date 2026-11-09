@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useState, type ReactNode} from 'react'
 import {useNavigate, useParams, useSearchParams} from 'react-router-dom'
 import {useIntl} from 'react-intl'
@@ -155,10 +156,10 @@ export const RecoveryRecord = ({item, canManage, saving, cancelling, onSave, onC
         void onSave({grade: visual ? '' : grade, manual: visual ? '' : manual, reason, choice: visual ? choice : undefined, manualChoice: visual && item.politica === 'MANUAL' ? manualChoice : undefined}).then(() => finishDraft()).catch(() => {})}}>
         <div className='col-12 col-md-3'><label className='form-label' htmlFor={`grade-${item.id}`}>{t(visual ? 'evaluacion.recuperaciones.gradeVisual' : 'evaluacion.recuperaciones.grade')} <span className='text-danger'>*</span></label>
           {visual ? <RecoveryChoiceInput id={`grade-${item.id}`} value={choice} onChange={setChoice} options={options} />
-            : <input id={`grade-${item.id}`} className='form-control' type='number' step='0.1' value={grade} required onChange={event => setGrade(event.target.value)} />}</div>
+            : <NumberInput id={`grade-${item.id}`} className='form-control' type='number' step='0.1' value={grade} required onChange={event => setGrade(event.target.value)} />}</div>
         {item.politica === 'MANUAL' && <div className='col-12 col-md-2'><label className='form-label' htmlFor={`manual-${item.id}`}>{t('evaluacion.recuperaciones.manual')} <span className='text-danger'>*</span></label>
           {visual ? <RecoveryChoiceInput id={`manual-${item.id}`} value={manualChoice} onChange={setManualChoice} options={options} />
-            : <input id={`manual-${item.id}`} className='form-control' type='number' step='0.1' value={manual} required onChange={event => setManual(event.target.value)} />}</div>}
+            : <NumberInput id={`manual-${item.id}`} className='form-control' type='number' step='0.1' value={manual} required onChange={event => setManual(event.target.value)} />}</div>}
         <div className='col-12 col-md-5'><label className='form-label' htmlFor={`reason-${item.id}`}>{t('evaluacion.recuperaciones.reason')} <span className='text-danger'>*</span></label>
           <input id={`reason-${item.id}`} className='form-control' minLength={3} maxLength={500} value={reason} required onChange={event => setReason(event.target.value)} /></div>
         <div className='col-12 col-md-3'><button type='submit' className='btn btn-sm btn-primary w-100' disabled={saving}>{t('evaluacion.recuperaciones.save')}</button></div>

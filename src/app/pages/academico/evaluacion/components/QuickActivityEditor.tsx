@@ -5,6 +5,7 @@ import {activityEditIsCurrent, activityEditRows, validateActivityEdit, type Acti
 import type {SeccionPlanilla} from '../evaluacion.types'
 import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
 import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 
 export function QuickActivityEditor({assignment, period, section, periodStart, periodEnd, editable, onDirtyChange}: {
   assignment: string; period: string; section: SeccionPlanilla; periodStart: string; periodEnd: string
@@ -46,8 +47,8 @@ export function QuickActivityEditor({assignment, period, section, periodStart, p
       preinforme_token: section.preinforme_token, version: edit.componentVersion,
       actividades: rows.map(row => ({actividad_token: row.token, version: row.version,
         nombre: row.nombre.trim(), fecha: row.fecha, ...(weighted ? {peso: row.peso} : {})})),
-    }, {onSuccess: () => {finishDraft(); setEdit(null); toast.success(t('grading.saved'))},
-      onError: error => toast.error(error.message)})
+    }, {onSuccess: () => {finishDraft(); setEdit(null); toast.success(t('grading.saved'), 'updated')},
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message)})
   }
 
   return <section className='grade-quick-activities' aria-label={t('grading.quickActivities')}>
@@ -61,7 +62,6 @@ export function QuickActivityEditor({assignment, period, section, periodStart, p
       </div>}
     </div>
     {stale && <p className='alert alert-warning' role='alert'>{t('grading.activitiesStale')}</p>}
-    {mutation.error && <p className='alert alert-danger' role='alert'>{mutation.error.message}</p>}
     {weighted && !validation.weightsValid && <p className='alert alert-warning' role='alert'>{t('grading.batchWeightInvalid')}</p>}
     {weighted && validation.weightsValid && !validation.complete && <p className='grade-quick-weight-note' role='status'>{t('grading.batchWeightPartial')}</p>}
     {!rows.length && <p className='text-muted mb-0'>{t('grading.noActivities')}</p>}

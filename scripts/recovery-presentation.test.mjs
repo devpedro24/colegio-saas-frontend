@@ -19,7 +19,9 @@ function load(path, mocks = {}) {
 }
 const format = load('gradeDisplay.ts')
 const visual = load('components/VisualChoice.tsx')
+const number = load('../../../shared/components/NumberInput.tsx')
 const view = load('components/RecuperacionesView.tsx', {
+  '@/app/shared/components/NumberInput': number,
   'react-intl': {useIntl: () => ({formatMessage: ({id}) => id})},
   '@/_metronic/helpers': {}, '@/lib/ui/toast': {}, '../recuperaciones.api': {},
   '@/lib/drafts/WorkDrafts': {useWorkDraft: () => ({notice: null, afterSave: () => () => {}})},
