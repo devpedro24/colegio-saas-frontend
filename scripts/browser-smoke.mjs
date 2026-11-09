@@ -1,3 +1,17 @@
+import {calendarNotificationsFixture, runCalendarNotificationsSmoke} from './calendar-notifications-smoke.mjs'
+import {commercialFixture, runCommercialSmoke} from './commercial-smoke.mjs'
+import {runRbacResponsiveSmoke} from './rbac-responsive-smoke.mjs'
+import {runToastSmoke} from './toast-smoke.mjs'
+import {yearNotificationsFixture, runYearNotificationsSmoke} from './year-notifications-smoke.mjs'
+import {structureNotificationsFixture, runStructureNotificationsSmoke} from './structure-notifications-smoke.mjs'
+import {studyPlanNotificationsFixture, runStudyPlanNotificationsSmoke} from './study-plan-notifications-smoke.mjs'
+import {parametersNotificationsFixture, runParametersNotificationsSmoke} from './parameters-notifications-smoke.mjs'
+import {sieeNotificationsFixture, runSieeNotificationsSmoke} from './siee-notifications-smoke.mjs'
+import {learningNotificationsFixture, runLearningNotificationsSmoke} from './learning-notifications-smoke.mjs'
+import {gradebookNotificationsFixture, runGradebookNotificationsSmoke} from './gradebook-notifications-smoke.mjs'
+import {aulaNotificationsFixture, runAulaNotificationsSmoke} from './aula-notifications-smoke.mjs'
+import {attendanceNotificationsFixture, runAttendanceNotificationsSmoke} from './attendance-notifications-smoke.mjs'
+import {runMobileNavigationSmoke} from './mobile-navigation-smoke.mjs'
 // UI smoke test with isolated browser profile and in-memory API fixtures. No real database.
 import fs from 'node:fs'
 import os from 'node:os'
@@ -7,25 +21,46 @@ import {once} from 'node:events'
 import assert from 'node:assert/strict'
 import {createServer} from 'vite'
 import {enrollmentFixture, runEnrollmentSmoke} from './enrollment-smoke.mjs'
+import {runEnrollmentAdminSmoke} from './enrollment-admin-smoke.mjs'
+import {runEnrollmentWorkflowSmoke} from './enrollment-workflow-smoke.mjs'
 import {eventsFixture, runEventsSmoke} from './events-smoke.mjs'
 import {runAcademicNavigationSmoke} from './academic-navigation-smoke.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
+const toastMode = process.argv.includes('--toast')
+const yearNotificationsMode = process.argv.includes('--year-notifications')
+const yearNotificationsApi = yearNotificationsMode ? yearNotificationsFixture() : null
+const structureNotificationsMode = process.argv.includes('--structure-notifications')
+const structureNotificationsApi = structureNotificationsMode ? structureNotificationsFixture() : null
+const studyPlanNotificationsMode = process.argv.includes('--study-plan-notifications')
+const studyPlanNotificationsApi = studyPlanNotificationsMode ? studyPlanNotificationsFixture() : null
+const parametersNotificationsMode = process.argv.includes('--parameters-notifications')
+const parametersNotificationsApi = parametersNotificationsMode ? parametersNotificationsFixture() : null
+const sieeNotificationsMode = process.argv.includes('--siee-notifications')
+const sieeNotificationsApi = sieeNotificationsMode ? sieeNotificationsFixture() : null
+const learningNotificationsMode = process.argv.includes('--learning-notifications')
+const learningNotificationsApi = learningNotificationsMode ? learningNotificationsFixture() : null
 const academicCacheMode = process.argv.includes('--academic-cache')
 const realtimeMode = process.argv.includes('--realtime') || academicCacheMode
 const paginationMode = process.argv.includes('--pagination')
-const platformMode = process.argv.includes('--platform')
+const commercialMode = process.argv.includes('--commercial')
+const commercialApi = commercialMode || process.argv.includes('--mobile-navigation') ? commercialFixture() : null
+const platformMode = process.argv.includes('--platform') || commercialMode
 const performanceMode = process.argv.includes('--performance')
 const cacheMode = process.argv.includes('--cache')
 const gradingMode = process.argv.includes('--grading')
+const gradebookNotificationsMode = process.argv.includes('--gradebook-notifications')
 const workflowMode = process.argv.includes('--academic-workflow')
 const aulaMode = process.argv.includes('--aula')
+const aulaNotificationsMode = process.argv.includes('--aula-notifications')
+const attendanceNotificationsMode = process.argv.includes('--attendance-notifications')
+const calendarNotificationsMode = process.argv.includes('--calendar-notifications')
 const eventsMode = process.argv.includes('--events')
 const teacherAccessMode = process.argv.includes('--teacher-access') || academicCacheMode
 const indicatorScopeMode = process.argv.includes('--indicator-scope')
 const indicatorSheetMode = process.argv.includes('--indicator-sheet')
 const rbacMode = process.argv.includes('--rbac')
-const intakeMode = process.argv.includes('--ingreso') || process.argv.includes('--ingreso-summary')
+const intakeMode = process.argv.includes('--ingreso') || process.argv.includes('--ingreso-summary') || process.argv.includes('--ingreso-admin') || process.argv.includes('--ingreso-workflow')
 const apiReads = []
 const apiWrites = []
 const indicatorSheetWrites = []
@@ -65,6 +100,14 @@ if (platformMode) { user.is_platform = true; user.tenant_channel = null; user.ro
 if (rbacMode) user.permissions.push('usuarios.ajustar_permisos')
 if (indicatorScopeMode) user.permissions.push('indicadores.configurar', 'indicadores.base.gestionar')
 if (indicatorSheetMode) user.permissions.push('indicadores.base.gestionar')
+if (learningNotificationsMode) {
+  user.permissions.push('academico.preinformes.ver','academico.preinformes.gestionar','indicadores.configurar','indicadores.base.gestionar','indicadores.grupo.ver','indicadores.grupo.editar')
+  user.institution = {name:'Colegio de prueba',plan:{name:'Premium',features:['nucleo','academico','preinformes']}}
+}
+if (gradebookNotificationsMode) {
+  user.permissions.push('notas.registrar_materia_asignada','notas.actividades.crear','notas.actividades.editar','notas.actividades.eliminar','notas.planilla.configurar','notas.resultados_area.gestionar','notas.resultados_anuales.gestionar')
+  user.institution = {name:'Colegio de prueba',plan:{name:'Premium',features:['nucleo','academico','preinformes']}}
+}
 const rbacFixture = rbacMode ? {data: [
   {module: 'academico', permissions: [
     {key: 'academico.anos.gestionar', action: 'anos.gestionar', feature_key: 'academico', cells: {
@@ -115,7 +158,7 @@ const rbacCatalogFixture = rbacMode && platformMode ? {
     {key: 'academico', category: 'academico', label: 'plan.f.academico', description: 'plan.f.academico.desc'},
   ], categories: [{key: 'general', label: 'plan.cat.general'}, {key: 'academico', label: 'plan.cat.academico'}],
 } : null
-const intakeFixture = intakeMode ? enrollmentFixture(user) : null
+const intakeFixture = intakeMode ? enrollmentFixture(user, {modern: process.argv.includes('--ingreso-workflow')}) : null
 if (process.argv.includes('--institutional')) user.permissions.push('config.correo')
 if (realtimeMode) user.tenant_channel = reverbProbe({action: 'channel'}).token
 const urlTokens = {year: 'a'.repeat(24), nextYear: 'b'.repeat(24), group: 'c'.repeat(24), groupB: 'd'.repeat(24), groupC: 'e'.repeat(24), groupPre: '7'.repeat(24), teacher: 'f'.repeat(24), space: 'g'.repeat(24), assignment: 'h'.repeat(24), period: 'j'.repeat(24), enrollment: 'k'.repeat(24), sede: 'm'.repeat(24), event: 'i'.repeat(24), materia: 'v'.repeat(24)}
@@ -233,6 +276,7 @@ const hasPrivateIdKey = value => Array.isArray(value) ? value.some(hasPrivateIdK
   : value && typeof value === 'object' ? Object.entries(value).some(([key, field]) => key === 'id' || key.endsWith('_id') || hasPrivateIdKey(field))
     : false
 const fixtures = {
+  '/api/notification-updates': {data: [], meta: {current_page: 1, last_page: 1, total: 0}},
   '/api/me': {user, csrf_token: 'smoke-csrf'},
   '/api/platform/impersonar/estado': {data: {colegio: null}},
   '/api/platform/auditoria/colegios': {data: [{slug: 'colegio-prueba', name: 'Colegio de prueba'}]},
@@ -283,6 +327,9 @@ user.permissions.push('academico.matriculas.gestionar')
 user.permissions.push('notas.gestionar_nivelaciones')
 fixtures['/api/evaluacion/catalogo'].data.can_manage_enrollments = true
 fixtures['/api/evaluacion/catalogo'].data.materias = [{id: 1, nombre: 'Matemáticas'}]
+if (process.argv.includes('--mobile-navigation') && !platformMode) {
+  fixtures['/api/estructura/sedes'] = {data: [{...sede, nombre:'Sede principal', tenant_id:null, tenant_domain:null, es_principal:true}]}
+}
 if (teacherAccessMode) {
   user.name = 'Docente de prueba'
   user.roles = ['docente']
@@ -379,8 +426,9 @@ if (indicatorSheetMode) {
       {materia_token: urlTokens.materia, materia: 'Matemáticas', texto_html: '<ul><li>Resuelve <strong>sumas</strong>.</li><li>Explica el proceso.</li></ul>',
         version: 1, puede_editar: true}]}}
 }
-if (aulaMode || eventsMode) {
+if (aulaMode || eventsMode || aulaNotificationsMode) {
   user.permissions.push('aula.ver_todas', 'aula.recursos.gestionar')
+  if (aulaMode) user.institution = {name:'Colegio de prueba',plan:{name:'Premium',features:['nucleo','academico','aula','preinformes']}}
   const aulaToken = 'y'.repeat(24), resourceToken = 'z'.repeat(24), quizToken = 'q'.repeat(24)
   const preOne = 'p'.repeat(24), preTwo = 'r'.repeat(24)
   const attachments = [{token: 'f'.repeat(24), nombre: 'Guía de lectura.docx',
@@ -495,10 +543,28 @@ const paged = (rows, requestedPage, requestedPerPage) => {
 let server, browser, socket
 const eventFixture = eventsMode || teacherAccessMode ? eventsFixture(event, fixtures['/api/eventos/catalogo'].data, today) : null
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+const gradebookNotificationsApi = gradebookNotificationsMode ? gradebookNotificationsFixture({
+  catalog:opaqueEvaluation('/api/evaluacion/catalogo',fixtures['/api/evaluacion/catalogo']).data,
+  planilla:opaqueEvaluation(opaquePlanillaPath,fixtures['/api/evaluacion/planillas/1/1']).data,
+}) : null
+const aulaNotificationsApi = aulaNotificationsMode ? aulaNotificationsFixture({fixtures,user}) : null
+const calendarNotificationsApi = calendarNotificationsMode ? calendarNotificationsFixture({user,base:event,catalog:fixtures['/api/eventos/catalogo'].data}) : null
+const attendanceNotificationsApi = attendanceNotificationsMode ? attendanceNotificationsFixture({user}) : null
 try {
   server = await createServer({root, logLevel: 'error', server: {host: '127.0.0.1', port: 5197, strictPort: true}, plugins: [{name: 'smoke-api', configureServer(vite) {
+    if (commercialApi) vite.middlewares.use(commercialApi.middleware)
     if (intakeFixture) vite.middlewares.use(intakeFixture.middleware)
+    if (calendarNotificationsApi) vite.middlewares.use(calendarNotificationsApi.middleware)
     if (eventFixture) vite.middlewares.use(eventFixture.middleware)
+    if (yearNotificationsApi) vite.middlewares.use(yearNotificationsApi.middleware)
+    if (structureNotificationsApi) vite.middlewares.use(structureNotificationsApi.middleware)
+    if (studyPlanNotificationsApi) vite.middlewares.use(studyPlanNotificationsApi.middleware)
+    if (parametersNotificationsApi) vite.middlewares.use(parametersNotificationsApi.middleware)
+    if (sieeNotificationsApi) vite.middlewares.use(sieeNotificationsApi.middleware)
+    if (learningNotificationsApi) vite.middlewares.use(learningNotificationsApi.middleware)
+    if (gradebookNotificationsApi) vite.middlewares.use(gradebookNotificationsApi.middleware)
+    if (aulaNotificationsApi) vite.middlewares.use(aulaNotificationsApi.middleware)
+    if (attendanceNotificationsApi) vite.middlewares.use(attendanceNotificationsApi.middleware)
     vite.middlewares.use((req, res, next) => {
       const url = new URL(req.url, 'http://localhost')
       if (aulaMode && url.pathname === '/office/web-apps/apps/api/documents/api.js') {
@@ -949,7 +1015,33 @@ try {
     assert.ok(Math.abs(geometry.before.left - geometry.after.left) <= 2, `Permission column moved horizontally: ${JSON.stringify(geometry)}`)
     assert.ok(geometry.before.roleLeft - geometry.after.roleLeft >= 100, `Role columns should scroll horizontally: ${JSON.stringify(geometry)}`)
   }
-  if (rbacCatalogFixture) {
+  if (toastMode) {
+    await navigate('/scripts/fixtures/toast-preview.html','Avisos')
+    await runToastSmoke({evaluate,until,command,screenshot,sleep,errors})
+  } else if (yearNotificationsMode) {
+    await runYearNotificationsSmoke({navigate,evaluate,until,command,screenshot,errors})
+  } else if (structureNotificationsMode) {
+    await runStructureNotificationsSmoke({fixture:structureNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (studyPlanNotificationsMode) {
+    await runStudyPlanNotificationsSmoke({fixture:studyPlanNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (calendarNotificationsMode) {
+    await runCalendarNotificationsSmoke({fixture:calendarNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (attendanceNotificationsMode) {
+    await runAttendanceNotificationsSmoke({fixture:attendanceNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (aulaNotificationsMode) {
+    await runAulaNotificationsSmoke({fixture:aulaNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (gradebookNotificationsMode) {
+    await runGradebookNotificationsSmoke({fixture:gradebookNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (learningNotificationsMode) {
+    await runLearningNotificationsSmoke({fixture:learningNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (sieeNotificationsMode) {
+    await runSieeNotificationsSmoke({fixture:sieeNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (parametersNotificationsMode) {
+    await runParametersNotificationsSmoke({fixture:parametersNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (process.argv.includes('--mobile-navigation')) {
+    await runMobileNavigationSmoke({platform:platformMode, teacher:teacherAccessMode,
+      evaluate,until,command,screenshot,sleep,navigate,errors})
+  } else if (rbacCatalogFixture) {
     await navigate('/configuracion/roles-permisos', 'Roles y Permisos')
     await until(`document.querySelectorAll('table tbody tr').length >= 3`)
     assert.equal(await evaluate(`document.querySelector('table tbody tr td:first-child')?.textContent.trim()`), 'Académico')
@@ -962,6 +1054,7 @@ try {
     await screenshot('rbac-plataforma-matriz-desktop')
     await assertStickyMatrix()
     await screenshot('rbac-plataforma-matriz-scroll')
+    await runRbacResponsiveSmoke({platform:true,evaluate,until,command,screenshot})
     assert.deepEqual(errors, [], 'Uncaught browser errors in platform RBAC.')
     console.log('PASS: platform RBAC permission and matrix labels are human-readable.')
   } else if (rbacMode) {
@@ -983,12 +1076,13 @@ try {
     await command('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true})
     await evaluate(`[...document.querySelectorAll('.nav-link')].find(el => el.textContent.trim() === 'Matriz')?.click()`)
     await until(`document.querySelectorAll('table thead th').length === ${rbacFixture.roles.length + 1}`)
-    assert.ok(await evaluate(`(()=>{const pane=document.querySelector('.table-responsive');return pane.scrollWidth > pane.clientWidth})()`),
-      'The matrix must scroll horizontally on mobile.')
+    assert.ok(await evaluate(`getComputedStyle(document.querySelector('[data-rbac-mobile]')).display !== 'none'`),
+      'Mobile uses a focused role view instead of a wide matrix.')
     await screenshot('rbac-rector-matriz-mobile')
+    await runRbacResponsiveSmoke({platform:false,evaluate,until,command,screenshot})
     assert.deepEqual(apiWrites.filter(path => path.startsWith('/api/rbac/')), [], 'Visual smoke must not change school permissions.')
     assert.deepEqual(errors, [], 'Uncaught browser errors in school RBAC.')
-    console.log('PASS: rector matrix, readable labels, role management, plan locks and mobile horizontal scroll.')
+    console.log('PASS: rector matrix, readable labels, role management, plan locks and mobile role view.')
   } else if (indicatorScopeMode) {
     await navigate('/ajustes-institucionales/indicadores', 'Configuración de indicadores')
     await until(`!!document.querySelector('input[name="indicator-scope"]:checked')`)
@@ -1220,7 +1314,8 @@ try {
   } else if (eventsMode) {
     await runEventsSmoke({navigate, evaluate, until, screenshot, command, fixture: eventFixture, errors})
   } else if (intakeMode) {
-    await runEnrollmentSmoke({navigate, evaluate, until, screenshot, command, fixture: intakeFixture, errors, apiReads, summaryOnly: process.argv.includes('--ingreso-summary')})
+    const run = process.argv.includes('--ingreso-workflow') ? runEnrollmentWorkflowSmoke : process.argv.includes('--ingreso-admin') ? runEnrollmentAdminSmoke : runEnrollmentSmoke
+    await run({navigate, evaluate, until, screenshot, command, fixture: intakeFixture, errors, apiReads, summaryOnly: process.argv.includes('--ingreso-summary')})
   } else if (aulaMode) {
     await navigate('/evaluacion/aula', 'Selecciona un grupo académico')
     assert.ok(await evaluate(`!document.body.innerText.includes('Docente de prueba')`), 'No debe cargar las aulas antes de elegir grupo.')
@@ -1747,6 +1842,8 @@ try {
     assert.equal(reloadReads.filter(path => path === '/api/onboarding/status').length, 0)
     assert.deepEqual(errors, [])
     console.log('PASS: startup and F5: 1 /me, 0 /onboarding/status; no uncaught errors.')
+  } else if (commercialMode) {
+    await runCommercialSmoke({navigate,evaluate,until,screenshot,command,errors,requests:commercialApi.requests,sleep})
   } else if (platformMode) {
     await navigate('/configuracion/colegios', 'Colegio de prueba')
     assert.equal(apiReads.filter(path => path === '/api/estructura/sedes').length, 0,
