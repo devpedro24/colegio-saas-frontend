@@ -16,12 +16,14 @@ export default function AsistenciaPage() {
   const canApprove = hasPermission('asistencia.correccion.aprobar') &&
     ['rector', 'secretaria', 'coord_academico', 'coord_combinado'].some(role => hasRole(role))
   const canStudent = hasRole('estudiante') && hasPermission('asistencia.justificar_propia')
+  const canReadStudent = hasRole('estudiante') && (hasPermission('asistencia.consultar_propia') || canStudent)
   const canConfigure = hasPermission('asistencia.configurar_politica') &&
     (hasRole('rector') || hasRole('coord_academico') || hasRole('coord_combinado') || isPlatform)
 
   return <><PageTitle>{intl.formatMessage({id: 'attendance.title'})}</PageTitle><Content>
     {canRecord && <AttendanceSheetView canConfigure={canConfigure} canRequest={canRequest} />}
-    {canStudent && <><StudentJustifications /><AttendanceRequestInbox scope='propias' /></>}
+    {canReadStudent && <StudentJustifications canSubmit={canStudent} />}
+    {canStudent && <AttendanceRequestInbox scope='propias' />}
     {canRequest && <AttendanceRequestInbox scope='docente' />}
     {canApprove && <AttendanceRequestInbox scope='aprobacion' />}
   </Content></>

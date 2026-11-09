@@ -67,6 +67,7 @@ const AcademicoPage: FC = () => {
       <Route path='boletines/*' element={platformInSchool || hasPermission('boletines.emisiones.ver') || hasPermission('boletines.grupo.ver') || hasPermission('notas.ver_propias') ? <BoletinesPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='indicadores' element={hasPermission('indicadores.base.gestionar') || hasPermission('indicadores.grupo.ver') ? <IndicadoresPage /> : <Navigate to='/dashboard' replace />} />
       <Route path='asistencia' element={platformInSchool || hasPermission('asistencia.registrar_clases') ||
+        (hasRole('estudiante') && hasPermission('asistencia.consultar_propia')) ||
         hasPermission('asistencia.justificar_propia') || hasPermission('asistencia.correccion.aprobar') ||
         hasPermission('asistencia.correccion.solicitar') ||
         (hasPermission('asistencia.consultar_grupo') &&

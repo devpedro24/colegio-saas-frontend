@@ -9,7 +9,8 @@ import {
   type AttendanceClass, type AttendanceRequest,
 } from './asistencia.api'
 
-const message = (error: unknown, fallback: string) => error instanceof ApiError ? error.message : fallback
+const message = (error: unknown, fallback: string) => error instanceof ApiError
+  ? Object.values(error.errors ?? {}).flat().find(value => value.trim()) ?? error.message : fallback
 const slotKey = (token: string, date: string) => `${token}:${date}`
 
 function Pager({page, last, total, onPage}: {page: number; last: number; total: number; onPage: (value: number) => void}) {
@@ -25,7 +26,7 @@ function Pager({page, last, total, onPage}: {page: number; last: number; total: 
   </div>
 }
 
-export function StudentJustifications() {
+export function StudentJustifications({canSubmit = true}: {canSubmit?: boolean}) {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const toast = useToast()
@@ -41,27 +42,27 @@ export function StudentJustifications() {
   const changePage = (value: number) => {setPage(value); setSelected([])}
   return <section className='card mb-6'><div className='card-body'>
     <h2 className='fs-4 fw-bold'>{t('attendance.myAbsences')}</h2>
-    <p className='text-muted'>{t('attendance.studentHelp')}</p>
+    {canSubmit && <p className='text-muted'>{t('attendance.studentHelp')}</p>}
     {query.isLoading && <p role='status'>{t('attendance.loading')}</p>}
     {query.isError && <div role='alert' className='alert alert-danger'>{message(query.error, t('attendance.loadError'))}</div>}
     {query.data && <>
       <div className='table-responsive'><table className='table table-row-dashed align-middle gy-2'>
-        <thead><tr><th className='w-25px' scope='col'>{t('attendance.select')}</th>
+        <thead><tr>{canSubmit && <th className='w-25px' scope='col'>{t('attendance.select')}</th>}
           <th scope='col'>{t('attendance.date')}</th><th scope='col'>{t('attendance.assignment')}</th>
           <th scope='col'>{t('attendance.slot')}</th></tr></thead>
         <tbody>{absences.map(row => {
           const key = slotKey(row.sesion_token, row.fecha)
-          return <tr key={key}><td><input type='checkbox' className='form-check-input' checked={selected.includes(key)}
+          return <tr key={key}>{canSubmit && <td><input type='checkbox' className='form-check-input' checked={selected.includes(key)}
             disabled={!!assignment && assignment !== row.asignacion_token}
             aria-label={`${t('attendance.select')} ${row.materia} ${row.fecha} ${row.hora_inicio}`}
-            onChange={event => setSelected(current => event.target.checked ? [...current, key] : current.filter(value => value !== key))} /></td>
+            onChange={event => setSelected(current => event.target.checked ? [...current, key] : current.filter(value => value !== key))} /></td>}
             <td>{row.fecha}</td><td>{row.materia} · {row.grupo}</td>
             <td>{row.hora_inicio}–{row.hora_fin}</td></tr>
         })}</tbody>
       </table></div>
       {!absences.length && <p className='text-muted'>{t('attendance.noAbsences')}</p>}
       <Pager page={page} last={query.data.pagination.last_page} total={query.data.pagination.total} onPage={changePage} />
-      <label className='form-label mt-4' htmlFor='attendance-student-reason'>{t('attendance.reason')}</label>
+      {canSubmit && <><label className='form-label mt-4' htmlFor='attendance-student-reason'>{t('attendance.reason')}</label>
       <textarea id='attendance-student-reason' className='form-control' rows={3} maxLength={2000} minLength={10}
         value={reason} onChange={event => setReason(event.target.value)} />
       <div className='text-muted fs-7 mt-2'>{t('attendance.sameSubjectHelp')}</div>
@@ -70,7 +71,7 @@ export function StudentJustifications() {
           marcas: chosen.map(row => ({sesion_token: row.sesion_token, fecha: row.fecha})), motivo: reason.trim()}, {
           onSuccess: () => {toast.success(t('attendance.requestSent')); setSelected([]); setReason('')},
           onError: error => toast.error(message(error, t('attendance.requestError'))),
-        })}>{t('attendance.sendJustification')}</button>
+        })}>{t('attendance.sendJustification')}</button></>}
     </>}
   </div></section>
 }
@@ -154,7 +155,7 @@ export function AttendanceRequestInbox({scope}: {scope: 'propias' | 'docente' | 
       onError: (error: unknown) => {
         const reason = message(error, t('attendance.requestError'))
         if (decision === 'aprobar') setApprovalError(reason)
-        else toast.error(reason)
+        toast.error(reason)
       },
       onSettled: () => {submitting.current = false},
     }

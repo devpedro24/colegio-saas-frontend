@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useEffect, useState} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -78,10 +79,10 @@ function AttendancePolicyPanel({year, readOnly}: {year: string; readOnly: boolea
       </div>}
       <div className='row g-3'>
         <div className='col-md-3'><label className='form-label' htmlFor='attendance-max-count'>{t('attendance.maxCount')}</label>
-          <input id='attendance-max-count' type='number' min='0' max='1000' className='form-control' value={count}
+          <NumberInput id='attendance-max-count' type='number' min='0' max='1000' className='form-control' value={count}
             onChange={event => update(setCount, event.target.value)} /></div>
         <div className='col-md-3'><label className='form-label' htmlFor='attendance-max-percent'>{t('attendance.maxPercent')}</label>
-          <input id='attendance-max-percent' type='number' min='0' max='100' step='0.01' className='form-control' value={percent}
+          <NumberInput id='attendance-max-percent' type='number' min='0' max='100' step='0.01' className='form-control' value={percent}
             onChange={event => update(setPercent, event.target.value)} /></div>
         <div className='col-md-3'><label className='form-label' htmlFor='attendance-combination'>{t('attendance.combination')}</label>
           <select id='attendance-combination' className='form-select' value={combination}
@@ -96,7 +97,7 @@ function AttendancePolicyPanel({year, readOnly}: {year: string; readOnly: boolea
             <option value='anual'>{t('attendance.year')}</option>
           </select></div>
         <div className='col-md-3'><label className='form-label' htmlFor='attendance-late'>{t('attendance.lateEquivalent')}</label>
-          <input id='attendance-late' type='number' min='0' max='100' className='form-control' value={late}
+          <NumberInput id='attendance-late' type='number' min='0' max='100' className='form-control' value={late}
             onChange={event => update(setLate, event.target.value)} /></div>
       </div>
       <div className='d-flex justify-content-end mt-4'>
@@ -106,7 +107,8 @@ function AttendancePolicyPanel({year, readOnly}: {year: string; readOnly: boolea
             combinacion: combination, ambito: scope, tardes_por_falta: Number(late), version: draftVersion ?? query.data!.version,
           }, {
             onSuccess: () => {setDirty(false); setDraftVersion(null); toast.success(t('attendance.policySaved'))},
-            onError: error => toast.error(error instanceof ApiError ? error.message : t('attendance.policySaveError')),
+            onError: error => toast.error(error instanceof ApiError
+              ? Object.values(error.errors ?? {}).flat().find(value => value.trim()) ?? error.message : t('attendance.policySaveError')),
           })}>{t('attendance.savePolicy')}</button>
       </div>
     </>}
