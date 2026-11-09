@@ -63,6 +63,7 @@ function harness({mode = 'horarios', canManage = true, yearWritable = true, hasG
   const catalog = {can_manage: canManage, grupos: [group], docentes: [lesson.docente], espacios: [lesson.espacio], materias: [subject], bloques: [], asignaciones: [assignment], sesiones: [lesson], anos: [], areas: []}
   const list = {rows: catalog.asignaciones, response: {schedule: catalog}, isLoading: false, isFetching: false, error: null, meta: {current_page: 1, last_page: 1, total: 1, per_page: 20}, onPageChange() {}, onPerPageChange() {}}
   const mocks = {
+    '@/lib/ui/toast': {useToast: () => ({success() {}, error() {}})},
     react: {...React, useState(initial) {
       const index = stateCursor++
       if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial

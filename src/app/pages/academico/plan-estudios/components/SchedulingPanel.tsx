@@ -5,6 +5,7 @@ import {Modal} from 'react-bootstrap'
 import {createPortal} from 'react-dom'
 import {useSearchParams} from 'react-router-dom'
 import {ApiError, api} from '@/lib/api/client'
+import {useToast} from '@/lib/ui/toast'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {formatSchoolTime} from '@/lib/format/schoolTime'
 import {AcademicOptionSelect, type AcademicOption, type OpaqueAcademicOption} from '../../shared/AcademicOptionSelect'
@@ -34,6 +35,7 @@ const subjectHue = (token: string) => [...token].reduce((value, char) => (value 
 
 export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'horarios' | 'resumen'}) {
   const intl = useIntl()
+  const toast = useToast()
   const t = (id: string) => intl.formatMessage({id}, {name: ''})
   const {yearToken: selectedYear, years, writable: yearWritable} = useAcademicYear()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -97,7 +99,6 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
   const [bulkGroupId, setBulkGroupId] = useState('')
   const [bulkTeacherId, setBulkTeacherId] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
-  const [error, setError] = useState('')
   const [sessionDay, setSessionDay] = useState(days[0])
   const [sessionSubjectId, setSessionSubjectId] = useState('')
   const [sessionGroupId, setSessionGroupId] = useState('')
@@ -173,7 +174,14 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     const url = `${path}?opaque=1`
     if (method === 'delete') return api.delete(url)
     return method === 'put' ? api.put(url, toOpaqueAcademic(body ?? {})) : api.post(url, toOpaqueAcademic(body ?? {}))
-  }, onSuccess: async () => {await client.invalidateQueries({queryKey: ['horarios']}); setShow(false); setBulkOpen(false); setEditing(null); setAssignmentEditing(null); setDeleting(null); setError('')}, onError: e => setError(e instanceof ApiError && e.errors ? Object.values(e.errors).flat()[0] ?? e.message : e.message)})
+  }, onSuccess: async (_, {method, path}) => {
+    const variant = method === 'delete' ? 'deleted' : method === 'put' || path === '/asignaciones/grupo' ? 'updated' : 'success'
+    toast.success(t(variant === 'deleted' ? 'common.toast.deleted' : variant === 'updated' ? 'common.toast.updated' : 'common.toast.created'), variant)
+    await client.invalidateQueries({queryKey: ['horarios']})
+    setShow(false); setBulkOpen(false); setEditing(null); setAssignmentEditing(null); setDeleting(null)
+  }, onError: cause => toast.error(cause instanceof ApiError
+    ? Object.values(cause.errors ?? {}).flat()[0] ?? cause.message
+    : t('common.toast.saveError'))})
 
   const writable = data?.can_manage && yearWritable
   const assignments = mode === 'asignaciones' ? assignmentList.rows : data?.asignaciones.filter(item => String(item.ano_lectivo_id) === selectedYear && (!group || String(item.grupo_id) === group) && (!teacher || String(item.docente_id) === teacher)) ?? []
@@ -274,7 +282,6 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     if (!copy && session.dia === target.day && target.start === minutes(sessionStart(session))) return
     const block = data?.bloques.find(item => item.jornada_id === session.grupo.jornada_id
       && minutes(item.hora_inicio) === target.start && minutes(item.hora_fin) === target.start + length)
-    setError('')
     setCopySource(null)
     setDropTarget(null)
     mutation.mutate({path: copy ? '/horarios' : `/horarios/${encodeURIComponent(session.id)}`, method: copy ? undefined : 'put', body: {
@@ -306,7 +313,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     setEditing(null); setAssignmentEditing(null); setSessionDay(days[0]); setSessionSubjectId(''); setSessionGroupId(group)
     setSelectedFormGroup(selectedGroup ?? null)
     setSessionTeacherId(''); setSessionSpaceId(''); setSessionBlockId('')
-    setSessionStartTime(''); setSessionEndTime(''); setUseBlock(false); setError(''); setShow(true)
+    setSessionStartTime(''); setSessionEndTime(''); setUseBlock(false); setShow(true)
   }
   function openSession(item: Session) {
     setEditing(item); setSessionDay(item.dia); setSessionSubjectId(String(item.materia_id)); setSessionGroupId(String(item.grupo_id))
@@ -314,11 +321,11 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     setSessionTeacherId(item.docente_id ? String(item.docente_id) : ''); setSessionSpaceId(item.espacio_fisico_id ? String(item.espacio_fisico_id) : '')
     setSessionBlockId(item.bloque_horario_id ? String(item.bloque_horario_id) : '')
     setSessionStartTime(sessionStart(item).slice(0, 5)); setSessionEndTime(sessionEnd(item).slice(0, 5))
-    setUseBlock(Boolean(item.bloque_horario_id)); setError(''); setShow(true)
+    setUseBlock(Boolean(item.bloque_horario_id)); setShow(true)
   }
   function openAssignment(item: Assignment) {
     setEditing(null); setAssignmentEditing(item); setSessionSubjectId(String(item.materia_id)); setSessionGroupId(String(item.grupo_id)); setSessionTeacherId(item.docente_id ? String(item.docente_id) : '')
-    setSelectedFormGroup(item.grupo); setError(''); setShow(true)
+    setSelectedFormGroup(item.grupo); setShow(true)
   }
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -368,7 +375,7 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
       <div className={`schedule-toolbar-actions${mode === 'asignaciones' ? ' schedule-assignment-toolbar' : ''}`}>
         {writable && mode !== 'resumen' && <button type='button' className='btn btn-primary' disabled={!selectedYear} onClick={openNew}>+ {t(mode === 'asignaciones' ? 'schedule.newAssignment' : 'schedule.newSession')}</button>}
         {writable && mode === 'asignaciones' && <button className='btn btn-light-primary' type='button' onClick={() => {
-          setBulkGroupId(group); setBulkTeacherId(''); setError(''); setBulkOpen(true)
+          setBulkGroupId(group); setBulkTeacherId(''); setBulkOpen(true)
         }}>{t('schedule.assignWholeGroup')}</button>}
         {mode === 'horarios' && <button type='button' className='btn btn-light' disabled={needsGroup} onClick={() => window.print()}>{t('schedule.print')}</button>}
       </div>
@@ -379,7 +386,6 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
       <span className='d-md-none'>{t('schedule.mobileHint')}</span>
     </p>}
     {copySource && mode === 'horarios' && <div className='alert alert-info d-flex align-items-center justify-content-between gap-3 schedule-copy-banner' data-schedule-copy-banner role='status'><span>{t('schedule.placeCopy')} <strong>{copySource.materia?.nombre} · {gradeGroupLabel(copySource.grupo)}</strong></span><button type='button' className='btn btn-sm btn-light' onClick={() => {setCopySource(null); setDropTarget(null)}}>{t('common.cancel')}</button></div>}
-    {error && !show && <div className='alert alert-danger' role='alert'>{error}</div>}
     {mode === 'resumen' && <div className='row g-5'>{[['schedule.subjects', data?.counts?.materias ?? data?.materias.length], ['schedule.assignments', data?.pagination?.asignaciones?.total ?? assignments.length], ['schedule.sessions', data?.counts?.sesiones ?? sessions.length]].map(([label, value]) => <div className='col-md-4' key={label}><div className='bg-light-primary rounded p-8'><div className='fs-2x fw-bold'>{value}</div><div>{t(String(label))}</div></div></div>)}</div>}
     {mode === 'asignaciones' && <>
       <div className='schedule-assignments'>
@@ -510,7 +516,6 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
     </Modal>
     <Modal show={show} onHide={() => setShow(false)} centered scrollable size='lg' className='schedule-editor-modal'><Modal.Header closeButton closeLabel={t('common.close')}><Modal.Title>{t(mode === 'asignaciones' ? 'schedule.newAssignment' : 'schedule.session')}</Modal.Title></Modal.Header>
       <form key={assignmentEditing?.id ?? 'new'} onSubmit={save}><Modal.Body>
-        {error && <div className='alert alert-danger' role='alert'>{error}</div>}
         {mode === 'asignaciones' ? <div className='vstack gap-5'>
           {groupField}
           {subjectField}
@@ -550,12 +555,11 @@ export function SchedulingPanel({mode = 'horarios'}: {mode?: 'asignaciones' | 'h
         {writable && <button className='btn btn-primary' disabled={mutation.isPending}>{mutation.isPending ? t('common.pleaseWait') : intl.formatMessage({id: 'common.save'}, {name: t(mode === 'asignaciones' ? 'entity.asignacionDocente' : 'entity.sesionHorario')})}</button>}
       </Modal.Footer></form>
     </Modal>
-    <Modal show={deleting !== null} onHide={() => setDeleting(null)} centered className='schedule-editor-modal'><Modal.Header closeButton closeLabel={t('common.close')}><Modal.Title>{t('common.delete')}</Modal.Title></Modal.Header><Modal.Body>{t('schedule.confirmDelete')}{error && <div className='alert alert-danger mt-4'>{error}</div>}</Modal.Body><Modal.Footer><button className='btn btn-light' onClick={() => setDeleting(null)}>{t('common.cancel')}</button><button className='btn btn-danger' disabled={mutation.isPending} onClick={() => mutation.mutate({path: `/${mode === 'asignaciones' ? 'asignaciones' : 'horarios'}/${encodeURIComponent(deleting!)}`, method: 'delete'})}>{t('common.delete')}</button></Modal.Footer></Modal>
+    <Modal show={deleting !== null} onHide={() => setDeleting(null)} centered className='schedule-editor-modal'><Modal.Header closeButton closeLabel={t('common.close')}><Modal.Title>{t('common.delete')}</Modal.Title></Modal.Header><Modal.Body>{t('schedule.confirmDelete')}</Modal.Body><Modal.Footer><button className='btn btn-light' onClick={() => setDeleting(null)}>{t('common.cancel')}</button><button className='btn btn-danger' disabled={mutation.isPending} onClick={() => mutation.mutate({path: `/${mode === 'asignaciones' ? 'asignaciones' : 'horarios'}/${encodeURIComponent(deleting!)}`, method: 'delete'})}>{t('common.delete')}</button></Modal.Footer></Modal>
     <Modal show={bulkOpen} onHide={() => setBulkOpen(false)} centered className='schedule-editor-modal'>
       <Modal.Header closeButton closeLabel={t('common.close')}><Modal.Title>{t('schedule.assignWholeGroup')}</Modal.Title></Modal.Header>
       <Modal.Body>
         <p className='text-muted'>{t('schedule.assignWholeGroupHelp')}</p>
-        {error && <div className='alert alert-danger' role='alert'>{error}</div>}
         <div className='vstack gap-4'>
           <AcademicOptionSelect tipo='grupos' yearId={selectedYear} opaque label={t('schedule.group')} required
             value={bulkGroupId} onChange={setBulkGroupId} initialOptions={data?.grupos ?? []}

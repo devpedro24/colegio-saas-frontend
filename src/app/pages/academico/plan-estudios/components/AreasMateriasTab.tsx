@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
@@ -48,14 +49,16 @@ const AreaFormDialog: FC<{show: boolean; area: Area | null; onClose: () => void}
     try {
       if (isEdit && area) {
         await update.mutateAsync({id: area.id, input})
-        toast.success(t('common.toast.updated'))
+        toast.success(t('common.toast.updated'), 'updated')
       } else {
         await create.mutateAsync(input)
         toast.success(t('common.toast.created'))
       }
       onClose()
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : t('common.toast.saveError'))
+      toast.error(error instanceof ApiError
+        ? Object.values(error.errors ?? {}).flat()[0] ?? error.message
+        : t('common.toast.saveError'))
     }
   }
 
@@ -167,14 +170,16 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; onClose: ()
     try {
       if (isEdit && materia) {
         await update.mutateAsync({id: materia.id, input})
-        toast.success(t('common.toast.updated'))
+        toast.success(t('common.toast.updated'), 'updated')
       } else {
         await create.mutateAsync(input)
         toast.success(t('common.toast.created'))
       }
       onClose()
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : t('common.toast.saveError'))
+      toast.error(error instanceof ApiError
+        ? Object.values(error.errors ?? {}).flat()[0] ?? error.message
+        : t('common.toast.saveError'))
     }
   }
 
@@ -235,7 +240,7 @@ const MateriaFormDialog: FC<{show: boolean; materia: Materia | null; onClose: ()
               <label className='required fs-6 fw-semibold mb-2'>
                 {t('academico.planEstudios.materia.intensidad')}
               </label>
-              <input
+              <NumberInput
                 type='number'
                 required
                 min={1}
@@ -548,7 +553,7 @@ const AreasMateriasTab: FC = () => {
           if (!deleteArea) return
           try {
             await deleteAreaMutation.mutateAsync(deleteArea.id)
-            toast.success(t('common.toast.deleted'))
+            toast.success(t('common.toast.deleted'), 'deleted')
             setDeleteArea(null)
           } catch (error) {
             toast.error(error instanceof ApiError ? error.message : t('common.toast.deleteError'))
@@ -565,7 +570,7 @@ const AreasMateriasTab: FC = () => {
           if (!deleteMateria) return
           try {
             await deleteMateriaMutation.mutateAsync(deleteMateria.id)
-            toast.success(t('common.toast.deleted'))
+            toast.success(t('common.toast.deleted'), 'deleted')
             setDeleteMateria(null)
           } catch (error) {
             toast.error(error instanceof ApiError ? error.message : t('common.toast.deleteError'))
