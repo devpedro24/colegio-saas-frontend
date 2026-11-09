@@ -81,6 +81,10 @@ test('an expired school context clears only impersonation; platform expiry notif
   const unsubscribe = onSessionExpired(() => {expired++})
   await assert.rejects(api.get('/colegios'), {status: 401})
   assert.equal(expired, 1)
+  globalThis.smokeContext.state = {activeColegio: {slug: 'school-a'}}
+  await assert.rejects(api.get('/contact-options'), {status: 401})
+  assert.equal(expired, 2, 'The shared contact catalog authenticates the platform session on the central domain.')
+  assert.equal(globalThis.smokeContext.state.activeColegio.slug, 'school-a')
   unsubscribe()
 })
 
@@ -96,6 +100,50 @@ test('concurrent GETs share one request but resolved results are not retained', 
   assert.equal(calls, 2)
   finish(new Response('{}'))
   await next
+})
+
+test('school validation and permission errors preserve the authenticated session', async () => {
+  globalThis.smokeContext.state = {activeColegio: null}
+  const context = globalThis.smokeContext.state
+  const clears = globalThis.smokeContext.clears
+  let expired = 0
+  const unsubscribe = onSessionExpired(() => expired++)
+  try {
+    for (const status of [403, 422, 423, 429]) {
+      globalThis.fetch = async () => new Response(JSON.stringify({message: 'Request rejected'}), {
+        status, headers: {'Content-Type': 'application/json'},
+      })
+      await assert.rejects(api.put('/account/profile', {phone: 'invalid'}), {status})
+      assert.equal(expired, 0)
+      assert.equal(globalThis.smokeContext.state, context)
+      assert.equal(globalThis.smokeContext.clears, clears)
+    }
+    globalThis.fetch = async () => new Response('{"user":{"name":"Usuario"}}', {
+      headers: {'Content-Type': 'application/json'},
+    })
+    assert.equal((await api.get('/me')).user.name, 'Usuario')
+  } finally {
+    unsubscribe()
+  }
+})
+
+test('campus account updates use the refreshed CSRF cookie on subsequent writes', async () => {
+  const sent = []
+  globalThis.smokeContext.state = {activeColegio: null}
+  globalThis.fetch = async (_url, options) => {
+    sent.push(options)
+    globalThis.document.cookie = 'school_saas_csrf=refreshed-campus-csrf'
+    return new Response('{}', {headers: {'Content-Type': 'application/json'}})
+  }
+  try {
+    await api.put('/account/profile', {phone: '+573001234567'})
+    await api.put('/account/profile', {phone: '+573001234568'})
+    assert.equal(sent[0].headers['X-CSRF-Token'], 'csrf-value')
+    assert.equal(sent[1].headers['X-CSRF-Token'], 'refreshed-campus-csrf')
+    assert.ok(sent.every(options => options.credentials === 'same-origin'))
+  } finally {
+    globalThis.document.cookie = 'school_saas_csrf=csrf-value'
+  }
 })
 
 test('public enrollment uses its own CSRF and never expires a staff session', async () => {

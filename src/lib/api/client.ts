@@ -55,7 +55,7 @@ void revokeLegacySession(takeLegacySession());
  * Prefijos de rutas de plataforma: se atienden con la cookie de plataforma
  * aunque el superadministrador tenga una suplantación activa.
  */
-const PLATFORM_PATH_PREFIXES = ['/platform', '/colegios', '/plans', '/planes', '/rbac', '/login', '/logout', '/me', '/account', '/mfa', '/forgot-password', '/reset-password'];
+const PLATFORM_PATH_PREFIXES = ['/platform', '/colegios', '/plans', '/planes', '/rbac', '/login', '/logout', '/me', '/account', '/contact-options', '/mfa', '/forgot-password', '/reset-password'];
 
 /** ¿El path corresponde a una ruta de plataforma (por prefijo, con límite de segmento)? */
 function isPlatformPath(path: string): boolean {

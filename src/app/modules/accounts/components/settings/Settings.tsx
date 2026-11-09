@@ -1,5 +1,6 @@
 import {useEffect} from 'react'
 import {useSearchParams} from 'react-router-dom'
+import {PlatformContact} from './cards/PlatformContact'
 import {ProfileDetails} from './cards/ProfileDetails'
 import {SignInMethod} from './cards/SignInMethod'
 import {TwoFactorAuth} from './cards/TwoFactorAuth'
@@ -41,6 +42,7 @@ export function Settings() {
   return (
     <>
       <ProfileDetails />
+      {currentUser?.is_platform && currentUser.roles?.includes('superadmin') && <PlatformContact />}
       <SignInMethod />
       <TwoFactorAuth />
       {(currentUser?.profile_capabilities?.google_link || currentUser?.google_email) && <ConnectedAccounts />}

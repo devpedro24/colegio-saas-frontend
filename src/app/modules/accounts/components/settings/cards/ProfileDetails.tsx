@@ -6,6 +6,7 @@ import {useAuth} from '../../../../auth'
 import {useToast} from '@/lib/ui/toast'
 import {ApiError} from '@/lib/api/client'
 import {useUpdateProfile} from '@/app/pages/account/account.api'
+import {ContactMobileInput} from '@/lib/ui/ContactMobileInput'
 
 interface IProfileFields {
   name: string
@@ -21,6 +22,7 @@ const ProfileDetails: FC = () => {
   const {currentUser, setCurrentUser} = useAuth()
 
   const [loading, setLoading] = useState(false)
+  const [phoneValid, setPhoneValid] = useState(false)
 
   const profileMutation = useUpdateProfile()
 
@@ -45,6 +47,7 @@ const ProfileDetails: FC = () => {
     },
     validationSchema: profileSchema,
     onSubmit: (values) => {
+      if (!phoneValid) return
       setLoading(true)
       profileMutation.mutate(
         {
@@ -130,20 +133,17 @@ const ProfileDetails: FC = () => {
             </div>
 
             <div className='row mb-0'>
-              <label className='col-lg-4 col-form-label fw-bold fs-6'>
+              <label htmlFor='profile-phone' className='col-lg-4 col-form-label fw-bold fs-6'>
                 <FormattedMessage id='account.field.contactPhone' />
               </label>
 
               <div className='col-lg-8 fv-row'>
-                <input
+                <ContactMobileInput
                   id='profile-phone'
-                  autoComplete='tel'
-                  type='tel'
-                  className='form-control form-control-lg form-control-solid'
-                  placeholder={intl.formatMessage({
-                    id: 'account.profile.contactPhonePh',
-                  })}
-                  {...formik.getFieldProps('phone')}
+                  value={formik.values.phone}
+                  onChange={(value) => formik.setFieldValue('phone', value)}
+                  onValidityChange={setPhoneValid}
+                  disabled={loading}
                 />
                 {formik.touched.phone && formik.errors.phone && (
                   <div className='fv-plugins-message-container'>
@@ -155,7 +155,7 @@ const ProfileDetails: FC = () => {
           </div>
 
           <div className='card-footer d-flex justify-content-end py-6 px-9'>
-            <button type='submit' className='btn btn-primary' disabled={loading || !formik.dirty}>
+            <button type='submit' className='btn btn-primary' disabled={loading || !formik.dirty || !phoneValid}>
               {!loading && <FormattedMessage id='account.profile.save' />}
               {loading && (
                 <span className='indicator-progress' style={{display: 'block'}}>

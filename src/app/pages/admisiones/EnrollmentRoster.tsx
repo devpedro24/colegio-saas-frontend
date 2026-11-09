@@ -44,7 +44,7 @@ function ManualEnrollment({catalog, onClose, onSaved}: {catalog: Catalog; onClos
     ['primer_nombre', 'Primer nombre', 'First name', true, 'text'], ['segundo_nombre', 'Segundo nombre', 'Middle name', false, 'text'],
     ['primer_apellido', 'Primer apellido', 'First surname', true, 'text'], ['segundo_apellido', 'Segundo apellido', 'Second surname', false, 'text'],
     ['nacimiento', 'Fecha de nacimiento', 'Birth date', true, 'date'], ['numero_documento', 'Número de documento', 'Identity number', true, 'text'],
-    ['telefono', 'Teléfono (ej. +573001234567)', 'Phone (e.g. +573001234567)', true, 'tel'],
+    ['telefono', 'Celular (ej. +573001234567)', 'Mobile (e.g. +573001234567)', true, 'tel'],
   ]
   const submit = (event: FormEvent) => {event.preventDefault(); if (!save.isPending) save.mutate()}
   return <section className='card'><div className='card-header'><h3 className='card-title'>{text('Matrícula manual', 'Manual enrollment')}</h3></div>
@@ -97,7 +97,7 @@ function StudentFile({token, onClose}: {token: string; onClose: () => void}) {
   const query = useQuery({queryKey: ['matriculas', scope, 'ficha', token], queryFn: () => api.get<{data: Row & {datos: StudentData; documentos: DocumentVersion[]}}>(`/matriculas/${encodeURIComponent(token)}`)})
   const item = query.data?.data
   const labels: Record<string, string> = en ? {primer_nombre: 'First name', segundo_nombre: 'Middle name', primer_apellido: 'First surname', segundo_apellido: 'Second surname', nacimiento: 'Birth date', tipo_documento: 'Document type', numero_documento: 'Document number', telefono: 'Phone', direccion: 'Address', pais: 'Country', departamento: 'Department', municipio: 'Municipality'}
-    : {primer_nombre: 'Primer nombre', segundo_nombre: 'Segundo nombre', primer_apellido: 'Primer apellido', segundo_apellido: 'Segundo apellido', nacimiento: 'Nacimiento', tipo_documento: 'Tipo de documento', numero_documento: 'Documento', telefono: 'Teléfono', direccion: 'Dirección', pais: 'País', departamento: 'Departamento', municipio: 'Municipio'}
+    : {primer_nombre: 'Primer nombre', segundo_nombre: 'Segundo nombre', primer_apellido: 'Primer apellido', segundo_apellido: 'Segundo apellido', nacimiento: 'Nacimiento', tipo_documento: 'Tipo de documento', numero_documento: 'Documento', telefono: 'Celular', direccion: 'Dirección', pais: 'País', departamento: 'Departamento', municipio: 'Municipio'}
   return <section className='card card-body'><div className='d-flex justify-content-between gap-3'><h3>{item?.nombre}</h3><button className='btn btn-light btn-sm' onClick={onClose}>{en ? 'Close' : 'Cerrar'}</button></div>
     {query.isLoading && <p role='status'>…</p>}{query.error && <p role='alert'>{query.error.message}</p>}
     {item && <><p>{item.email} · {item.grupo} · {item.sede}</p><dl className='row'>{Object.entries(item.datos).filter(([key, value]) => key !== 'adicionales' && value).map(([key, value]) => <div className='col-md-6 mb-4' key={key}><dt>{labels[key] ?? key}</dt><dd>{String(value)}</dd></div>)}</dl>
