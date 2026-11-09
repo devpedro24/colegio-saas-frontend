@@ -2,10 +2,13 @@ import {useEffect, useState, type FormEvent} from 'react'
 import {useIntl} from 'react-intl'
 import {AcademicYearPicker, useAcademicYear} from '../../academic-year-context'
 import {useIndicatorPolicy, useSaveIndicatorPolicy} from '../../evaluacion/indicadores.api'
+import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 
 export function IndicatorPolicyCard() {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
+  const toast = useToast()
   const {yearToken} = useAcademicYear()
   const policy = useIndicatorPolicy(yearToken)
   const save = useSaveIndicatorPolicy(yearToken)
@@ -29,7 +32,10 @@ export function IndicatorPolicyCard() {
     event.preventDefault()
     if (!policy.data || !mode || (needsConfirmation && !confirmed)) return
     save.mutate({version: policy.data.version, alcance: mode,
-      docente_puede_editar: teacherEdit, confirmar_copia: confirmed})
+      docente_puede_editar: teacherEdit, confirmar_copia: confirmed}, {
+      onSuccess: () => toast.success(t('indicators.saved'), 'updated'),
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
+    })
   }
 
   return <form className='card' onSubmit={submit}>
@@ -73,8 +79,6 @@ export function IndicatorPolicyCard() {
           </label>
         </div>}
       </>}
-      {save.isError && <div className='alert alert-danger mt-5' role='alert'>{save.error.message}</div>}
-      {save.isSuccess && <div className='alert alert-success mt-5' role='status'>{t('indicators.saved')}</div>}
     </div>
     <div className='card-footer d-flex justify-content-end'>
       <button className='btn btn-primary' type='submit' disabled={!mode || !policy.data || save.isPending || (needsConfirmation && !confirmed)}>

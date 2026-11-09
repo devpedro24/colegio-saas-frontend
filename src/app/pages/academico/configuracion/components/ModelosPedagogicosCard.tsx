@@ -72,7 +72,7 @@ const ModeloForm: FC<{
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
         setError(err)
-        if (!err.errors) toast.error(err.message)
+        toast.error(Object.values(err.errors ?? {}).flat()[0] ?? err.message)
       } else {
         toast.error(t('common.toast.saveError'))
       }
@@ -83,7 +83,7 @@ const ModeloForm: FC<{
         {id: modelo.url_token, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             onClose()
           },
           onError,
@@ -216,10 +216,10 @@ const ModelosPedagogicosCard: FC<Props> = ({anoLectivoToken}) => {
 
   const handleDelete = (m: ModeloPedagogico) => {
     del.mutate(m.url_token, {
-      onSuccess: () => toast.success(t('common.toast.deleted')),
+      onSuccess: () => toast.success(t('common.toast.deleted'), 'deleted'),
       onError: (err) => {
         const message =
-          err instanceof ApiError ? err.message : t('common.toast.deleteError')
+          err instanceof ApiError ? Object.values(err.errors ?? {}).flat()[0] ?? err.message : t('common.toast.deleteError')
         toast.error(message)
       },
     })

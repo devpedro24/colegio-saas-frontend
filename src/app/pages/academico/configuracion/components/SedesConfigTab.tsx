@@ -171,7 +171,7 @@ const SedeFormDialog: FC<{
         {id: sede.id, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             onClose()
           },
           onError,
@@ -405,7 +405,7 @@ const SedesConfigTab: FC = () => {
     if (!deleteId) return
     del.mutate(deleteId.id, {
       onSuccess: () => {
-        toast.success(t('common.toast.deleted'))
+        toast.success(t('common.toast.deleted'), 'deleted')
         setDeleteId(null)
       },
       onError: () => {

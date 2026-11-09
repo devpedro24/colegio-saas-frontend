@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {FC, useState, type FormEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Modal} from 'react-bootstrap'
@@ -75,7 +76,7 @@ const MetodoForm: FC<{
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
         setError(err)
-        if (!err.errors) toast.error(err.message)
+        toast.error(Object.values(err.errors ?? {}).flat()[0] ?? err.message)
       } else {
         toast.error(t('common.toast.saveError'))
       }
@@ -86,7 +87,7 @@ const MetodoForm: FC<{
         {id: metodo.url_token, input},
         {
           onSuccess: () => {
-            toast.success(t('common.toast.updated'))
+            toast.success(t('common.toast.updated'), 'updated')
             onClose()
           },
           onError,
@@ -128,7 +129,7 @@ const MetodoForm: FC<{
             <label className='required fs-6 fw-semibold mb-2'>
               {t('academico.config.metodo.field.notaMinima')}
             </label>
-            <input
+            <NumberInput
               type='number'
               step='0.1'
               className={`form-control form-control-solid ${fe('nota_minima') ? 'is-invalid' : ''}`}
@@ -204,10 +205,10 @@ const MetodosAprobacionCard: FC<Props> = ({anoLectivoToken}) => {
 
   const handleDelete = (m: MetodoAprobacion) => {
     del.mutate(m.url_token, {
-      onSuccess: () => toast.success(t('common.toast.deleted')),
+      onSuccess: () => toast.success(t('common.toast.deleted'), 'deleted'),
       onError: (err) => {
         const message =
-          err instanceof ApiError ? err.message : t('common.toast.deleteError')
+          err instanceof ApiError ? Object.values(err.errors ?? {}).flat()[0] ?? err.message : t('common.toast.deleteError')
         toast.error(message)
       },
     })

@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {FC, useState, type FormEvent} from 'react'
 import {PerformanceRangeEditor} from './PerformanceRangeEditor'
 import type {PerformanceRange} from '../configuracion.types'
@@ -101,7 +102,7 @@ const EscalaForm: FC<{
     const onError = (err: unknown) => {
       if (err instanceof ApiError) {
         setError(err)
-        toast.error(err.fieldError('opciones') ?? err.message)
+        toast.error(Object.values(err.errors ?? {}).flat()[0] ?? err.message)
       } else {
         toast.error(t('common.toast.saveError'))
       }
@@ -121,7 +122,7 @@ const EscalaForm: FC<{
             nombre: choice.nombre.trim(), valor_equivalente: choice.valor_equivalente.replace(',', '.'),
             emoji: choice.emoji, aprueba: choice.aprueba}))})
       }
-      toast.success(t(isEdit ? 'common.toast.updated' : 'common.toast.created'))
+      toast.success(t(isEdit ? 'common.toast.updated' : 'common.toast.created'), isEdit ? 'updated' : 'success')
       onClose()
     } catch (error) { onError(error) }
   }
@@ -129,9 +130,6 @@ const EscalaForm: FC<{
   return (
     <form onSubmit={handleSubmit}>
       <div className='modal-body py-lg-8 px-lg-8'>
-        {error && <div className='alert alert-danger' role='alert'>
-          {fe('opciones') ?? error.message}
-        </div>}
         <div className='fv-row mb-6'>
           <label className='required fs-6 fw-semibold mb-2'>
             {t('academico.config.escala.field.nombre')}
@@ -185,7 +183,7 @@ const EscalaForm: FC<{
               <label className='fs-6 fw-semibold mb-2'>
                 {t('academico.config.escala.field.valorMin')}
               </label>
-              <input
+              <NumberInput
                 type='number'
                 step='0.1'
                 className={`form-control form-control-solid ${fe('valor_min') ? 'is-invalid' : ''}`}
@@ -198,7 +196,7 @@ const EscalaForm: FC<{
               <label className='fs-6 fw-semibold mb-2'>
                 {t('academico.config.escala.field.valorMax')}
               </label>
-              <input
+              <NumberInput
                 type='number'
                 step='0.1'
                 className={`form-control form-control-solid ${fe('valor_max') ? 'is-invalid' : ''}`}
@@ -211,7 +209,7 @@ const EscalaForm: FC<{
               <label className='fs-6 fw-semibold mb-2'>
                 {t('academico.config.escala.field.decimales')}
               </label>
-              <input
+              <NumberInput
                 type='number'
                 min={1}
                 max={1}
@@ -268,8 +266,10 @@ const EscalaForm: FC<{
                     const file = event.target.files?.[0]
                     if (!file) return
                     uploadImage.mutate({escalaToken: escala.url_token, opcionToken: choice.url_token!, file}, {
-                      onSuccess: response => {updateChoice(index, {imagen_url: response.data.imagen_url}); toast.success(t('common.toast.updated'))},
-                      onError: error => toast.error(error instanceof ApiError ? error.message : t('common.toast.saveError')),
+                      onSuccess: response => {updateChoice(index, {imagen_url: response.data.imagen_url}); toast.success(t('common.toast.updated'), 'updated')},
+                      onError: error => toast.error(error instanceof ApiError
+                        ? Object.values(error.errors ?? {}).flat()[0] ?? error.message
+                        : t('common.toast.saveError')),
                     })
                     event.target.value = ''
                   }} />
@@ -329,10 +329,10 @@ const EscalasCard: FC<Props> = ({anoLectivoToken}) => {
 
   const handleDelete = (e: EscalaValorativa) => {
     del.mutate(e.url_token, {
-      onSuccess: () => toast.success(t('common.toast.deleted')),
+      onSuccess: () => toast.success(t('common.toast.deleted'), 'deleted'),
       onError: (err) => {
         const message =
-          err instanceof ApiError ? err.message : t('common.toast.deleteError')
+          err instanceof ApiError ? Object.values(err.errors ?? {}).flat()[0] ?? err.message : t('common.toast.deleteError')
         toast.error(message)
       },
     })

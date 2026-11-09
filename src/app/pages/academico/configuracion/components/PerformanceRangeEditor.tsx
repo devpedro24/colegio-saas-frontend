@@ -1,8 +1,10 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useEffect, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {useEscalas, useUpdateEscala} from '../configuracion.api'
 import type {EscalaValorativa, PerformanceRange} from '../configuracion.types'
 import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 
 export function PerformanceRangeEditor({value, onChange, disabled = false, readOnly = false}: {
   value: PerformanceRange[]; onChange: (value: PerformanceRange[]) => void; disabled?: boolean; readOnly?: boolean
@@ -27,7 +29,7 @@ export function PerformanceRangeEditor({value, onChange, disabled = false, readO
           onChange={event => onChange(value.map((item, i) => i === index ? {...item, nombre: event.target.value} : item))} /></div>
       {(['desde', 'hasta'] as const).map(key => <div className='col-4 col-sm-2' key={key}>
         <label className='form-label'>{t(`siee.performance.${key}`)}</label>
-        <input className='form-control' type='number' step='0.1' required value={row[key]}
+        <NumberInput className='form-control' type='number' step='0.1' required value={row[key]}
           onChange={event => onChange(value.map((item, i) => i === index ? {...item, [key]: event.target.value} : item))} /></div>)}
       <div className='col-4 col-sm-3'><button type='button' className='btn btn-light-danger' onClick={() => onChange(value.filter((_, i) => i !== index))}>{t('grading.delete')}</button></div>
     </div>)}
@@ -47,8 +49,9 @@ function ScaleRanges({scale, year, editable}: {scale: EscalaValorativa; year: st
       await mutation.mutateAsync({id: scale.url_token, input: {ano_lectivo_token: year, nombre: scale.nombre,
         nivel_educativo: scale.nivel_educativo, tipo: scale.tipo, valor_min: scale.valor_min, valor_max: scale.valor_max,
         decimales: 1, desempenos: ranges}})
-      toast.success(intl.formatMessage({id: 'common.toast.updated'}))
-    } catch (error) {toast.error(error instanceof Error ? error.message : intl.formatMessage({id: 'common.toast.saveError'}))}
+      toast.success(intl.formatMessage({id: 'common.toast.updated'}), 'updated')
+    } catch (error) {toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message
+      : error instanceof Error ? error.message : intl.formatMessage({id: 'common.toast.saveError'}))}
   }}>
     <p className='fw-semibold mb-0'>{scale.nombre}</p>
     <PerformanceRangeEditor value={ranges} onChange={setRanges} disabled={!editable || mutation.isPending} readOnly={!editable} />
