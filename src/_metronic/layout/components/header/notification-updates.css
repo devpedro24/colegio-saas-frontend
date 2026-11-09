@@ -1,0 +1,7 @@
+.notification-update { --notice-bg: #e9f3ff; --notice-ink: #215b9b; }
+.notification-update[data-source='attendance'] { --notice-bg: #fff4ce; --notice-ink: #855b00; }
+.notification-update[data-source='calendar'] { --notice-bg: #f0e7ff; --notice-ink: #6834b5; }
+.notification-update .notification-source-icon,
+.notification-update .notification-source-label { background: var(--notice-bg); color: var(--notice-ink); }
+.notification-update .notification-source-label { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 600; margin-bottom: 4px; }
+.notification-update:hover { background: var(--bs-gray-100); border-radius: 8px; }

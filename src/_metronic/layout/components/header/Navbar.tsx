@@ -2,7 +2,7 @@ import {useEffect, useMemo} from 'react'
 import {useIntl} from 'react-intl'
 import {useNavigate} from 'react-router-dom'
 import {toAbsoluteUrl, withBase, reInitMenu} from '../../../helpers'
-import {getNavbarHtml} from './_NavbarContent'
+import {getNavbarHtml, NAVBAR_NOTIFICATIONS_SLOT} from './_NavbarContent'
 import {ThemeModeComponent} from '../../../assets/ts/layout'
 import {setLanguage, useLang} from '../../../i18n/Metronici18n'
 import {useAccountInstitution} from '@/app/modules/accounts/useAccountInstitution'
@@ -12,6 +12,7 @@ import {useImpersonation} from '../../../../app/modules/impersonation/impersonat
 import {useToast} from '@/lib/ui/toast'
 import {SchoolMailRequestsNotification} from './SchoolMailRequestsNotification'
 import {canAccessSchoolMail} from '@/app/modules/auth/core/schoolMailAccess'
+import {NotificationsMenu} from './NotificationsMenu'
 
 // Idiomas soportados (badge del trigger + estado activo). El submenu de demo46 se recorto a
 // English + Spanish, cada item con data-kt-lang. El nombre visible se traduce con i18n.
@@ -35,8 +36,7 @@ const Navbar = ({minimal = false}: {minimal?: boolean}) => {
   const {activeColegio} = useImpersonation()
   const planLabel = institution?.plan?.name || (currentUser?.is_platform && !activeColegio ? intl.formatMessage({id: 'account.platform'}) : intl.formatMessage({id: 'account.planUnavailable'}))
 
-  // Buscador, notificaciones y accesos rapidos son herramientas de PLATAFORMA (superadmin sin
-  // colegio activo); para usuarios de colegio (o superadmin suplantando uno) se ocultan.
+  // Platform search/quick tools stay separate from the school notification bell.
   const showQuickIcons = !minimal && isPlatform && !activeColegio
   // El usuario de plataforma conserva sus permisos centrales (normalmente vacíos)
   // mientras administra un colegio; la sesión temporal se resuelve por cookie.
@@ -52,11 +52,14 @@ const Navbar = ({minimal = false}: {minimal?: boolean}) => {
   const canConfigureIndicators = schoolContext && hasPermission('indicadores.configurar')
   // Keep the menu DOM intact when the surrounding workspace rerenders.
   // Replacing this HTML also removes the element bindings installed by KTMenu.
-  const markup = useMemo(() => ({__html: withBase(getNavbarHtml(intl, {
+  const markup = useMemo(() => {
+    const [before, after = ''] = withBase(getNavbarHtml(intl, {
     minimal, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail,
     canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators,
     userName: currentUser?.name, userEmail: currentUser?.email, planLabel,
-  }))}), [intl, minimal, showQuickIcons, canConfigureInstitution, canManageCampuses,
+    })).split(NAVBAR_NOTIFICATIONS_SLOT)
+    return {before: {__html: before}, after: {__html: after}}
+  }, [intl, minimal, showQuickIcons, canConfigureInstitution, canManageCampuses,
     canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators,
     currentUser?.name, currentUser?.email, planLabel])
 
@@ -132,8 +135,10 @@ const Navbar = ({minimal = false}: {minimal?: boolean}) => {
     {!minimal && <SchoolMailRequestsNotification />}
     <div
       className='app-navbar flex-shrink-0'
-      dangerouslySetInnerHTML={markup}
+      dangerouslySetInnerHTML={markup.before}
     />
+    {!minimal && <NotificationsMenu />}
+    <div className='app-navbar flex-shrink-0' dangerouslySetInnerHTML={markup.after} />
     </div>
   )
 }

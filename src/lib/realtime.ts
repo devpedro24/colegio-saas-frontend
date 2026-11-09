@@ -37,6 +37,8 @@ const dependencies: Record<string, string[]> = {
 
 export function shouldRefreshQuery(key: readonly unknown[], resources: readonly string[], scope: RealtimeScope): boolean {
   const root = String(key[0])
+  if (root === 'notification-updates') return scope === 'tenant' && resources.some(resource =>
+    ['all', 'access', 'rbac', 'users', 'academic', 'structure', 'curriculum', 'schedule', 'aula', 'aula-grade', 'aula-content', 'attendance', 'events', 'enrollment-intake', 'plans'].includes(resource))
   if (scope === 'tenant' && platformRoots.has(root)) return false
   if (scope === 'platform' && !platformRoots.has(root) && root !== 'account' && root !== 'institution-context') return false
   if (scope === 'tenant' && resources.includes('rbac')) return true

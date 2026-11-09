@@ -178,3 +178,15 @@ test('attachment uploads refresh only the visible classroom content', () => {
   }
   assert.equal(refreshesIdentity(['aula-content', 'audit']), false)
 })
+
+test('classroom updates refresh for publication, content and access changes, without private exam traffic', () => {
+  const key = ['notification-updates', 'tenant:user', 1]
+  for (const resource of ['aula', 'aula-grade', 'aula-content', 'attendance', 'events', 'enrollment-intake', 'users', 'rbac', 'structure', 'plans', 'access']) {
+    assert.equal(shouldRefreshQuery(key, [resource], 'tenant'), true, resource)
+  }
+  for (const resource of ['aula-progress', 'aula-attempt', 'audit', 'bulletin-templates']) {
+    assert.equal(shouldRefreshQuery(key, [resource], 'tenant'), false, resource)
+  }
+  assert.equal(shouldRefreshQuery(key, ['aula-grade'], 'platform'), false)
+  assert.equal(refreshesIdentity(['aula-grade', 'aula-content']), false)
+})

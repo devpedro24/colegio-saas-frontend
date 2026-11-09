@@ -957,6 +957,11 @@ class MenuComponent {
   }
 
   public static initGlobalHandlers = () => {
+    // Layout remounts and hot updates may bootstrap menus again on the same body.
+    // Two click delegates toggle a dropdown open and immediately closed.
+    if (DataUtil.has(document.body, 'menu-global-handlers')) return
+    DataUtil.set(document.body, 'menu-global-handlers', true)
+
     // Dropdown handler
     document.addEventListener('click', (e) => {
       const menuItems = document.querySelectorAll(
