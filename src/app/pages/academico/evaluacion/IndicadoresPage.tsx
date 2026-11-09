@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useCallback, useEffect, useState, type FormEvent} from 'react'
 import {useIntl} from 'react-intl'
 import {useWorkDraft} from '@/lib/drafts/WorkDrafts'
@@ -5,6 +6,7 @@ import {PageTitle} from '@/_metronic/layout/core'
 import {Content} from '@/_metronic/layout/components/content'
 import {AcademicYearPicker, AcademicYearProvider, useAcademicYear} from '../academic-year-context'
 import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import {AssignedIndicatorsPage} from './AssignedIndicatorsPage'
 import {useAcademicSearchParams} from '../shared/useAcademicSearchParams'
@@ -21,7 +23,8 @@ function BindingCard({item, periods, writable}: {item: IndicatorBinding;
     restore: setText, reset: () => setText(item.texto_vinculado)})
   const save = () => {const finishDraft = recovery.afterSave(); editGradeText.mutate({binding: item.vinculo_token,
     input: {version: item.version_vinculo, texto: text.trim()}},
-  {onSuccess: () => {finishDraft(); toast.success(t('indicators.saved'))}, onError: error => toast.error(error.message)})}
+  {onSuccess: () => {finishDraft(); toast.success(t('indicators.saved'), 'updated')},
+    onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message)})}
   const scope = item.periodos_orden?.length
     ? periods.filter(period => item.periodos_orden?.includes(period.orden)).map(period => period.nombre).join(', ')
     : t('indicators.allPeriods')
@@ -88,12 +91,12 @@ function ManagementBody() {
     const finishDraft = recovery.afterSave()
     create.mutate({...input, texto: text.trim(), orden: order}, {
       onSuccess: () => {finishDraft(); setText(''); toast.success(t('indicators.saved'))},
-      onError: error => toast.error(error.message),
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
     })
   }
   const bindExisting = () => bind.mutate({indicator: base, input}, {
     onSuccess: () => {setBase(''); toast.success(t('indicators.saved'))},
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
   })
   return <>
     <div className='card mb-6'><div className='card-header'><h3 className='card-title'>{t('indicators.catalog')}</h3></div>
@@ -131,7 +134,7 @@ function ManagementBody() {
                   onChange={event => setText(event.target.value)} />
                 <div className='d-flex flex-wrap justify-content-between gap-3'>
                   <div><label className='form-label me-2' htmlFor='indicator-order'>{t('indicators.order')}</label>
-                    <input id='indicator-order' className='form-control d-inline-block w-90px' type='number' min={1} max={1000} value={order}
+                    <NumberInput id='indicator-order' className='form-control d-inline-block w-90px' type='number' min={1} max={1000} value={order}
                       onChange={event => setOrder(Number(event.target.value))} /></div>
                   <button className='btn btn-primary' disabled={!text.trim() || !!selectedClosed || create.isPending}>{t('indicators.create')}</button>
                 </div>

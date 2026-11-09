@@ -1,6 +1,7 @@
 import {Fragment, useEffect, useRef, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 import {useDeleteGroupIndicatorSheet, useGroupIndicatorSheet, useSaveGroupIndicatorSheet, type GroupIndicatorSheet as Sheet} from '../indicadores.api'
 import {safeIndicatorHtml} from './indicatorHtml'
 import './group-indicator-sheet.css'
@@ -69,14 +70,14 @@ function EditableDescription({row, group, period}: {row: Row; group: string; per
     if (html.length > 12000) {toast.error(t('indicators.sheet.tooLong')); return}
     const finishDraft = recovery.afterSave()
     save.mutate({group, period, subject: row.materia_token, html, version: row.version}, {
-      onSuccess: () => {finishDraft(); setEditing(false); toast.success(t('indicators.saved'))},
-      onError: error => toast.error(error.message),
+      onSuccess: () => {finishDraft(); setEditing(false); toast.success(t('indicators.saved'), displayed ? 'updated' : 'success')},
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
     })
   }
   const deleteIndicator = () => {
     remove.mutate({group, period, subject: row.materia_token, version: row.version}, {
-      onSuccess: () => {setConfirmingDelete(false); toast.success(t('common.toast.deleted'))},
-      onError: error => toast.error(error.message),
+      onSuccess: () => {setConfirmingDelete(false); toast.success(t('common.toast.deleted'), 'deleted')},
+      onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
     })
   }
   return <div className='group-indicator-description'>

@@ -4,6 +4,7 @@ import {Content} from '@/_metronic/layout/components/content'
 import {PageTitle} from '@/_metronic/layout/core'
 import {KTIcon} from '@/_metronic/helpers'
 import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 import {usePreinformes, useGuardarPreinformes, type PeriodoPreinformes, type Preinforme} from './preinformes.api'
 
 export default function PreinformesPage() {
@@ -104,9 +105,11 @@ function PeriodEditor({period, periods, canEdit, onDirty}: {period: PeriodoPrein
         {draft.configuracion.modo === 'WEIGHTED_AVERAGE' && <span className={`badge badge-light-${Math.abs(total - 100) < 0.000001 ? 'success' : 'warning'} fs-6`}>{t('grading.total')}: {Number(total.toFixed(4))}% / 100%</span>}
       </div>
     </>}
-    {save.error && <div className='alert alert-danger' role='alert'>{save.error.message}</div>}
     <div className='d-flex justify-content-end'><button className='btn btn-primary' disabled={!canEdit || !dirty || save.isPending}
-      onClick={() => save.mutate(draft, {onSuccess: () => {setDirty(false); toast.success(t('grading.saved'))}})}>
+      onClick={() => save.mutate(draft, {
+        onSuccess: () => {setDirty(false); toast.success(t('grading.saved'), 'updated')},
+        onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
+      })}>
       <KTIcon iconName='check' className='fs-3' />{save.isPending ? t('grading.saving') : t('grading.save')}</button></div>
   </div>
 }
