@@ -3,6 +3,7 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {KTIcon} from '@/_metronic/helpers'
 import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 import {useBulkCurriculumCatalog, useSaveBulkCurriculum} from '../siee.api'
 import {gradeDecimal} from '../../evaluacion/gradeDecimal'
 import type {SieeGrade, SieeSubject} from '../siee.types'
@@ -71,7 +72,6 @@ export function BulkCurriculumModal({year, weighted, mode, editable, close}: {ye
       <p className='text-muted'>{t(mode === 'current' ? 'curriculum.bulk.currentHelp' : 'curriculum.bulk.help')}</p>
       {catalog.isPending && <p role='status'>{t('common.pleaseWait')}</p>}
       {catalog.error && <div className='alert alert-danger' role='alert'>{catalog.error.message}</div>}
-      {save.error && <div className='alert alert-danger' role='alert'>{save.error.message}</div>}
       {!catalog.isPending && !catalog.error && <fieldset disabled={save.isPending || !editable}>
         <div className='d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3'>
           <h4 className='fs-5 required mb-0'>{t('curriculum.bulk.grades')}</h4>
@@ -139,7 +139,10 @@ export function BulkCurriculumModal({year, weighted, mode, editable, close}: {ye
       <span className='text-muted fs-7'>{intl.formatMessage({id: 'curriculum.bulk.count'}, {count: items.length})}</span>
       <div className='d-flex gap-3'><button className='btn btn-light' onClick={onClose} disabled={save.isPending}>{t('common.cancel')}</button>
         {editable && <button className='btn btn-primary' disabled={invalid || save.isPending || catalog.isFetching || !!catalog.error}
-          onClick={() => save.mutate(items, {onSuccess: () => {toast.success(t('siee.curriculo_saved')); close()}})}>
+          onClick={() => save.mutate(items, {
+            onSuccess: () => {toast.success(t('siee.curriculo_saved'), 'updated'); close()},
+            onError: error => toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message),
+          })}>
           <KTIcon iconName='check' className='fs-4' />{t(save.isPending ? 'siee.guardando' : mode === 'current' ? 'curriculum.bulk.update' : 'curriculum.bulk.save')}
         </button>}</div>
     </Modal.Footer>

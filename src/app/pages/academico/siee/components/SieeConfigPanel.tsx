@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {PerformanceSettingsCard} from '../../configuracion/components/PerformanceRangeEditor'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import {useState, useEffect, useRef} from 'react'
@@ -5,6 +6,7 @@ import {KTCard, KTCardBody, KTIcon} from '@/_metronic/helpers'
 import {useSiee, useCurriculo, useUpdateSiee, useUpdateCurriculo} from '../siee.api'
 import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
+import {ApiError} from '@/lib/api/client'
 import type {CurriculoItem, SieeConfiguracion} from '../siee.types'
 import {AcademicPagination} from '@/app/shared/components/AcademicPagination'
 import {usePageSize} from '@/app/shared/hooks/usePageSize'
@@ -26,22 +28,20 @@ function CurriculumWeightCell({item, yearId, editable}: {item: CurriculoItem; ye
     if (draft === (item.peso_area ?? '')) return
     if (!isValidWeight(draft)) {
       toast.error(intl.formatMessage({id: 'siee.weight_invalid'}))
-      setDraft(item.peso_area ?? '')
       return
     }
     mutation.mutate({
       grado_token: item.grado_token, materia_token: item.materia_token,
       area_token: null, peso_area: draft || null,
     }, {
-      onSuccess: () => toast.success(intl.formatMessage({id: 'siee.curriculo_saved'})),
+      onSuccess: () => toast.success(intl.formatMessage({id: 'siee.curriculo_saved'}), 'updated'),
       onError: error => {
-        toast.error(error.message)
-        setDraft(item.peso_area ?? '')
+        toast.error(error instanceof ApiError ? Object.values(error.errors ?? {}).flat()[0] ?? error.message : error.message)
       },
     })
   }
 
-  return <input
+  return <NumberInput
     type='number' min={0} max={100} step='0.0001' inputMode='decimal'
     className='form-control form-control-sm text-end ms-auto w-100px'
     aria-label={`${intl.formatMessage({id: 'siee.peso_area'})}: ${item.grado_nombre ?? item.grado_token}, ${item.materia_nombre ?? item.materia_token}`}
@@ -146,9 +146,9 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
       metodo_token: formData.metodo_token,
     }
     mutation.mutate(payload, {
-      onSuccess: () => { editing.current = false; toast.success(t('siee.saved')) },
+      onSuccess: () => { editing.current = false; toast.success(t('siee.saved'), 'updated') },
       onError: (err) =>
-        toast.error(err?.message || t('common.error')),
+        toast.error(err instanceof ApiError ? Object.values(err.errors ?? {}).flat()[0] ?? err.message : err.message || t('common.error')),
     })
   }
 
@@ -322,7 +322,7 @@ export const SieeConfigPanel = ({anoLectivoToken}: {anoLectivoToken: string}) =>
               <label className='form-label required'>
                 {t('siee.precision')}
               </label>
-              <input
+              <NumberInput
                 type='number'
                 min={4}
                 max={12}

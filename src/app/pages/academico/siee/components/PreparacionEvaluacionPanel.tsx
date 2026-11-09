@@ -1,3 +1,4 @@
+import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useEffect, useState} from 'react'
 import {useIntl} from 'react-intl'
 import {KTCard, KTCardBody} from '@/_metronic/helpers'
@@ -118,7 +119,7 @@ export function PreparacionEvaluacionPanel({yearToken, curriculum, subjectMode, 
               <label className={`form-label ${subjectMode === 'WEIGHTED_AVERAGE' ? 'required' : ''}`}
                 htmlFor={`preparacion-weight-${componentIndex}`}>{t('siee.preparacion.weight')}
                 {subjectMode !== 'WEIGHTED_AVERAGE' && <> {t('common.field.optional')}</>}</label>
-              <input id={`preparacion-weight-${componentIndex}`} className='form-control' type='number' min='0' max='100' step='0.0001'
+              <NumberInput id={`preparacion-weight-${componentIndex}`} className='form-control' type='number' min='0' max='100' step='0.0001'
                 disabled={!canEdit} value={component.peso ?? ''}
                 onChange={event => updateComponent(componentIndex, {peso: event.target.value || null})} />
             </div>
@@ -146,7 +147,7 @@ export function PreparacionEvaluacionPanel({yearToken, curriculum, subjectMode, 
                 <label className={`form-label ${component.modo === 'WEIGHTED_AVERAGE' ? 'required' : ''}`}
                   htmlFor={`activity-weight-${componentIndex}-${activityIndex}`}>{t('siee.preparacion.weight')}
                   {component.modo !== 'WEIGHTED_AVERAGE' && <> {t('common.field.optional')}</>}</label>
-                <input id={`activity-weight-${componentIndex}-${activityIndex}`} className='form-control form-control-sm'
+                <NumberInput id={`activity-weight-${componentIndex}-${activityIndex}`} className='form-control form-control-sm'
                   type='number' min='0' max='100' step='0.0001' disabled={!canEdit} value={activity.peso ?? ''}
                   onChange={event => updateActivity(componentIndex, activityIndex, {peso: event.target.value || null})} />
               </div>
