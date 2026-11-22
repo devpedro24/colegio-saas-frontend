@@ -6,7 +6,7 @@ import {Content} from '../../../../_metronic/layout/components/content'
 import {useAuth} from '../../../modules/auth'
 import {useAuthz} from '../../../modules/auth/core/authz'
 import {useImpersonation} from '../../../modules/impersonation/impersonation.store'
-import {useOnboarding} from '../../../modules/onboarding/onboarding.api'
+import {useSchoolBranding} from '../../../modules/onboarding/onboarding.api'
 import {useDatosInstitucionales} from './configuracion.api'
 import {DatosInstitucionalesCard} from './components/DatosInstitucionalesCard'
 import {SedesConfigTab} from './components/SedesConfigTab'
@@ -17,8 +17,9 @@ import {EnrollmentSettingsCard} from '../../admisiones/EnrollmentSettingsCard'
 import {BulletinPolicyCard} from './components/BulletinPolicyCard'
 import {IndicatorPolicyCard} from './components/IndicatorPolicyCard'
 import {AcademicYearProvider} from '../academic-year-context'
+import {LoginAppearanceCard} from '@/app/shared/components/LoginAppearanceCard'
 
-type Section = 'datos' | 'sedes' | 'horario' | 'correo' | 'matriculas' | 'boletines' | 'indicadores'
+type Section = 'datos' | 'sedes' | 'horario' | 'correo' | 'matriculas' | 'boletines' | 'indicadores' | 'acceso'
 
 const InstitutionalSettingsContent: FC<{
   section: Section
@@ -34,7 +35,8 @@ const InstitutionalSettingsContent: FC<{
   const {currentUser} = useAuth()
   const {hasPermission} = useAuthz()
   const {activeColegio} = useImpersonation()
-  const branding = useOnboarding(currentUser?.tenant_channel, !currentUser?.is_platform)
+  const canManageAppearance = canConfigure && (currentUser?.roles?.includes('rector') || currentUser?.is_superadmin || (currentUser?.is_platform && !!activeColegio))
+  const branding = useSchoolBranding()
   const {data: official} = useDatosInstitucionales(canConfigure)
   const institution = official?.data ?? branding.data?.institution
   const institutionName = institution?.nombre || activeColegio?.name || t('academico.institutionSettings.title')
@@ -47,6 +49,7 @@ const InstitutionalSettingsContent: FC<{
 
   const tabs: Array<{key: Section; allowed: boolean}> = [
     {key: 'datos', allowed: canConfigure},
+    {key: 'acceso', allowed: !!canManageAppearance},
     {key: 'horario', allowed: canConfigure},
     {key: 'sedes', allowed: canManageCampuses},
     {key: 'correo', allowed: canConfigureMail},
@@ -54,7 +57,7 @@ const InstitutionalSettingsContent: FC<{
     {key: 'boletines', allowed: canConfigureBulletins},
     {key: 'indicadores', allowed: canConfigureIndicators},
   ]
-  const sectionTitle = (key: Section) => t(key === 'matriculas' ? 'intake.settings.title' : key === 'correo' ? 'intake.ui.emailConnection' : key === 'boletines' ? 'boletines.policy.title' : key === 'indicadores' ? 'indicators.policy.title' : `academico.config.tab.${key}`)
+  const sectionTitle = (key: Section) => t(key === 'acceso' ? 'loginAppearance.title' : key === 'matriculas' ? 'intake.settings.title' : key === 'correo' ? 'intake.ui.emailConnection' : key === 'boletines' ? 'boletines.policy.title' : key === 'indicadores' ? 'indicators.policy.title' : `academico.config.tab.${key}`)
 
   return (
     <>
@@ -108,7 +111,7 @@ const InstitutionalSettingsContent: FC<{
             </nav>
           </div>
         </div>
-        {section === 'matriculas' ? <EnrollmentSettingsCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'boletines' ? <BulletinPolicyCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'indicadores' ? <AcademicYearProvider source={hasPermission('academico.anos.gestionar') ? 'management' : 'evaluation'}><IndicatorPolicyCard /></AcademicYearProvider> : section === 'correo' ? <SchoolMailCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'datos' ? <DatosInstitucionalesCard /> : section === 'horario' ? <ZonaHorariaCard /> : <SedesConfigTab />}
+        {section === 'acceso' ? <LoginAppearanceCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} endpoint='/login-appearance' /> : section === 'matriculas' ? <EnrollmentSettingsCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'boletines' ? <BulletinPolicyCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'indicadores' ? <AcademicYearProvider source={hasPermission('academico.anos.gestionar') ? 'management' : 'evaluation'}><IndicatorPolicyCard /></AcademicYearProvider> : section === 'correo' ? <SchoolMailCard key={`${currentUser?.tenant_channel}:${activeColegio?.slug}`} /> : section === 'datos' ? <DatosInstitucionalesCard /> : section === 'horario' ? <ZonaHorariaCard /> : <SedesConfigTab />}
       </Content>
     </>
   )
@@ -121,12 +124,14 @@ const InstitutionalSettingsPage: FC<{section: Section}> = ({section}) => {
   const inSchool = !isPlatform || !!activeColegio
   const superadminInSchool = isPlatform && !!activeColegio
   const canConfigure = inSchool && (superadminInSchool || hasPermission('academico.configurar'))
+  const canManageAppearance = canConfigure && (superadminInSchool || currentUser?.is_superadmin || currentUser?.roles?.includes('rector'))
   const canManageCampuses = inSchool && (superadminInSchool || hasPermission('academico.estructura.gestionar'))
   const canConfigureMail = canAccessSchoolMail(currentUser, !!activeColegio)
   const canConfigureEnrollment = inSchool && hasPermission('ingreso.configurar')
   const canConfigureBulletins = inSchool && hasPermission('boletines.politica.gestionar')
   const canConfigureIndicators = inSchool && hasPermission('indicadores.configurar')
   if (section === 'matriculas' && !canConfigureEnrollment) return <Navigate to='/dashboard' replace />
+  if (section === 'acceso' && !canManageAppearance) return <Navigate to='/dashboard' replace />
   if (section === 'correo' && !canConfigureMail) return <Navigate to='/dashboard' replace />
   if (section === 'boletines' && !canConfigureBulletins) return <Navigate to='/dashboard' replace />
   if (section === 'indicadores' && !canConfigureIndicators) return <Navigate to='/dashboard' replace />

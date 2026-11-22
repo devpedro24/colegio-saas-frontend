@@ -1,6 +1,24 @@
 import {useQuery} from '@tanstack/react-query'
 import {api} from '@/lib/api/client'
 import {useAuth} from '../auth/core/Auth'
+import {useImpersonation} from '../impersonation/impersonation.store'
+
+export function useSchoolBranding(enabled = true) {
+  const {currentUser} = useAuth()
+  const {activeColegio} = useImpersonation()
+  return useQuery({queryKey: ['school-branding', currentUser?.tenant_channel, activeColegio?.slug],
+    queryFn: () => api.get<OnboardingStatus>('/school-branding'),
+    enabled: enabled && !!currentUser && (!!activeColegio || !currentUser.is_platform),
+  })
+}
+
+/** Keep the bootstrapped school branding; support resolves the active school separately. */
+export function useInstitutionBranding() {
+  const {currentUser} = useAuth()
+  const school = useOnboarding(currentUser?.tenant_channel, !currentUser?.is_platform)
+  const support = useSchoolBranding(!!currentUser?.is_platform)
+  return currentUser?.is_platform ? support : school
+}
 
 export interface Institution {
   nombre: string

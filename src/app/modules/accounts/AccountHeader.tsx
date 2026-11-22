@@ -3,16 +3,19 @@ import {FormattedMessage, useIntl} from 'react-intl'
 import {useAuth} from '../auth'
 import {roleLabels, userInitials} from './accountPresentation'
 import {useAccountInstitution} from './useAccountInstitution'
+import {useImpersonation} from '../impersonation/impersonation.store'
+import {canManageSchoolSubscription} from './accountAccess'
 
 export function AccountHeader() {
   const {currentUser} = useAuth()
   const intl = useIntl()
   const institution = useAccountInstitution()
+  const {activeColegio} = useImpersonation()
   return <section className='card mb-6 account-summary'>
     <div className='card-body p-6 p-md-9 pb-0 pb-md-0'>
       <div className='d-flex flex-wrap align-items-center gap-5 mb-7'>
-        <div className='symbol symbol-70px symbol-md-90px flex-shrink-0'>
-          <span className='symbol-label bg-light-primary text-primary fw-bold fs-2x' aria-hidden='true'>{userInitials(currentUser?.name)}</span>
+        <div className='symbol symbol-70px symbol-md-90px flex-shrink-0 account-avatar'>
+          {currentUser?.avatar_url ? <img src={currentUser.avatar_url} alt={currentUser.name} style={{objectFit:'cover'}} /> : <span className='symbol-label bg-light-primary text-primary fw-bold fs-2x' aria-hidden='true'>{userInitials(currentUser?.name)}</span>}
         </div>
         <div className='flex-grow-1 min-w-0'>
           <div className='text-muted fw-semibold mb-2'><FormattedMessage id='header.user.myProfile' /></div>
@@ -29,6 +32,7 @@ export function AccountHeader() {
       <nav className='nav nav-stretch nav-line-tabs nav-line-tabs-2x border-transparent fs-5 fw-bold account-summary__tabs' aria-label={intl.formatMessage({id: 'header.user.myProfile'})}>
         <NavLink to='/account/overview' className={({isActive}) => `nav-link text-active-primary me-10 py-5${isActive ? ' active' : ''}`}><FormattedMessage id='account.tab.overview' /></NavLink>
         <NavLink to='/account/settings' className={({isActive}) => `nav-link text-active-primary me-10 py-5${isActive ? ' active' : ''}`}><FormattedMessage id='header.user.accountSettings' /></NavLink>
+        {(canManageSchoolSubscription(currentUser) || currentUser?.is_superadmin || (currentUser?.is_platform && activeColegio)) && <NavLink to='/account/subscription' className={({isActive}) => `nav-link text-active-primary me-10 py-5${isActive ? ' active' : ''}`}><FormattedMessage id='header.user.mySubscription' /></NavLink>}
       </nav>
     </div>
   </section>

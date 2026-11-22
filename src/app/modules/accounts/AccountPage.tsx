@@ -7,6 +7,7 @@ import {Content} from '../../../_metronic/layout/components/content'
 import {Overview} from './components/Overview'
 import {Settings} from './components/settings/Settings'
 import {AccountHeader} from './AccountHeader'
+import {Subscription} from './components/Subscription'
 
 const AccountPage: React.FC = () => {
   const intl = useIntl()
@@ -56,6 +57,7 @@ const AccountPage: React.FC = () => {
           }
         />
         <Route index element={<Navigate to='/account/overview' />} />
+        <Route path='subscription' element={<Subscription />} />
       </Route>
     </Routes>
   )

@@ -50,6 +50,7 @@ export interface UserSocialNetworksModel {
  * opcionales para no romper los componentes que ya los consumen.
  */
 export interface UserModel {
+  avatar_url?: string | null
   id: string
   /** Nombre completo del usuario tal como lo devuelve el backend. */
   name: string

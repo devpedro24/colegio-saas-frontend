@@ -7,14 +7,12 @@ import {KTIcon, reInitMenu} from '../../../helpers'
 import {LayoutSetup, useLayout} from '../../core'
 import {Header} from './Header'
 import {Navbar} from './Navbar'
-import {useAuth} from '@/app/modules/auth'
-import {useOnboarding} from '@/app/modules/onboarding/onboarding.api'
+import {useInstitutionBranding} from '@/app/modules/onboarding/onboarding.api'
 
 export function HeaderWrapper() {
   const {config, classes} = useLayout()
   const intl = useIntl()
-  const {currentUser} = useAuth()
-  const branding = useOnboarding(currentUser?.tenant_channel, !currentUser?.is_platform)
+  const branding = useInstitutionBranding()
   if (config.app?.header?.default?.container === 'fluid') {
     LayoutSetup.classes.headerContainer.push('container-fluid')
   } else {

@@ -98,6 +98,8 @@ export const getHeaderMenuHtml = (
       ['colegios.title', '/configuracion/colegios', 'abstract-26'],
       ['common.plans', '/configuracion/planes', 'credit-cart'],
       ['rbac.title', '/configuracion/roles-permisos', 'security-user'],
+      ['loginAppearance.title', '/configuracion/imagen-acceso', 'picture'],
+      ['support.title', '/soporte', 'message-question'],
     ])
     : ''
 
@@ -132,16 +134,6 @@ export const getHeaderMenuHtml = (
 												<!--begin:Menu sub-->
 												<div class="menu-sub menu-sub-lg-down-accordion menu-sub-lg-dropdown menu-active-bg px-lg-2 py-lg-4 w-lg-225px">
 													<!--begin:Menu item-->
-													<div class="menu-item">
-														<!--begin:Menu link-->
-														<a class="menu-link" href="#">
-															<span class="menu-bullet">
-																<span class="bullet bullet-dot"></span>
-															</span>
-															<span class="menu-title">${t('header.menu.myProjects')}</span>
-														</a>
-														<!--end:Menu link-->
-													</div>
 													<!--end:Menu item-->
 													<!--begin:Menu item-->
 													<div class="menu-item">

@@ -13,6 +13,7 @@ import {useToast} from '@/lib/ui/toast'
 import {SchoolMailRequestsNotification} from './SchoolMailRequestsNotification'
 import {canAccessSchoolMail} from '@/app/modules/auth/core/schoolMailAccess'
 import {NotificationsMenu} from './NotificationsMenu'
+import {canManageSchoolSubscription} from '@/app/modules/accounts/accountAccess'
 
 // Idiomas soportados (badge del trigger + estado activo). El submenu de demo46 se recorto a
 // English + Spanish, cada item con data-kt-lang. El nombre visible se traduce con i18n.
@@ -42,6 +43,8 @@ const Navbar = ({minimal = false}: {minimal?: boolean}) => {
   // mientras administra un colegio; la sesión temporal se resuelve por cookie.
   const schoolContext = !isPlatform || !!activeColegio
   const superadminInSchool = isPlatform && !!activeColegio
+  const canUpgradePlan = canManageSchoolSubscription(currentUser)
+  const canViewSubscription = canUpgradePlan || superadminInSchool || !!currentUser?.is_superadmin
   const canConfigureInstitution =
     schoolContext && (superadminInSchool || hasPermission('academico.configurar'))
   const canManageCampuses =
@@ -57,11 +60,12 @@ const Navbar = ({minimal = false}: {minimal?: boolean}) => {
     minimal, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail,
     canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators,
     userName: currentUser?.name, userEmail: currentUser?.email, planLabel,
+    userAvatar: currentUser?.avatar_url, canUpgradePlan, canViewSubscription,
     })).split(NAVBAR_NOTIFICATIONS_SLOT)
     return {before: {__html: before}, after: {__html: after}}
   }, [intl, minimal, showQuickIcons, canConfigureInstitution, canManageCampuses,
     canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators,
-    currentUser?.name, currentUser?.email, planLabel])
+    currentUser?.name, currentUser?.email, currentUser?.avatar_url, canUpgradePlan, canViewSubscription, planLabel])
 
   useEffect(() => {
     // Modo de tema: init nativo (bindea clicks de [data-kt-element="mode"], aplica el modo
@@ -128,7 +132,7 @@ const Navbar = ({minimal = false}: {minimal?: boolean}) => {
     // Fase de CAPTURA: KTMenu hace stopPropagation en algunos .menu-link, asi corremos antes.
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [navigate, lang, logout, toast, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators, currentUser?.name, currentUser?.email, planLabel, minimal])
+  }, [navigate, lang, logout, toast, intl, showQuickIcons, canConfigureInstitution, canManageCampuses, canConfigureMail, canConfigureEnrollment, canConfigureBulletins, canConfigureIndicators, currentUser?.name, currentUser?.email, currentUser?.avatar_url, canUpgradePlan, canViewSubscription, planLabel, minimal])
 
   return (
     <div className='app-navbar flex-shrink-0'>

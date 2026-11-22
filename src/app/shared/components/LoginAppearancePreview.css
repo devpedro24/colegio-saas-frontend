@@ -1,0 +1,28 @@
+.login-preview-dialog {
+  max-width: min(1520px, 96vw);
+}
+
+.login-preview-viewport {
+  width: 100%;
+  overflow: hidden;
+  padding: 0;
+  background: var(--bs-gray-200, #eee);
+  border: 1px solid var(--bs-gray-300, #ddd);
+  border-radius: .75rem;
+}
+
+.login-preview-viewport__size {
+  margin: 0 auto;
+}
+
+.login-preview-viewport iframe {
+  display: block;
+  border: 0;
+  background: var(--bs-body-bg, #fff);
+}
+
+@media (max-width: 767.98px) {
+  .login-preview-dialog {
+    max-width: 100%;
+  }
+}

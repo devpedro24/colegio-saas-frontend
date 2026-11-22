@@ -1,0 +1,12 @@
+.support-filters { max-width: 100%; }
+.support-filters input { width: 240px; max-width: 100%; }
+.support-filters select { width: 190px; max-width: 100%; }
+.support-ticket { display: block; color: inherit; transition: border-color .15s ease, background .15s ease; }
+.support-ticket:hover, .support-ticket:focus-visible { border-color: var(--bs-primary) !important; background: var(--bs-primary-light); }
+.support-message { background: var(--bs-gray-100); max-width: 94%; align-self: flex-start; min-width: 0; }
+.support-message--team { background: var(--bs-primary-light); align-self: flex-end; }
+.support-message__body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+@media (max-width: 575.98px) {
+  .support-filters, .support-filters input, .support-filters select { width: 100%; }
+  .support-message { max-width: 100%; }
+}

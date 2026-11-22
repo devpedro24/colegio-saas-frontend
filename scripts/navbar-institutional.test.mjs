@@ -85,16 +85,40 @@ for (const lang of ['es', 'en']) {
 }
 
 
-test('account identity is escaped and future menu sections remain available', () => {
+test('account identity is escaped and unimplemented account sections are removed', () => {
  const intl = {formatMessage: ({id}) => id}
  const html = getNavbarHtml(intl, {showQuickIcons: false, userName: '<img src=x onerror=alert(1)>', userEmail: 'real@example.test', planLabel: '<Premium>'})
  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'))
  assert.ok(html.includes('&lt;Premium&gt;'))
  assert.ok(!html.includes('<img src=x'))
  assert.ok(!html.includes('Max Smith') && !html.includes('max@kt.com'))
- for (const id of ['header.menu.myProjects', 'header.user.mySubscription', 'header.user.myStatements', 'header.user.referrals', 'header.user.billing', 'header.user.payments', 'header.user.statements']) {
-   assert.ok(html.includes(id), `${id} must remain in the user menu`)
+ for (const id of ['header.menu.myProjects', 'header.user.myStatements']) {
+   assert.ok(!html.includes(id), `${id} must not appear in the user menu`)
  }
  assert.ok(!html.includes('badge-circle fw-bold fs-7">3'), 'No invented project count')
  assert.ok(html.includes('data-kt-nav="/account/settings"'))
+})
+
+const subscriptionSource = fs.readFileSync(new URL('../src/app/modules/accounts/accountAccess.ts', import.meta.url), 'utf8')
+const subscriptionJs = ts.transpileModule(subscriptionSource, {compilerOptions: {module: ts.ModuleKind.ESNext}}).outputText
+const {canManageSchoolSubscription} = await import('data:text/javascript;base64,' + Buffer.from(subscriptionJs).toString('base64'))
+
+test('only the real school rector sees upgrade, and subscription links are authorized destinations', () => {
+  const intl = {formatMessage: ({id}) => id}
+  const rector = {roles:['rector'], is_platform:false, is_superadmin:false}
+  assert.equal(canManageSchoolSubscription(rector), true)
+  for (const user of [undefined, {...rector,roles:['docente']}, {...rector,roles:['estudiante']}, {...rector,is_platform:true}, {...rector,is_superadmin:true}]) {
+    assert.equal(canManageSchoolSubscription(user), false)
+    const html = getNavbarHtml(intl, {showQuickIcons:false,canUpgradePlan:canManageSchoolSubscription(user)})
+    assert.ok(!html.includes('data-bs-target="#kt_modal_upgrade_plan"'))
+    assert.ok(!html.includes('data-kt-nav="/account/subscription"'))
+  }
+  const html = getNavbarHtml(intl, {showQuickIcons:false,canUpgradePlan:true,canViewSubscription:true,userAvatar:'/api/account/photo?v=abc'})
+  assert.ok(html.includes('data-bs-target="#kt_modal_upgrade_plan"'))
+  assert.ok(html.includes('data-kt-nav="/account/subscription"'))
+  assert.ok(html.includes('src="/api/account/photo?v=abc"'))
+  assert.ok(!getNavbarHtml(intl, {userAvatar:'javascript:alert(1)'}).includes('javascript:'))
+  const support = getNavbarHtml(intl, {showQuickIcons:false,canUpgradePlan:false,canViewSubscription:true})
+  assert.ok(support.includes('data-kt-nav="/account/subscription"'))
+  assert.ok(!support.includes('data-bs-target="#kt_modal_upgrade_plan"'))
 })

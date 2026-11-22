@@ -15,6 +15,7 @@ import {useEnterColegio, useExitColegio} from '@/app/modules/impersonation/imper
 import {useSedes, sedeSubdomainUrl} from '@/app/pages/academico/estructura/estructura.api'
 import {DrawerComponent} from '../../../assets/ts/components'
 import {syncSidebarRoute} from './sidebarNavigation'
+import {canManageSchoolSubscription} from '@/app/modules/accounts/accountAccess'
 
 // id sintético de la carita FIJA "Plataforma" (modo superadmin, sin colegio activo).
 const PLATFORM_ID = '__platform__'
@@ -324,7 +325,7 @@ const Sidebar = () => {
       {/* end::Sidebar navbar */}
 
       {/* Shared upgrade modal; the mobile menu remains available without a campus rail. */}
-      <div className='d-lg-none flex-shrink-0 p-4 pt-2 pb-5'>
+      {canManageSchoolSubscription(currentUser) && <div className='d-lg-none flex-shrink-0 p-4 pt-2 pb-5'>
         <button
           type='button'
           className='btn btn-primary w-100'
@@ -334,7 +335,7 @@ const Sidebar = () => {
         >
           {intl.formatMessage({id: 'header.navbar.upgrade'})}{' '}{intl.formatMessage({id: 'header.navbar.planWord'})}
         </button>
-      </div>
+      </div>}
     </div>
   )
 }

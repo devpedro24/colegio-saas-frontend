@@ -13,6 +13,7 @@ import {gradebookNotificationsFixture, runGradebookNotificationsSmoke} from './g
 import {aulaNotificationsFixture, runAulaNotificationsSmoke} from './aula-notifications-smoke.mjs'
 import {attendanceNotificationsFixture, runAttendanceNotificationsSmoke} from './attendance-notifications-smoke.mjs'
 import {runMobileNavigationSmoke} from './mobile-navigation-smoke.mjs'
+import {supportFixture, runSupportSmoke} from './support-smoke.mjs'
 // UI smoke test with isolated browser profile and in-memory API fixtures. No real database.
 import fs from 'node:fs'
 import os from 'node:os'
@@ -98,6 +99,8 @@ const artifacts = path.join(root, 'artifacts', 'ui-smoke')
 fs.mkdirSync(artifacts, {recursive: true})
 const today = new Date().toLocaleDateString('en-CA')
 const user = {id: 'u'.repeat(24), tenant_channel: 't'.repeat(24), name: 'Rector de prueba', email: 'rector@example.test', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.anos.transicionar', 'academico.periodos.transicionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
+const supportMode = process.argv.includes('--support')
+const supportApi = supportMode ? supportFixture(user) : null
 if (sedesMode) user.institution = {name: 'Colegio de prueba', plan: {name: 'Premium', features: ['nucleo', 'academico', 'multi_sede']}}
 if (workflowMode || paginationMode) user.institution = {name: 'Colegio de prueba', plan: {name: 'Premium', features: ['nucleo', 'academico']}}
 if (platformMode) { user.is_platform = true; user.tenant_channel = null; user.roles = ['superadmin']; user.permissions = [] }
@@ -558,6 +561,7 @@ const attendanceNotificationsApi = attendanceNotificationsMode ? attendanceNotif
 try {
   server = await createServer({root, logLevel: 'error', server: {host: '127.0.0.1', port: 5197, strictPort: true}, plugins: [{name: 'smoke-api', configureServer(vite) {
     if (sedesApi) vite.middlewares.use(sedesApi.middleware)
+    if (supportApi) vite.middlewares.use(supportApi.middleware)
     if (commercialApi) vite.middlewares.use(commercialApi.middleware)
     if (intakeFixture) vite.middlewares.use(intakeFixture.middleware)
     if (calendarNotificationsApi) vite.middlewares.use(calendarNotificationsApi.middleware)
@@ -579,6 +583,11 @@ try {
         return
       }
       if (!url.pathname.startsWith('/api')) return next()
+      if (process.argv.includes('--account') && req.method === 'GET' && url.pathname === '/api/account/photo') {
+        res.setHeader('Content-Type', 'image/png')
+        res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64'))
+        return
+      }
       if (req.method === 'GET') {
         apiReads.push(url.pathname)
         detailedReads.push(url.pathname + url.search)
@@ -876,6 +885,11 @@ try {
         if (scheduleRoute) assert.ok(!hasPrivateIdKey(parsed), 'Opaque schedule writes cannot carry private IDs.')
         if (opaqueCalendar) assert.ok(!hasPrivateIdKey(parsed), 'Opaque calendar writes cannot carry private IDs.')
         if (url.pathname === '/api/account/profile') { Object.assign(user, parsed); fixture = {message: 'Perfil actualizado.', user} }
+        if (url.pathname === '/api/account/photo') {
+          assert.ok(req.headers['content-type']?.includes('multipart/form-data'))
+          user.avatar_url = '/api/account/photo?v=' + 'a'.repeat(32)
+          fixture = {user}
+        }
         if (url.pathname === `${promotionPath}/politica` && req.method === 'PUT') {
           assert.equal(parsed.version, 0)
           fixtures[promotionPath].politica = {...parsed, version: 1}
@@ -1863,9 +1877,16 @@ try {
     assert.ok(auditReads.includes('colegio-prueba'), 'Audit school filters must use public slugs.')
     assert.deepEqual(errors, [], 'Platform public identifier browser errors.')
     console.log('PASS: Colegios uses slug; platform sede edit uses opaque token and no stored credential.')
+  } else if (supportMode) {
+    await runSupportSmoke({user,fixture:supportApi,navigate,evaluate,until,command,screenshot,errors})
   } else if (process.argv.includes('--account')) {
     user.institution = {name: 'Colegio real', plan: {key: 'premium', name: 'Premium'}}
     user.profile_capabilities = {edit_name: true, edit_email: true, edit_phone: true, google_link: false}
+    fixtures['/api/subscription'] = {school:'Colegio real', labels:{academico:'plan.f.academico'},
+      plan:{name:'Premium',features:['academico'],storage_gb:5}, contract:{students:120,sites:3,addons:[]}, storage_used:1024**3,
+      quote:{monthly_total:300000,annual_reference:3600000,addon_lines:[]}}
+    Object.assign(fixtures['/api/subscription'].labels, {nucleo:'plan.f.nucleo',asistencia:'plan.f.asistencia',preinformes:'plan.f.preinformes',comunicacion_basica:'plan.f.comunicacionBasica',boletines_predefinidos:'plan.f.presets'})
+    fixtures['/api/subscription'].plan.features = Object.keys(fixtures['/api/subscription'].labels)
     await navigate('/account/overview', 'Rector de prueba')
     assert.ok(await evaluate(`document.querySelector('.account-summary__tabs a[href="/account/overview"]').classList.contains('active') && !document.querySelector('.account-summary__tabs a[href="/account/settings"]').classList.contains('active')`))
     assert.ok(await evaluate(`getComputedStyle(document.querySelector('.account-summary__tabs a.active')).borderBottomColor !== getComputedStyle(document.querySelector('.account-summary__tabs a:not(.active)')).borderBottomColor`), 'The active profile tab needs a visible underline.')
@@ -1881,11 +1902,21 @@ try {
     await until(`document.querySelector('[data-testid="account-menu-name"]')?.textContent === 'María Fernanda Rectora'`)
     assert.equal(await evaluate('window.accountSentinel'), true, 'Profile updates without reload.')
     assert.equal(await evaluate(`document.querySelector('[data-testid="account-menu-plan"]').textContent`), 'Premium')
+    await evaluate(`(()=>{const input=document.querySelector('#account-photo'); const transfer=new DataTransfer(); transfer.items.add(new File([new Uint8Array([137,80,78,71])],'photo.png',{type:'image/png'})); input.files=transfer.files; input.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+    await until(`document.querySelector('#account-photo').closest('form').querySelector('img')?.src.startsWith('blob:')`)
+    await evaluate(`document.querySelector('#account-photo').closest('form').querySelector('button').click()`)
+    await until(`!!document.querySelector('#kt_header_user_menu_toggle img[src^="/api/account/photo?v="]')`)
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('#kt_header_user_menu_toggle img')).borderRadius`), '50%')
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('#kt_header_user_menu_toggle img').parentElement).borderRadius`), '50%')
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.account-summary .account-avatar')).borderRadius`), '50%')
+    assert.ok(apiWrites.includes('/api/account/photo'))
     await screenshot('profile-settings-desktop', true)
     await sleep(500)
     await evaluate(`document.querySelector('#kt_header_user_menu_toggle [data-kt-menu-trigger]').click()`)
     await until(`document.querySelector('.account-user-menu')?.classList.contains('show')`)
-    assert.ok(await evaluate(`['Mis proyectos', 'Mi suscripción', 'Mis estados de cuenta', 'Ajustes Institucionales'].every(label => document.querySelector('.account-user-menu').innerText.includes(label))`))
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.account-user-menu img[src^="/api/account/photo?v="]')).borderRadius`), '50%')
+    assert.ok(await evaluate(`['Mi suscripción', 'Ajustes Institucionales'].every(label => document.querySelector('.account-user-menu').innerText.includes(label))`))
+    assert.ok(await evaluate(`['Mis proyectos', 'Mis estados de cuenta'].every(label => !document.querySelector('.account-user-menu').innerText.includes(label))`))
     await until(`Number(getComputedStyle(document.querySelector('.account-user-menu')).opacity) >= 0.99`)
     await sleep(250)
     await screenshot('profile-menu-desktop')
@@ -1903,6 +1934,19 @@ try {
     await until(`Number(getComputedStyle(document.querySelector('.account-user-menu')).opacity) >= 0.99`)
     await sleep(250)
     await screenshot('profile-menu-mobile')
+    await navigate('/account/subscription', 'Cupos de estudiantes contratados')
+    assert.ok(await evaluate(`document.body.innerText.includes('120') && document.body.innerText.includes('300.000') && document.body.innerText.includes('3.600.000')`))
+    assert.ok(await evaluate(`document.querySelector('.account-summary__tabs a[href="/account/subscription"]').classList.contains('active')`))
+    assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'Subscription must fit mobile.')
+    assert.ok(await evaluate(`document.querySelector('[role="progressbar"]').getAttribute('aria-valuenow') === '20'`))
+    await screenshot('subscription-mobile', true)
+    await command('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false})
+    await sleep(300)
+    assert.ok(await evaluate(`getComputedStyle(document.querySelector('.account-subscription__metrics')).gridTemplateColumns.split(' ').length === 3`))
+    await screenshot('subscription-desktop', true)
+    await evaluate(`document.documentElement.setAttribute('data-bs-theme','dark')`)
+    await screenshot('subscription-dark-desktop', true)
+    await evaluate(`document.documentElement.setAttribute('data-bs-theme','light')`)
     user.mfa_required = false; user.mfa_enabled = false
     await navigate('/dashboard', 'Académico')
     assert.equal(await evaluate(`!!document.querySelector('#kt_header_user_menu_toggle')`), true)
@@ -1925,6 +1969,7 @@ try {
     user.profile_capabilities.edit_name = false; user.profile_capabilities.edit_email = false; user.roles = ['estudiante']
     await navigate('/account/settings', 'El colegio administra')
     assert.ok(await evaluate(`document.querySelector('#profile-name').disabled && document.querySelector('#kt_signin_email_button button').disabled`))
+    assert.ok(await evaluate(`!document.querySelector('#account-photo') && !document.querySelector('[data-bs-target="#kt_modal_upgrade_plan"]') && !document.querySelector('a[href="/account/subscription"]')`))
     assert.deepEqual(errors, [], 'Profile and MFA browser errors.')
     console.log('PASS: profile menu, unrestricted dashboard, optional MFA QR and recovery, student restrictions, responsive 320/390.')
   } else if (paginationMode) {

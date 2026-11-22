@@ -2,6 +2,7 @@ import {useEffect} from 'react'
 import {useSearchParams} from 'react-router-dom'
 import {PlatformContact} from './cards/PlatformContact'
 import {ProfileDetails} from './cards/ProfileDetails'
+import {AccountPhotoCard} from './cards/AccountPhotoCard'
 import {SignInMethod} from './cards/SignInMethod'
 import {TwoFactorAuth} from './cards/TwoFactorAuth'
 import {ConnectedAccounts} from './cards/ConnectedAccounts'
@@ -42,6 +43,7 @@ export function Settings() {
   return (
     <>
       <ProfileDetails />
+      <AccountPhotoCard />
       {currentUser?.is_platform && currentUser.roles?.includes('superadmin') && <PlatformContact />}
       <SignInMethod />
       <TwoFactorAuth />

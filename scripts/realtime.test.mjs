@@ -8,6 +8,17 @@ const js = ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.E
 const {shouldRefreshQuery, refreshesIdentity, onLocalChange, notifyLocalChange, resourceForPath,
   rememberOwnChange, isOwnChange} = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'))
 
+test('support refreshes only the authorized inbox scope and does not refresh academic data', () => {
+  assert.equal(resourceForPath('/support/tickets/opaque/messages'),'support')
+  assert.equal(resourceForPath('/platform/support/tickets/opaque/state'),'support')
+  assert.equal(shouldRefreshQuery(['support-tickets'],['support'],'tenant'),true)
+  assert.equal(shouldRefreshQuery(['support-inbox'],['support'],'platform'),true)
+  assert.equal(shouldRefreshQuery(['support-inbox'],['support'],'tenant'),false)
+  assert.equal(shouldRefreshQuery(['support-tickets'],['support'],'platform'),false)
+  assert.equal(shouldRefreshQuery(['evaluacion'],['support'],'tenant'),false)
+  assert.equal(refreshesIdentity(['support']),false)
+})
+
 test('the originating tab recognizes its own broadcast without hiding another tab change', () => {
   const own = '3e0aa476-d27c-4d85-8720-83dc8dd2f21c'
   rememberOwnChange(own)

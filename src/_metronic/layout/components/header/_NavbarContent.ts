@@ -15,6 +15,9 @@ export const getNavbarHtml = (
   opts?: {
     minimal?: boolean
     userName?: string
+    userAvatar?: string | null
+    canUpgradePlan?: boolean
+    canViewSubscription?: boolean
     userEmail?: string
     planLabel?: string
     showQuickIcons?: boolean
@@ -37,8 +40,9 @@ export const getNavbarHtml = (
   const email = escapeUserHtml(opts?.userEmail || '')
   const plan = escapeUserHtml(opts?.planLabel || '')
   const initials = escapeUserHtml(userInitials(opts?.userName))
+  const avatar = opts?.userAvatar?.startsWith('/api/account/photo?v=') ? `<img class="account-avatar" src="${escapeUserHtml(opts.userAvatar)}" alt="" style="width:100%;height:100%;object-fit:cover" />` : null
   return String.raw`
-								${opts?.minimal ? '' : String.raw`<!--begin::Invite-->
+								${opts?.minimal || !opts?.canUpgradePlan ? '' : String.raw`<!--begin::Invite-->
 								<div class="align-items-center ms-1 ms-lg-3 d-none d-lg-flex">
 									<a href="#" class="btn btn-flex flex-center btn-primary h-35px h-md-40px" data-bs-toggle="modal" data-bs-target="#kt_modal_upgrade_plan">${t(
 										'header.navbar.upgrade'
@@ -883,7 +887,7 @@ export const getNavbarHtml = (
 								<div class="app-navbar-item ms-1 ms-lg-5" id="kt_header_user_menu_toggle">
 									<!--begin::Menu wrapper-->
 									<button class="btn p-0 symbol symbol-35px symbol-md-40px" type="button" aria-label="${t('header.user.myProfile')}" data-kt-menu-trigger="click" aria-haspopup="true" data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end">
-										<span class="symbol-label bg-light-primary text-primary fw-bold">${initials}</span>
+										<span class="symbol-label account-avatar bg-light-primary text-primary fw-bold">${avatar || initials}</span>
 									</button>
 									<!--begin::User account menu-->
 									<div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg menu-state-color fw-semibold py-4 fs-6 account-user-menu w-300px" data-kt-menu="true">
@@ -892,7 +896,7 @@ export const getNavbarHtml = (
 											<div class="menu-content d-flex align-items-center px-3">
 												<!--begin::Avatar-->
 												<div class="symbol symbol-50px me-5">
-													<span class="symbol-label bg-light-primary text-primary fw-bold fs-3">${initials}</span>
+													<span class="symbol-label account-avatar bg-light-primary text-primary fw-bold fs-3">${avatar || initials}</span>
 												</div>
 												<!--end::Avatar-->
 												<!--begin::Username-->
@@ -915,34 +919,8 @@ ${plan ? `<span class="badge badge-light-primary align-self-start mt-2 text-wrap
 											)}</a>
 										</div>
 										<!--end::Menu item-->
-										<!--begin::Future account sections-->
-										<div class="menu-item px-5">
-											<a href="#" data-kt-placeholder class="menu-link px-5">${t('header.menu.myProjects')}</a>
-										</div>
-										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
-											<a href="#" class="menu-link px-5">
-												<span class="menu-title">${t('header.user.mySubscription')}</span>
-												<span class="menu-arrow"></span>
-											</a>
-											<div class="menu-sub menu-sub-dropdown w-175px py-4">
-												<div class="menu-item px-3"><a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.referrals')}</a></div>
-												<div class="menu-item px-3"><a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.billing')}</a></div>
-												<div class="menu-item px-3"><a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.payments')}</a></div>
-												<div class="menu-item px-3"><a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.statements')}</a></div>
-												<div class="separator my-2"></div>
-												<div class="menu-item px-3"><div class="menu-content px-3">
-													<label class="form-check form-switch form-check-custom form-check-solid">
-														<input class="form-check-input w-30px h-20px" type="checkbox" name="notifications" disabled />
-														<span class="form-check-label text-muted fs-7">${t('header.notifications.title')}</span>
-													</label>
-												</div></div>
-											</div>
-										</div>
-										<div class="menu-item px-5">
-											<a href="#" data-kt-placeholder class="menu-link px-5">${t('header.user.myStatements')}</a>
-										</div>
+										${opts?.canViewSubscription ? `<div class="menu-item px-5"><a href="/account/subscription" data-kt-nav="/account/subscription" class="menu-link px-5">${t('header.user.mySubscription')}</a></div>` : ''}
 										<div class="separator my-2"></div>
-										<!--end::Future account sections-->
 										<!--begin::Menu item-->
 										<div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}" data-kt-menu-placement="{default: 'bottom-end', lg: 'left-start'}" data-kt-menu-offset="{default: '0, 0', lg: '-15px, 0'}">
 											<a href="#" class="menu-link px-5">

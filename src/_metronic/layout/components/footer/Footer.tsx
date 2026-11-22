@@ -1,6 +1,7 @@
 import {useEffect} from 'react'
 import {FormattedMessage} from 'react-intl'
 import {ILayout, useLayout} from '../../core'
+import {Link} from 'react-router-dom'
 
 const Footer = () => {
   const {config} = useLayout()
@@ -11,7 +12,7 @@ const Footer = () => {
     <>
       <div className='text-gray-900 order-2 order-md-1'>
         <span className='text-gray-500 fw-semibold me-1'>
-          {new Date().getFullYear().toString()}&copy;
+          &copy; {new Date().getFullYear()}
         </span>
         <span className='text-gray-500'>
           <FormattedMessage id='footer.brand' />
@@ -26,9 +27,9 @@ const Footer = () => {
         </li>
 
         <li className='menu-item'>
-          <a href='#' className='menu-link px-2'>
+          <Link to='/soporte' className='menu-link px-2'>
             <FormattedMessage id='footer.support' />
-          </a>
+          </Link>
         </li>
 
         <li className='menu-item'>

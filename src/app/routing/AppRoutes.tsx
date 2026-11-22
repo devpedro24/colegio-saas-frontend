@@ -10,7 +10,7 @@ import {Routes, Route, BrowserRouter, Navigate} from 'react-router-dom'
 import {PrivateRoutes} from './PrivateRoutes'
 import {EventLoginRedirect} from './EventLoginRedirect'
 import {ErrorsPage} from '../modules/errors/ErrorsPage'
-import {Logout, AuthPage, useAuth} from '../modules/auth'
+import {Logout, useAuth} from '../modules/auth'
 import {App} from '../App'
 import {useImpersonation} from '../modules/impersonation/impersonation.store'
 import {TenantOnboardingGate} from '../modules/onboarding/TenantOnboardingGate'
@@ -22,6 +22,7 @@ import {TenantOnboardingGate} from '../modules/onboarding/TenantOnboardingGate'
  */
 const {BASE_URL} = import.meta.env
 const PublicEnrollmentPage = lazy(() => import('../pages/admisiones/PublicEnrollmentPage'))
+const AuthPage = lazy(() => import('../modules/auth/AuthPage').then(module => ({default: module.AuthPage})))
 
 const AppRoutes: FC = () => {
   const {currentUser} = useAuth()
@@ -42,7 +43,7 @@ const AppRoutes: FC = () => {
             </>
           ) : (
             <>
-              <Route path='auth/*' element={<AuthPage />} />
+              <Route path='auth/*' element={<Suspense fallback={null}><AuthPage /></Suspense>} />
               <Route path='*' element={<EventLoginRedirect />} />
             </>
           )}

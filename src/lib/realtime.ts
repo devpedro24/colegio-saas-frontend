@@ -1,8 +1,9 @@
 /** Shared dependency map for remote broadcasts and successful local writes. */
 export type RealtimeScope = 'tenant' | 'platform'
-const platformRoots = new Set(['colegios', 'plans', 'rbac-catalog', 'audit', 'audit-tenants', 'school-mail-requests'])
+const platformRoots = new Set(['colegios', 'plans', 'rbac-catalog', 'audit', 'audit-tenants', 'school-mail-requests', 'login-appearance-schools', 'support-inbox'])
 const academic = ['anos-lectivos', 'estructura', 'plan-estudios', 'horarios', 'asistencias', 'siee', 'preinformes', 'config', 'evaluacion', 'boletines', 'aula', 'eventos-catalogo', 'eventos', 'evento', 'onboarding']
 const dependencies: Record<string, string[]> = {
+  support: ['support-inbox', 'support-tickets'],
   academic,
   structure: ['estructura', 'horarios', 'asistencias', 'plan-estudios', 'evaluacion', 'boletines', 'aula', 'eventos-catalogo', 'eventos', 'evento', 'usuarios'],
   curriculum: ['plan-estudios', 'horarios', 'asistencias', 'evaluacion', 'boletines', 'siee', 'aula'],
@@ -25,10 +26,11 @@ const dependencies: Record<string, string[]> = {
   'aula-attempt': [],
   'academic-config': ['config', 'siee', 'preinformes', 'evaluacion', 'boletines', 'onboarding'],
   events: ['eventos', 'evento', 'eventos-catalogo', 'horarios'],
-  institution: ['institution-context', 'config', 'onboarding', 'boletines'],
+  institution: ['institution-context', 'config', 'onboarding', 'school-branding', 'boletines'],
+  'login-appearance': ['login-appearance'],
   users: ['usuarios', 'horarios', 'asistencias', 'evaluacion', 'boletines', 'aula', 'eventos-catalogo', 'onboarding', 'account'],
   rbac: ['rbac-catalog', 'roles'],
-  schools: ['institution-context', 'colegios', 'audit-tenants'],
+  schools: ['institution-context', 'colegios', 'audit-tenants', 'login-appearance-schools', 'school-branding'],
   plans: ['institution-context', 'plans', 'colegios', 'rbac-catalog', 'aula'],
   account: ['account', 'onboarding'],
   storage: ['storage', 'eventos', 'evento', 'aula'],
@@ -40,7 +42,7 @@ export function shouldRefreshQuery(key: readonly unknown[], resources: readonly 
   if (root === 'notification-updates') return scope === 'tenant' && resources.some(resource =>
     ['all', 'access', 'rbac', 'users', 'academic', 'structure', 'curriculum', 'schedule', 'aula', 'aula-grade', 'aula-content', 'attendance', 'events', 'enrollment-intake', 'plans'].includes(resource))
   if (scope === 'tenant' && platformRoots.has(root)) return false
-  if (scope === 'platform' && !platformRoots.has(root) && root !== 'account' && root !== 'institution-context') return false
+  if (scope === 'platform' && !platformRoots.has(root) && root !== 'account' && root !== 'institution-context' && root !== 'login-appearance' && root !== 'school-branding') return false
   if (scope === 'tenant' && resources.includes('rbac')) return true
   if (resources.some(resource => resource === 'all' || resource === 'access' || !dependencies[resource])) return true
   if (root === 'indicadores') {
@@ -63,6 +65,8 @@ export function refreshesIdentity(resources: readonly string[]): boolean {
 }
 
 export function resourceForPath(path: string): string {
+  if (/^\/?(?:platform\/)?support(?:\/|$|\?)/.test(path)) return 'support'
+  if (/\/(?:login-appearance)(?:\/|$|\?)/.test(path)) return 'login-appearance'
   const [root, section] = path.split('?')[0].split('/').filter(Boolean)
   if (root === 'evaluacion' && ['planillas', 'componentes', 'actividades', 'recuperaciones', 'areas', 'anuales'].includes(section)) return 'grades'
   if (root === 'boletines') return ({emisiones: 'bulletin-issues', observaciones: 'bulletin-observations', plantillas: 'bulletin-templates'} as Record<string, string>)[section] ?? 'bulletins'
@@ -78,7 +82,7 @@ export function resourceForPath(path: string): string {
     ingreso: 'enrollment-intake', matriculas: 'enrollment-intake', 'ingreso-publico': 'enrollment-intake', indicadores: 'indicators',
     'correo-institucional': 'school-mail',
     horarios: 'schedule', asignaciones: 'schedule', asistencias: 'attendance', evaluacion: 'evaluation', aula: 'aula', preinformes: 'academic', siee: 'academic-config', config: 'academic-config', eventos: 'events',
-    onboarding: 'institution', branding: 'institution', usuarios: 'users', rbac: 'rbac', colegios: 'schools', plans: 'plans',
+    onboarding: 'institution', branding: 'institution', 'school-branding': 'institution', usuarios: 'users', rbac: 'rbac', colegios: 'schools', plans: 'plans',
     planes: 'plans', account: 'account', mfa: 'account', storage: 'storage'} as Record<string, string>)[root] ?? 'all'
 }
 

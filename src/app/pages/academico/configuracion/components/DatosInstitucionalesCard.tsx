@@ -3,7 +3,8 @@ import type {FormEvent} from 'react'
 import {useIntl} from 'react-intl'
 import {useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '@/app/modules/auth'
-import {onboardingKey, useOnboarding} from '@/app/modules/onboarding/onboarding.api'
+import {onboardingKey, useSchoolBranding} from '@/app/modules/onboarding/onboarding.api'
+import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 import {LogoUploader} from '@/app/modules/onboarding/LogoUploader'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
@@ -221,18 +222,23 @@ const LogoEditor: FC = () => {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const queryClient = useQueryClient()
-  const branding = useOnboarding(currentUser?.tenant_channel, !!currentUser?.roles?.includes('rector'))
+  const {activeColegio} = useImpersonation()
+  const allowed = !!currentUser?.roles?.includes('rector') || !!currentUser?.is_superadmin || (!!currentUser?.is_platform && !!activeColegio)
+  const branding = useSchoolBranding(allowed)
   const toast = useToast()
-  if (!currentUser?.roles?.includes('rector') || currentUser.is_platform) return null
+  if (!allowed || !currentUser) return null
 
   return <div className='border-top pt-7 mt-7'>
     <h4 className='fw-bold'>{t('onboarding.logo')}</h4>
     <p className='text-muted fs-6 lh-lg'>{t('onboarding.logoHelp')}</p>
     <LogoUploader
+      uploadEndpoint='/school-branding/logo'
       existingUrl={branding.data?.logo_url}
       saveLabel={t('academico.config.datos.saveLogo')}
       onSaved={async () => {
         await queryClient.invalidateQueries({queryKey: onboardingKey(currentUser.tenant_channel)})
+        await queryClient.invalidateQueries({queryKey: ['school-branding']})
+        await queryClient.invalidateQueries({queryKey: ['institution-context']})
         toast.success(t('academico.config.datos.toast.logoSaved'))
       }}
     />

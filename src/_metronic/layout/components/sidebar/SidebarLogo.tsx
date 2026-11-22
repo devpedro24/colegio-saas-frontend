@@ -4,8 +4,7 @@ import {KTIcon, toAbsoluteUrl} from '../../../helpers'
 import {useLayout} from '../../core'
 import {MutableRefObject, useEffect, useRef} from 'react'
 import {ToggleComponent} from '../../../assets/ts/components'
-import {useAuth} from '@/app/modules/auth'
-import {useOnboarding} from '@/app/modules/onboarding/onboarding.api'
+import {useInstitutionBranding} from '@/app/modules/onboarding/onboarding.api'
 
 type PropsType = {
   sidebarRef: MutableRefObject<HTMLDivElement | null>
@@ -13,8 +12,7 @@ type PropsType = {
 
 const SidebarLogo = (props: PropsType) => {
   const {config} = useLayout()
-  const {currentUser} = useAuth()
-  const branding = useOnboarding(currentUser?.tenant_channel, !currentUser?.is_platform)
+  const branding = useInstitutionBranding()
   const toggleRef = useRef<HTMLDivElement>(null)
 
   const appSidebarDefaultMinimizeDesktopEnabled =

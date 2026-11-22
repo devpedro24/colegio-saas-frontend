@@ -11,6 +11,7 @@ import {useAuthz} from '../modules/auth/core/authz'
 import {useImpersonation} from '../modules/impersonation/impersonation.store'
 
 const AccountPage = lazy(() => import('../modules/accounts/AccountPage'))
+const SupportPage = lazy(() => import('../pages/support/SupportPage'))
 const ConfigPage = lazy(() => import('../pages/config/ConfigPage'))
 const AcademicoPage = lazy(() => import('../pages/academico/AcademicoPage'))
 const InstitutionalSettingsPage = lazy(() => import('../pages/academico/configuracion/InstitutionalSettingsPage'))
@@ -31,6 +32,8 @@ const PrivateRoutes = () => {
         {/* Pages */}
         <Route path='dashboard' element={<DashboardWrapper />} />
         <Route path='mis-borradores' element={<MyDrafts />} />
+        <Route path='soporte' element={<SuspensedView><SupportPage /></SuspensedView>} />
+        <Route path='soporte/:token' element={<SuspensedView><SupportPage /></SuspensedView>} />
         {/* Lazy Modules */}
         <Route
           path='account/*'
@@ -61,6 +64,7 @@ const PrivateRoutes = () => {
         <Route path='ajustes-institucionales/boletines' element={<SuspensedView><InstitutionalSettingsPage section='boletines' /></SuspensedView>} />
         <Route path='ajustes-institucionales/indicadores' element={<SuspensedView><InstitutionalSettingsPage section='indicadores' /></SuspensedView>} />
         <Route path='ajustes-institucionales/correo' element={<SuspensedView><InstitutionalSettingsPage section='correo' /></SuspensedView>} />
+        <Route path='ajustes-institucionales/acceso' element={<SuspensedView><InstitutionalSettingsPage section='acceso' /></SuspensedView>} />
         <Route
           path='ajustes-institucionales/datos'
           element={<SuspensedView><InstitutionalSettingsPage section='datos' /></SuspensedView>}

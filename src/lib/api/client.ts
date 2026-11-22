@@ -192,5 +192,5 @@ export const api = {
   post: <T>(path: string, body?: unknown, options?: MutationOptions) => request<T>('POST', path, body, options),
   put: <T>(path: string, body?: unknown, options?: MutationOptions) => request<T>('PUT', path, body, options),
   patch: <T>(path: string, body?: unknown, options?: MutationOptions) => request<T>('PATCH', path, body, options),
-  delete: <T>(path: string, options?: MutationOptions) => request<T>('DELETE', path, undefined, options),
+  delete: <T>(path: string, options?: MutationOptions, body?: unknown) => request<T>('DELETE', path, body, options),
 };

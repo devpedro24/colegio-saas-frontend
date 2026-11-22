@@ -7,6 +7,7 @@ type Aspect = 'auto' | 'square'
 type Drag = {x: number; y: number; offsetX: number; offsetY: number}
 
 type Props = {
+  uploadEndpoint?: string
   existingUrl?: string | null
   saveLabel: string
   onSaved: () => Promise<void>
@@ -16,7 +17,7 @@ type Props = {
 const HEIGHT = 300
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
-export function LogoUploader({existingUrl, saveLabel, onSaved, onContinue}: Props) {
+export function LogoUploader({existingUrl, saveLabel, onSaved, onContinue, uploadEndpoint = '/onboarding/logo'}: Props) {
   const intl = useIntl()
   const t = (id: string) => intl.formatMessage({id})
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -138,7 +139,7 @@ export function LogoUploader({existingUrl, saveLabel, onSaved, onContinue}: Prop
       body.append('zoom', String(zoom))
       body.append('offset_x', String(offsetX))
       body.append('offset_y', String(offsetY))
-      await api.post('/onboarding/logo', body)
+      await api.post(uploadEndpoint, body)
       await onSaved()
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.fieldError('logo') ?? cause.message : t('onboarding.saveError'))
