@@ -7,6 +7,8 @@ import {useToast} from '@/lib/ui/toast'
 import {ApiError} from '@/lib/api/client'
 import {useUpdateProfile} from '@/app/pages/account/account.api'
 import {ContactMobileInput} from '@/lib/ui/ContactMobileInput'
+import {cleanName, namePattern} from '@/lib/validation/personInput'
+import {accountInputText} from '../../../accountInput'
 
 interface IProfileFields {
   name: string
@@ -18,6 +20,7 @@ interface IProfileFields {
 // backend (PUT /account/profile); la UI se refresca con la respuesta.
 const ProfileDetails: FC = () => {
   const intl = useIntl()
+  const inputText = accountInputText(intl.locale)
   const toast = useToast()
   const {currentUser, setCurrentUser} = useAuth()
 
@@ -28,12 +31,14 @@ const ProfileDetails: FC = () => {
 
   const profileSchema = Yup.object().shape({
     name: Yup.string()
+      .trim()
       .required(
         intl.formatMessage({
           id: 'account.profile.nameRequired',
         }),
       )
-      .max(160, intl.formatMessage({id: 'account.profile.nameMax'})),
+      .max(160, intl.formatMessage({id: 'account.profile.nameMax'}))
+      .matches(new RegExp(`^(?:${namePattern})$`, 'u'), {message: inputText.nameInvalid, excludeEmptyString: true}),
     phone: Yup.string().max(
       32,
       intl.formatMessage({id: 'account.profile.phoneMax'}),
@@ -73,6 +78,12 @@ const ProfileDetails: FC = () => {
             setLoading(false)
           },
           onError: (err) => {
+            if (err instanceof ApiError) {
+              const nameError = err.fieldError('name')
+              const phoneError = err.fieldError('phone')
+              if (nameError) formik.setFieldError('name', nameError)
+              if (phoneError) formik.setFieldError('phone', phoneError)
+            }
             toast.error(err instanceof ApiError ? err.message : 'No se pudo actualizar el perfil.')
             setLoading(false)
           },
@@ -115,18 +126,24 @@ const ProfileDetails: FC = () => {
               <div className='col-lg-8 fv-row'>
                 <input
                   id='profile-name'
-                  disabled={currentUser?.profile_capabilities?.edit_name === false}
+                  disabled={loading || currentUser?.profile_capabilities?.edit_name === false}
                   autoComplete='name'
                   type='text'
-                  className='form-control form-control-lg form-control-solid'
+                  required
+                  maxLength={160}
+                  pattern={namePattern}
+                  aria-invalid={Boolean(formik.touched.name && formik.errors.name)}
+                  aria-describedby={formik.touched.name && formik.errors.name ? 'profile-name-error' : undefined}
+                  className={`form-control form-control-lg form-control-solid${formik.touched.name && formik.errors.name ? ' is-invalid' : ''}`}
                   placeholder={intl.formatMessage({
                     id: 'account.profile.namePh',
                   })}
                   {...formik.getFieldProps('name')}
+                  onChange={event => {void formik.setFieldValue('name', cleanName(event.target.value))}}
                 />
                 {formik.touched.name && formik.errors.name && (
                   <div className='fv-plugins-message-container'>
-                    <div className='fv-help-block'>{formik.errors.name}</div>
+                    <div id='profile-name-error' className='fv-help-block'>{formik.errors.name}</div>
                   </div>
                 )}
               </div>

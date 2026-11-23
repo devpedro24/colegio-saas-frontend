@@ -9,6 +9,7 @@ import {useChangeEmail, useChangePassword} from '@/app/pages/account/account.api
 import {PasswordField} from '@/app/shared/components/PasswordField'
 import {PasswordRequirements} from '@/app/shared/components/PasswordRequirements'
 import {passwordMeetsPolicy} from '@/app/shared/passwordPolicy'
+import {accountInputText} from '../../../accountInput'
 
 interface EmailForm {
   newEmail: string
@@ -25,6 +26,7 @@ interface PasswordForm {
 // (POST /account/email y /account/password). MFA tiene su tarjeta compartida.
 const SignInMethod: FC<{passwordOnly?: boolean}> = ({passwordOnly = false}) => {
   const intl = useIntl()
+  const inputText = accountInputText(intl.locale)
   const toast = useToast()
   const {currentUser, setCurrentUser} = useAuth()
 
@@ -39,16 +41,17 @@ const SignInMethod: FC<{passwordOnly?: boolean}> = ({passwordOnly = false}) => {
   const passwordMutation = useChangePassword()
 
   const emailSchema = Yup.object().shape({
-    newEmail: Yup.string().email('Formato de correo inválido').max(190, 'Máximo 190 caracteres').required('El correo es obligatorio'),
-    confirmPassword: Yup.string().required('La contraseña es obligatoria'),
+    newEmail: Yup.string().trim().email('Formato de correo inválido').max(255, inputText.emailMax).required('El correo es obligatorio'),
+    confirmPassword: Yup.string().max(4096, inputText.passwordMax).required('La contraseña es obligatoria'),
   })
 
   const passwordSchema = Yup.object().shape({
-    currentPassword: Yup.string().required('La contraseña actual es obligatoria'),
+    currentPassword: Yup.string().max(4096, inputText.passwordMax).required('La contraseña actual es obligatoria'),
     newPassword: Yup.string()
       .test('policy', intl.formatMessage({id: 'password.invalid'}), value => passwordMeetsPolicy(value ?? ''))
       .required('La nueva contraseña es obligatoria'),
     passwordConfirmation: Yup.string()
+      .max(128, inputText.passwordMax)
       .required('Confirma la nueva contraseña')
       .oneOf([Yup.ref('newPassword')], 'Las contraseñas no coinciden'),
   })
@@ -141,11 +144,11 @@ const SignInMethod: FC<{passwordOnly?: boolean}> = ({passwordOnly = false}) => {
       <div id='kt_account_signin_method' className='collapse show'>
         <div className='card-body border-top p-9'>
           <div className={`d-flex flex-wrap align-items-center ${passwordOnly ? 'd-none' : ''}`}>
-            <div id='kt_signin_email' className={' ' + (showEmailForm && 'd-none')}>
+            <div id='kt_signin_email' style={{minWidth: 0, maxWidth: '100%'}} className={' ' + (showEmailForm && 'd-none')}>
               <div className='fs-6 fw-bolder mb-1'>
                 <FormattedMessage id='common.email' />
               </div>
-              <div className='fw-bold text-gray-600'>{currentUser?.email ?? '—'}</div>
+              <div className='fw-bold text-gray-600 text-break'>{currentUser?.email ?? '—'}</div>
             </div>
 
             <div
@@ -168,6 +171,9 @@ const SignInMethod: FC<{passwordOnly?: boolean}> = ({passwordOnly = false}) => {
                       </label>
                       <input
                         type='email'
+                        required
+                        maxLength={255}
+                        autoComplete='email'
                         className='form-control form-control-lg form-control-solid'
                         id='emailaddress'
                         placeholder={intl.formatMessage({
@@ -195,6 +201,9 @@ const SignInMethod: FC<{passwordOnly?: boolean}> = ({passwordOnly = false}) => {
                       <PasswordField
                         className='form-control form-control-lg form-control-solid'
                         id='confirmemailpassword'
+                        required
+                        maxLength={4096}
+                        autoComplete='current-password'
                         {...formik1.getFieldProps('confirmPassword')}
                       />
                       {formik1.touched.confirmPassword && formik1.errors.confirmPassword && (
@@ -280,6 +289,9 @@ const SignInMethod: FC<{passwordOnly?: boolean}> = ({passwordOnly = false}) => {
                       <PasswordField
                         className='form-control form-control-lg form-control-solid '
                         id='currentpassword'
+                        required
+                        maxLength={4096}
+                        autoComplete='current-password'
                         {...formik2.getFieldProps('currentPassword')}
                       />
                       {formik2.touched.currentPassword && formik2.errors.currentPassword && (
@@ -300,6 +312,9 @@ const SignInMethod: FC<{passwordOnly?: boolean}> = ({passwordOnly = false}) => {
                       <PasswordField
                         className='form-control form-control-lg form-control-solid '
                         id='newpassword'
+                        required
+                        maxLength={128}
+                        autoComplete='new-password'
                         {...formik2.getFieldProps('newPassword')}
                       />
                       {formik2.touched.newPassword && formik2.errors.newPassword && (
@@ -320,6 +335,9 @@ const SignInMethod: FC<{passwordOnly?: boolean}> = ({passwordOnly = false}) => {
                       <PasswordField
                         className='form-control form-control-lg form-control-solid '
                         id='confirmpassword'
+                        required
+                        maxLength={128}
+                        autoComplete='new-password'
                         {...formik2.getFieldProps('passwordConfirmation')}
                       />
                       {formik2.touched.passwordConfirmation && formik2.errors.passwordConfirmation && (

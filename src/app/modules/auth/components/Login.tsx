@@ -17,7 +17,7 @@ const makeLoginSchema = (intl: IntlShape, mfaRequired: boolean) =>
       .min(3, intl.formatMessage({id: 'auth.validation.min'}, {min: 3}))
       .max(255, intl.formatMessage({id: 'auth.validation.max'}, {max: 255}))
       .required(intl.formatMessage({id: 'auth.validation.emailRequired'})),
-    password: Yup.string().required(intl.formatMessage({id: 'auth.validation.passwordRequired'})),
+    password: Yup.string().max(4096, intl.formatMessage({id: 'auth.validation.max'}, {max: 4096})).required(intl.formatMessage({id: 'auth.validation.passwordRequired'})),
     // El codigo TOTP solo se valida cuando el backend ya exigio MFA.
     code: mfaRequired
       ? Yup.string()
@@ -173,6 +173,7 @@ export function Login() {
         </label>
         <PasswordField
           autoComplete='current-password'
+          maxLength={4096}
           {...formik.getFieldProps('password')}
           className={clsx(
             'form-control bg-transparent',

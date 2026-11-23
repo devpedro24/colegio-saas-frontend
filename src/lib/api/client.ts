@@ -156,7 +156,7 @@ async function performRequest<TResponse>(method: HttpMethod, path: string, body?
   });
 
   const isJson = response.headers.get('content-type')?.includes('application/json');
-  const data = isJson ? await response.json() : null;
+  const data = isJson && response.status !== 204 ? await response.json() : null;
 
   // Una respuesta del contexto anterior nunca debe actualizar el colegio nuevo.
   if (getImpersonation() !== context || sessionGeneration !== generation) {

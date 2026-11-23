@@ -8,6 +8,7 @@ import {useAuth} from '../../../../auth'
 import {useToast} from '@/lib/ui/toast'
 import {ApiError} from '@/lib/api/client'
 import {useDeactivateAccount} from '@/app/pages/account/account.api'
+import {accountInputText} from '../../../accountInput'
 
 interface DeactivateFields {
   confirm: boolean
@@ -32,7 +33,7 @@ const DeactivateAccount: FC = () => {
         id: 'account.deactivate.confirmError',
       }),
     ),
-    password: Yup.string().required(
+    password: Yup.string().max(4096, accountInputText(intl.locale).passwordMax).required(
       intl.formatMessage({
         id: 'account.deactivate.passwordRequired',
       }),
@@ -118,6 +119,8 @@ const DeactivateAccount: FC = () => {
               </label>
               <PasswordField
                 id='deactivate-password'
+                maxLength={4096}
+                autoComplete='current-password'
                 className='form-control form-control-lg form-control-solid'
                 placeholder={intl.formatMessage({
                   id: 'account.deactivate.passwordPh',

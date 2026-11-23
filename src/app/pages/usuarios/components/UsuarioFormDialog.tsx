@@ -4,6 +4,7 @@ import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
 import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {cleanName, namePattern} from '@/lib/validation/personInput'
 import {PasswordField} from '@/app/shared/components/PasswordField'
 import {PasswordRequirements} from '@/app/shared/components/PasswordRequirements'
 import {passwordMeetsPolicy} from '@/app/shared/passwordPolicy'
@@ -55,6 +56,7 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
+    if (!(e.currentTarget as HTMLFormElement).reportValidity()) return
     setError(null)
     if (password && !passwordMeetsPolicy(password)) { toast.error(t('password.invalid')); return }
 
@@ -129,13 +131,18 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
         <div className='modal-body py-lg-10 px-lg-10'>
           {/* Nombre */}
           <div className='fv-row mb-7'>
-            <label className='required fs-6 fw-semibold mb-2'>{t('common.name')}</label>
+            <label htmlFor='usuario-name' className='required fs-6 fw-semibold mb-2'>{t('common.name')}</label>
             <input
               type='text'
+              id='usuario-name'
+              required
+              maxLength={120}
+              pattern={namePattern}
+              autoComplete='name'
               className={`form-control form-control-solid ${fe('name') ? 'is-invalid' : ''}`}
               value={name}
               placeholder={t('academico.usuarios.field.nombrePh')}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(cleanName(e.target.value))}
             />
             {fe('name') && <div className='invalid-feedback'>{fe('name')}</div>}
           </div>
@@ -143,9 +150,13 @@ const UsuarioFormDialog: FC<Props> = ({show, usuario, onClose, onCreated}) => {
           {/* Email (solo crear) */}
           {!isEdit && (
             <div className='fv-row mb-7'>
-              <label className='required fs-6 fw-semibold mb-2'>{t('common.email')}</label>
+              <label htmlFor='usuario-email' className='required fs-6 fw-semibold mb-2'>{t('common.email')}</label>
               <input
                 type='email'
+                id='usuario-email'
+                required
+                maxLength={255}
+                autoComplete='email'
                 className={`form-control form-control-solid ${fe('email') ? 'is-invalid' : ''}`}
                 value={email}
                 placeholder={t('academico.usuarios.field.emailPh')}
