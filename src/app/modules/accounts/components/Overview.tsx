@@ -2,6 +2,7 @@ import {Link} from 'react-router-dom'
 import {FormattedMessage, useIntl} from 'react-intl'
 import {roleLabels} from '../accountPresentation'
 import {useAuth} from '../../auth'
+import {StudentAcademicResults} from './StudentAcademicResults'
 
 // Account Overview (demo46 account/overview.html): card "Profile Details" con
 // los DATOS REALES del usuario autenticado (sin widgets decorativos ni datos
@@ -15,6 +16,7 @@ export function Overview() {
   const roleLabel = roleLabels(user, intl)
 
   return (
+    <>
     <div className='card mb-5 mb-xl-10' id='kt_profile_details_view'>
       {/* begin::Card header */}
       <div className='card-header cursor-pointer'>
@@ -81,5 +83,8 @@ export function Overview() {
       </div>
       {/* end::Card body */}
     </div>
+    {user?.roles.includes('estudiante') && user.permissions.includes('notas.ver_propias') &&
+      <StudentAcademicResults key={user.id} student={user.id} tenant={user.tenant_channel} />}
+    </>
   )
 }

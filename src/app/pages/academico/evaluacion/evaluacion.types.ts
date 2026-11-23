@@ -84,7 +84,11 @@ export interface ResultadoEstudiante {
   display_value?: string
   aprobado?: boolean
   estado: 'calculado' | 'pendiente'
-  origen?: 'manual' | 'recuperacion'
+  certificado_recibido?: boolean
+  origen?: 'manual' | 'recuperacion' | 'colegio' | 'pendiente_eleccion' | 'externa' | 'valoracion' | 'traslado' | 'sin_equivalencia' | 'pendiente_certificado' | 'pendiente_traslado' | 'pendiente_consolidacion' | 'consolidacion'
+  resultado_tramo?: Omit<ResultadoEstudiante, 'matricula_id' | 'resultado_tramo'>
+  actividades_apoyo?: {actividad_token: string; fecha_entrega: string}[]
+  intervalos_grupo?: {desde: string; hasta: string}[]
   manual_version?: number
   manual_actualizado_en?: string
   motivo?: string

@@ -498,6 +498,7 @@ function planillaHarness() {
     '@/lib/ui/toast': {useToast: () => ({show: message => notices.push(message)})},
     '@/lib/drafts/WorkDrafts': {useWorkDraft: () => ({notice: null})},
     '../gradeDecimal': decimals,
+    '../periodGradeSource': evaluate(compile('periodGradeSource.ts')),
     '../useGradePreview': {useGradePreview: () => ({results: new Map(), pending: false})},
     './VisualChoice': {VisualChoice: () => null},
     './IndicadorWorkspace': {IndicadorWorkspace: () => null},

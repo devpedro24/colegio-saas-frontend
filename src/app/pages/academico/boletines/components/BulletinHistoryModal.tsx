@@ -1,3 +1,4 @@
+import {BulletinCorrection} from './BulletinCorrection'
 import {useState} from 'react'
 import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
@@ -20,6 +21,7 @@ export function BulletinHistoryModal({enrollment, periods, onClose}: {
       <div className='bulletin-archive-list'>{query.data?.data.map(item => <article className='bulletin-archive-entry' key={item.token}>
         <span className='bulletin-archive-icon'><i className='bi bi-file-earmark-pdf' aria-hidden='true' /></span>
         <div className='flex-grow-1 min-w-0'><strong>{item.contexto === 'final' ? t('boletines.issue.final') : periods.find(period => period.id === item.periodo_token)?.nombre ?? t('boletines.issue.period')} · {t('boletines.issue.revision')} {item.revision}</strong>
+          <BulletinCorrection issue={item}/>
           <div className='fs-7 text-muted'>{item.plantilla}</div><div className='bulletin-archive-filename'>{item.archivo}</div>
           <small className='text-muted'>{item.aprobado_en && intl.formatDate(item.aprobado_en, {dateStyle: 'medium', timeStyle: 'short'})} · {t(`boletines.issue.state.${item.estado}`)}</small></div>
         {item.pdf_disponible && <a className='btn btn-sm bulletin-blue-button' href={bulletinPdfUrl(item.token)} target='_blank' rel='noreferrer'><i className='bi bi-download' aria-hidden='true' />{t('boletines.issue.download')}</a>}

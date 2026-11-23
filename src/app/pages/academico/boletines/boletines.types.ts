@@ -6,7 +6,8 @@
   display_value?: string
   aprobado?: boolean
   motivo?: string
-  origen?: 'recuperacion'
+  certificado_recibido?: boolean
+  origen?: 'manual' | 'recuperacion' | 'colegio' | 'pendiente_eleccion' | 'externa' | 'valoracion' | 'traslado' | 'sin_equivalencia' | 'pendiente_certificado' | 'pendiente_traslado' | 'pendiente_consolidacion' | 'consolidacion'
   resultado_original?: Omit<BoletinPeriodoResult, 'periodo_id'>
   nota_recuperacion?: string
   politica_recuperacion?: string

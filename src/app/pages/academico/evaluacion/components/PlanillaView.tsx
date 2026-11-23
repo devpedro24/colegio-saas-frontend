@@ -7,6 +7,7 @@ import {useIntl} from 'react-intl'
 import {useToast} from '@/lib/ui/toast'
 import {ApiError} from '@/lib/api/client'
 import type {NotaUpdate, SeccionPlanilla, ActividadEvaluacion, PlanillaResponse, Matricula, ResultadoEstudiante} from '../evaluacion.types'
+import {activitiesLocked, activityApplies, periodGradeSource} from '../periodGradeSource'
 import {gradeDecimal, validGrade} from '../gradeDecimal'
 import {VisualChoice} from './VisualChoice'
 import {IndicadorWorkspace} from './IndicadorWorkspace'
@@ -50,7 +51,8 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
     compatible: value => Object.values(value.draft).every(item => {
       const grade = query.data?.calificaciones.find(g => g.actividad_id === item.actividad_id && g.matricula_id === item.matricula_id)
       return (grade?.version ?? 0) === item.version && query.data?.matriculas.some(m => m.id === item.matricula_id)
-        && query.data?.secciones?.some(s => s.actividades.some(a => a.id === item.actividad_id))
+        && !query.data.resultados.some(r => r.matricula_id === item.matricula_id && activitiesLocked(r.origen))
+        && query.data?.secciones?.some(s => s.actividades.some(a => a.id === item.actividad_id && activityApplies(query.data?.resultados.find(r => r.matricula_id === item.matricula_id), a.fecha, a.id)))
     }),
   })
   const activityRecovery = useWorkDraft({context: `grade-activity:${assignment}:${period}`, title: t('grading.activity'),
@@ -64,7 +66,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
   const manualRecovery = useWorkDraft({context: `grade-component:${assignment}:${period}`, title: t('grading.manualComponentResult'),
     value: {manualEditor, manualValue, manualReason}, dirty: !!manualEditor && (manualValue !== (manualEditor.result?.estado === 'calculado'
       ? visual ? manualEditor.result.valoracion?.url_token ?? '' : gradeDecimal(manualEditor.result.raw_value) : '') || !!manualReason), enabled: !!query.data?.editable,
-    compatible: value => !!value.manualEditor && query.data?.resultados.some(result => result.matricula_id === value.manualEditor?.student.id
+    compatible: value => !!value.manualEditor && query.data?.resultados.some(result => !activitiesLocked(result.origen) && result.matricula_id === value.manualEditor?.student.id
       && (result.secciones?.find(section => section.componente_token === value.manualEditor?.section.componente_token)?.manual_version ?? 0) === (value.manualEditor?.result?.manual_version ?? 0)) === true,
     restore: value => {setManualEditor(value.manualEditor); setManualValue(value.manualValue); setManualReason(value.manualReason)}, reset: () => setManualEditor(null),
   })
@@ -149,7 +151,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
     for (let r = 0; r < rows.length; r++) for (let c = 0; c < rows[r].length; c++) {
       const enrollment = data.matriculas[row + r]; const activity = activities[col + c]
       const value = gradeDecimal(rows[r][c])
-      if (!enrollment || !activity || !validGrade(value, data.configuracion.valor_min, data.configuracion.valor_max)) {
+      if (!enrollment || !activity || activitiesLocked(byResult.get(enrollment.id)?.origen) || !activityApplies(byResult.get(enrollment.id), activity.fecha, activity.id) || !validGrade(value, data.configuracion.valor_min, data.configuracion.valor_max)) {
         toast.error(t('grading.invalidPaste')); return
       }
       changes.push({activity: activity.id, enrollment: enrollment.id, value})
@@ -294,32 +296,38 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
           ...(data.usa_preinformes ? [<th key={`${sectionKey(section)}-subtotal`} className='grade-activity grade-subtotal'>{t('grading.subtotal')}</th>] : [])])}</tr>
         </thead>
         <tbody>{data.matriculas.map((enrollment, rowIndex) => {
-          const result = preview.results.get(enrollment.id) ?? byResult.get(enrollment.id)
+          const savedResult = byResult.get(enrollment.id)
+          const sourceLabel = periodGradeSource(savedResult?.origen, savedResult?.certificado_recibido)
+          const result = sourceLabel ? savedResult : preview.results.get(enrollment.id) ?? savedResult
           const rowDirty = Object.values(draft).some(v => v.matricula_id === enrollment.id)
           return <tr key={enrollment.id}><th scope='row' className='grade-student'><span className='grade-row-number'>{rowIndex + 1}</span><span>{enrollment.nombre_lista ?? enrollment.estudiante.name}</span>
             {data.periodo.estado === 'cerrado' && <button className='btn btn-link p-0 d-block fs-8 mt-2' onClick={() => {if (clean()) navigate(`/evaluacion/recuperaciones/${enrollment.url_token}`)}}>{t('evaluacion.recuperaciones.title')}</button>}
           </th>
-            {sections.flatMap(section => section.modo === 'MANUAL' ? [<td key={`${sectionKey(section)}-manual`} className='grade-cell text-center'>
+            {sourceLabel && !savedResult?.intervalos_grupo ? sections.map(section => <td key={sectionKey(section)} colSpan={sectionColumns(section)} className='text-center text-muted'>{t('grading.notApplicable')}</td>) : sections.flatMap(section => section.modo === 'MANUAL' ? [<td key={`${sectionKey(section)}-manual`} className='grade-cell text-center'>
               {(() => {
                 const subtotal = result?.secciones?.find(item => item.componente_token === section.componente_token)
-                return <button className='btn btn-sm btn-light-primary fw-bold' disabled={!editable || dirty || !section.componente_token}
+                return <button className='btn btn-sm btn-light-primary fw-bold' disabled={!editable || activitiesLocked(savedResult?.origen) || dirty || !section.componente_token}
                   onClick={() => openManualComponent(section, enrollment)} aria-label={`${t('grading.manualComponentResult')} · ${enrollment.estudiante.name} · ${section.nombre ?? data.periodo.nombre}`}>
                   {subtotal?.estado === 'calculado' ? (visual ? <VisualChoice compact choice={subtotal.valoracion} /> : gradeDecimal(subtotal.display_value)) : t('grading.manualComponentRegister')}
                 </button>
               })()}
             </td>] : [...(section.actividades.length ? section.actividades.map(activity => {
+              if (!activityApplies(savedResult, activity.fecha, activity.id)) return <td key={activity.id} className='text-center text-muted'>{t('grading.notApplicable')}</td>
+              const support = savedResult?.actividades_apoyo?.find(a => a.actividad_token === activity.id)
+              const savedGrade = byGrade.get(`${activity.id}:${enrollment.id}`)
               const colIndex = activities.indexOf(activity)
               const value = valueOf(activity.id, enrollment.id)
               const changed = `${activity.id}:${enrollment.id}` in draft
               const valid = validGrade(gradeDecimal(value), data.configuracion.valor_min, data.configuracion.valor_max)
               return <td key={activity.id} className={changed ? 'grade-cell changed' : 'grade-cell'}>
+                {support && <small className='d-block text-primary'>{t(savedGrade?.valor != null || savedGrade?.escala_opcion_token ? 'grading.supportGraded' : 'grading.supportPending')} · {support.fecha_entrega}</small>}
                 {visual ? <div className='d-flex align-items-center justify-content-center gap-2 px-2'>
                   {(() => {
                     const choice = data.escala_visual?.opciones.find(option => option.url_token === choiceOf(activity.id, enrollment.id))
                     return choice?.imagen_url ? <img src={choice.imagen_url} alt='' width={24} height={24} className='rounded-circle object-fit-cover' />
                       : <span aria-hidden='true' className='fs-3'>{choice?.emoji ?? '—'}</span>
                   })()}
-                  <select className='form-select form-select-sm border-0' disabled={!editable}
+                  <select className='form-select form-select-sm border-0' disabled={!editable || activitiesLocked(savedResult?.origen)}
                     data-grade-row={rowIndex} data-grade-col={colIndex}
                     aria-label={`${enrollment.estudiante.name} · ${activity.nombre}`}
                     value={choiceOf(activity.id, enrollment.id)}
@@ -329,7 +337,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
                       {option.emoji ? `${option.emoji} ` : ''}{option.nombre}
                     </option>)}
                   </select>
-                </div> : <input type='text' inputMode='decimal' autoComplete='off' className={`grade-input ${valid ? '' : 'invalid'}`} disabled={!editable}
+                </div> : <input type='text' inputMode='decimal' autoComplete='off' className={`grade-input ${valid ? '' : 'invalid'}`} disabled={!editable || activitiesLocked(savedResult?.origen)}
                   data-grade-row={rowIndex} data-grade-col={colIndex} aria-invalid={!valid} aria-label={`${enrollment.estudiante.name} · ${activity.nombre}`}
                   value={value} onChange={e => updateGrade(activity.id, enrollment.id, e.target.value)}
                   onBlur={() => {if (changed && valid && value !== gradeDecimal(value)) updateGrade(activity.id, enrollment.id, gradeDecimal(value))}}
@@ -344,6 +352,7 @@ function PlanillaEditor({assignment, period}: {assignment: string; period: strin
               })()}
             </td>] : [])])}
             <td className='grade-result' aria-busy={rowDirty && preview.pending} title={rowDirty ? t('grading.previewHelp') : result?.motivo}>
+              {sourceLabel && <small className='d-block text-muted'>{t(sourceLabel)}</small>}
               {visual && result?.valoracion ? <VisualChoice compact choice={result.valoracion} />
                 : visual && result?.valoracion_provisional ? <span className='grade-provisional' title={t('grading.provisionalHelp')}>
                     <VisualChoice compact choice={result.valoracion_provisional} /> <small>{t('grading.provisional')}</small>
@@ -426,8 +435,8 @@ function ManualSubjectSheet({assignment, period, data, subject, back}: {
   const recovery = useWorkDraft({context: `grade-manual:${assignment}:${period}`, title: subject || t('grading.manualTitle'),
     value: {editing, value, reason}, dirty: !!editing && (value !== (editing.result.estado === 'calculado'
       ? visual ? editing.result.valoracion?.url_token ?? '' : gradeDecimal(editing.result.raw_value) : '') || !!reason),
-    enabled: data.editable, compatible: saved => !!saved.editing && data.resultados.some(row => row.matricula_id === saved.editing?.student.id
-      && row.manual_version === saved.editing?.result.manual_version),
+    enabled: data.editable, compatible: saved => !!saved.editing && data.resultados.some(row => !activitiesLocked(row.origen) && row.matricula_id === saved.editing?.student.id
+      && (row.resultado_tramo ?? row).manual_version === saved.editing?.result.manual_version),
     restore: saved => {setEditing(saved.editing); setValue(saved.value); setReason(saved.reason)}, reset: () => setEditing(null)})
   const open = (student: Matricula, result: ResultadoEstudiante) => {
     setEditing({student, result}); setValue(result.estado === 'calculado'
@@ -454,13 +463,15 @@ function ManualSubjectSheet({assignment, period, data, subject, back}: {
       <thead><tr><th>{t('evaluacion.matriculas.estudiante')}</th><th>{t('evaluacion.planilla.definitiva')}</th><th className='text-end'>{t('grading.manualAction')}</th></tr></thead>
       <tbody>{data.matriculas.map(student => {
         const result = results.get(student.id)
+        const local = result?.resultado_tramo ? {...result, ...result.resultado_tramo} : result
+        const sourceLabel = periodGradeSource(result?.origen, result?.certificado_recibido)
         return <tr key={student.id}><th scope='row'>{student.nombre_lista ?? student.estudiante.name}</th>
           <td className='fw-bold'>{result?.estado === 'calculado'
             ? (result.valoracion ? <VisualChoice compact choice={result.valoracion} />
               : <span className={`badge badge-light-${result.aprobado ? 'success' : 'danger'}`}>{gradeDecimal(result.display_value)}</span>)
-            : <span className='badge badge-light-warning'>{t('grading.pending')}</span>}</td>
-          <td className='text-end'><button className='btn btn-sm btn-light-primary' disabled={!data.editable || save.isPending || !result}
-            onClick={() => result && open(student, result)}>{t(result?.estado === 'calculado' ? 'grading.manualEdit' : 'grading.manualRegister')}</button></td>
+            : <span className='badge badge-light-warning'>{t(sourceLabel ?? 'grading.pending')}</span>}</td>
+          <td className='text-end'>{activitiesLocked(result?.origen) && sourceLabel ? <small>{t(sourceLabel)}</small> : <button className='btn btn-sm btn-light-primary' disabled={!data.editable || save.isPending || !local || result?.intervalos_grupo?.length === 0}
+            onClick={() => local && open(student, local)}>{t(local?.estado === 'calculado' ? 'grading.manualEdit' : 'grading.manualRegister')}</button>}</td>
         </tr>
       })}</tbody>
     </table></div>

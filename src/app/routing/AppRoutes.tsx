@@ -22,6 +22,7 @@ import {TenantOnboardingGate} from '../modules/onboarding/TenantOnboardingGate'
  */
 const {BASE_URL} = import.meta.env
 const PublicEnrollmentPage = lazy(() => import('../pages/admisiones/PublicEnrollmentPage'))
+const VerifyCertificate = lazy(() => import('../pages/admisiones/VerifyCertificate'))
 
 const AppRoutes: FC = () => {
   const {currentUser} = useAuth()
@@ -29,6 +30,7 @@ const AppRoutes: FC = () => {
   return (
     <BrowserRouter basename={BASE_URL}>
       <Routes>
+        <Route path='/verificar-constancia' element={<Suspense fallback={<p>Cargando verificación…</p>}><VerifyCertificate /></Suspense>} />
         <Route element={<App />}>
           <Route path='error/*' element={<ErrorsPage />} />
           <Route path='logout' element={<Logout />} />

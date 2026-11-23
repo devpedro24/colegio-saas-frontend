@@ -1,3 +1,4 @@
+import {BulletinCorrection} from './BulletinCorrection'
 import {useState} from 'react'
 import {useIntl} from 'react-intl'
 import {useAuthz} from '@/app/modules/auth/core/authz'
@@ -59,6 +60,7 @@ export function BulletinIssueCard({matriculaToken, periods}: {matriculaToken: st
               : item.estado === 'aprobado' ? 'badge-light-primary' : item.estado === 'preparado' ? 'badge-light-warning' : 'badge-light-secondary'}`}>
               {t(`boletines.issue.state.${item.estado}`)}
             </span>
+            <BulletinCorrection issue={item}/>
             {item.plantilla && <div className='text-muted fs-8 mt-1'>{item.plantilla}</div>}
           </div>
           <div className='d-flex flex-wrap gap-2'>

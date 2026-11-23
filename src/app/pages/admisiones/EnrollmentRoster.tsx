@@ -1,12 +1,19 @@
 import {useState, type FormEvent} from 'react'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useIntl} from 'react-intl'
+import {useSearchParams} from 'react-router-dom'
 import {api} from '@/lib/api/client'
 import {AcademicPageHeader} from '@/app/shared/components/AcademicPageHeader'
 import {EnrollmentAddress, type Department} from './EnrollmentAddress'
 import type {Campaign, StudentData, DocumentVersion} from './ingreso.types'
 import {useEnrollmentScope} from './enrollmentSettings.api'
 import {IntakeIcon} from './IntakeUI'
+import {EnrollmentTrajectory, type Trajectory} from './EnrollmentTrajectory'
+import {SplitPeriodGrades} from './SplitPeriodGrades'
+import {EntryAssessments} from './EntryAssessments'
+import {ClosedGradeAuthorizations} from './ClosedGradeAuthorizations'
+import {ExternalGrades} from './ExternalGrades'
+import {birthDateError, schoolDate} from './enrollmentAge'
 
 type Row = {token: string; nombre: string; email: string; estado: string; grupo: string; sede: string; convocatoria: string | null; origen: string}
 type Catalog = {data: Row[]; page: number; last_page: number; total: number; ano_token: string | null;
@@ -30,6 +37,9 @@ function ManualEnrollment({catalog, onClose, onSaved}: {catalog: Catalog; onClos
   const campuses = [...new Set(groups.map(item => item.sede))]
   const selectedCampus = campus || (campuses.length === 1 ? campuses[0] : '')
   const group = groups.find(item => item.token === groupToken)
+  const today = schoolDate(campaign?.zona_horaria ?? 'America/Bogota')
+  const gradeRule = campaign?.configuracion.grados.find(item => item.token === group?.grado_token)
+  const ageError = birthDateError(intl, data.nacimiento, today, group?.grado_token, gradeRule)
   const requirements = campaign?.configuracion.documentos.filter(item => !item.grados.length || item.grados.includes(group?.grado_token ?? '')) ?? []
   const save = useMutation({mutationFn: async () => {
     const form = new FormData()
@@ -64,6 +74,8 @@ function ManualEnrollment({catalog, onClose, onSaved}: {catalog: Catalog; onClos
       <div className='row g-5'>{fields.map(([key, es, english, required, type]) => <div className='col-md-6' key={key}>
         <label className={`form-label ${required ? 'required' : ''}`} htmlFor={`manual-${key}`}>{text(es, english)}</label>
         <input id={`manual-${key}`} type={type} required={required} maxLength={key === 'telefono' ? 16 : 80} className='form-control' value={data[key] ?? ''}
+          max={key === 'nacimiento' ? today : undefined}
+          ref={input => {if (key === 'nacimiento') input?.setCustomValidity(ageError)}}
           pattern={key === 'telefono' ? '\\+[0-9]{7,15}' : undefined} onChange={e => setData({...data, [key]: key === 'telefono' ? e.target.value.replace(/[^+0-9]/g, '') : e.target.value})} /></div>)}
         <div className='col-md-6'><label className='form-label required' htmlFor='manual-document-type'>{text('Tipo de documento', 'Document type')}</label>
           <select id='manual-document-type' required className='form-select' value={data.tipo_documento ?? ''} onChange={e => setData({...data, tipo_documento: e.target.value})}><option value=''>{text('Selecciona', 'Select')}</option>
@@ -94,7 +106,7 @@ function StudentFile({token, onClose}: {token: string; onClose: () => void}) {
   const intl = useIntl()
   const en = intl.locale.startsWith('en')
   const scope = useEnrollmentScope()
-  const query = useQuery({queryKey: ['matriculas', scope, 'ficha', token], queryFn: () => api.get<{data: Row & {datos: StudentData; documentos: DocumentVersion[]}}>(`/matriculas/${encodeURIComponent(token)}`)})
+  const query = useQuery({queryKey: ['matriculas', scope, 'ficha', token], queryFn: () => api.get<{data: Row & {datos: StudentData; documentos: DocumentVersion[]; trayectoria: Trajectory; ver_definitivas_externas: boolean; ver_valoraciones_ingreso: boolean; ver_autorizaciones_cierre?: boolean; ver_consolidaciones?: boolean}}>(`/matriculas/${encodeURIComponent(token)}`)})
   const item = query.data?.data
   const labels: Record<string, string> = en ? {primer_nombre: 'First name', segundo_nombre: 'Middle name', primer_apellido: 'First surname', segundo_apellido: 'Second surname', nacimiento: 'Birth date', tipo_documento: 'Document type', numero_documento: 'Document number', telefono: 'Phone', direccion: 'Address', pais: 'Country', departamento: 'Department', municipio: 'Municipality'}
     : {primer_nombre: 'Primer nombre', segundo_nombre: 'Segundo nombre', primer_apellido: 'Primer apellido', segundo_apellido: 'Segundo apellido', nacimiento: 'Nacimiento', tipo_documento: 'Tipo de documento', numero_documento: 'Documento', telefono: 'Celular', direccion: 'Dirección', pais: 'País', departamento: 'Departamento', municipio: 'Municipio'}
@@ -103,7 +115,12 @@ function StudentFile({token, onClose}: {token: string; onClose: () => void}) {
     {item && <><p>{item.email} · {item.grupo} · {item.sede}</p><dl className='row'>{Object.entries(item.datos).filter(([key, value]) => key !== 'adicionales' && value).map(([key, value]) => <div className='col-md-6 mb-4' key={key}><dt>{labels[key] ?? key}</dt><dd>{String(value)}</dd></div>)}</dl>
       {Object.entries(item.datos.adicionales ?? {}).map(([key, value]) => <p key={key}><strong>{key.replace(/_/g, ' ')}</strong>: {value}</p>)}
       <div className='d-flex flex-wrap gap-3'>{item.documentos.filter(doc => doc.estado !== 'retirado').map(doc => <a key={doc.url_token} className='btn btn-light-primary btn-sm' target='_blank' rel='noreferrer'
-        href={`/api/matriculas/${encodeURIComponent(token)}/documentos/${encodeURIComponent(doc.url_token)}`}>{doc.nombre} · v{doc.version}</a>)}</div></>}
+        href={`/api/matriculas/${encodeURIComponent(token)}/documentos/${encodeURIComponent(doc.url_token)}`}>{doc.nombre} · v{doc.version}</a>)}</div>
+      {item.trayectoria && <EnrollmentTrajectory key={token} token={token} trajectory={item.trayectoria} />}
+      {item.ver_consolidaciones && <SplitPeriodGrades key={'tramos-' + token} token={token}/>}
+      {item.ver_autorizaciones_cierre && <ClosedGradeAuthorizations key={'cierre-' + token} token={token}/>}
+      {item.ver_definitivas_externas && <ExternalGrades key={'externas-' + token} token={token} />}
+      {item.ver_valoraciones_ingreso && <EntryAssessments key={'valoraciones-' + token} token={token} hasTransfer={item.trayectoria?.tiene_resultados_traslado} />}</>}
   </section>
 }
 
@@ -117,8 +134,23 @@ export default function EnrollmentRoster({embedded = false}: {embedded?: boolean
   const [manual, setManual] = useState(false)
   const [detail, setDetail] = useState('')
   const [notice, setNotice] = useState('')
-  const query = useQuery({queryKey: ['matriculas', scope, 'listado', filters], staleTime: 30000, queryFn: () => api.get<Catalog>(`/matriculas?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value))}`)})
+  const [params, setParams] = useSearchParams()
+  const studentToken = params.get('estudiante') ?? ''
+  const requestFilters = {...filters, estudiante_token: studentToken}
+  const query = useQuery({queryKey: ['matriculas', scope, 'listado', requestFilters], staleTime: 30000, queryFn: () => api.get<Catalog>(`/matriculas?${new URLSearchParams(Object.entries(requestFilters).filter(([, value]) => value))}`)})
   const catalog = query.data
+  if (studentToken) {
+    const closeFile = () => {const next = new URLSearchParams(params); next.delete('estudiante'); setParams(next)}
+    return <div className='d-flex flex-column gap-4'>
+      <div className='intake-card'><label className='form-label' htmlFor='trajectory-year'>{text('Año lectivo', 'School year')}</label>
+        <select id='trajectory-year' className='form-select' value={catalog?.ano_token ?? ''} onChange={e => setFilters({...filters, ano_token: e.target.value})}>
+          {catalog?.anos.map(year => <option key={year.token} value={year.token}>{year.nombre}</option>)}</select></div>
+      {query.isPending && <p role='status'>{text('Cargando matrícula…', 'Loading enrollment…')}</p>}
+      {query.error && <p role='alert'>{query.error.message}</p>}
+      {catalog?.data[0] && <StudentFile key={catalog.data[0].token} token={catalog.data[0].token} onClose={closeFile} />}
+      {catalog?.data.length === 0 && <p role='status'>{text('Sin matrícula registrada.', 'No enrollment recorded.')}</p>}
+    </div>
+  }
   const change = (key: keyof typeof filters, value: string) => {setFilters(current => ({...current, [key]: value, page: '1'})); setDetail(''); setManual(false)}
   const manualButton = <button className='btn btn-primary' disabled={!catalog || catalog.anos.find(year => year.token === catalog.ano_token)?.estado === 'cerrado'} onClick={() => {setManual(true); setDetail(''); setNotice('')}}><IntakeIcon name='plus-lg' />{text('Matrícula manual', 'Manual enrollment')}</button>
   return <div className={`d-flex flex-column gap-5 ${embedded ? 'intake-roster-embedded' : ''}`}>{!embedded && <AcademicPageHeader title={text('Gestión de matrículas', 'Enrollment management')}

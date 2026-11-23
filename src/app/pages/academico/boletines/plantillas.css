@@ -46,7 +46,7 @@
 @media(max-width:1100px) {.bulletin-builder {grid-template-columns:1fr}}
 @media(max-width:600px) {.bulletin-builder-panel,.bulletin-builder-preview {padding:1rem}.bulletin-sample-topline,.bulletin-sample-footer {padding:.6rem 1rem}.bulletin-sample-header {padding:1.2rem;gap:.8rem}.bulletin-sample-monogram {width:45px;height:45px;font-size:1.5rem;border-radius:12px}.bulletin-sample-header h2 {font-size:1.12rem}.bulletin-sample-body {padding:1rem}.bulletin-sample-grid {gap:.6rem}.bulletin-sample {min-height:0}.bulletin-sample-indicator {flex-wrap:wrap}}
 .bulletin-studio{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;width:100%;height:100dvh;min-width:0;overflow:hidden;background:#fff}
-.bulletin-studio-head{display:flex;flex:none;align-items:center;gap:16px;min-height:76px;padding:12px clamp(24px,4vw,80px);background:#6a23ff}
+.bulletin-studio-head{display:flex;flex:none;align-items:center;gap:16px;min-height:76px;padding:12px clamp(24px,4vw,80px);background:var(--brand-header-gradient)}
 .bulletin-studio-home{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:12px}
 .bulletin-studio-home:focus-visible{outline:2px solid #fff;outline-offset:4px}
 .bulletin-studio-home img{display:block;max-width:100%;max-height:100%;object-fit:contain}
@@ -62,7 +62,7 @@
 .bulletin-studio-draft-notice .alert strong{font-size:12px}
 .bulletin-studio-draft-notice .alert small{font-size:10px}
 .bulletin-studio-draft-notice .alert .btn{min-height:30px;padding:6px 11px;font-size:11px;border-radius:999px;white-space:nowrap}
-.bulletin-studio-loading{padding:12px 28px;color:#6a23ff;background:#f5f0ff}
+.bulletin-studio-loading{padding:12px 28px;color:var(--brand-purple);background:#f5f0ff}
 .bulletin-studio-frame{display:block;flex:1 1 0;width:100%;height:100%;min-height:0;min-width:0;border:0;border-radius:0;background:#fff}
 @media(max-width:780px){.bulletin-studio-head{padding-inline:20px}}
 @media(max-width:600px){.bulletin-studio-head{min-height:64px;gap:12px;padding-block:10px}.bulletin-studio-home{width:40px;height:40px}.bulletin-studio-head h1{font-size:1.12rem}}

@@ -7,7 +7,11 @@ export type IssueSelection = {contexto: 'periodo' | 'final'; periodo_token?: str
 export type BulletinIssue = {token: string; matricula_token: string; contexto: 'periodo' | 'final';
   periodo_token: string | null; revision: number; estado: 'preparado' | 'aprobado' | 'publicado' | 'sustituido' | 'descartado';
   plantilla: string | null; archivo: string; preparado_en: string | null; aprobado_en: string | null;
-  publicado_en: string | null; pdf_disponible: boolean}
+  publicado_en: string | null; pdf_disponible: boolean;
+  rectificacion: {revision_anterior: number; boletin_anterior_token: string | null;
+    cambios: {materia: string; periodo: string; anterior: string; vigente: string;
+      fuente_anterior?: 'colegio' | 'certificado'; fuente_vigente?: 'colegio' | 'certificado'
+      anual_anterior?: string; anual_vigente?: string}[]} | null}
 export type BulletinIssuesPage = {data: BulletinIssue[]; pagina: number; ultima_pagina: number; total: number}
 export type IssuePreview = {contexto: string; huella_insumos: string; plantilla: string;
   resumen: {estudiante: {nombre: string; grado: string; grupo: string}; asignaturas: number;

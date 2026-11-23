@@ -5,6 +5,7 @@ import {KTCard, KTCardBody} from '@/_metronic/helpers'
 import type {BoletinData, BoletinPeriodoResult} from '../boletines.types'
 import {useIntl} from 'react-intl'
 import '../boletines.css'
+import {periodGradeSource} from '../../evaluacion/periodGradeSource'
 import {gradeDisplay} from '../../evaluacion/gradeDisplay'
 import {VisualChoice} from '../../evaluacion/components/VisualChoice'
 
@@ -55,12 +56,15 @@ const BoletinContent = ({matriculaId}: {matriculaId: string}) => {
   const periodHeading = (period: BoletinData['periodos'][number]) =>
     `${period.nombre}${period.peso == null ? '' : ` · ${Number(period.peso)} %`}`
   const renderValue = (result?: Omit<BoletinPeriodoResult, 'periodo_id'>) => {
-    if (visual) return result?.valoracion ? <VisualChoice compact choice={result.valoracion} /> : '—'
+    const sourceLabel = periodGradeSource(result?.origen, result?.certificado_recibido) ?? periodGradeSource(result?.resultado_original?.origen, result?.resultado_original?.certificado_recibido)
+    const source = sourceLabel && <small className='d-block fw-normal'>{t(sourceLabel)}</small>
+    if (result?.origen === 'pendiente_eleccion' || result?.origen === 'sin_equivalencia' || result?.origen === 'pendiente_certificado' || result?.origen === 'pendiente_traslado' || result?.origen === 'pendiente_consolidacion') return source
+    if (visual) return result?.valoracion ? <><VisualChoice compact choice={result.valoracion} />{source}</> : '—'
     if (!result?.display_value) return '—'
-    return <span className={`badge ${result.aprobado ? 'badge-light-success' : 'badge-light-danger'}`}>
+    return <><span className={`badge ${result.aprobado ? 'badge-light-success' : 'badge-light-danger'}`}>
       {gradeDisplay(result.display_value)}
       {result.origen === 'recuperacion' && <span className='ms-1' title={t('boletines.recovered')} aria-label={t('boletines.recovered')}>↗</span>}
-    </span>
+    </span>{source}</>
   }
 
   return (

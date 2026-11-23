@@ -144,7 +144,10 @@ export const useGuardarNotas = (asignacionId: string, periodoId: string) => {
   return useMutation({
     mutationFn: (notas: NotaUpdate[]) =>
       api.put(`${EVAL_URL}/planillas/${encodeURIComponent(asignacionId)}/${encodeURIComponent(periodoId)}?opaque=1`, {notas: notas.map(nota => toOpaqueAcademic(nota))}),
-    onSuccess: () => {
+    onSuccess: (_, notas) => {
+      const enrollments = new Set(notas.map(nota => nota.matricula_id))
+      queryClient.invalidateQueries({queryKey: ['matriculas'], predicate: ({queryKey}) =>
+        queryKey[2] === 'consolidaciones' && typeof queryKey[3] === 'string' && enrollments.has(queryKey[3])})
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'planillas', asignacionId, periodoId]})
       queryClient.invalidateQueries({queryKey: ['evaluacion', 'catalogo']})
       queryClient.invalidateQueries({queryKey: ['boletines']})
