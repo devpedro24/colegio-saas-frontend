@@ -8,6 +8,8 @@ export function eventsFixture(base, catalog, today) {
   let event = {...base, estado: 'publicado', publicado_en: new Date().toISOString(), version: 1,
     origen: 'evento', enviar_correo: false, puede_editar: true, archivos: []}
   const writes = [], reads = [], readUrls = []
+  const review = {pendientes: [{selector: 'r'.repeat(24), destinatario: 'Ana', tipo: 'calendar.event.published',
+    fecha: new Date().toISOString(), intento: 1, puede_reenviar: true}], historial: [], paginas: 1, paginas_historial: 1}
   let denseEvents = []
   const tasks = [{...event, categoria: 'tarea', institucional: false, url_token: 'z'.repeat(24), titulo: 'Tarea sin plazo', descripcion: 'Matemáticas',
     origen: 'aula', fecha: today, fecha_limite: null},
@@ -21,6 +23,7 @@ export function eventsFixture(base, catalog, today) {
       reads.push(path)
       readUrls.push(req.url)
       const category = new URL(req.url, 'http://localhost').searchParams.get('categoria')
+      if (path.endsWith('/revision-correos')) return reply(review)
       if (path === '/api/eventos/catalogo') return reply({data: {...catalog, puede_institucional: true}})
       if (path === '/api/eventos/resumen') return reply({data: category && category !== event.categoria ? [] : [{fecha: today, total: denseEvents.length + 1,
         titulo_unico: denseEvents.length ? null : event.titulo,
@@ -41,9 +44,15 @@ export function eventsFixture(base, catalog, today) {
     let raw = ''; for await (const chunk of req) raw += chunk
     const body = raw ? JSON.parse(raw) : {}
     writes.push({path, body, method: req.method})
+    if (path.endsWith('/revision-correos/' + 'r'.repeat(24))) {
+      assert.deepEqual(body, {decision: 'reenviar', intento: 1, motivo: 'Ana confirmó que faltaba el aviso.'})
+      review.historial.push({...review.pendientes.pop(), ...body, responsable: 'Rectoría'})
+      event.correos.en_revision = 0
+      return reply({decision: body.decision})
+    }
     if (path.endsWith('/publicar')) {
       event = {...event, estado: 'publicado', publicado_en: new Date().toISOString(), version: event.version + 1,
-        correos: {pendiente: event.enviar_correo ? 12 : 0, enviando: 0, enviado: 0, fallido: 0, cancelado: 0}}
+        correos: {pendiente: event.enviar_correo ? 12 : 0, enviando: 0, en_revision: 0, enviado: 0, fallido: 0, cancelado: 0}}
       return reply({data: event})
     }
     if (path.endsWith('/correos/reintentar')) {
@@ -58,7 +67,7 @@ export function eventsFixture(base, catalog, today) {
     populateDense: () => {denseEvents = Array.from({length: 300}, (_, i) => ({...event,
       url_token: 'd'.repeat(20) + String(i).padStart(4, '0'), titulo: `Encuentro escolar ${i + 1}`,
       created_at: event.created_at}))},
-    failed: () => {event.correos = {pendiente: 0, enviando: 0, enviado: 11, fallido: 1, cancelado: 0}}}
+    failed: () => {event.puede_revisar_correos = true; event.correos = {pendiente: 0, enviando: 0, en_revision: 1, enviado: 10, fallido: 1, cancelado: 0}}}
 }
 
 export async function runEventsSmoke({navigate, evaluate, until, screenshot: capture, command, fixture, errors}) {
@@ -117,10 +126,19 @@ export async function runEventsSmoke({navigate, evaluate, until, screenshot: cap
   await click('Cancelar'); await click('Cerrar')
   fixture.failed()
   await navigate('/comunicacion/eventos?evento='+'i'.repeat(24), 'Notificaciones por correo')
-  await until(`document.querySelector('.modal.show')?.textContent.includes('Requieren revisión: 1')`)
+  await until(`document.querySelector('.modal.show')?.textContent.includes('Pendientes de revisión: 1')`)
   await screenshot('events-mail-status-desktop')
   await click('Reintentar correos fallidos')
   await until(`document.querySelector('.modal.show')?.textContent.includes('Pendientes: 1')`)
+  assert.ok(await evaluate(`document.querySelector('.modal.show').textContent.includes('Pendientes de revisión: 1') &&
+    !document.querySelector('.modal.show').textContent.includes('Reintentar correos fallidos')`))
+  await click('Revisar correos')
+  await until(`!!document.querySelector('.event-mail-status [aria-pressed]')`)
+  await evaluate(`document.querySelector('.event-mail-status [aria-pressed]').click()`)
+  assert.ok(await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent==='Autorizar un reenvío').disabled`))
+  await evaluate(`(()=>{const e=document.querySelector('.event-mail-status textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,'Ana confirmó que faltaba el aviso.');e.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+  await click('Autorizar un reenvío')
+  await until(`document.querySelector('.event-mail-status').textContent.includes('Reenvío autorizado · Ana')`)
   await click('Cerrar')
   await evaluate(`[...document.querySelectorAll('.event-preview')].find(e=>e.textContent.includes('Tarea sin plazo')).click()`)
   await until(`location.pathname.includes('/aula/recursos/')`)

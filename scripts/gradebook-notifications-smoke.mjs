@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import {structureNotificationsFixture} from './structure-notifications-smoke.mjs'
 
 // Isolated HTTP fixtures exercise the real components without writing academic data.
-export function gradebookNotificationsFixture({catalog,planilla}) {
+export function gradebookNotificationsFixture({catalog,planilla,bulletin}) {
   const base=structureNotificationsFixture(), {state}=base, token=c=>c.repeat(24)
   const assignment=catalog.asignaciones[0].url_token, period=planilla.periodo.url_token
   const enrollment=planilla.matriculas[0].url_token, group=catalog.grupos[0].url_token
@@ -27,6 +27,16 @@ export function gradebookNotificationsFixture({catalog,planilla}) {
   state.annualRoute=`/evaluacion/anuales/manual?ano=${catalog.anos[0].url_token}&grupo=${group}`
   const sheet=()=>({...planilla,configuracion:{...planilla.configuracion,modo_asignatura:state.manualSubject?'MANUAL':'SIMPLE_AVERAGE'},
     escala_visual:{tipo:state.visual?'imagenes':'numerica',opciones:state.visual?state.choices:[]}})
+  state.bulletinRoute=`/academico/boletines/${enrollment}`
+  const terms=['Primero','Segundo','Tercero','Cuarto'].map((nombre,i)=>({
+    ...bulletin.periodos[0], url_token:token(String(i+1)), nombre, orden:i+1,
+  }))
+  const results=['4','4.5','3.5','4.8'].map((display_value,i)=>({
+    periodo_token:terms[i].url_token, estado:'calculado', aprobado:true, display_value, ...(i<2?{origen:'externa'}:{}),
+  }))
+  const transferBulletin={...bulletin,periodos:terms,periodo_sumatorio:null,asignaturas:[{
+    ...bulletin.asignaturas[0],periodos:results,anual:{estado:'calculado',aprobado:true,display_value:'4.2'},
+  }]}
   const manualSheet=annual=>({grupo:{url_token:group,nombre:'Primero / A'},periodo:planilla.periodo,areas:[state.area],area_token:state.area.url_token,
     ambito:'materia',recursos:[catalog.asignaciones[0].materia],recurso_token:catalog.asignaciones[0].materia_token,
     editable:true,valor_min:'0',valor_max:'5',escala_visual:sheet().escala_visual,
@@ -39,6 +49,7 @@ export function gradebookNotificationsFixture({catalog,planilla}) {
     if(p.startsWith('/api/indicadores/politica/'))return send({data:{alcance:'grupo',docente_puede_editar:false,version:1,configurado:true}})
     if(p==='/api/indicadores/tabla')return send({data:{grupo_token:group,periodo_token:period,materias:[]}})
     if(p===path&&req.method==='GET')return send({data:sheet()})
+    if(p===`/api/evaluacion/boletines/${enrollment}`)return send({data:transferBulletin})
     if(p==='/api/evaluacion/areas/manual')return send({data:manualSheet(false)})
     if(p==='/api/evaluacion/anuales/manual')return send({data:manualSheet(true)})
     if(!p.startsWith(path)&&!p.startsWith('/api/evaluacion/areas/manual/')&&!p.startsWith('/api/evaluacion/anuales/manual/'))return base.middleware(req,res,next)
@@ -167,6 +178,59 @@ export async function runGradebookNotificationsSmoke({fixture,navigate,evaluate,
   assert.doesNotMatch(await evaluate(`document.querySelector('#kt_menu_notifications').textContent`),/event\.gradebook|scope\.gradebook/)
   const count=state.records.length
   await navigate(state.annualRoute,'Definitivas anuales');await logs();assert.equal(state.records.length,count,'History reload does not duplicate notifications.')
+  state.visual=false
+  state.manualSubject=false
+  Object.assign(state.planilla.resultados[0],{origen:'pendiente_certificado',estado:'pendiente',display_value:null,raw_value:null,secciones:[]})
+  for(const [received,label] of [[false,'Definitiva pendiente de certificado'],[true,'Certificado recibido, pendiente de aprobación']]){
+    state.planilla.resultados[0].certificado_recibido=received
+    await open()
+    await until(`document.querySelector('tbody tr')?.innerText.includes(${JSON.stringify(label)})`)
+    assert.equal(await evaluate("!!document.querySelector('tbody tr .grade-input')"),false)
+  }
+  state.planilla.resultados[0].origen='sin_equivalencia'
+  await open()
+  await until("document.querySelector('tbody tr')?.innerText.includes('Sin equivalencia · Pendiente de valoración')")
+  assert.equal(await evaluate("!!document.querySelector('tbody tr .grade-input')"),false)
+  Object.assign(state.planilla.resultados[0], {origen:'externa', estado:'calculado', raw_value:'4.0', display_value:'4.0', secciones:[]})
+  for (const manual of [false,true]) {
+    state.manualSubject=manual
+    await open()
+    await until(`document.querySelector('tbody tr')?.innerText.includes('Definitiva externa')`)
+    const rowText=await evaluate(`document.querySelector('tbody tr').innerText`)
+    assert.match(rowText,/4(?:[.,]0)?/)
+    if (!manual) assert.match(rowText,/No aplica/)
+    assert.equal(await evaluate(`!!document.querySelector('tbody tr .grade-input,tbody tr .grade-cell button,tbody tr .btn-light-primary')`),false)
+  }
+  console.log('PASS: recognized grade is visible and read-only in ordinary and manual gradebooks.')
+  state.manualSubject=false
+  const section=state.planilla.secciones[0]
+  const exemplar=section.actividades[0]
+  section.actividades.push({...exemplar,url_token:'z'.repeat(24),nombre:'Actividad anterior al cambio',fecha:'2026-08-01'})
+  Object.assign(state.planilla.resultados[0],{origen:'pendiente_consolidacion',estado:'pendiente',raw_value:null,display_value:null,
+    intervalos_grupo:[{desde:'2026-09-01',hasta:'2026-09-30'}]})
+  await open()
+  await until(`document.querySelector('tbody tr')?.innerText.includes('Pendiente de consolidar')`)
+  assert.match(await evaluate("document.querySelector('tbody tr').innerText"), /No aplica/)
+  assert.ok(await evaluate("!!document.querySelector('tbody tr input.grade-input:not(:disabled)')"))
+  state.planilla.resultados[0].actividades_apoyo=[{actividad_token:'z'.repeat(24),fecha_entrega:'2026-09-20'}]
+  await open()
+  await until("document.querySelector('tbody tr')?.innerText.includes('Pendiente de apoyo')")
+  const supportInput="tbody tr input.grade-input[aria-label$='Actividad anterior al cambio']"
+  assert.ok(await evaluate(`!document.querySelector(${JSON.stringify(supportInput)}).disabled`))
+  await change(supportInput,'5')
+  await change('#grade-save-reason','Calificación del taller individual.')
+  await until(`!document.querySelector('.grade-result[aria-busy="true"]')`)
+  await succeed(saveGrades)
+  await until("document.querySelector('tbody tr')?.innerText.includes('Apoyo calificado')")
+  assert.equal(state.writes.at(-1).input.notas[0].actividad_token,'z'.repeat(24))
+  Object.assign(state.planilla.resultados[0],{origen:'consolidacion',estado:'calculado',raw_value:'3.78',display_value:'3.8'})
+  await open()
+  await until(`document.querySelector('tbody tr')?.innerText.includes('Definitiva consolidada')`)
+  assert.ok(await evaluate("!!document.querySelector('tbody tr input.grade-input:disabled') && !document.querySelector('tbody tr input.grade-input:not(:disabled)')"))
+  await navigate(state.bulletinRoute,'Matemáticas')
+  const subject='.grade-report tbody tr'
+  await until(`document.querySelectorAll('${subject} small').length===2`)
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('${subject} .badge')].map(e=>Number(e.textContent.trim().replace(',','.')))`),[4,4.5,3.5,4.8,4.2])
   assert.deepEqual(errors,[])
   console.log('PASS: manual area/annual, numeric/caritas, mobile overlay and notification history after reload.')
 }

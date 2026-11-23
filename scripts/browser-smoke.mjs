@@ -24,10 +24,19 @@ import {createServer} from 'vite'
 import {enrollmentFixture, runEnrollmentSmoke} from './enrollment-smoke.mjs'
 import {runEnrollmentAdminSmoke} from './enrollment-admin-smoke.mjs'
 import {runEnrollmentWorkflowSmoke} from './enrollment-workflow-smoke.mjs'
+import {userInputFixture, runUserInputSmoke, runStudentReturnSmoke} from './user-input-smoke.mjs'
+import {accountInputFixture, runAccountInputSmoke} from './account-input-smoke.mjs'
+import {institutionInputFixture, runInstitutionInputSmoke} from './institution-input-smoke.mjs'
 import {eventsFixture, runEventsSmoke} from './events-smoke.mjs'
 import {runAcademicNavigationSmoke} from './academic-navigation-smoke.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
+const usersMode = process.argv.includes('--user-input')
+const accountInputMode = process.argv.includes('--account-input')
+const institutionInputMode = process.argv.includes('--institution-input')
+const institutionInputApi = institutionInputMode ? institutionInputFixture() : null
+const studentReturnMode = process.argv.includes('--student-return')
+const usersApi = usersMode || studentReturnMode ? userInputFixture() : null
 const sedesMode = process.argv.includes('--sedes')
 const toastMode = process.argv.includes('--toast')
 const yearNotificationsMode = process.argv.includes('--year-notifications')
@@ -55,6 +64,9 @@ const gradingMode = process.argv.includes('--grading')
 const gradebookNotificationsMode = process.argv.includes('--gradebook-notifications')
 const workflowMode = process.argv.includes('--academic-workflow')
 const aulaMode = process.argv.includes('--aula')
+const aulaHistoryMode = process.argv.includes('--aula-history')
+const renewalMode = process.argv.includes('--renewal')
+const studentResultsMode = process.argv.includes('--student-results')
 const aulaNotificationsMode = process.argv.includes('--aula-notifications')
 const attendanceNotificationsMode = process.argv.includes('--attendance-notifications')
 const calendarNotificationsMode = process.argv.includes('--calendar-notifications')
@@ -63,7 +75,8 @@ const teacherAccessMode = process.argv.includes('--teacher-access') || academicC
 const indicatorScopeMode = process.argv.includes('--indicator-scope')
 const indicatorSheetMode = process.argv.includes('--indicator-sheet')
 const rbacMode = process.argv.includes('--rbac')
-const intakeMode = process.argv.includes('--ingreso') || process.argv.includes('--ingreso-summary') || process.argv.includes('--ingreso-admin') || process.argv.includes('--ingreso-workflow')
+const earlyPromotionMode = process.argv.includes('--promocion-anticipada')
+const intakeMode = earlyPromotionMode || process.argv.includes('--ingreso') || process.argv.includes('--ingreso-summary') || process.argv.includes('--ingreso-admin') || process.argv.includes('--ingreso-workflow')
 const apiReads = []
 const apiWrites = []
 const indicatorSheetWrites = []
@@ -98,6 +111,14 @@ const artifacts = path.join(root, 'artifacts', 'ui-smoke')
 fs.mkdirSync(artifacts, {recursive: true})
 const today = new Date().toLocaleDateString('en-CA')
 const user = {id: 'u'.repeat(24), tenant_channel: 't'.repeat(24), name: 'Rector de prueba', email: 'rector@example.test', is_platform: false, roles: ['rector'], permissions: ['academico.anos.gestionar', 'academico.anos.transicionar', 'academico.periodos.transicionar', 'academico.configurar', 'academico.estructura.gestionar', 'academico.plan_estudios.gestionar'], mfa_enabled: false}
+if (studentReturnMode) {
+  user.roles = ['coord_academico']
+  user.permissions = ['estudiantes.reincorporacion.autorizar']
+  usersApi.state.rows.push({url_token: 'z'.repeat(24), name: 'Ana Pruebas', email: 'ana@example.test', roles: ['estudiante'],
+    role: 'estudiante', status: 'egresado', sede_url_token: 's'.repeat(24), sede_nombre: 'Norte'})
+}
+if (usersMode) user.permissions.push('usuarios.gestionar')
+const accountInputApi = accountInputMode ? accountInputFixture(user) : null
 if (sedesMode) user.institution = {name: 'Colegio de prueba', plan: {name: 'Premium', features: ['nucleo', 'academico', 'multi_sede']}}
 if (workflowMode || paginationMode) user.institution = {name: 'Colegio de prueba', plan: {name: 'Premium', features: ['nucleo', 'academico']}}
 if (platformMode) { user.is_platform = true; user.tenant_channel = null; user.roles = ['superadmin']; user.permissions = [] }
@@ -109,7 +130,7 @@ if (learningNotificationsMode) {
   user.institution = {name:'Colegio de prueba',plan:{name:'Premium',features:['nucleo','academico','preinformes']}}
 }
 if (gradebookNotificationsMode) {
-  user.permissions.push('notas.registrar_materia_asignada','notas.actividades.crear','notas.actividades.editar','notas.actividades.eliminar','notas.planilla.configurar','notas.resultados_area.gestionar','notas.resultados_anuales.gestionar')
+  user.permissions.push('notas.registrar_materia_asignada','notas.actividades.crear','notas.actividades.editar','notas.actividades.eliminar','notas.planilla.configurar','notas.resultados_area.gestionar','notas.resultados_anuales.gestionar','boletines.grupo.ver')
   user.institution = {name:'Colegio de prueba',plan:{name:'Premium',features:['nucleo','academico','preinformes']}}
 }
 const rbacFixture = rbacMode ? {data: [
@@ -162,7 +183,7 @@ const rbacCatalogFixture = rbacMode && platformMode ? {
     {key: 'academico', category: 'academico', label: 'plan.f.academico', description: 'plan.f.academico.desc'},
   ], categories: [{key: 'general', label: 'plan.cat.general'}, {key: 'academico', label: 'plan.cat.academico'}],
 } : null
-const intakeFixture = intakeMode ? enrollmentFixture(user, {modern: process.argv.includes('--ingreso-workflow')}) : null
+const intakeFixture = intakeMode || renewalMode ? enrollmentFixture(user, {modern: process.argv.includes('--ingreso-workflow'), earlyPromotion: earlyPromotionMode}) : null
 if (process.argv.includes('--institutional')) user.permissions.push('config.correo')
 if (realtimeMode) user.tenant_channel = reverbProbe({action: 'channel'}).token
 const urlTokens = {year: 'a'.repeat(24), nextYear: 'b'.repeat(24), group: 'c'.repeat(24), groupB: 'd'.repeat(24), groupC: 'e'.repeat(24), groupPre: '7'.repeat(24), teacher: 'f'.repeat(24), space: 'g'.repeat(24), assignment: 'h'.repeat(24), period: 'j'.repeat(24), enrollment: 'k'.repeat(24), sede: 'm'.repeat(24), event: 'i'.repeat(24), materia: 'v'.repeat(24)}
@@ -376,7 +397,26 @@ if (teacherAccessMode) {
     periodos: [{periodo_token: urlTokens.period, nombre: 'Trimestre 1', observacion: null,
       puede_editar: true, motivo_bloqueo: null}], final: null,
   }}
-  fixtures[`/api/boletines/emisiones/${urlTokens.enrollment}`] = {data: [], pagina: 1, ultima_pagina: 1, total: 0}
+  fixtures['/api/boletines/plantillas'] = {data: {plantillas: [{token: 'T'.repeat(24), nombre: 'Institucional',
+    ambito: 'periodo', revision_publicada: 1, configuracion: {}}], pagina: 1, ultima_pagina: 1}}
+  const originalBulletin = {token: 'A'.repeat(24), contexto: 'periodo', periodo_token: urlTokens.period, revision: 1,
+    plantilla: 'Institucional', archivo: 'original.pdf', estado: 'publicado', pdf_disponible: true, rectificacion: null}
+  const secondBulletin = {...originalBulletin, token: 'B'.repeat(24), revision: 2, archivo: 'rectificado.pdf', estado: 'publicado',
+    rectificacion: {revision_anterior: 1, boletin_anterior_token: originalBulletin.token,
+      cambios: [{materia: 'Matemáticas', periodo: 'Trimestre 1', anterior: '1.0', vigente: '4.0',
+        fuente_anterior: 'colegio', fuente_vigente: 'certificado'}]}}
+  const originalFinal = {...originalBulletin, contexto: 'final', periodo_token: null, token: 'F'.repeat(24),
+    archivo: 'final-original.pdf', estado: 'sustituido'}
+  const correctedFinal = {...originalFinal, token: 'G'.repeat(24), revision: 2, archivo: 'final-rectificado.pdf', estado: 'publicado',
+    rectificacion: {revision_anterior: 1, boletin_anterior_token: originalFinal.token, cambios: [
+      {...secondBulletin.rectificacion.cambios[0], anual_anterior: '3.4', anual_vigente: '4.2'}]}}
+  const closedOriginal = {...originalBulletin, periodo_token: closedIndicatorPeriod, token: 'H'.repeat(24),
+    archivo: 'ana-matematicas-original.pdf', estado: 'sustituido'}
+  const closedCorrection = {...closedOriginal, token: 'I'.repeat(24), revision: 2, archivo: 'ana-matematicas-rectificado.pdf',
+    estado: 'publicado', rectificacion: {revision_anterior: 1, boletin_anterior_token: closedOriginal.token,
+      cambios: [{materia: 'Matemáticas', periodo: 'Primero', anterior: '4.0', vigente: '3.5'}]}}
+  fixtures[`/api/boletines/emisiones/${urlTokens.enrollment}`] = {data: [correctedFinal, originalFinal,
+    secondBulletin, {...originalBulletin, estado: 'sustituido'}, closedCorrection, closedOriginal], pagina: 1, ultima_pagina: 1, total: 6}
   fixtures[`/api/boletines/emisiones/${urlTokens.enrollment}/emitir`] = {data: {token: 'B'.repeat(24), estado: 'aprobado', pdf_disponible: true}}
   fixtures['/api/asistencias'] = {data: {anos: [{token: urlTokens.year, nombre: '2026', estado: 'en_curso'}],
     ano_lectivo_token: urlTokens.year, asignaciones: [{token: urlTokens.assignment, nombre: 'Matemáticas · Primero / A',
@@ -477,8 +517,11 @@ if (aulaMode || eventsMode || aulaNotificationsMode) {
       {tipo: 'enlace', texto: 'Biblioteca', url: 'https://example.org/biblioteca'}]}, estado: 'publicado',
     visible_estudiantes: true, calificable: false, llevar_planilla: false, actividad_token: null, peso: null,
     disponible_desde: null, disponible_hasta: null, fecha_limite: null, zona_publicacion: 'America/Bogota',
-    version: 1, adjuntos: attachments, estudiante: false, puede_gestionar: true, puede_adjuntar: true, puede_calificar: false,
+    version: 1, adjuntos: attachments, estudiante: false, puede_gestionar: true, puede_adjuntar: true, puede_calificar: false, correos_en_revision: 1, puede_revisar_correos: true,
     puede_evaluar: false, puede_interactuar: false}}
+  fixtures[`/api/aula/recursos/` + resourceToken + '/revision-correos'] = {
+    pendientes: [{selector: 'r'.repeat(24), destinatario: 'Ana', tipo: 'aula.resource.published',
+      fecha: new Date().toISOString(), intento: 1, puede_reenviar: false}], historial: [], paginas: 1, paginas_historial: 1}
   fixtures[`/api/aula/recursos/${quizToken}`] = {data: {token: quizToken, aula_token: aulaToken,
     seccion_token: 's'.repeat(24), tipo: 'cuestionario', titulo: 'Evaluación de lectura',
     contenido: {bloques: []}, estado: 'publicado', visible_estudiantes: true, calificable: true,
@@ -551,14 +594,77 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 const gradebookNotificationsApi = gradebookNotificationsMode ? gradebookNotificationsFixture({
   catalog:opaqueEvaluation('/api/evaluacion/catalogo',fixtures['/api/evaluacion/catalogo']).data,
   planilla:opaqueEvaluation(opaquePlanillaPath,fixtures['/api/evaluacion/planillas/1/1']).data,
+  bulletin:opaqueEvaluation(opaqueBoletinPath,fixtures['/api/evaluacion/boletines/1']).data,
 }) : null
 const aulaNotificationsApi = aulaNotificationsMode ? aulaNotificationsFixture({fixtures,user}) : null
+let renewalSummary
+if (renewalMode) {
+  user.name = 'Ana Pruebas'
+  user.roles = ['estudiante']
+  user.permissions = ['aula.ver_propias']
+  user.institution = {name: 'Colegio de prueba', plan: {name: 'Premium', features: ['nucleo', 'academico', 'aula']}}
+  intakeFixture.app.estado = 'aprobada'
+  renewalSummary = {token: intakeFixture.app.url_token, ano_token: urlTokens.year, ano: '2027',
+    convocatoria: 'Renovación 2027', estado: 'aprobada', grupo: null, clases_habilitadas: false}
+  fixtures['/api/aula/catalogo'] = {data: {anos: [{token: urlTokens.year, nombre: '2027'}], ano_token: urlTokens.year,
+    grupos: [], requiere_grupo: false, grupo_seleccionado: urlTokens.group, aulas: [{aula_token: 'b'.repeat(24),
+      grupo_token: urlTokens.group, grupo: 'Primero / 01B', materia_token: urlTokens.materia, materia: 'Matemáticas'}]}}
+}
+if (studentResultsMode) {
+  user.name = 'Ana Traslado'
+  user.roles = ['estudiante']
+  user.permissions = ['notas.ver_propias']
+  user.institution = {name: 'Colegio de prueba', plan: {name: 'Estándar', features: ['nucleo', 'academico']}}
+  fixtures['/api/ingreso/mis-resultados'] = {data: ['Matemáticas', 'Química'].flatMap((materia, subject) =>
+    ['Primero', 'Segundo'].map((periodo, term) => ({token: String(1 + subject * 2 + term).repeat(24), materia, periodo, ano: '2027',
+      estado: subject ? 'pendiente' : 'calculado', origen: subject ? 'sin_equivalencia' : 'externa',
+      nota: subject ? null : ['4.0', '4.5'][term]})))}
+}
+if (aulaHistoryMode) {
+  user.roles = ['estudiante']
+  user.permissions = ['aula.ver_propias', 'aula.entregas.enviar']
+  user.institution = {name: 'Colegio de prueba', plan: {name: 'Premium', features: ['nucleo', 'academico', 'aula']}}
+  fixtures['/api/aula/catalogo'] = {data: {anos: [{token: urlTokens.year, nombre: '2028'}], ano_token: urlTokens.year,
+    grupos: [], requiere_grupo: false, grupo_seleccionado: urlTokens.group, puede_configurar: false, tiene_entregas_anteriores: true,
+    aulas: [{aula_token: 'b'.repeat(24), grupo_token: urlTokens.group, grupo: 'Primero / 01B', materia_token: urlTokens.materia,
+      materia: 'Biología', docente: 'Docente de prueba'}]}}
+  fixtures['/api/aula/historial/entregas'] = {data: [{token: 'e'.repeat(24), titulo: 'Taller de Primero A', grupo: '01A',
+    grado: 'Primero', materia: 'Biología', texto: 'Mi trabajo en A', retroalimentacion: 'Explicaste bien tu respuesta.',
+    entregada_at: '2028-02-01T13:00:00Z', adjuntos: [{token: 'f'.repeat(24), nombre: 'mi-trabajo.pdf'}]}], hay_mas: false}
+}
 const calendarNotificationsApi = calendarNotificationsMode ? calendarNotificationsFixture({user,base:event,catalog:fixtures['/api/eventos/catalogo'].data}) : null
 const attendanceNotificationsApi = attendanceNotificationsMode ? attendanceNotificationsFixture({user}) : null
 try {
   server = await createServer({root, logLevel: 'error', server: {host: '127.0.0.1', port: 5197, strictPort: true}, plugins: [{name: 'smoke-api', configureServer(vite) {
+    if (usersApi) vite.middlewares.use(usersApi.middleware)
+    if (accountInputApi) vite.middlewares.use(accountInputApi.middleware)
+    if (institutionInputApi) vite.middlewares.use(institutionInputApi.middleware)
     if (sedesApi) vite.middlewares.use(sedesApi.middleware)
     if (commercialApi) vite.middlewares.use(commercialApi.middleware)
+    if (renewalMode) vite.middlewares.use(async (req, res, next) => {
+      const pathname = new URL(req.url, 'http://localhost').pathname
+      const portal = `/api/mi-renovacion/${renewalSummary.token}`
+      if (pathname === `/api/anos-lectivos/${urlTokens.year}/acceso-estudiantil` && req.method === 'PUT') {
+        const chunks = []
+        for await (const part of req) chunks.push(part)
+        const payload = JSON.parse(Buffer.concat(chunks).toString())
+        assert.equal(payload.motivo, 'Inicio del año lectivo')
+        assert.equal(payload.habilitado, true)
+        year.acceso_estudiantil = renewalSummary.clases_habilitadas = true
+        res.setHeader('Content-Type', 'application/json')
+        return res.end(JSON.stringify({habilitado: true}))
+      }
+      if (pathname !== '/api/ingreso/mi-estado' && !pathname.startsWith(portal + '/')) return next()
+      res.setHeader('Content-Type', 'application/json')
+      if (pathname === '/api/ingreso/mi-estado') return res.end(JSON.stringify({tramites: [renewalSummary], grupo_pendiente: !renewalSummary.grupo}))
+      if (pathname === portal + '/anexos' && req.method === 'POST') {
+        const chunks = []
+        for await (const part of req) chunks.push(part)
+        assert.match(Buffer.concat(chunks).toString(), /soporte-ana.pdf/)
+        intakeFixture.app.documentos.push({url_token: 'J'.repeat(24), requisito: 'anexo', anexo_renovacion: true, nombre: 'soporte-ana.pdf', version: 1, estado: 'pendiente'})
+      }
+      return res.end(JSON.stringify({data: intakeFixture.app}))
+    })
     if (intakeFixture) vite.middlewares.use(intakeFixture.middleware)
     if (calendarNotificationsApi) vite.middlewares.use(calendarNotificationsApi.middleware)
     if (eventFixture) vite.middlewares.use(eventFixture.middleware)
@@ -802,6 +908,14 @@ try {
         if (teacherAccessMode && url.pathname === `/api/boletines/emisiones/${urlTokens.enrollment}/emitir`) {
           assert.equal(parsed.periodo_token, urlTokens.period)
           assert.equal(parsed.contexto, 'periodo')
+          const archive = fixtures[`/api/boletines/emisiones/${urlTokens.enrollment}`]
+          const previous = archive.data.find(row => row.periodo_token === parsed.periodo_token && row.revision === 2)
+          const corrected = {...previous, token: 'C'.repeat(24), revision: 3, archivo: 'quimica-rectificada.pdf', estado: 'aprobado',
+            rectificacion: {revision_anterior: 2, boletin_anterior_token: previous.token,
+              cambios: [{materia: 'Química', periodo: 'Trimestre 1', anterior: '4.2', vigente: '4.0'}]}}
+          archive.data = [corrected, ...archive.data.filter(row => row.revision < 3)]
+          archive.total = archive.data.length
+          fixture = {data: corrected}
         }
         if (teacherAccessMode && url.pathname === '/api/evaluacion/recuperaciones' && req.method === 'POST') {
           assert.equal(parsed.periodo_token, urlTokens.period)
@@ -810,6 +924,7 @@ try {
             asignacion_token: urlTokens.assignment, periodo_token: urlTokens.period, materia: 'Matemáticas',
             periodo: 'Trimestre 1', tipo: 'nivelacion', estado: 'pendiente', politica: 'REPLACE', version: 1,
             valor_original_exacto: '2', nota_recuperacion: null, valor_efectivo_exacto: null,
+            resultado_original: {display_value: '2', valoracion: null}, escala_visual: {tipo: 'numerica', opciones: []},
             can_record: true, can_cancel: true, motivo_bloqueo: null}
           fixtures['/api/evaluacion/recuperaciones'].data = [row]
           fixtures['/api/evaluacion/recuperaciones'].candidatos = []
@@ -846,6 +961,12 @@ try {
           indicatorSheetDeletes.push(url.pathname)
           Object.assign(row, {texto_html: '', version: row.version + 1})
           fixture = {data: row}
+        }
+        if (aulaMode && url.pathname.endsWith('/revision-correos/' + 'r'.repeat(24)) && req.method === 'POST') {
+          assert.deepEqual(parsed, {decision: 'confirmar', intento: 1, motivo: 'Ana recibió la guía.'})
+          const review = fixtures[url.pathname.slice(0, url.pathname.lastIndexOf('/'))]
+          review.historial.push({...review.pendientes.pop(), ...parsed, responsable: 'Rectoría'})
+          fixture = {decision: 'confirmar'}
         }
          if (aulaMode && url.pathname === `/api/aula/recursos/${'z'.repeat(24)}/abrir`) {
           fixtures[`/api/aula/recursos/${'z'.repeat(24)}`].data.progreso = 'completado'
@@ -1036,6 +1157,70 @@ try {
     await runCalendarNotificationsSmoke({fixture:calendarNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
   } else if (attendanceNotificationsMode) {
     await runAttendanceNotificationsSmoke({fixture:attendanceNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
+  } else if (renewalMode) {
+    await command('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true})
+    await navigate('/dashboard', 'Ver mi trámite')
+    assert.equal(await evaluate(`!!document.querySelector('#my-enrollment') && !document.body.innerText.includes('Ver mis clases')`), true)
+    await evaluate(`document.querySelector('a[href^="/mi-renovacion/"]').click()`)
+    await until(`!!document.querySelector('#renewal-annex')`)
+    await evaluate(`(() => {const field = document.querySelector('#renewal-annex'); const files = new DataTransfer();
+      files.items.add(new File(['%PDF-1.4'], 'soporte-ana.pdf', {type:'application/pdf'})); field.files = files.files;
+      field.dispatchEvent(new Event('change', {bubbles: true}));})()`)
+    await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent === 'Adjuntar documento').click()`)
+    await until(`document.body.innerText.includes('soporte-ana.pdf')`)
+    assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'))
+    Object.assign(renewalSummary, {estado: 'matriculada', grupo: 'Primero / 01B'})
+    await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Volver a mi cuenta')).click()`)
+    await until(`document.body.innerText.includes('Clases pendientes de habilitación')`)
+    assert.equal(await evaluate(`document.body.innerText.includes('Ver mis clases')`), false)
+    await command('Emulation.setDeviceMetricsOverride', {width: 1280, height: 820, deviceScaleFactor: 1, mobile: false})
+    user.roles = ['rector']
+    user.permissions = ['academico.anos.gestionar', 'academico.configurar']
+    await navigate('/academico/anos-lectivos', 'Habilitar clases')
+    await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent === 'Habilitar clases').click()`)
+    await until(`!!document.querySelector('#class-access-reason')`)
+    assert.ok(await evaluate(`document.querySelector('[role="dialog"] .btn-primary').disabled`))
+    await evaluate(`(() => {const input = document.querySelector('#class-access-reason');
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(input,'Inicio del año lectivo');
+      input.dispatchEvent(new Event('input', {bubbles: true}));})()`)
+    await evaluate(`document.querySelector('[role="dialog"] .btn-primary').click()`)
+    await until(`document.body.innerText.includes('Suspender acceso a clases')`)
+    user.roles = ['estudiante']
+    user.permissions = ['aula.ver_propias']
+    await navigate('/dashboard', 'Ver mis clases')
+    await evaluate(`[...document.links].find(link => link.textContent === 'Ver mis clases').click()`)
+    await until(`location.pathname === '/evaluacion/aula' && document.body.innerText.includes('Matemáticas')`)
+    assert.deepEqual(errors, [])
+    console.log('PASS: Ana follows her renewal, uploads an annex, and opens classes for the confirmed year.')
+  } else if (studentResultsMode) {
+    for (const width of [1280, 390]) {
+      await command('Emulation.setDeviceMetricsOverride', {width, height: 844, deviceScaleFactor: 1, mobile: width < 500})
+      await navigate('/account/overview', 'Reconocida por certificado')
+      const rows = await evaluate(`[...document.querySelectorAll('[aria-labelledby="student-results-title"] li')].map(li => li.innerText)`)
+      assert.equal(rows.length, 4)
+      assert.match(rows[0], /Matemáticas.*Primero.*Reconocida por certificado.*4/s)
+      assert.match(rows[1], /Matemáticas.*Segundo.*Reconocida por certificado.*4[.,]5/s)
+      assert.match(rows[2], /Química.*Primero.*Pendiente de valoración\s*$/s)
+      assert.match(rows[3], /Química.*Segundo.*Pendiente de valoración\s*$/s)
+      assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'))
+    }
+    assert.deepEqual(errors, [])
+    console.log('PASS: Ana sees recognized math grades and pending chemistry in her profile on desktop and mobile.')
+  } else if (aulaHistoryMode) {
+    for (const width of [1280, 390]) {
+      await command('Emulation.setDeviceMetricsOverride', {width, height: 844, deviceScaleFactor: 1, mobile: width < 500})
+      await navigate('/evaluacion/aula', 'Primero / 01B')
+      await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Entregas de grupos anteriores')).click()`)
+      await until(`document.querySelector('summary')?.textContent.includes('Taller de Primero A')`)
+      await evaluate(`document.querySelector('summary').click()`)
+      await until(`document.body.innerText.includes('Explicaste bien tu respuesta.')`)
+      assert.match(await evaluate('document.querySelector("details[open]").innerText'), /Mi trabajo en A/)
+      assert.match(await evaluate('document.querySelector("details[open] a").href'), /\/api\/aula\/adjuntos\//)
+      assert.equal(await evaluate('document.querySelectorAll("details textarea, details input").length'), 0)
+      assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'))
+    }
+    assert.deepEqual(errors, [])
+    console.log('PASS: student reads prior submission, feedback and attachment from current Aula on desktop and mobile.')
   } else if (aulaNotificationsMode) {
     await runAulaNotificationsSmoke({fixture:aulaNotificationsApi,navigate,evaluate,until,command,screenshot,errors})
   } else if (gradebookNotificationsMode) {
@@ -1227,9 +1412,11 @@ try {
     assert.ok(!apiReads.slice(previewReadsStart).some(route => route.startsWith('/api/boletines/observaciones/') || route.startsWith('/api/boletines/emisiones/')),
       'The read-only preview must not request observation editors or issuance history.')
     await screenshot('boletin-vista-previa-docente')
+    user.permissions.push('boletines.plantillas.ver')
+    user.institution.plan.features.push('boletines_predefinidos')
     const workspaceStart = detailedReads.length
     await navigate('/academico/boletines/gestion', 'Observaciones y emisión de boletines')
-    await until(`!!document.querySelector('textarea') && document.querySelector('#workspace-group').disabled`)
+    await until(`!!document.querySelector('textarea') && !document.querySelector('#workspace-group')`)
     assert.ok(await evaluate(`!!document.querySelector('[data-testid="academic-page-header"] #workspace-year.form-select-solid')`),
       'The workspace year selector must match the gradebook header.')
     assert.equal(await evaluate(`document.querySelector('#workspace-period option:checked').textContent`), 'Trimestre 1 · Abierto')
@@ -1243,10 +1430,30 @@ try {
     await screenshot('observaciones-grupo-desktop')
     const beforeIssuance = detailedReads.length
     await evaluate(`[...document.querySelectorAll('[role=tab]')].find(button=>button.textContent.includes('Boletín')).click()`)
+    await evaluate("document.querySelector('.bulletin-template-trigger').click()")
+    await until("!!document.querySelector('.bulletin-template-option .bulletin-blue-button')")
+    await evaluate("document.querySelector('.bulletin-template-option .bulletin-blue-button').click()")
     await evaluate(`document.querySelector('input[aria-label="Seleccionar todos"]').click()`)
     await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.includes('Generar boletín')).click()`)
     await until(`!!document.querySelector('a[href*="/emisiones/documentos/"]')`)
     await screenshot('emision-grupo-desktop')
+    await evaluate("document.querySelector('.bulletin-history-button').click()")
+    await until("document.querySelector('.modal-body')?.innerText.includes('Boletín rectificado')")
+    const history = await evaluate("document.querySelector('.modal-body').innerText")
+    assert.match(history, /Matemáticas · Primero · 4[,.]0 → 3[,.]5/)
+    const closedLinks = await evaluate(`(() => {
+      const correction = [...document.querySelectorAll('.bulletin-archive-entry')].find(row => row.textContent.includes('ana-matematicas-rectificado.pdf'))
+      return [...correction.querySelectorAll('a')].map(link => new URL(link.href).pathname)
+    })()`)
+    assert.deepEqual(closedLinks, ['H', 'I'].map(key => '/api/boletines/emisiones/documentos/' + key.repeat(24) + '/pdf'))
+    assert.match(history, /Química · Trimestre 1 · 4[,.]2 → 4/)
+    assert.ok(await evaluate(`document.querySelector('.modal-body a[href*="${'B'.repeat(24)}"]')?.textContent.includes('Rectifica la revisión 2')`))
+    assert.match(history, /Matemáticas · Trimestre 1 · 1[,.]0 \(colegio\) → 4[,.]0 \(certificado\)/)
+    assert.match(history, /Definitiva anual de Matemáticas · 3[,.]4 → 4[,.]2/)
+    assert.ok(await evaluate(`document.querySelector('.modal-body a[href*="${'F'.repeat(24)}"]')?.textContent.includes('Rectifica la revisión 1')`))
+    assert.ok(await evaluate(`document.querySelector('.modal-body a[href*="${'A'.repeat(24)}"]')?.textContent.includes('Rectifica la revisión 1')`))
+    await evaluate("document.querySelector('.bulletin-modal-close').click()")
+    await until("!document.querySelector('.modal-body')")
     await sleep(250) // Include the debounced local invalidation.
     assert.equal(detailedReads.slice(beforeIssuance).filter(route => route.startsWith('/api/boletines/observaciones/') || route.startsWith('/api/evaluacion/catalogo')).length, 0,
       'Issuing a PDF must not refetch the roster or observations.')
@@ -1256,8 +1463,8 @@ try {
     await evaluate(`(()=>{window.smokeNavigation=[];for(const key of ['pushState','replaceState']){const original=history[key];history[key]=function(...args){window.smokeNavigation.push([key,args[2]]);return original.apply(this,args)}}})()`)
     await evaluate(`document.querySelector('[data-kt-nav="/academico/boletines"]').click()`)
     await until(`location.pathname === '/academico/boletines'`)
-    await until(`!!document.querySelector('a[href="/academico/boletines/gestion"]')`)
-    await evaluate(`document.querySelector('a[href="/academico/boletines/gestion"]').click()`)
+    await until(`!!document.querySelector('a[href^="/academico/boletines/gestion"]')`)
+    await evaluate(`document.querySelector('a[href^="/academico/boletines/gestion"]').click()`)
     await until(`!!document.querySelector('#workspace-period') && !!document.querySelector('textarea')`)
     assert.equal(detailedReads.slice(beforeNavigation).filter(route => route.startsWith('/api/boletines/observaciones/')).length, 0,
       'Returning within the app must reuse observations from memory.')
@@ -1265,7 +1472,7 @@ try {
       'SPA navigation must keep its authorized WebSocket.')
     const beforeReload = detailedReads.length
     await command('Page.reload')
-    await until(`!!document.querySelector('textarea') && document.querySelector('#workspace-year').value === '${urlTokens.year}'`)
+    await until(`!window.smokeNavigation && !!document.querySelector('textarea') && document.querySelector('#workspace-year').value === '${urlTokens.year}'`)
     assert.equal(detailedReads.slice(beforeReload).filter(route => route.startsWith('/api/evaluacion/catalogo')).length, 1,
       'F5 restores public URL selectors and needs only one catalog read.')
     assert.equal(detailedReads.slice(beforeReload).filter(route => route.startsWith('/api/boletines/observaciones/grupo?')).length, 1)
@@ -1314,6 +1521,8 @@ try {
       await command('Page.navigate', {url: `http://127.0.0.1:5197${denied}`})
       await until(`location.pathname === '/dashboard'`)
     }
+    user.permissions = user.permissions.filter(permission => permission !== 'boletines.plantillas.ver')
+    user.institution.plan.features = user.institution.plan.features.filter(feature => feature !== 'boletines_predefinidos')
     await command('Page.navigate', {url: 'http://127.0.0.1:5197/academico/boletines/plantillas'})
     await until(`location.pathname === '/academico/boletines'`)
     assert.ok(!apiReads.some(read => read === '/api/anos-lectivos' || read === '/api/estructura/sedes'))
@@ -1321,9 +1530,17 @@ try {
     console.log('PASS: teacher navigation, scoped indicators/report, and unique-group gradebook, attendance and calendar.')
   } else if (eventsMode) {
     await runEventsSmoke({navigate, evaluate, until, screenshot, command, fixture: eventFixture, errors})
+  } else if (institutionInputMode) {
+    await runInstitutionInputSmoke({navigate, evaluate, until, screenshot, command, fixture: institutionInputApi, errors})
+  } else if (accountInputMode) {
+    await runAccountInputSmoke({navigate, evaluate, until, screenshot, command, fixture: accountInputApi, user, errors})
+  } else if (studentReturnMode) {
+    await runStudentReturnSmoke({navigate, evaluate, until, fixture: usersApi, errors})
+  } else if (usersMode) {
+    await runUserInputSmoke({navigate, evaluate, until, screenshot, command, fixture: usersApi, errors})
   } else if (intakeMode) {
     const run = process.argv.includes('--ingreso-workflow') ? runEnrollmentWorkflowSmoke : process.argv.includes('--ingreso-admin') ? runEnrollmentAdminSmoke : runEnrollmentSmoke
-    await run({navigate, evaluate, until, screenshot, command, fixture: intakeFixture, errors, apiReads, summaryOnly: process.argv.includes('--ingreso-summary')})
+    await run({navigate, evaluate, until, screenshot, command, fixture: intakeFixture, errors, apiReads, earlyPromotion: earlyPromotionMode, summaryOnly: process.argv.includes('--ingreso-summary')})
   } else if (aulaMode) {
     await navigate('/evaluacion/aula', 'Selecciona un grupo académico')
     assert.ok(await evaluate(`!document.body.innerText.includes('Docente de prueba')`), 'No debe cargar las aulas antes de elegir grupo.')
@@ -1381,6 +1598,14 @@ try {
       document.querySelector('.aula-nav-section-toggle').getAttribute('aria-expanded') === 'false' &&
       document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'false'`)
     await navigate('/evaluacion/aula/recursos/' + 'z'.repeat(24), 'Lee con atención.')
+    assert.ok(await evaluate(`document.querySelector('.aula-resource-page')?.textContent.includes('Un correo pendiente de revisión')`))
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent==='Revisar correos').click()`)
+    await until(`!!document.querySelector('.aula-resource-page [aria-pressed]')`)
+    await evaluate(`document.querySelector('.aula-resource-page [aria-pressed]').click()`)
+    assert.equal(await evaluate(`[...document.querySelectorAll('button')].some(b=>b.textContent==='Autorizar un reenvío')`), false)
+    await evaluate(`(()=>{const e=document.querySelector('.aula-resource-page textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,'Ana recibió la guía.');e.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent==='Confirmar que llegó').click()`)
+    await until(`document.querySelector('.aula-resource-page')?.textContent.includes('Entrega confirmada · Ana')`)
     await navigate('/evaluacion/aula/' + 'y'.repeat(24), 'Semana 1')
     assert.ok(await evaluate(`document.querySelector('.aula-nav-section-toggle').getAttribute('aria-expanded') === 'false' &&
       document.querySelector('.aula-section-toggle').getAttribute('aria-expanded') === 'false'`),
@@ -2198,7 +2423,7 @@ try {
       await until(`document.querySelector('[data-testid="institutional-settings-panel"]')?.classList.contains('show')`)
     }
     await openInstitutionalMenu()
-    assert.ok(await evaluate(`(() => {const trigger=document.querySelector('[data-testid="institutional-settings-trigger"]'),panel=document.querySelector('[data-testid="institutional-settings-panel"]');return !!trigger && !!panel && trigger.parentElement===panel.parentElement && panel.classList.contains('menu-sub-dropdown') && trigger.parentElement.getAttribute('data-kt-menu-placement')?.includes('left-start') && [...panel.querySelectorAll('a[data-kt-nav]')].map(a=>a.getAttribute('data-kt-nav')).join(',') === '/ajustes-institucionales/datos,/ajustes-institucionales/horario,/ajustes-institucionales/correo,/ajustes-institucionales/sedes'})()`), 'Institutional settings must open a separate flyout with Datos, Horario, Conexión de correo electrónico and Sedes.')
+    assert.ok(await evaluate(`(() => {const trigger=document.querySelector('[data-testid="institutional-settings-trigger"]'),panel=document.querySelector('[data-testid="institutional-settings-panel"]');return !!trigger && !!panel && trigger.parentElement===panel.parentElement && panel.classList.contains('menu-sub-dropdown') && trigger.parentElement.getAttribute('data-kt-menu-placement')?.includes('left-start') && [...panel.querySelectorAll('a[data-kt-nav]')].map(a=>a.getAttribute('data-kt-nav')).join(',') === '/ajustes-institucionales/datos,/ajustes-institucionales/horario,/ajustes-institucionales/sedes,/ajustes-institucionales/correo'})()`), 'Institutional settings must open a separate flyout with Datos, Horario, Sedes and Conexión de correo electrónico.')
     await sleep(350)
     await screenshot('institutional-menu-mobile')
     await evaluate(`document.querySelector('[data-testid="institutional-settings-panel"] a[data-kt-nav="/ajustes-institucionales/datos"]').click()`)

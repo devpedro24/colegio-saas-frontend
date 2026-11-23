@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import {createHash} from 'node:crypto'
 import {readFileSync} from 'node:fs'
+import {contactOptions} from './sedes-smoke.mjs'
 
 // Every mail endpoint is served in memory. Unknown mail routes fail closed.
 function mailFixture(user, writes) {
@@ -81,13 +82,13 @@ function mailFixture(user, writes) {
     state: (state, expires = null) => {Object.assign(latest(), {estado: state, vence_en: expires})}}
 }
 
-export function enrollmentFixture(user, {modern = false} = {}) {
+export function enrollmentFixture(user, {modern = false, earlyPromotion = false} = {}) {
   user.permissions.push('config.correo', 'academico.configurar')
-  user.permissions.push(...['ver','configurar','revisar','decidir','cambiar_grado','asignar'].map(p => `ingreso.${p}`))
+  user.permissions.push(...['ver','configurar','revisar','decidir','cambiar_grado','asignar','correos.revisar'].map(p => `ingreso.${p}`))
   const token = 'E'.repeat(24), application = 'S'.repeat(24), grade = 'G'.repeat(24), group = 'Q'.repeat(24)
   const campaign = {url_token: token, nombre: 'Matrículas 2027', ano_token: 'Y'.repeat(24), abierta: true,
     desde: '2026-01-01', hasta: '2027-12-31', enlace: `http://127.0.0.1:5197/ingreso/${token}`,
-    configuracion: {privacidad: 'Autorizo al colegio a tratar estos datos exclusivamente para revisar la solicitud de matrícula.', pin_expira_en: '2027-12-31T23:59',
+    configuracion: {privacidad: 'Autorizo al colegio a tratar estos datos exclusivamente para revisar la solicitud de matrícula.', politica_datos: 'Política de tratamiento del colegio. Finalidades, protección de menores, derechos y canales de atención.', pin_expira_en: '2027-12-31T23:59',
       grados: [{token: grade, nombre: 'Primero', cupo: 30}], campos: [
         {key: 'representante_nombre', nombre: 'Nombre del representante legal', obligatorio: true, tipo: 'texto'},
         {key: 'representante_parentesco', nombre: 'Parentesco del representante', obligatorio: true, tipo: 'texto'},
@@ -95,11 +96,14 @@ export function enrollmentFixture(user, {modern = false} = {}) {
         {key: 'telefono_emergencia', nombre: 'Teléfono de emergencia', obligatorio: false, tipo: 'numero'},
         {key: 'procedencia', nombre: 'Colegio de procedencia', obligatorio: false, tipo: 'texto'}],
       documentos: [{key: 'identidad', nombre: 'Documento de identidad', instrucciones: 'Adjunta una copia clara y completa.', obligatorio: true, formatos: ['pdf','png'], grados: []}]}}
+  const review = {pendientes: [{selector: 'r'.repeat(24), destinatario: 'Ana', tipo: 'ingreso.admision', intento: 1,
+    fecha: new Date().toISOString(), puede_reenviar: true}], historial: [], paginas: 1, paginas_historial: 1}
+  const reviewPath = '/api/ingreso/solicitudes/' + application + '/revision-correos'
   const app = {url_token: application, radicado: 'MAT-PRUEBA', estado: 'enviada', email: 'estudiante@example.test', grado_token: grade,
     campana: campaign, datos: {primer_nombre: 'Ana', primer_apellido: 'Pruebas', nacimiento: '2018-02-14', tipo_documento: 'TI', numero_documento: '1234567', direccion: 'Calle 1 # 2-3', adicionales: {procedencia: 'Colegio de ejemplo', representante_nombre: 'Lucero Pruebas', representante_parentesco: 'Mamá', representante_telefono: '+573174948808'}},
     documentos: [{url_token: 'D'.repeat(24), requisito: 'identidad', nombre: 'Identificacion.png', version: 1, estado: 'pendiente'}],
     historial: [{evento:'documento_cargado', observacion:'Documento de identidad (versión 1)', created_at:new Date().toISOString()}]}
-  const settings = {version: 0, requiere_revision: true, privacidad: '', zona_horaria: 'America/Bogota', grados: [
+  const settings = {politica_datos: campaign.configuracion.politica_datos, edad_limite: 20, version: 0, requiere_revision: true, privacidad: '', zona_horaria: 'America/Bogota', grados: [
     {url_token: 'R'.repeat(24), nombre: 'Primero', nivel: 'primaria', edad_min: null, edad_max: null},
     {url_token: 'T'.repeat(24), nombre: 'Segundo', nivel: 'primaria', edad_min: null, edad_max: null}]}
   const catalog = {anos: [{token: campaign.ano_token, nombre: '2027'}], grados: [
@@ -109,7 +113,8 @@ export function enrollmentFixture(user, {modern = false} = {}) {
   const presentCampaign = () => {
     campaign.zona_horaria = settings.zona_horaria
     if (settings.version > 0) campaign.configuracion.privacidad = settings.privacidad
-    campaign.privacidad_version = createHash('sha256').update(campaign.configuracion.privacidad).digest('hex')
+    campaign.configuracion.politica_datos = settings.politica_datos
+    campaign.privacidad_version = createHash('sha256').update(campaign.configuracion.privacidad + (settings.politica_datos ? '\n\n' + settings.politica_datos : '')).digest('hex')
     if (settings.version > 0) campaign.configuracion.grados.forEach(g => {
       const ruleToken = catalog.grados.find(x => x.token === g.token)?.regla_token
       const range = settings.grados.find(x => x.url_token === ruleToken)
@@ -127,6 +132,43 @@ export function enrollmentFixture(user, {modern = false} = {}) {
   let session = false, rejectNextSubmission = false
   const writes = []
   const mail = mailFixture(user, writes)
+  const recordPath = '/api/matriculas/' + 'M'.repeat(24)
+  const externalPath = recordPath + '/definitivas-externas'
+  const assessmentPath = recordPath + '/valoraciones-ingreso'
+  const closedPath = recordPath + '/autorizaciones-cierre'
+  const closedGrants = []
+  const assessments = []
+  const chemistry = {nombre: 'Química', token: 'H'.repeat(24)}
+  const owners = [{token: 'W'.repeat(24), nombre: 'Rectoría'}]
+  const externalGrades = {
+    puede_registrar: true, puede_aprobar: true, puede_rectificar: true, hoy: '2026-11-17', max_bytes: 25 * 1048576,
+    escala: {nombre: 'Institucional', minimo: '0', maximo: '5', decimales: 1, opciones: [], version: 'a'.repeat(64)},
+    materias: [{nombre: 'Matemáticas', token: 'M'.repeat(24)}, chemistry],
+    periodos: ['Primero','Segundo','Tercero'].map((nombre, i) => ({nombre, token: ('P' + i).repeat(12),
+      desde: ['2026-01-01','2026-04-01','2026-07-01'][i], hasta: ['2026-03-31','2026-06-30','2026-09-30'][i]})),
+    pendientes: [], responsables: owners, responsables_valoracion: owners, certificados: [],
+  }
+  const transferSubjects = [{nombre: 'Matemáticas', token: 'M'.repeat(24)}, {nombre: 'Química', token: 'K'.repeat(24)}]
+  const transferRows = transferSubjects.flatMap((subject, n) => externalGrades.periodos.slice(0, 2).map((period, i) => ({
+    token: (String(n) + i).repeat(12), periodo_token: period.token, materia_token: subject.token,
+    fecha_efectiva: '2026-07-10', definitiva: n === 0 ? ['4', '4.5'][i] : null, motivo: n ? 'Materia nueva en el grado de destino.' : null,
+  })))
+  const originGroup = 'Primero / 01A'
+  const destination = {token: 'J'.repeat(24), nombre: 'Segundo / 02A'}
+  const trajectory = {desde: '2026-01-01', hasta: '2026-11-17', version: 0, movimientos: [],
+    puede_corregir: true, puede_rectificar: true, max_soporte_bytes: 25 * 1048576, puede_ver_notas: true, resumen: {notas: 1, asistencias: 1}, destinos: [destination]}
+  const secondB = {token: 'B'.repeat(24), nombre: 'Segundo / 02B'}
+  const consolidationPath = recordPath + '/consolidaciones'
+  const evidence = (nombre, fecha, valor, peso) => ({nombre, fecha, valor, peso, componentes: []})
+  const supportActivity = {nombre: 'Taller anterior', fecha: '2026-08-10', actividad_token: 'x'.repeat(24)}
+  const split = {actividades_disponibles: [supportActivity], token: 'Z'.repeat(24), periodo: 'Tercero', materia: 'Matemáticas', version: 'b'.repeat(64), aprobacion: null,
+    tramos: [{grupo: destination.nombre, desde: '2026-07-01', hasta: '2026-08-14', subtotal: '4.2',
+      evidencias: [evidence('Taller', '2026-07-15', '3', '20'), evidence('Problemas', '2026-08-14', '5', '30')]},
+    {grupo: secondB.nombre, desde: '2026-08-15', hasta: '2026-09-30', subtotal: '3.5',
+      evidencias: [evidence('Laboratorio', '2026-08-15', '4', '60'), evidence('Sustentación', '2026-09-05', '2', '20')]}]}
+  const currentGroup = () => trajectory.movimientos[0]?.destino ?? originGroup
+  if (earlyPromotion) trajectory.promocion_anticipada = {expedientes: [], destinos: [destination], puede_recomendar: true,
+    puede_decidir: true, firmante_previsto: 'Lucía Torres', primer_periodo_abierto: true, inicio_periodo: '2026-01-15', hoy: '2026-03-20'}
   const middleware = (req, res, next) => {
     const url = new URL(req.url, 'http://localhost')
     if (url.pathname === '/api/branding/logo' && req.method === 'GET') {
@@ -137,35 +179,295 @@ export function enrollmentFixture(user, {modern = false} = {}) {
     if (!url.pathname.startsWith('/api/ingreso') && !url.pathname.startsWith('/api/matriculas')) return mail.middleware(req, res, next)
     const reply = (data, status = 200) => {res.statusCode = status; res.setHeader('Content-Type','application/json'); res.end(JSON.stringify(data))}
     if (req.method === 'GET') {
-      if (url.pathname === '/api/matriculas') return reply({data: [{token: 'M'.repeat(24), nombre: 'Ana Pruebas', email: app.email, estado: 'activa', grupo: 'Primero / 01A', sede: 'Principal', convocatoria: campaign.nombre, origen: 'enlace'}],
+      if (url.pathname === '/api/ingreso-publico/indicativos') return reply(contactOptions)
+      if (url.pathname === '/api/matriculas') return reply({data: [{token: 'M'.repeat(24), nombre: 'Ana Pruebas', email: app.email, estado: 'activa', grupo: currentGroup(), sede: 'Principal', convocatoria: campaign.nombre, origen: 'enlace'}],
         page: 1, last_page: 1, total: 1, ano_token: campaign.ano_token, anos: [{token: campaign.ano_token, nombre: '2027', estado: 'en_curso'}],
         grupos: [{token: group, grado_token: grade, nombre: 'Primero / 01A', sede: 'Principal', estado: 'activo'}], campanas: [presentCampaign()], correo_operativo: true})
       if (url.pathname === '/api/matriculas/geografia') return reply({departamentos: [{codigo: '41', nombre: 'HUILA', municipios: [{codigo: '41001', nombre: 'NEIVA'}]}]})
-      if (url.pathname === `/api/matriculas/${'M'.repeat(24)}`) return reply({data: {nombre: 'Ana Pruebas', email: app.email, grupo: 'Primero / 01A', sede: 'Principal', datos: app.datos, documentos: app.documentos}})
+      if (url.pathname === externalPath) return reply(externalGrades)
+      if (url.pathname === consolidationPath) return reply({puede_asignar_apoyo: true, puede_aprobar: true, casos: [split]})
+      if (url.pathname === assessmentPath) return reply({...externalGrades, fecha_ingreso: assessments[0]?.fecha_ingreso ?? '2026-07-10',
+        materias: [{token:'L'.repeat(24), nombre:'Lengua castellana'}, ...(trajectory.tiene_resultados_traslado ? transferSubjects : [chemistry])],
+        sin_equivalencia: externalGrades.pendientes.filter(row => row.certificado_revisado),
+        traslados: trajectory.tiene_resultados_traslado ? transferRows : [], antecedentes: [], valoraciones: assessments})
+      if (url.pathname === closedPath) return reply({...externalGrades, puede_autorizar: true, responsables: owners, responsables_rectificacion: owners,
+        periodos: externalGrades.periodos.slice(0, 2), autorizaciones: closedGrants})
+      if (url.pathname === recordPath) return reply({data: {nombre: 'Ana Pruebas', email: app.email, grupo: currentGroup(), sede: 'Principal', datos: app.datos, documentos: app.documentos, trayectoria: trajectory, ver_autorizaciones_cierre: true, ver_consolidaciones: currentGroup() === secondB.nombre, ver_definitivas_externas: true, ver_valoraciones_ingreso: true}})
+      if (url.pathname === recordPath + '/notas-de-actividades') return reply({data: [{materia: 'Matemáticas', actividad: 'Taller de sumas',
+        periodo: 'Primer periodo', grado: 'Primero', grupo: '01A', fecha: '2026-03-13', valor: '4.0', categoria: null}], hay_mas: false})
       if (url.pathname === '/api/ingreso-publico/ubicaciones') return reply({data: [{codigo: '41', nombre: 'HUILA', municipios: [{codigo: '41001', nombre: 'NEIVA'}]}, {codigo: '05', nombre: 'ANTIOQUIA', municipios: [{codigo: '05001', nombre: 'MEDELLÍN'}]}]})
       if (url.pathname === '/api/ingreso/configuracion') return user.permissions.includes('ingreso.configurar') ? reply({data: settings}) : reply({message: 'Forbidden'}, 403)
-      if (url.pathname === '/api/ingreso-publico/catalogo') return reply({colegio: 'Colegio de prueba', campanas: modern ? [presentCampaign()] : [], zona_horaria: settings.zona_horaria,
+      if (url.pathname === '/api/ingreso-publico/catalogo') return reply({colegio: 'Colegio de prueba', campanas: [], zona_horaria: settings.zona_horaria,
         limites_envio: {max_file_bytes: 1000000000, max_submission_bytes: 1000000000, max_archivos: 20}})
       if (url.pathname === `/api/ingreso-publico/campanas/${token}`) return reply({data: presentCampaign()})
       if (url.pathname === '/api/ingreso-publico/solicitud') return session ? reply({data: app}) : reply({message:'Ingresa con correo y PIN'},401)
-      if (url.pathname === '/api/ingreso/catalogo') return reply({...catalog, campanas: [presentCampaign()], conteos: {[app.estado]: 1}})
+      if (url.pathname === '/api/ingreso/catalogo') return reply({...catalog, campanas: [presentCampaign(), ...catalog.campanas.slice(1)], conteos: {[app.estado]: 1}})
+      if (url.pathname === reviewPath) return reply(review)
       if (url.pathname === '/api/ingreso/notificaciones') return reply({data: [], page: 1, last_page: 1, total: 0})
       if (url.pathname.endsWith('/solicitudes')) return reply({data: [app], page: 1, last_page: 1, total: 1, grupos: [{token: group, grado_token: grade, nombre: 'Primero / 01A', cupo: 30}]})
-      return reply({data: app, grupos: [{token: group, grado_token: grade, nombre: 'Primero / 01A', cupo: 30}]})
+      return reply({data: app, grupos: app.grado_aprobado_token === 'H'.repeat(24) ? [{token: 'J'.repeat(24), grado_token: 'H'.repeat(24), nombre: 'Segundo / 02A', cupo: 30}] : [{token: group, grado_token: grade, nombre: 'Primero / 01A', cupo: 30}]})
     }
-    let body = ''; req.on('data', c => {body += c}); req.on('end', () => {
+    let body = ''; req.on('data', c => {body += c}); req.on('end', async () => {
       const upload = (req.headers['content-type'] ?? '').startsWith('multipart/form-data')
       const d = body && !upload ? JSON.parse(body) : {}; writes.push({path: url.pathname, data: d, csrf: req.headers['x-csrf-token']})
+      if (url.pathname === reviewPath + '/' + 'r'.repeat(24)) {
+        assert.deepEqual(d, {decision: 'confirmar', motivo: 'Ana confirmó la admisión.', intento: 1})
+        const item = review.pendientes.pop()
+        review.historial.push({...item, ...d, tipo_aviso: item.tipo, responsable: 'Rectoría'})
+        return reply({decision: d.decision})
+      }
+      const promotionPath = recordPath + '/promociones-anticipadas'
+      if (earlyPromotion && url.pathname.startsWith(promotionPath)) {
+        if (url.pathname === promotionPath + '/' + 'P'.repeat(24) + '/constancia') {
+          assert.equal(req.method, 'POST')
+          assert.equal(req.headers['x-csrf-token'], 'smoke-csrf')
+          const row = trajectory.promocion_anticipada.expedientes[0]
+          assert.equal(row.estado, 'aprobada')
+          row.constancia = {numero: 'PA-000001', firmante: 'Lucía Torres', fecha_expedicion: '2026-03-20', verificable: true, con_anexo: false}
+          return reply(null, 204)
+        }
+        const fields = Object.fromEntries(await new Response(body, {headers: {'Content-Type': req.headers['content-type']}}).formData())
+        const promotion = trajectory.promocion_anticipada
+        if (url.pathname === promotionPath) {
+          assert.equal(fields.grupo_token, destination.token)
+          assert.equal(fields.version, '0')
+          assert.equal(fields.consentimiento.name, 'consentimiento.pdf')
+          promotion.expedientes.push({token: 'P'.repeat(24), estado: 'recomendada', origen: originGroup, destino: destination.nombre,
+            fecha_consentimiento: fields.fecha_consentimiento, consentimiento_nombre: fields.consentimiento.name,
+            fecha_recomendacion: fields.fecha_recomendacion, recomendacion: fields.recomendacion, recomendado_por: 'Coordinación Académica'})
+          promotion.puede_recomendar = false
+        } else {
+          assert.equal(url.pathname, promotionPath + '/' + 'P'.repeat(24) + '/decision')
+          assert.equal(fields.decision, 'aprobada')
+          assert.equal(fields.acta.name, 'acta.pdf')
+          Object.assign(promotion.expedientes[0], {estado: fields.decision, acta_nombre: fields.acta.name, acta_numero: fields.acta_numero,
+            fecha_decision: fields.fecha_decision, decidido_por: 'Rectoría'})
+          trajectory.movimientos.push({version: ++trajectory.version, origen: originGroup, destino: destination.nombre, promocion_anticipada: true,
+            registrado_en: '2026-03-20T14:00:00Z', responsable: 'Rectoría', fecha_efectiva: fields.fecha_decision, motivo: 'Promoción anticipada'})
+        }
+        return reply(null, 204)
+      }
       if (modern) {
+        if (url.pathname.startsWith(consolidationPath + '/' + split.token + '/')) {
+          if (url.pathname.endsWith('/apoyos')) {
+            assert.equal(d.actividad_token, supportActivity.actividad_token)
+            assert.equal(d.fecha_entrega, '2026-09-20')
+            assert.ok(d.motivo.trim())
+            split.actividades_disponibles = []
+            split.version = 'c'.repeat(64)
+            split.tramos[1].subtotal = null
+            split.tramos[1].evidencias.push({...evidence(supportActivity.nombre, supportActivity.fecha, null, '20'),
+              apoyo: {motivo: d.motivo, fecha_entrega: d.fecha_entrega, responsable: 'Rectoría'}})
+            return reply(null, 204)
+          }
+          assert.deepEqual(d.pesos, ['40', '60'])
+          assert.equal(d.version, split.version)
+          if (url.pathname.endsWith('/propuesta')) return reply(split.actividades_disponibles.length ? {definitiva: '3.8'} : {definitiva: '4.0', sin_apoyos: '3.8'})
+          assert.ok(d.motivo.trim())
+          split.aprobacion = {definitiva: '4.0', responsable: 'Rectoría', fecha: '2026-09-30', motivo: d.motivo, pesos: d.pesos}
+          return reply(null, 204)
+        }
+        if (url.pathname === closedPath) {
+          const fields = Object.fromEntries(await new Response(body, {headers: {'Content-Type': req.headers['content-type']}}).formData())
+          assert.equal(fields.materia_token, externalGrades.materias[0].token)
+          assert.equal(fields.periodo_token, externalGrades.periodos[0].token)
+          assert.equal(fields.responsable_token, owners[0].token)
+          assert.ok(fields.motivo && fields.soporte.size)
+          const root = closedGrants[0]
+          if (root) {
+            assert.equal(fields.rectifica_token, root.token)
+            assert.equal(fields.version, '0')
+            assert.equal(fields.soporte.name, 'acta-rectificacion.pdf')
+            assert.equal(fields.motivo, 'Corrección según el acta de Matemáticas.')
+            root.puede_autorizar_rectificacion = false
+          }
+          closedGrants.push({token: (root ? 'R' : 'Q').repeat(24), materia: 'Matemáticas', periodo: 'Primero', responsable: owners[0].nombre,
+            materia_token: fields.materia_token, periodo_token: fields.periodo_token, es_rectificacion: !!root,
+            autorizado_por: 'Rectoría', autorizado_en: '2026-11-17', motivo: fields.motivo, archivo_nombre: fields.soporte.name,
+            archivo_token: (root ? 'T' : 'S').repeat(24), anterior: root?.vigente ?? null, registrada: null, aprobado_en: null, puede_registrar: true, puede_revocar: true})
+          return reply(null, 204)
+        }
+        if (closedGrants.length && url.pathname === closedPath + '/' + closedGrants[0].token + '/registrar') {
+          assert.deepEqual(d, {valor: '4.0', version_escala: externalGrades.escala.version})
+          Object.assign(closedGrants[0], {registrada: '4.0', vigente: '4.0', version: 0, aprobado_en: '2026-11-17', puede_registrar: false, puede_revocar: false, puede_autorizar_rectificacion: true})
+          return reply(null, 204)
+        }
+        if (closedGrants[1] && url.pathname === closedPath + '/' + closedGrants[1].token + '/registrar') {
+          assert.deepEqual(d, {valor: '3.5', version_escala: externalGrades.escala.version})
+          Object.assign(closedGrants[1], {registrada: '3.5', aprobado_en: '2026-11-17', puede_registrar: false, puede_revocar: false})
+          Object.assign(closedGrants[0], {vigente: '3.5', version: 1, puede_autorizar_rectificacion: true})
+          return reply(null, 204)
+        }
+        if (url.pathname === assessmentPath) {
+          const fields = Object.fromEntries(await new Response(body, {headers: {'Content-Type': req.headers['content-type']}}).formData())
+          const gap = externalGrades.pendientes.find(row => row.certificado_revisado && row.materia_token === fields.materia_token && row.periodo_token === fields.periodo_token)
+          assert.equal(fields.soporte.name, gap ? 'quimica-' + gap.periodo + '.pdf' : 'rubrica.pdf')
+          assert.ok(fields.motivo)
+          if (fields.traslado_token) {
+            assert.equal(fields.materia_token, transferSubjects[1].token)
+            assert.equal(fields.traslado_token, transferRows[2].token)
+            assert.equal(fields.fecha_ingreso, undefined)
+          } else {
+            assert.equal(fields.materia_token, gap ? chemistry.token : 'L'.repeat(24))
+            assert.equal(fields.fecha_ingreso, '2026-07-10')
+          }
+          const token = gap ? gap.periodo_token : (fields.traslado_token ? 'W' : 'V').repeat(24)
+          if (gap) gap.valoracion_token = token
+          assessments.push({...fields, token, version: 0, rectificaciones: [], archivo_nombre:fields.soporte.name, archivo_token:'F'.repeat(24),
+            registrado_por:'Coordinación', registrado_en:'2026-07-10', propuesta:{...fields, materia: gap?.materia, periodo: gap?.periodo, categoria:null}, decision:null})
+          return reply(null, 204)
+        }
+        if (url.pathname.startsWith(assessmentPath + '/') && url.pathname.endsWith('/rectificaciones')) {
+          const fields = Object.fromEntries(await new Response(body, {headers: {'Content-Type': req.headers['content-type']}}).formData())
+          const item = assessments.find(row => row.token === url.pathname.split('/').at(-2))
+          assert.equal(item.propuesta.materia, 'Química')
+          assert.equal(item.propuesta.periodo, 'Segundo')
+          assert.equal(item.decision.valor, '4.2')
+          assert.equal(fields.version, String(item.version))
+          assert.equal(Number(fields.valor), 4)
+          assert.ok(fields.motivo.trim())
+          assert.equal(fields.soporte.name, 'acta-quimica.pdf')
+          const prior = item.decision
+          item.decision = {...prior, valor: '4', criterio: fields.motivo, responsable: 'Coordinación'}
+          item.rectificaciones.push({version: ++item.version, anterior: prior, nueva: item.decision, motivo: fields.motivo,
+            archivo_token: 'HQ'.repeat(12), archivo_nombre: fields.soporte.name, aprobacion_anterior: item.aprobado_en, registrado_en: '2026-07-25'})
+          return reply(null, 204)
+        }
+        if (url.pathname.startsWith(assessmentPath + '/') && url.pathname.endsWith('/aprobar')) {
+          assert.ok(d.criterio)
+          const token = url.pathname.split('/').at(-2)
+          const assessment = assessments.find(row => row.token === token)
+          assert.equal(d.valor, assessment.propuesta.valor)
+          Object.assign(assessment, {aprobado_en:'2026-07-24', decision:{...d, responsable:'Rectoría', siee: externalGrades.escala}})
+          const gap = externalGrades.pendientes.find(row => row.valoracion_token === token)
+          if (gap) Object.assign(gap, {aprobado_en: assessment.aprobado_en, aprobado_por: 'Rectoría'})
+          return reply(null, 204)
+        }
+        if (url.pathname === externalPath + '/certificados/' + 'C'.repeat(24) + '/sin-equivalencia') {
+          assert.equal(d.materia_token, chemistry.token)
+          assert.equal(d.responsable_token, owners[0].token)
+          assert.deepEqual(d.periodos, externalGrades.periodos.slice(0, 2).map(p => p.token))
+          assert.ok(d.motivo.trim())
+          for (const p of externalGrades.periodos.filter(p => d.periodos.includes(p.token))) {
+            externalGrades.pendientes.push({token: 'Q' + p.token.slice(1), materia_token: chemistry.token, materia: chemistry.nombre,
+              periodo_token: p.token, periodo: p.nombre, certificado_revisado: 'C'.repeat(24), motivo_sin_equivalencia: d.motivo,
+              fecha_seguimiento: d.fecha_seguimiento, responsable: owners[0].nombre, aprobado_en: null})
+          }
+          return reply(null, 204)
+        }
+        if (url.pathname === externalPath + '/pendientes') {
+          assert.equal(d.materia_token, externalGrades.materias[0].token)
+          assert.equal(d.responsable_token, externalGrades.responsables[0].token)
+          assert.equal(d.fecha_seguimiento, '2026-07-24')
+          externalGrades.fecha_ingreso = d.fecha_ingreso
+          externalGrades.pendientes = d.periodos.map((token,i) => ({token: ('T'+i).repeat(12), periodo_token: token,
+            periodo: externalGrades.periodos.find(p => p.token === token).nombre, materia_token: d.materia_token, materia: 'Matemáticas',
+            responsable: 'Rectoría', fecha_seguimiento: d.fecha_seguimiento, resultado_token: null, aprobado_en: null}))
+          return reply(null,204)
+        }
+        if (url.pathname === externalPath) {
+          const form = await new Response(body, {headers: {'Content-Type': req.headers['content-type']}}).formData()
+          const source = Object.fromEntries(form)
+          const resultados = [0, 1].map(i => ({...Object.fromEntries(['materia_origen','periodo_origen','valor_original','desde','hasta'].map(key => [key, form.get('resultados[' + i + '][' + key + ']')])), token: ('R' + i).repeat(12), decision: null, version: 0, rectificaciones: []}))
+          assert.deepEqual(resultados.map(r => r.valor_original), ['80', '90'])
+          assert.equal(source.certificado.name, 'matematicas.pdf')
+          resultados.forEach((r,i) => {
+            const link = form.get('resultados[' + i + '][pendiente_token]')
+            const pending = externalGrades.pendientes.find(p => p.token === link)
+            assert.equal(pending.periodo_token, externalGrades.periodos[i].token)
+            pending.resultado_token = r.token
+          })
+          externalGrades.certificados.push({...source, archivo_token: 'C'.repeat(24), archivo_nombre: source.certificado.name,
+            registrado_por: 'Secretaría', registrado_en: '2026-07-10', periodo_ingreso: 'Tercero', resultados})
+          return reply(null, 204)
+        }
+        if (url.pathname === externalPath + '/' + 'R0'.repeat(12) + '/eleccion') {
+          const choice = externalGrades.certificados[0].resultados[0].eleccion
+          assert.equal(d.huella, choice.huella)
+          assert.equal(d.version, choice.version)
+          assert.ok(d.motivo.trim())
+          choice.fuente = d.fuente
+          choice.historial.unshift({version: ++choice.version, fuente: d.fuente, colegio: choice.colegio, certificado: choice.certificado,
+            motivo: d.motivo, responsable: 'Rectoría', registrado_en: '2026-07-25'})
+          return reply(null, 204)
+        }
+        if (url.pathname === externalPath + '/' + 'R1'.repeat(12) + '/rectificaciones') {
+          const fields = Object.fromEntries(await new Response(body, {headers: {'Content-Type': req.headers['content-type']}}).formData())
+          const result = externalGrades.certificados[0].resultados[1]
+          assert.equal(fields.version, String(result.version))
+          assert.equal(fields.soporte.name, 'matematicas-corregido.pdf')
+          assert.equal(fields.valor, '4.2')
+          assert.ok(fields.motivo.trim())
+          const previous = result.decision
+          result.decision = {...previous, valor: fields.valor, criterio: fields.motivo, responsable: 'Coordinación'}
+          result.rectificaciones.push({version: ++result.version, anterior: previous, nueva: result.decision, motivo: fields.motivo,
+            archivo_token: 'A_'.repeat(12), archivo_nombre: fields.soporte.name, aprobacion_anterior: result.aprobado_en, registrado_en: '2026-07-30'})
+          result.aprobado_en = '2026-07-30'
+          transferRows[1].definitiva = fields.valor
+          return reply(null, 204)
+        }
+        if (url.pathname.startsWith(externalPath + '/') && url.pathname.endsWith('/aprobar')) {
+          const token = url.pathname.split('/').at(-2)
+          const result = externalGrades.certificados[0].resultados.find(r => r.token === token)
+          assert.equal(d.version_escala, externalGrades.escala.version)
+          assert.equal(d.materia_token, externalGrades.materias[0].token)
+          assert.ok(d.criterio.trim())
+          const pending = externalGrades.pendientes.find(p => p.resultado_token === result.token)
+          assert.equal(d.periodo_token, pending.periodo_token)
+          if (token === 'R0'.repeat(12)) {
+            externalGrades.puede_elegir = true
+            result.eleccion = {colegio: '3.8', certificado: d.valor, huella: 'e'.repeat(64), version: 0, fuente: null, historial: []}
+          }
+          pending.aprobado_por = 'Rectoría'
+          pending.aprobado_en = result.aprobado_en = '2026-07-24'
+          result.decision = {valor: d.valor, materia: 'Matemáticas', periodo: externalGrades.periodos.find(p => p.token === d.periodo_token).nombre,
+            criterio: d.criterio, responsable: 'Rectoría', siee: externalGrades.escala}
+          return reply(null, 204)
+        }
+        if (url.pathname === recordPath + '/correcciones' || url.pathname === recordPath + '/soportes') {
+          assert.equal(req.method, 'POST')
+          const form = upload ? await new Response(body, {headers: {'Content-Type': req.headers['content-type']}}).formData() : null
+          for (const [key, value] of form ?? []) if (typeof value === 'string') d[key] = value
+          assert.ok(d.motivo.trim())
+          const attached = (form?.getAll('soportes[]') ?? []).map(file => ({
+            token: (file.name === 'acta.pdf' ? 'A' : 'B').repeat(24), nombre: file.name, responsable: 'Rectoría de prueba', motivo: d.motivo, registrado_en: new Date().toISOString(),
+          }))
+          if (url.pathname.endsWith('/soportes')) {
+            assert.equal(attached.length, 1)
+            trajectory.movimientos.find(m => m.version === Number(d.movimiento_version)).soportes.push(...attached)
+          } else {
+            assert.equal(Number(d.version), trajectory.version)
+            const target = trajectory.destinos.find(g => g.token === d.grupo_token)
+            assert.ok(target)
+            trajectory.movimientos.unshift({origen: currentGroup(), destino: target.nombre, version: ++trajectory.version,
+              rectifica_version: d.rectifica_version ? Number(d.rectifica_version) : null, soportes: attached,
+              responsable: 'Rectoría de prueba', fecha_efectiva: d.fecha_efectiva, registrado_en: new Date().toISOString(), motivo: d.motivo})
+            trajectory.tiene_resultados_traslado = target === destination && d.fecha_efectiva >= '2026-07-01'
+            trajectory.destinos = target === destination ? [{token: group, nombre: originGroup}, secondB] : [destination]
+          }
+          return reply(null, 204)
+        }
+        if (url.pathname.endsWith('/grado')) {
+          assert.equal(req.method, 'PUT')
+          assert.equal(d.grado_token, 'H'.repeat(24))
+          assert.ok(d.observacion.length >= 3)
+          app.grado_aprobado_token = d.grado_token
+          app.grado_aprobado_nombre = 'Segundo'
+          app.estado = 'revision'
+          app.validada_en = null
+          app.observacion = d.observacion
+          return reply({data: app})
+        }
         if (url.pathname.endsWith('/iniciar')) {
           assert.equal(d.numero_documento, '1234567')
           assert.equal(d.email, app.email)
+          app.grado_token = d.grado_token ?? null
           return reply({radicado: app.radicado}, 202)
         }
         if (url.pathname.endsWith('/pin')) {
           assert.equal(app.estado, 'pin_pendiente')
           app.estado = 'borrador'
-          return reply({data: app, pin: '12345678'})
+          return setTimeout(() => reply({data: app, pin: '12345678'}), 1000)
         }
         if (url.pathname === '/api/ingreso-publico/salir') {session = false; return reply({ok: true})}
         if (url.pathname === '/api/ingreso-publico/consultar') {
@@ -182,6 +484,7 @@ export function enrollmentFixture(user, {modern = false} = {}) {
         }
         if (url.pathname === '/api/ingreso-publico/solicitud' || url.pathname === '/api/ingreso-publico/solicitud/borrador') {
           app.datos = d.datos
+          if (d.grado_token) app.grado_token = d.grado_token
           if (d.enviar) {app.estado = 'enviada'; app.correcciones.forEach(c => {c.resuelta = true})}
           return reply({data: app})
         }
@@ -194,14 +497,14 @@ export function enrollmentFixture(user, {modern = false} = {}) {
       if (url.pathname === '/api/ingreso/configuracion') {
         if (!user.permissions.includes('ingreso.configurar')) return reply({message: 'Forbidden'}, 403)
         if (d.version !== settings.version) return reply({message: 'Version conflict'}, 409)
-        assert.deepEqual(Object.keys(d).sort(), ['grados', 'privacidad', 'version'])
+        assert.deepEqual(Object.keys(d).sort(), ['grados', 'politica_datos', 'privacidad', 'version'])
         assert.ok(d.privacidad.trim().length >= 20 && d.privacidad.length <= 5000)
         for (const g of d.grados) {
           assert.deepEqual(Object.keys(g).sort(), ['edad_max', 'edad_min', 'url_token'])
-          assert.ok((g.edad_min === null && g.edad_max === null) || (Number.isInteger(g.edad_min) && Number.isInteger(g.edad_max) && g.edad_min >= 1 && g.edad_min <= g.edad_max && g.edad_max <= 120))
+          assert.ok((g.edad_min === null && g.edad_max === null) || (Number.isInteger(g.edad_min) && Number.isInteger(g.edad_max) && g.edad_min >= 1 && g.edad_min <= g.edad_max && g.edad_max <= 20))
           Object.assign(settings.grados.find(x => x.url_token === g.url_token), g)
         }
-        settings.privacidad = d.privacidad; settings.version++; settings.requiere_revision = false
+        settings.politica_datos = d.politica_datos; settings.privacidad = d.privacidad; settings.version++; settings.requiere_revision = false
         presentCampaign()
         return reply({data: settings})
       }
@@ -225,11 +528,16 @@ export function enrollmentFixture(user, {modern = false} = {}) {
       if (url.pathname === '/api/ingreso-publico/consultar') {session = true; res.setHeader('Set-Cookie', ['ingreso_csrf=intake-csrf; Path=/; SameSite=Strict']); return reply({data: app})}
       if (url.pathname === '/api/ingreso-publico/solicitud') {app.datos = d.datos; if (d.enviar) app.estado = 'enviada'; return reply({data: app})}
       if (url.pathname.includes('/documentos/')) {app.documentos[0].estado = d.estado; app.documentos[0].observacion = d.observacion; app.estado = d.estado === 'rechazado' ? 'correcciones' : 'revision'; app.historial.unshift({evento:`documento_${d.estado}`,observacion:`Documento de identidad: ${d.observacion ?? ''}`,created_at:new Date().toISOString()}); return reply({data: app})}
-      if (url.pathname.endsWith('/decision')) {app.estado = d.estado; app.grado_aprobado_token = grade; return reply({data: app})}
+      if (url.pathname.endsWith('/decision')) {app.estado = d.estado; app.grado_aprobado_token = d.grado_token ?? grade; return reply({data: app})}
       if (url.pathname.endsWith('/distribuir')) {if (d.confirmar) app.estado = 'matriculada'; return reply({asignaciones: [{solicitud_token: application, nombre:'Ana Pruebas', grupo_token:group, grupo:'01A'}], sin_cupo: 0})}
       if (url.pathname.includes('/campanas')) {
         assert.ok(!Object.hasOwn(d.configuracion, 'privacidad'))
         assert.ok(d.configuracion.grados.every(g => !Object.hasOwn(g, 'edad_min') && !Object.hasOwn(g, 'edad_max') && !Object.hasOwn(g, 'edad_corte')))
+        if (req.method === 'POST' && url.pathname === '/api/ingreso/campanas') {
+          const copy = {...d, url_token: 'C'.repeat(24), configuracion: {...d.configuracion, privacidad: settings.privacidad}}
+          catalog.campanas.push(copy)
+          return reply({data: copy})
+        }
         const privacy = campaign.configuracion.privacidad
         Object.assign(campaign, d); campaign.configuracion.privacidad = privacy
         return reply({data:presentCampaign()})
@@ -237,10 +545,10 @@ export function enrollmentFixture(user, {modern = false} = {}) {
       reply({ok:true})
     })
   }
-  return {middleware, writes, token, mail, app, settings, catalog, user, failSubmission: () => {rejectNextSubmission = true}}
+  return {middleware, writes, token, mail, app, settings, catalog, user, split, failSubmission: () => {rejectNextSubmission = true}}
 }
 
-export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, until, screenshot, command, fixture, errors, apiReads, summaryOnly = false}) {
+export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, until, screenshot, command, fixture, errors, apiReads, earlyPromotion = false, summaryOnly = false}) {
   const navigate = async (route, text) => {
     const previous = await evaluate('performance.timeOrigin')
     await navigatePage(route, text)
@@ -257,10 +565,44 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
     return evaluate(`${button}.click()`)
   }
   const fill = (id, value) => evaluate(`(()=>{const el=document.getElementById(${JSON.stringify(id)}); const proto=el.tagName==='SELECT'?HTMLSelectElement.prototype:el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`)
+  if (earlyPromotion) {
+    await navigate('/admisiones/matriculas', 'Estudiantes matriculados')
+    await click('Ver ficha')
+    await click('Registrar recomendación')
+    const field = (name, value) => evaluate(`document.querySelector('#early-title').closest('section').querySelector('[name="${name}"]').value=${JSON.stringify(value)}`)
+    const file = name => evaluate(`(()=>{const transfer=new DataTransfer(); transfer.items.add(new File(['%PDF-1.4 prueba'], '${name}.pdf',{type:'application/pdf'})); document.querySelector('[name="${name}"]').files=transfer.files})()`)
+    await field('grupo_token', 'J'.repeat(24))
+    await field('fecha_consentimiento', '2026-03-19')
+    await field('recomendacion', 'Desempeño superior documentado por el Consejo Académico.')
+    await file('consentimiento')
+    await click('Guardar recomendación')
+    await until("document.body.innerText.includes('Pendiente de decisión')")
+    assert.equal(await evaluate("document.body.innerText.includes('Emitir constancia PDF')"), false)
+    await click('Registrar decisión')
+    await field('decision', 'aprobada')
+    await field('acta_numero', 'CD-01')
+    await file('acta')
+    await click('Guardar decisión')
+    await until("document.body.innerText.includes('Acta CD-01') && document.body.innerText.includes('Aprobada')")
+    await click('Emitir constancia PDF')
+    await until("document.body.innerText.includes('Constancia PA-000001') && document.body.innerText.includes('Firmante · Lucía Torres')")
+    await click('Ver notas por grupo de origen')
+    await until("document.body.innerText.includes('Taller de sumas') && document.body.innerText.includes('Primero / 01A')")
+    await navigate('/admisiones/matriculas', 'Estudiantes matriculados')
+    await until("document.body.innerText.includes('Segundo / 02A')")
+    await click('Ver ficha')
+    await until("document.body.innerText.includes('Descargar constancia PDF')")
+    assert.equal(await evaluate("document.querySelector('a[href$=\"/constancia/pdf\"]')?.getAttribute('href')"),
+      '/api/matriculas/' + 'M'.repeat(24) + '/promociones-anticipadas/' + 'P'.repeat(24) + '/constancia/pdf')
+    assert.equal(await evaluate("document.body.innerText.includes('Emitir constancia PDF')"), false)
+    assert.deepEqual(errors, [])
+    console.log('Ana figura en Segundo y conserva Matemáticas de Primero. La ficha emite la constancia con firmante y conserva el enlace al PDF después de recargar.')
+    return
+  }
   if (summaryOnly) {
     const messages = {
-      es: {management: 'Matrículas por enlace', configure: 'Configurar', duplicate: 'Duplicar para el próximo año', create: 'Nueva convocatoria', cancel: 'Cancelar', settings: 'Configuración de matrículas', level: 'Primaria', firstRange: 'De 6 a 8 años, incluidos', secondRange: 'De 9 a 12 años, incluidos', legacyRange: 'De 5 a 7 años, incluidos'},
-      en: {management: 'Enrollment by link', configure: 'Configure', duplicate: 'Copy for next year', create: 'New enrollment round', cancel: 'Cancel', settings: 'Enrollment settings', level: 'Primary', firstRange: '6 to 8 years, inclusive', secondRange: '9 to 12 years, inclusive', legacyRange: '5 to 7 years, inclusive'},
+      es: {management: 'Matrículas', form: 'Formulario', configure: 'Configurar', duplicate: 'Reutilizar convocatoria', create: 'Nueva convocatoria', cancel: 'Cancelar', settings: 'Configuración de matrículas', level: 'Primaria', firstRange: 'De 6 a 8 años, incluidos', secondRange: 'De 9 a 12 años, incluidos', legacyRange: 'De 5 a 7 años, incluidos'},
+      en: {management: 'Enrollment', form: 'Form', configure: 'Configure', duplicate: 'Reuse enrollment round', create: 'New enrollment round', cancel: 'Cancel', settings: 'Enrollment settings', level: 'Primary', firstRange: '6 to 8 years, inclusive', secondRange: '9 to 12 years, inclusive', legacyRange: '5 to 7 years, inclusive'},
     }
     const summary = `document.querySelector('[aria-labelledby="campaign-institutional-summary"]')`
     const assertSummary = async expected => {
@@ -285,20 +627,24 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
     for (const locale of ['es', 'en']) {
       const copy = messages[locale]
       const languageScript = await command('Page.addScriptToEvaluateOnNewDocument', {source: `localStorage.setItem('i18nConfig',JSON.stringify({selectedLang:'${locale}'}));`})
-      await navigate('/admisiones/solicitudes', copy.management)
-      assert.ok(await evaluate(`(()=>{const header=document.querySelector('[data-testid="academic-page-header"]'),button=[...header.querySelectorAll('button')].find(x=>x.textContent.trim()===${JSON.stringify(copy.create)}),link=header.querySelector('a[href="/ajustes-institucionales/matriculas"]');return !!button&&!!link&&!!link.querySelector('.ki-setting-2')&&button.nextElementSibling===link&&button.getBoundingClientRect().right<link.getBoundingClientRect().left&&header.getBoundingClientRect().right-link.getBoundingClientRect().right<40&&!button.textContent.includes('+')})()`),
+      await navigate('/admisiones/convocatorias', copy.management)
+      await until(`!!document.querySelector('[data-testid="academic-page-header"] .intake-actions button:not(:disabled)')`)
+      assert.ok(await evaluate(`(()=>{const header=document.querySelector('[data-testid="academic-page-header"]'),button=[...header.querySelectorAll('button')].find(x=>x.textContent.trim()===${JSON.stringify(copy.create)}),link=header.querySelector('a[href="/ajustes-institucionales/matriculas"]');return !!button&&!!link&&!!link.querySelector('.bi-gear')&&button.nextElementSibling===link&&button.getBoundingClientRect().right<link.getBoundingClientRect().left&&header.getBoundingClientRect().right-link.getBoundingClientRect().right<40&&!button.textContent.includes('+')})()`),
         'The new enrollment round and settings actions stay together at the right in that order.')
       await screenshot(`matriculas-cabecera-${locale}`)
-      await click(copy.configure); await until(`!!document.getElementById('campaign-name')`)
+      await click(copy.configure); await until(`!!document.getElementById('campaign-name')`); await click(copy.form)
       await assertSummary(copy.firstRange)
       await selectGrade(fixture.catalog.grados[1].token); await assertSummary(copy.secondRange)
       assert.ok(await evaluate(`${summary}.textContent.includes('Aviso institucional vigente')`))
-      await click(copy.cancel); await until(`!document.querySelector('.modal.show')`)
-      await click(copy.duplicate); await until(`!!document.getElementById('campaign-name')`)
+      await click(copy.cancel); await until(`location.pathname.endsWith('/convocatorias')`)
+      await click(copy.duplicate); await until(`!!document.getElementById('copy-grados')`)
+      await evaluate(`document.querySelector('#copy-grados').click()`)
+      await evaluate(`document.querySelector('#prepare-copy').click()`)
+      await until(`!!document.getElementById('campaign-name')`)
       assert.equal(await evaluate(`document.getElementById('campaign-year').value`), 'Z'.repeat(24), 'Copied campaign uses the next year')
-      assert.ok(await evaluate(`!document.getElementById('doc-size-0') && !document.getElementById('campaign-open').checked && [...document.querySelectorAll('.campaign-grades input[type=checkbox]')].filter(input=>input.checked).length===1`), 'Copy keeps mapped grades, starts closed and has no per-document size setting')
-      await click(copy.cancel); await until(`!document.querySelector('.modal.show')`)
-      await click(copy.create); await until(`!!document.getElementById('campaign-name')`)
+      assert.ok(await evaluate(`!document.getElementById('doc-name-0') && !document.getElementById('field-name-0') && !document.getElementById('campaign-open').checked && [...document.querySelectorAll('.campaign-grades input[type=checkbox]')].filter(input=>input.checked).length===1`), 'Copy keeps mapped grades, starts closed and has no per-document size setting')
+      await click(copy.cancel); await until(`location.pathname.endsWith('/convocatorias')`)
+      await click(copy.create); await until(`!!document.getElementById('campaign-name')`); await click(copy.form)
       await selectGrade(fixture.catalog.grados[0].token); await assertSummary(copy.firstRange)
       await selectGrade(fixture.catalog.grados[1].token); await assertSummary(copy.secondRange)
       await fill('campaign-year', 'Z'.repeat(24))
@@ -306,7 +652,7 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
       assert.ok(await evaluate(`!${summary}.textContent.includes(${JSON.stringify(copy.secondRange)})`), 'Changing year clears old grade summaries')
       await selectGrade('J'.repeat(24)); await assertSummary(copy.firstRange)
       await screenshot(`matriculas-resumen-tokens-${locale}`)
-      await click(copy.cancel); await until(`!document.querySelector('.modal.show')`)
+      await click(copy.cancel); await until(`location.pathname.endsWith('/convocatorias')`)
       await navigate('/ajustes-institucionales/matriculas', copy.settings)
       await until(`!!document.getElementById('enrollment-privacy')`)
       assert.ok(await evaluate(`document.querySelector('[data-testid="enrollment-settings-card"]').textContent.includes(${JSON.stringify(copy.level)}) && ![...document.querySelectorAll('[data-testid="enrollment-settings-card"] p')].some(p=>p.textContent==='primaria')`), 'Canonical level uses the existing localized label')
@@ -315,8 +661,8 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
     fixture.settings.version = 0
     fixture.app.campana.configuracion.privacidad = 'Aviso heredado que permanece vigente antes del primer guardado.'
     Object.assign(fixture.app.campana.configuracion.grados[0], {edad_min: 5, edad_max: 7})
-    await navigate('/admisiones/solicitudes', messages.es.management)
-    await click(messages.es.configure); await until(`!!document.getElementById('campaign-name')`)
+    await navigate('/admisiones/convocatorias', messages.es.management)
+    await click(messages.es.configure); await until(`!!document.getElementById('campaign-name')`); await click(messages.es.form)
     await assertSummary(messages.es.legacyRange)
     assert.ok(await evaluate(`${summary}.textContent.includes('Aviso heredado que permanece vigente')`))
     assert.equal(fixture.writes.length, 0, 'Viewing and editing summaries makes no writes')
@@ -338,6 +684,8 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
   await fill(`${firstGrade}-edad_max`, '7')
   assert.ok(await evaluate(`document.getElementById('${firstGrade}-edad_max').validity.rangeUnderflow`))
   await fill(`${firstGrade}-edad_min`, '1'); await fill(`${firstGrade}-edad_max`, '120')
+  assert.ok(await evaluate(`document.getElementById('${firstGrade}-edad_max').validity.rangeOverflow`))
+  await fill(`${firstGrade}-edad_max`, '20')
   await fill('enrollment-privacy', ' '.repeat(25))
   assert.ok(await evaluate(`document.querySelector('[data-testid="enrollment-settings-card"] .btn-primary').disabled`), 'Whitespace privacy cannot be saved')
   await fill('enrollment-privacy', 'Aviso institucional de prueba para todas las convocatorias del colegio.')
@@ -346,7 +694,7 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
   assert.equal(fixture.settings.version, 1)
   assert.equal(fixture.settings.grados[1].edad_min, null)
   assert.equal(apiReads.filter(p => !p.startsWith('/api/ingreso')).length, unrelatedBeforeSave, 'Settings save does not refetch unrelated modules')
-  await reload(); await until(`document.getElementById('${firstGrade}-edad_max')?.value === '120'`)
+  await reload(); await until(`document.getElementById('${firstGrade}-edad_max')?.value === '20'`)
   await fill('enrollment-privacy', 'Cambios locales que deben conservarse durante un conflicto.')
   fixture.settings.version++
   await click('Guardar configuración'); await until(`document.body.innerText.includes('Otra persona actualizó')`)
@@ -702,13 +1050,9 @@ export async function runEnrollmentSmoke({navigate: navigatePage, evaluate, unti
   const controlStyles = await evaluate(`(()=>{const label=document.querySelector('.ingreso-relationship-options label'),input=label.querySelector('input'),text=label.querySelector('span'),circle=document.querySelector('.ingreso-same-phone input');return {display:getComputedStyle(label).display,gap:text.getBoundingClientRect().left-input.getBoundingClientRect().right,radius:getComputedStyle(circle).borderRadius}})()`)
   assert.ok(controlStyles.display.includes('flex') && controlStyles.gap>=7 && controlStyles.radius==='50%', `Relationship radios have a visible gap and same-phone control is circular: ${JSON.stringify(controlStyles)}`)
   assert.ok(await evaluate(`getComputedStyle(document.querySelector('.ingreso-action-primary')).backgroundColor==='rgb(81, 68, 184)'`), 'Final Submit retains the primary purple color')
-  assert.ok(await evaluate(`(()=>{const img=document.querySelector('.ingreso-dial-menu summary img');return img?.complete && img.naturalWidth>0})()`), 'The calling-code control shows a real flag image')
-  assert.ok(await evaluate(`(()=>{const summary=document.querySelector('.ingreso-dial-menu summary'),items=[summary.querySelector('img'),summary.querySelector('span'),summary.querySelector('.ingreso-dial-chevron')];const middle=summary.getBoundingClientRect().top+summary.getBoundingClientRect().height/2;return items.every(item=>Math.abs(item.getBoundingClientRect().top+item.getBoundingClientRect().height/2-middle)<2)})()`), 'Flag, dialing code and chevron are vertically centered')
-  await evaluate(`document.querySelector('.ingreso-dial-menu summary').click()`)
-  assert.ok(await evaluate(`(()=>{const menu=document.querySelector('.ingreso-dial-menu'),icon=menu.querySelector('.ingreso-dial-chevron i');return menu.open && icon.classList.contains('ki-down') && getComputedStyle(icon).transform!=='none'})()`), 'KeenIcons chevron turns upward while country list is open')
-  assert.ok(await evaluate(`document.querySelector('.ingreso-dial-menu .ingreso-dial-options').querySelectorAll('button img').length===11`), 'Country options show local flag images')
+  await until(`!!document.querySelector('.contact-mobile__country img')?.naturalWidth`)
+  assert.ok(await evaluate(`!!document.querySelector('#data-phone-country') && document.querySelector('#data-phone').maxLength === 10`), 'Enrollment uses the shared country selector and national digit limit')
   await screenshot('ingreso-indicativos-desktop')
-  await evaluate(`document.querySelector('.ingreso-dial-options button').click()`)
   assert.ok(await evaluate(`document.querySelector('.ingreso-timeline').textContent.includes('Documento rechazado') && !document.querySelector('.ingreso-timeline').textContent.includes('Documento cargado')`), 'Tracking highlights review outcomes, not every upload')
   assert.ok(await evaluate(`(()=>{const pending=document.createElement('span');pending.className='ingreso-status';pending.dataset.status='pendiente';document.querySelector('.ingreso-document').append(pending);const color=getComputedStyle(pending).backgroundColor;pending.remove();return color==='rgb(255, 241, 205)'})()`), 'Pending review uses amber, not approval green')
   await fill('data-phone','3001234567')
