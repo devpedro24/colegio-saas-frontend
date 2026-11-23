@@ -6,7 +6,7 @@
   const M=window.ReportPrototypeModel, $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const icon=(name)=>`<i class="ki-outline ki-${name}" aria-hidden="true"></i>`;
-  const palette=['#6A23FF','#183C67','#1B84FF','#0E695B','#923E4F','#9A5C17'];
+  const palette=['#462084','#183C67','#1B84FF','#0E695B','#923E4F','#9A5C17'];
   const state={doc:null,page:0,selected:[],panel:'blocks',inspectorTab:'style',libraryOpen:false,inspectorOpen:false,zoom:.6,autoFit:true,undo:[],redo:[],baseline:'',filter:'all',saved:new Map(),catalogLoaded:false,device:'desktop',drag:null,finalEnabled:true,editing:null,fieldMode:false,previewModes:{},marquee:null,generated:null,layoutError:''};
   const presets=[{kind:'reference-preschool',label:'Asignaturas agrupadas · Valoración visual',description:'Indicadores por materia y valoración con caritas',scope:'periodo'},
     {kind:'reference-primary',label:'Asignaturas · I.H. y desempeño',description:'Columnas configurables y datos del período',scope:'periodo'},

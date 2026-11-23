@@ -79,7 +79,7 @@
   async function save(doc,publish){
     changeEpoch++;clearTimeout(timer);
     const canvas=await prepare(doc);canvas.key=canvas.id;delete canvas.id;for(const page of canvas.pages){page.key=page.id;delete page.id;for(const node of page.blocks){node.key=node.id;delete node.id;}}const old=items.get(doc.id),saved=await request('save',{id:old?.token,version:old?.version,publish,
-      input:{nombre:doc.name,ambito:doc.scope,configuracion:{accent:doc.accent||'#6A23FF',font:'sans',density:'comfortable',heading:doc.scope==='final'?'Informe académico final':'Informe académico',subheading:'',
+      input:{nombre:doc.name,ambito:doc.scope,configuracion:{accent:doc.accent||'#462084',font:'sans',density:'comfortable',heading:doc.scope==='final'?'Informe académico final':'Informe académico',subheading:'',
         sections:['student','areas','subjects','indicators','observations','attendance','signature'].map(key=>({key,visible:['student','subjects'].includes(key)})),canvas}}});
     items.delete(doc.id);const next=await documentFor(saved);notified=JSON.stringify(clean(next));parent.postMessage({channel,action:'saved',payload:{doc:clean(next),version:saved.version}},new URL(document.baseURI).origin);
     return {id:saved.token,doc:next,updated:Date.parse(saved.actualizado_en)||Date.now(),revisions:[],published:saved.revision_publicada};

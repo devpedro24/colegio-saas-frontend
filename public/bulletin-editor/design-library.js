@@ -3,7 +3,7 @@
   'use strict';
   const M=typeof module!=='undefined'&&module.exports?require('./layout-model.js'):root.ReportPrototypeModel;
   const R=root.ReportPrototypeEngine||(typeof require==='function'?require('./report-engine.js'):null);
-  const palettes=[{key:'violeta',name:'Violeta',color:'#6A23FF'},{key:'esmeralda',name:'Esmeralda',color:'#087A50'},{key:'azul',name:'Azul',color:'#1C56AC'},{key:'petroleo',name:'Petróleo',color:'#086E78'},{key:'coral',name:'Coral',color:'#B83E51'},{key:'ambar',name:'Ámbar',color:'#956211'},{key:'ciruela',name:'Ciruela',color:'#873C8D'},{key:'indigo',name:'Índigo',color:'#394DB2'}];
+  const palettes=[{key:'violeta',name:'Violeta',color:'#462084'},{key:'esmeralda',name:'Esmeralda',color:'#087A50'},{key:'azul',name:'Azul',color:'#1C56AC'},{key:'petroleo',name:'Petróleo',color:'#086E78'},{key:'coral',name:'Coral',color:'#B83E51'},{key:'ambar',name:'Ámbar',color:'#956211'},{key:'ciruela',name:'Ciruela',color:'#873C8D'},{key:'indigo',name:'Índigo',color:'#394DB2'}];
   const families=[
     {key:'institucional',name:'Institucional',header:'center',table:'grid',font:'Inter',density:'normal',legend:'stacked',tags:['clasico','formal','institucional','bordes']},
     {key:'franja',name:'Franja de color',header:'band',table:'striped',font:'Inter',density:'normal',legend:'inline',tags:['moderno','color','franja','encabezado']},

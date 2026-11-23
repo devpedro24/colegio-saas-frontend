@@ -9,7 +9,7 @@
 .inline-edit{white-space:pre-wrap;min-height:1em}
 .canvas-block{user-select:none;-webkit-user-select:none}
 .canvas-block [contenteditable=true]{user-select:text;-webkit-user-select:text}
-.selection-outline{position:absolute;outline:2px solid #6a23ff;pointer-events:none;z-index:250}
+.selection-outline{position:absolute;outline:2px solid var(--violet);pointer-events:none;z-index:250}
 .selection-outline .block-handle{pointer-events:auto}
 .canvas-block.multi-selected{outline:1px solid #ad83f1!important}
 .selection-marquee{position:absolute;border:1px solid #7b38f4;background:#8d4fff20;pointer-events:none;z-index:260}
@@ -65,7 +65,7 @@
 @container editor (max-width:1200px){#editor-view.templates-open #library{width:350px}}
 @container editor (max-width:780px){#editor-view.templates-open #library{left:0;width:min(350px,100%)}.mobile-dock button{min-width:40px;padding-inline:5px}}
 .preset-card{display:flex;flex-direction:column;gap:7px;min-width:0;padding:7px;text-align:left;border:1px solid var(--line);border-radius:14px;background:#fff;transition:border-color .15s,box-shadow .15s}
-.preset-card:hover,.preset-card:focus-visible{border-color:var(--violet);box-shadow:0 3px 15px #6a23ff18;outline-offset:3px}
+.preset-card:hover,.preset-card:focus-visible{border-color:var(--violet);box-shadow:0 3px 15px color-mix(in srgb,var(--violet) 9%,transparent);outline-offset:3px}
 .preset-cover{display:flex;align-items:center;justify-content:center;aspect-ratio:3/4;width:100%;overflow:hidden;border-radius:8px;background:#f5f0ff;border:1px solid #eee6ff}
 .preset-cover svg{display:block;width:100%;max-height:100%;pointer-events:none}
 .preset-cover .paper{margin:0;box-shadow:none;pointer-events:none}
@@ -92,14 +92,14 @@
 .page-caption input:focus{background:#fff;outline:1px solid #a47aff}
 .page-tool-buttons{display:flex;align-items:center;gap:2px;flex:none}
 .page-tool-buttons .icon-button{width:28px;height:28px;color:#394e73}
-.page-tool-buttons .icon-button:hover{background:#e9ddff;color:#6a23ff}
+.page-tool-buttons .icon-button:hover{background:#e9ddff;color:var(--violet)}
 .page-tool-buttons .icon-button:disabled{opacity:.35;cursor:not-allowed}
 .page-state{color:#6b3cc0;background:#eee5ff;padding:3px 7px;font-size:10px;border-radius:10px;white-space:nowrap}
 .hidden-page .stack-paper{opacity:.5}
 .locked-page .stack-paper{cursor:not-allowed}
 dialog .studio-dialog-close{display:inline-flex;align-items:center;justify-content:center;align-self:center;width:32px;height:32px;min-width:32px;padding:0;border:0;border-radius:50%;background:transparent;color:#252f4a;font-size:16px;line-height:1}
 dialog .studio-dialog-close .ki-outline{font-size:18px}
-dialog .studio-dialog-close:hover{background:#f1eaff;color:#6a23ff}
+dialog .studio-dialog-close:hover{background:#f1eaff;color:var(--violet)}
 dialog .studio-dialog-close:focus-visible{outline:2px solid #8d5fff;outline-offset:3px}
 .studio-dialog-pulse{animation:studio-dialog-feedback .25s ease-in-out}
 @keyframes studio-dialog-feedback{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
