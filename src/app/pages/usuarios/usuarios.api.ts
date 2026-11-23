@@ -20,11 +20,12 @@ export interface UsuarioCreateResult {
 }
 
 /** GET /api/usuarios?page=&per_page= — usuarios del colegio + de cada sede (tenant hijo) activa. */
-export function useUsuarios(page: number = 1, perPage: number = 5, departureOnly = false) {
+export function useUsuarios(page: number = 1, perPage: number = 5, scope: 'all' | 'departure' | 'return' | null = 'all') {
   return useQuery({
-    queryKey: [...USUARIOS_KEY, {page, perPage, departureOnly}],
+    queryKey: [...USUARIOS_KEY, {page, perPage, scope}],
+    enabled: !!scope,
     queryFn: () => api.get<{data: Usuario[]; meta: PaginationMeta}>(
-      `/usuarios${departureOnly ? '/egreso-candidatos' : ''}?page=${page}&per_page=${perPage}`
+      `/usuarios${scope === 'return' ? '/reincorporacion-candidatos' : scope === 'departure' ? '/egreso-candidatos' : ''}?page=${page}&per_page=${perPage}`
     ),
   })
 }
@@ -87,5 +88,15 @@ export function useEgresarUsuario() {
       api.post<{data: Usuario}>(`/usuarios/${encodeURIComponent(id)}/egreso`,
         sedeToken ? {sede_url_token: sedeToken} : {}),
     onSuccess: () => queryClient.invalidateQueries({queryKey: USUARIOS_KEY}),
+  })
+}
+
+export function useReincorporarEstudiante() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({user, motivo}: {user: Usuario; motivo: string}) =>
+      api.post<{data: Pick<Usuario, 'url_token' | 'status'>}>(`/usuarios/${encodeURIComponent(user.url_token)}/reincorporacion`,
+        {motivo, ...(user.sede_url_token ? {sede_url_token: user.sede_url_token} : {})}),
+    onSuccess: () => client.invalidateQueries({queryKey: USUARIOS_KEY}),
   })
 }

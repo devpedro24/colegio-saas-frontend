@@ -1,12 +1,13 @@
 ﻿import {FC, useState} from 'react'
+import {Modal} from 'react-bootstrap'
 import {useIntl} from 'react-intl'
-import {Navigate} from 'react-router-dom'
+import {Link, Navigate} from 'react-router-dom'
 import {PageLink, PageTitle} from '../../../_metronic/layout/core'
 import {Content} from '../../../_metronic/layout/components/content'
 import {useToast} from '@/lib/ui/toast'
 import {useAuthz} from '@/app/modules/auth/core/authz'
 import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
-import {useDeleteUsuario, useEgresarUsuario, useUsuarios} from './usuarios.api'
+import {useDeleteUsuario, useEgresarUsuario, useReincorporarEstudiante, useUsuarios} from './usuarios.api'
 import type {Usuario} from './usuarios.types'
 import {DeleteConfirmDialog} from '../academico/estructura/components/DeleteConfirmDialog'
 import {CredencialesDialog} from './components/CredencialesDialog'
@@ -58,8 +59,13 @@ const TenantUsuariosPage: FC = () => {
   const [pageSize, setPageSize] = usePageSize()
   const canManage = authz.hasPermission('usuarios.gestionar')
   const canMarkDeparture = authz.hasPermission('estudiantes.egreso.gestionar')
+  const canAuthorizeReturn = authz.hasPermission('estudiantes.reincorporacion.autorizar')
+  const [returnUser, setReturnUser] = useState<Usuario | null>(null)
+  const [returnReason, setReturnReason] = useState('')
+  const reincorporar = useReincorporarEstudiante()
   const canAdjustRoles = !authz.isPlatform && authz.hasRole('rector') && authz.hasPermission('usuarios.ajustar_permisos')
-  const {data, isLoading, isError} = useUsuarios(page, pageSize, !canManage)
+  const {data, isLoading, isError} = useUsuarios(page, pageSize,
+    canManage ? 'all' : canMarkDeparture ? 'departure' : canAuthorizeReturn ? 'return' : null)
   const del = useDeleteUsuario()
   const egresar = useEgresarUsuario()
 
@@ -89,7 +95,7 @@ const TenantUsuariosPage: FC = () => {
     <>
       <PageTitle breadcrumbs={breadcrumbs}>{t('header.menu.users')}</PageTitle>
       <Content>
-        {!canManage && !canMarkDeparture ? (
+        {!canManage && !canMarkDeparture && !canAuthorizeReturn ? (
           <div className='alert alert-warning d-flex align-items-center py-5'>
             <i className='ki-duotone ki-information fs-2 text-warning me-3'>
               <span className='path1'></span><span className='path2'></span><span className='path3'></span>
@@ -167,6 +173,10 @@ const TenantUsuariosPage: FC = () => {
                             <td><span className={status.cls}>{t(status.label)}</span></td>
                             <td>
                               <div className='d-flex align-items-center justify-content-end flex-shrink-0 gap-2'>
+                                {u.role === 'estudiante' && !u.sede_url_token && authz.hasPermission('academico.matriculas.gestionar') &&
+                                  <Link className='btn btn-sm btn-light-primary' to={'/admisiones/matriculas?estudiante=' + encodeURIComponent(u.url_token)}>
+                                    {intl.locale.startsWith('en') ? 'Academic history' : 'Trayectoria académica'}
+                                  </Link>}
                                 {canAdjustRoles && u.role !== 'estudiante' && u.status !== 'egresado' &&
                                   <button type='button' className='btn btn-icon btn-light-primary btn-sm'
                                     title={t('tenantRbac.assignRoles')} onClick={() => setRolesUser(u)}>
@@ -183,6 +193,12 @@ const TenantUsuariosPage: FC = () => {
                                       <span className='path1'></span><span className='path2'></span>
                                     </i>
                                   </button>
+                                )}
+                                {canAuthorizeReturn && u.role === 'estudiante' && u.status === 'egresado' && (
+                                  <button type='button' className='btn btn-sm btn-light-primary' onClick={() => {
+                                    setReturnUser(u)
+                                    setReturnReason('')
+                                  }}>{t('academico.usuarios.regreso.action')}</button>
                                 )}
                                 {u.role === 'estudiante' && u.status !== 'egresado' && canMarkDeparture && (
                                   <button
@@ -265,6 +281,30 @@ const TenantUsuariosPage: FC = () => {
           onConfirm={onDelete}
           onClose={() => setDeleteUser(null)}
         />
+        <Modal show={!!returnUser} onHide={() => {if (!reincorporar.isPending) setReturnUser(null)}} centered aria-labelledby='student-return-title'>
+          <form onSubmit={event => {
+            event.preventDefault()
+            if (!returnUser || reincorporar.isPending || returnReason.trim().length < 5) return
+            reincorporar.mutate({user: returnUser, motivo: returnReason.trim()}, {
+              onSuccess: () => {setReturnUser(null); toast.success(t('academico.usuarios.regreso.success'))},
+              onError: error => toast.error(error.message || t('common.toast.genericError')),
+            })
+          }}>
+            <Modal.Header closeButton={!reincorporar.isPending}>
+              <Modal.Title id='student-return-title'>{t('academico.usuarios.regreso.action')}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <p>{t('academico.usuarios.regreso.explanation', {name: returnUser?.name ?? ''})}</p>
+              <label className='form-label required' htmlFor='student-return-reason'>{t('academico.usuarios.regreso.reason')}</label>
+              <textarea id='student-return-reason' className='form-control' rows={3} required minLength={5} maxLength={1000}
+                disabled={reincorporar.isPending} value={returnReason} onChange={e => setReturnReason(e.target.value)} />
+            </Modal.Body>
+            <Modal.Footer>
+              <button type='button' className='btn btn-light' disabled={reincorporar.isPending} onClick={() => setReturnUser(null)}>{t('common.cancel')}</button>
+              <button className='btn btn-primary' disabled={returnReason.trim().length < 5 || reincorporar.isPending}>{t('academico.usuarios.regreso.confirm')}</button>
+            </Modal.Footer>
+          </form>
+        </Modal>
         <EgresoConfirmDialog
           user={egresoUser}
           pending={egresar.isPending}

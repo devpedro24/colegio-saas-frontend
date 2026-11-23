@@ -21,7 +21,7 @@ const Header: FC = () => {
 
   const isPlatform = currentUser?.is_platform === true
   const isTenantUser = !!currentUser && currentUser.is_platform !== true
-  const canManageUsers = hasPermission('usuarios.gestionar') || hasPermission('estudiantes.egreso.gestionar')
+  const canManageUsers = hasPermission('usuarios.gestionar') || hasPermission('estudiantes.egreso.gestionar') || hasPermission('estudiantes.reincorporacion.autorizar')
 
   useEffect(() => {
     updateDOM(config)

@@ -32,6 +32,7 @@ export interface AnoLectivo {
   periodo_sumatorio: boolean
   /** Cantidad de períodos creados; permite saber si el año puede iniciarse. */
   periodos_configurados?: number
+  acceso_estudiantil: boolean
   estado: AnoLectivoEstado
   created_at: string | null
 }

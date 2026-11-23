@@ -35,6 +35,8 @@ const AppRoutes: FC = () => {
           <Route path='ingreso/:campaign?' element={<Suspense fallback={<p>Cargando portal…</p>}><PublicEnrollmentPage /></Suspense>} />
           {currentUser ? (
             <>
+              {currentUser.roles?.includes('estudiante') && <Route path='mi-renovacion/:renewalToken'
+                element={<Suspense fallback={<p>Cargando tu trámite…</p>}><PublicEnrollmentPage /></Suspense>} />}
               <Route path='/*' element={currentUser.is_platform
                 ? <PrivateRoutes key={`${currentUser.id}:${activeColegio?.slug ?? 'account'}`} />
                 : <TenantOnboardingGate />} />

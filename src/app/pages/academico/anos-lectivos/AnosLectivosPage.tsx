@@ -4,7 +4,9 @@ import {useAuthz} from '@/app/modules/auth/core/authz'
 import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 import {PageLink, PageTitle} from '../../../../_metronic/layout/core'
 import {Content} from '../../../../_metronic/layout/components/content'
-import {ApiError} from '@/lib/api/client'
+import {Modal} from 'react-bootstrap'
+import {useMutation, useQueryClient} from '@tanstack/react-query'
+import {api, ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useAnosLectivos, useDeleteAnoLectivo, useIniciarAnoLectivo} from './anos-lectivos.api'
 import type {AnoLectivo} from './anos-lectivos.types'
@@ -54,6 +56,22 @@ const AnosLectivosPage: FC = () => {
 
   const toast = useToast()
   const {data, isLoading, isError} = useAnosLectivos()
+  const client = useQueryClient()
+  const spanish = intl.locale.startsWith('es')
+  const [accessYear, setAccessYear] = useState<AnoLectivo | null>(null)
+  const [reason, setReason] = useState('')
+  const accessTitle = (enabled: boolean) => enabled ? (spanish ? 'Suspender acceso a clases' : 'Suspend class access')
+    : (spanish ? 'Habilitar clases' : 'Enable classes')
+  const access = useMutation({
+    mutationFn: (year: AnoLectivo) => api.put(`/anos-lectivos/${year.url_token}/acceso-estudiantil?opaque=1`,
+      {habilitado: !year.acceso_estudiantil, motivo: reason.trim()}),
+    onSuccess: () => {
+      for (const key of ['anos-lectivos', 'aula', 'ingreso']) void client.invalidateQueries({queryKey: [key]})
+      setAccessYear(null)
+      toast.success(spanish ? 'Acceso a clases actualizado.' : 'Class access updated.')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
   const iniciar = useIniciarAnoLectivo()
   const eliminar = useDeleteAnoLectivo()
   const {isPlatform, isSuperadminImpersonating, hasRole, hasPermission} = useAuthz()
@@ -257,6 +275,11 @@ const AnosLectivosPage: FC = () => {
                                   )}
                                 </button>
                               )}
+                              {(hasPermission('academico.anos.gestionar') || isSuperadminImpersonating || (isPlatform && activeColegio)) && ['planificado', 'en_curso'].includes(a.estado) && (
+                                <button type='button' className='btn btn-light-info btn-sm' onClick={() => {setReason(''); setAccessYear(a)}}>
+                                  {accessTitle(a.acceso_estudiantil)}
+                                </button>
+                              )}
                               {canTransitionYear && a.estado === 'en_curso' && (
                                 <button type='button' className='btn btn-light-primary btn-sm'
                                   onClick={() => setPromocionesAno(a)}>
@@ -305,6 +328,19 @@ const AnosLectivosPage: FC = () => {
         </div>
       </Content>
 
+      <Modal show={!!accessYear} onHide={() => {if (!access.isPending) setAccessYear(null)}} centered aria-labelledby='year-access-title'>
+        <form onSubmit={event => {event.preventDefault(); if (accessYear && reason.trim().length >= 5) access.mutate(accessYear)}}>
+          <Modal.Header closeButton><Modal.Title id='year-access-title'>{accessTitle(!!accessYear?.acceso_estudiantil)} · {accessYear?.nombre}</Modal.Title></Modal.Header>
+          <Modal.Body>
+            <p>{spanish ? 'Este cambio afecta el acceso de estudiantes con grupo confirmado en este año lectivo.' : 'This affects access for students with a confirmed group in this school year.'}</p>
+            <label htmlFor='class-access-reason' className='form-label'>{spanish ? 'Motivo' : 'Reason'}</label>
+            <textarea id='class-access-reason' className='form-control' required minLength={5} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} />
+          </Modal.Body>
+          <Modal.Footer><button type='button' className='btn btn-light' disabled={access.isPending} onClick={() => setAccessYear(null)}>{t('common.cancel')}</button>
+            <button className='btn btn-primary' disabled={access.isPending || reason.trim().length < 5}>{t('common.save')}</button>
+          </Modal.Footer>
+        </form>
+      </Modal>
       <AnoLectivoFormDialog show={showCreate} ano={formAno} onClose={closeForm} />
       <DuplicarAnoLectivoDialog source={duplicando} onClose={() => setDuplicando(null)} />
       <CopiarConfiguracionDialog target={copiando} years={list} onClose={() => setCopiando(null)} />
