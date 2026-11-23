@@ -97,7 +97,7 @@
 			margin-top: $app-layout-gap;
 			margin-left: $app-layout-gap;
 			margin-right: $app-layout-gap;
-			background-color: $app-header-base-container-bg-color;	
+			background: var(--brand-header-gradient);
 			padding-left: 23px !important;
 			padding-right: 23px !important;		
 		} 
@@ -121,7 +121,7 @@
 // Tablet & mobile modes
 @include media-breakpoint-down(lg) {
 	.app-header {
-		background-color: $app-header-base-container-bg-color;	
+		background: var(--brand-header-gradient);
 
 		.header-search {
 			.search-toggle-mobile {

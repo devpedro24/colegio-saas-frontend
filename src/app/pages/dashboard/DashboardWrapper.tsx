@@ -1,78 +1,17 @@
-import {FC, useEffect} from 'react'
-import {Tab} from 'bootstrap'
-import {reInitMenu, withBase} from '../../../_metronic/helpers'
-import {PageLink, PageTitle} from '../../../_metronic/layout/core'
-import {ToolbarWrapper} from '../../../_metronic/layout/components/toolbar'
-import {Content} from '../../../_metronic/layout/components/content'
-import {DASHBOARD_HTML} from './_DashboardContent'
-import {initDashboardCharts} from './_dashboardCharts'
-import type ApexCharts from 'apexcharts'
-import {StudentEnrollmentStatus} from '../admisiones/StudentEnrollmentStatus'
+import {lazy, Suspense} from 'react'
+import {useAuthz} from '@/app/modules/auth/core/authz'
+import {useImpersonation} from '@/app/modules/impersonation/impersonation.store'
 
-const dashboardBreadcrumbs: Array<PageLink> = [
-  {title: 'Dashboards', path: '/dashboard', isSeparator: false, isActive: false},
-]
+const PlatformDashboard = lazy(() => import('./PlatformDashboard'))
+const SchoolDashboard = lazy(() => import('./SchoolDashboard'))
 
-const DashboardPage: FC = () => {
-  useEffect(() => {
-    let charts: ApexCharts[] = []
-    let tabEls: Element[] = []
-    const onShown = () => window.dispatchEvent(new Event('resize'))
-
-    // Pequeño delay para que el layout (header fijo, contenedores) tenga anchos ya calculados.
-    const timer = window.setTimeout(() => {
-      charts = initDashboardCharts()
-
-      // Inicializa tabs y pills de Bootstrap presentes en el HTML inyectado.
-      tabEls = Array.from(
-        document.querySelectorAll('[data-bs-toggle="tab"], [data-bs-toggle="pill"]')
-      )
-      tabEls.forEach((el) => {
-        try {
-          Tab.getOrCreateInstance(el)
-        } catch {
-          /* noop */
-        }
-        el.addEventListener('shown.bs.tab', onShown)
-      })
-
-      // Re-inicializa menús/dropdowns (data-kt-menu) del contenido inyectado.
-      reInitMenu()
-    }, 300)
-
-    return () => {
-      window.clearTimeout(timer)
-      charts.forEach((c) => {
-        try {
-          c.destroy()
-        } catch {
-          /* noop */
-        }
-      })
-      tabEls.forEach((el) => el.removeEventListener('shown.bs.tab', onShown))
-    }
-  }, [])
+export function DashboardWrapper() {
+  const {isPlatform} = useAuthz()
+  const {activeColegio} = useImpersonation()
 
   return (
-    <>
-      <ToolbarWrapper />
-      <Content>
-        <StudentEnrollmentStatus />
-        <div dangerouslySetInnerHTML={{__html: withBase(DASHBOARD_HTML)}} />
-      </Content>
-    </>
+    <Suspense fallback={null}>
+      {isPlatform && !activeColegio ? <PlatformDashboard /> : <SchoolDashboard />}
+    </Suspense>
   )
 }
-
-const DashboardWrapper: FC = () => {
-  // El toolbar lo renderiza ToolbarWrapper leyendo del contexto PageData. Fijamos aqui el
-  // titulo ("eCommerce Dashboard") y el breadcrumb (Home > Dashboards).
-  return (
-    <>
-      <PageTitle breadcrumbs={dashboardBreadcrumbs}>eCommerce Dashboard</PageTitle>
-      <DashboardPage />
-    </>
-  )
-}
-
-export {DashboardWrapper}

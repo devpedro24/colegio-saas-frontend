@@ -1,0 +1,465 @@
+.school-dashboard {
+  --dash-surface: #fff;
+  --dash-ink: #1b1832;
+  --dash-muted: #666278;
+  --dash-line: #ebe7f1;
+  --dash-link: #6030c6;
+  --dash-soft: #f6f3fa;
+  --dash-chart-line: #197f61;
+  --dash-chart-fill: #39ad831c;
+  isolation: isolate;
+  width: 100%;
+  padding-block: 6px 26px;
+  color: var(--dash-ink);
+}
+
+.school-dashboard__hero {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 22px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 26px;
+  padding: clamp(24px, 2.5vw, 38px) clamp(24px, 3.3vw, 48px);
+  background: var(--brand-header-gradient);
+  color: #fff;
+}
+
+.school-dashboard__hero::before,
+.school-dashboard__hero::after {
+  position: absolute;
+  content: '';
+  z-index: -1;
+  pointer-events: none;
+}
+
+.school-dashboard__hero::before {
+  inset: 0;
+  background:
+    linear-gradient(90deg, #eee1ff16 1px, transparent 1px),
+    linear-gradient(#eee1ff16 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(110deg, transparent 42%, #000 100%);
+}
+
+.school-dashboard__hero::after {
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  border: 1px solid #e1c8ff42;
+  box-shadow: 0 0 0 34px #d9bcff12, 0 0 0 76px #d9bcff0d, 0 0 0 118px #d9bcff09;
+  top: 32%;
+  right: -105px;
+}
+
+.school-dashboard__hero-content { min-width: 0; overflow-wrap: anywhere; }
+.school-dashboard .bi { color: inherit; font-size: inherit; }
+
+.school-dashboard__context,
+.school-dashboard__year,
+.school-dashboard__example {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.school-dashboard__context {
+  color: #f0e6ff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.school-dashboard__hero-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: #e2c3ff24;
+  color: #f0deff;
+  font-size: 15px;
+}
+
+.school-dashboard__hero h1 {
+  margin: 13px 0 7px;
+  color: #fff;
+  font-size: clamp(1.95rem, 3.5vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.06;
+}
+
+.school-dashboard__hero p {
+  margin: 0;
+  color: #e9ddff;
+  font-size: clamp(13px, 1.05vw, 15px);
+  line-height: 1.55;
+}
+
+.school-dashboard__hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.school-dashboard__hero-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.school-dashboard__shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.school-dashboard__shortcuts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border: 1px solid #f2dfff38;
+  border-radius: 10px;
+  background: #f2dfff16;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.school-dashboard__shortcuts a:hover { background: #f2dfff30; color: #fff; }
+.school-dashboard__shortcuts a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.school-dashboard__year,
+.school-dashboard__example {
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.school-dashboard__example { color: #f1e6ff; border: 1px solid #f2dfff43; }
+.school-dashboard__example .bi { color: #e1c6ff; font-size: 6px; }
+.school-dashboard__year { background: #fff; color: #402078; }
+
+.school-dashboard__section-title {
+  margin: 26px 0 12px;
+  color: var(--dash-ink);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.school-dashboard__metrics,
+.school-dashboard__analysis,
+.school-dashboard__details {
+  display: grid;
+  gap: clamp(12px, 1.3vw, 20px);
+}
+
+.school-dashboard__metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; }
+.school-dashboard__analysis { grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); margin-top: 18px; }
+.school-dashboard__details { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 18px; }
+
+.school-dashboard__metric,
+.school-dashboard__panel {
+  min-width: 0;
+  border: 1px solid var(--dash-line);
+  border-radius: 20px;
+  background: var(--dash-surface);
+  box-shadow: 0 4px 12px #28135108;
+}
+
+.school-dashboard__metric { padding: clamp(13px, 1.5vw, 22px); }
+.school-dashboard__metric dt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--dash-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.school-dashboard__metric dd { margin: 8px 0 0; }
+.school-dashboard__metric dd strong {
+  display: block;
+  font-size: clamp(1.65rem, 2.6vw, 2.7rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.045em;
+}
+
+.school-dashboard__metric dd span {
+  display: block;
+  margin-top: 5px;
+  color: var(--dash-muted);
+  font-size: 12px;
+}
+
+.school-dashboard [data-tone='violet'] { --tone: #6135c3; --tint: #f0e9fe; --mark: #7b50df; }
+.school-dashboard [data-tone='blue'] { --tone: #2758a7; --tint: #eaf2ff; --mark: #5b8de6; }
+.school-dashboard [data-tone='amber'] { --tone: #955607; --tint: #fff3da; --mark: #e5a344; }
+.school-dashboard [data-tone='green'] { --tone: #117457; --tint: #e4f6ee; --mark: #29a77b; }
+
+.school-dashboard__icon,
+.school-dashboard__date {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--tint);
+  color: var(--tone);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.school-dashboard__panel {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(15px, 1.5vw, 22px);
+}
+
+.school-dashboard__panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.school-dashboard__panel h2,
+.school-dashboard__panel h3 {
+  margin: 0;
+  color: var(--dash-ink);
+  font-weight: 700;
+}
+
+.school-dashboard__panel h2 { font-size: 17px; letter-spacing: -0.015em; }
+.school-dashboard__panel h3 { font-size: 14px; line-height: 1.4; }
+.school-dashboard__enrollment-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 2px 0 12px;
+  color: var(--dash-muted);
+  font-size: 12px;
+}
+
+.school-dashboard__enrollment-total strong {
+  margin-right: 3px;
+  color: var(--dash-ink);
+  font-size: 31px;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.school-dashboard__completion {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #e4f6ee;
+  color: #117457;
+  font-weight: 650;
+}
+
+.school-dashboard__segments { display: flex; gap: 4px; height: 9px; }
+.school-dashboard__segments span { flex-basis: 0; border-radius: 4px; background: var(--mark); }
+
+.school-dashboard__legend,
+.school-dashboard__list,
+.school-dashboard__tasks,
+.school-dashboard__levels {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.school-dashboard__legend {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  color: var(--dash-muted);
+  font-size: 13px;
+}
+
+.school-dashboard__legend li { display: grid; grid-template-columns: 8px 1fr auto; gap: 9px; align-items: center; }
+.school-dashboard__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mark); }
+.school-dashboard__legend strong { color: var(--dash-ink); font-variant-numeric: tabular-nums; }
+
+.school-dashboard__list li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 59px;
+  padding-block: 8px;
+}
+
+.school-dashboard__list li + li { border-top: 1px solid var(--dash-line); }
+
+.school-dashboard__list p {
+  margin: 2px 0 0;
+  color: var(--dash-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.school-dashboard__trend-summary,
+.school-dashboard__trend-value {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.school-dashboard__trend-summary { justify-content: space-between; margin-bottom: 12px; }
+.school-dashboard__trend-value strong { font-size: 31px; line-height: 1.14; letter-spacing: -0.045em; }
+.school-dashboard__trend-value .school-dashboard__completion { font-size: 11px; }
+
+.school-dashboard__week-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  border: 1px solid var(--dash-line);
+  border-radius: 10px;
+  padding: 3px;
+  background: var(--dash-soft);
+}
+
+.school-dashboard__week-switch button {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 5px 8px;
+  background: transparent;
+  color: var(--dash-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.school-dashboard__week-switch button:hover,
+.school-dashboard__week-switch button[aria-pressed='true'] {
+  border-color: var(--dash-line);
+  background: var(--dash-surface);
+  color: var(--dash-ink);
+}
+
+.school-dashboard__week-switch button:focus-visible,
+.school-dashboard__task:focus-visible { outline: 2px solid var(--dash-link); outline-offset: 2px; }
+.school-dashboard__plot { position: relative; min-width: 0; height: 136px; margin-top: auto; }
+
+.school-dashboard__tasks {
+  display: grid;
+  align-content: space-between;
+  flex: 1;
+  gap: 8px;
+}
+
+.school-dashboard__task {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--dash-line);
+  border-radius: 12px;
+  color: var(--dash-muted);
+}
+
+a.school-dashboard__task:hover { background: var(--dash-soft); color: var(--dash-link); }
+.school-dashboard__task p { margin: 2px 0 0; font-size: 12px; }
+.school-dashboard__task .bi { font-size: 11px; }
+
+.school-dashboard__task-count {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: var(--tint);
+  color: var(--tone);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.school-dashboard__levels { display: grid; gap: 10px; }
+.school-dashboard__levels li div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.school-dashboard__levels li strong { font-variant-numeric: tabular-nums; }
+.school-dashboard__level-track {
+  display: block;
+  height: 6px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--dash-soft);
+}
+.school-dashboard__level-track span { display: block; height: 100%; border-radius: inherit; background: var(--mark); }
+
+.school-dashboard__date { width: 39px; height: 42px; align-content: center; gap: 4px; }
+.school-dashboard__date strong { font-size: 16px; }
+.school-dashboard__date span { font-size: 9px; font-weight: 700; text-transform: uppercase; }
+
+.school-dashboard__panel-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--dash-line);
+}
+
+.school-dashboard__panel-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--dash-link);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.school-dashboard__panel-footer a:hover { color: var(--dash-link); text-decoration: underline; }
+.school-dashboard__panel-footer a:focus-visible { outline: 2px solid var(--dash-link); outline-offset: 3px; }
+.school-dashboard__hero + .card { margin-top: 20px; }
+
+[data-bs-theme='dark'] .school-dashboard {
+  --dash-surface: #211d30;
+  --dash-ink: #f2eefb;
+  --dash-muted: #bdb6ce;
+  --dash-line: #3c344d;
+  --dash-link: #c5a5ff;
+  --dash-soft: #302941;
+  --dash-chart-line: #60d4aa;
+  --dash-chart-fill: #60d4aa22;
+}
+
+@media (max-width: 1080px) {
+  .school-dashboard__analysis,
+  .school-dashboard__details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .school-dashboard__analysis .school-dashboard__panel:first-child,
+  .school-dashboard__details .school-dashboard__panel:first-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  .school-dashboard__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .school-dashboard__hero { flex-direction: column; align-items: flex-start; gap: 16px; border-radius: 20px; }
+  .school-dashboard__hero-side { align-items: flex-start; gap: 12px; }
+  .school-dashboard__hero-meta, .school-dashboard__shortcuts { justify-content: flex-start; }
+  .school-dashboard__hero::after { width: 320px; height: 320px; right: -225px; }
+}
+
+@media (max-width: 600px) {
+  .school-dashboard__analysis,
+  .school-dashboard__details { grid-template-columns: minmax(0, 1fr); margin-top: 12px; }
+  .school-dashboard__metric dt { align-items: flex-start; flex-direction: column-reverse; gap: 6px; line-height: 1.25; font-size: 13px; }
+  .school-dashboard__metric dd { margin-top: 7px; }
+  .school-dashboard__section-title { margin-top: 20px; }
+}

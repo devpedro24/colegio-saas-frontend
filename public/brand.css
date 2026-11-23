@@ -1,0 +1,6 @@
+:root {
+  --brand-purple-dark: #281351;
+  --brand-purple: #462084;
+  --brand-purple-bright: #5726a5;
+  --brand-header-gradient: linear-gradient(114deg, var(--brand-purple-dark) 0%, var(--brand-purple) 66%, var(--brand-purple-bright) 100%);
+}
