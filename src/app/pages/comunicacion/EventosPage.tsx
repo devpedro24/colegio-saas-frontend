@@ -1,3 +1,4 @@
+import {MailReviewPanel} from '@/app/shared/MailReviewPanel'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useIntl } from "react-intl";
@@ -41,7 +42,8 @@ type EventItem = {
 type Detail = EventItem & {
   eliminado?: boolean;
   puede_editar: boolean;
-  correos?: Record<"pendiente" | "enviando" | "enviado" | "fallido" | "cancelado", number>;
+  puede_revisar_correos?: boolean;
+  correos?: Record<"pendiente" | "enviando" | "en_revision" | "confirmado" | "enviado" | "fallido" | "cancelado", number>;
   archivos: {
     url_token: string;
     nombre: string;
@@ -638,6 +640,7 @@ function Calendar() {
                 <div className="d-flex flex-wrap gap-3">
                   {Object.entries(detail.data.correos).map(([state, count]) => <span key={state} className={`badge ${state === "fallido" ? "badge-light-danger" : state === "enviado" ? "badge-light-success" : "badge-light-warning"}`}>{t(`events.mail.${state}`)}: {count}</span>)}
                 </div>
+                {detail.data.puede_revisar_correos && <MailReviewPanel key={selected} path={`/eventos/${selected}/revision-correos`} onChange={() => void detail.refetch()}/>}
                 {detail.data.correos.fallido > 0 && <button className="btn btn-light-primary btn-sm mt-4" disabled={mutation.isPending}
                   onClick={() => mutation.mutate({path: `/eventos/${selected}/correos/reintentar?opaque=1`})}>{t("events.retryMail")}</button>}
               </section>}

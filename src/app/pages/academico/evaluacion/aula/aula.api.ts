@@ -26,7 +26,7 @@ export type AulaResource = {token: string; tipo: 'texto' | 'archivo' | 'tarea' |
   publicacion_estimada?: boolean;
   zona_publicacion: string | null; version: number; configuracion?: Record<string, unknown>;
   preguntas?: Question[]; cantidad_preguntas?: number; tiene_intentos?: boolean; adjuntos?: AulaAttachment[];
-  escala?: AulaScale; requiere_motivo?: boolean; puede_interactuar?: boolean;
+  escala?: AulaScale; requiere_motivo?: boolean; puede_interactuar?: boolean; correos_en_revision?: number; puede_revisar_correos?: boolean;
   progreso?: 'sin_iniciar' | 'pendiente' | 'completado';
   completar_al?: 'abrir' | 'entregar' | 'revisar' | 'finalizar';
   reenvios?: boolean;

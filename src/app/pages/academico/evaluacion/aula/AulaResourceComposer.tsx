@@ -233,6 +233,12 @@ export function AulaResourceComposer({section, sections, periods, allowClosedCon
         {canPublish && <label className='form-check form-switch mb-0'><input type='checkbox' className='form-check-input aula-visibility-toggle'
           checked={form.visible_estudiantes} onChange={event => set({visible_estudiantes: event.target.checked})} />
           <span className='form-check-label'>Visible para estudiantes</span></label>}</div>
+        {canPublish && <label className='form-check form-switch mt-3 mb-0'>
+          <input type='checkbox' className='form-check-input' checked={Boolean(form.configuracion?.enviar_correo)}
+            onChange={event => setOption('enviar_correo', event.target.checked)} />
+          <span className='form-check-label'>{intl.locale.startsWith('en')
+            ? 'Also email students about this resource' : 'Avisar también por correo a los estudiantes sobre este recurso'}</span>
+        </label>}
         {form.visible_estudiantes && !selectedSection?.visible_estudiantes && <div className='alert alert-warning py-2 mt-3 mb-0'>
           Esta sección está oculta. Publícala también para que los estudiantes vean el recurso.</div>}
         {form.tipo === 'cuestionario' && !resource?.preguntas?.length && <p className='text-muted mt-3 mb-0'>Guarda este cuestionario oculto, agrega sus preguntas y después publícalo.</p>}

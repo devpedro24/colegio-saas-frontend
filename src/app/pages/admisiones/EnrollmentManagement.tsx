@@ -27,6 +27,8 @@ type Notice = {
   key: string
   email: string
   asunto: string
+  estado?: string
+  solicitud_token?: string | null
   enviada_en?: string
   creada_en: string
   contenido?: string
@@ -189,6 +191,7 @@ export default function EnrollmentManagement({section = 'applications'}: {sectio
         detail.data ? (
           <EnrollmentApplication
             key={applicationToken}
+            onMailReview={() => void qc.invalidateQueries({queryKey: ['ingreso', scope, 'notificaciones']})}
             application={detail.data.data}
             groups={detail.data.grupos ?? list.data?.grupos ?? []}
             can={can}
@@ -503,7 +506,7 @@ export default function EnrollmentManagement({section = 'applications'}: {sectio
                         <div className='intake-heading'>
                           <h3>{notice.asunto}</h3>
                           <span className={`intake-badge ${notice.enviada_en ? 'text-success' : ''}`}>
-                            {t(notice.enviada_en ? 'delivered' : 'queued')}
+                            {notice.enviada_en ? t('delivered') : intl.formatMessage({id: 'mailReview.status.' + (notice.estado ?? 'pendiente')})}
                           </span>
                         </div>
                         <p className='intake-muted'>
@@ -514,6 +517,10 @@ export default function EnrollmentManagement({section = 'applications'}: {sectio
                             timeZone: catalog.data?.zona_horaria,
                           })}
                         </p>
+                        {notice.estado === 'en_revision' && notice.solicitud_token && can('correos.revisar') && <button type='button'
+                          className='btn btn-sm btn-light-primary' onClick={() => setParams({solicitud: notice.solicitud_token!})}>
+                          {t('openApplication')}
+                        </button>}
                         {notice.contenido && <p style={{whiteSpace: 'pre-wrap'}}>{notice.contenido}</p>}
                       </article>
                     ))}

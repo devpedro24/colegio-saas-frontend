@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {MailReviewPanel} from '@/app/shared/MailReviewPanel'
 import {useIntl} from 'react-intl'
 import {api} from '@/lib/api/client'
 import type {Application, ApplicationsPage} from './ingreso.types'
@@ -15,6 +16,7 @@ export function EnrollmentApplication({
   run,
   update,
   back,
+  onMailReview,
 }: {
   application: Application
   groups: ApplicationsPage['grupos']
@@ -22,6 +24,7 @@ export function EnrollmentApplication({
   busy: boolean
   run: (action: () => Promise<void>) => Promise<void>
   update: (next: Application) => Promise<void>
+  onMailReview: () => void
   back: () => void
 }) {
   const t = useIntakeText(),
@@ -121,6 +124,7 @@ export function EnrollmentApplication({
           </span>
         </div>
       </section>
+      {can('correos.revisar') && <MailReviewPanel path={base + '/revision-correos'} onChange={onMailReview}/>}
       <div className='intake-detail'>
         <section className='intake-card'>
           <nav className='intake-tabs'>

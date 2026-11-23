@@ -1,3 +1,4 @@
+import {MailReviewPanel} from '@/app/shared/MailReviewPanel'
 import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useEffect, useRef, useState, type FormEvent} from 'react'
 import {useNavigate, useParams} from 'react-router-dom'
@@ -530,7 +531,7 @@ export function AulaRecursoView() {
   const feedback = useAulaFeedback()
   const {recursoToken = ''} = useParams()
   const navigate = useNavigate()
-  const {data, isLoading, error} = useAulaRecurso(recursoToken)
+  const {data, isLoading, error, refetch} = useAulaRecurso(recursoToken)
   const aula = useAula(data?.aula_token ?? '')
   const {mutate: markOpened} = useAbrirRecurso()
   const openingTokens = useRef(new Set<string>())
@@ -560,6 +561,10 @@ export function AulaRecursoView() {
       <h2 className='mb-0 flex-grow-1'>{data.titulo}</h2>
       {canManage && <button className='btn btn-light-warning' onClick={() => navigate(`/evaluacion/aula/${data.aula_token}?editar=${recursoToken}`)}>
         Editar recurso</button>}</div>
+    {!!data.correos_en_revision && <div className='alert alert-warning mt-4' role='status'>
+      {intl.formatMessage({id: 'aula.mailReview'}, {count: data.correos_en_revision})}
+    </div>}
+    {data.puede_revisar_correos && <MailReviewPanel key={recursoToken} path={'/aula/recursos/' + recursoToken + '/revision-correos'} onChange={() => void refetch()}/>}
     <div className='aula-resource-facts'>
       {data.publicado_en && <div className='aula-resource-fact'><span>{intl.formatMessage({id: new Date(data.publicado_en) > new Date() ? 'events.scheduledPublication' : data.publicacion_estimada ? 'events.estimatedPublication' : 'events.publishedOn'})}</span>
         <strong>{intl.formatDate(data.publicado_en, {timeZone: data.zona_publicacion || 'America/Bogota', dateStyle: 'medium', timeStyle: 'short'})}</strong></div>}
