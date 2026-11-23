@@ -3,6 +3,7 @@ import {useQuery, useQueryClient} from '@tanstack/react-query'
 import {useLocation, useNavigate, useParams} from 'react-router-dom'
 import {api} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
+import {CampaignCopy} from './CampaignCopy'
 import {CampaignEditor} from './CampaignEditor'
 import {IntakeNotice} from './IntakeUI'
 import {useEnrollmentScope} from './enrollmentSettings.api'
@@ -34,5 +35,6 @@ export default function CampaignPage() {
   if (!catalog.data) return <IntakeNotice>{t('loading')}</IntakeNotice>
   const initial = catalog.data.campanas.find(c => c.url_token === token)
   if (token && !initial) return <IntakeNotice kind='warning'>{t('campaignNotFound')} <button className='btn btn-sm btn-light' onClick={close}>{t('backCampaigns')}</button></IntakeNotice>
-  return <CampaignEditor key={`${token ?? 'new'}-${duplicate}`} catalog={catalog.data} initial={initial} duplicate={duplicate} busy={busy} save={save} close={close} />
+  if (duplicate && initial) return <CampaignCopy key={token} catalog={catalog.data} source={initial} busy={busy} save={save} close={close} />
+  return <CampaignEditor key={`${token ?? 'new'}-${duplicate}`} catalog={catalog.data} initial={initial} busy={busy} save={save} close={close} />
 }

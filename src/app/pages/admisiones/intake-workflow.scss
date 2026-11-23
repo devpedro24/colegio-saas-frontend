@@ -143,7 +143,7 @@
     color: var(--bs-gray-900);
     margin: 24px 0;
     i {
-      color: #6a23ff;
+      color: var(--brand-purple);
       font-size: 24px;
     }
     small {
@@ -198,7 +198,7 @@
     }
     i {
       background: #f1eaff;
-      color: #6a23ff;
+      color: var(--brand-purple);
       padding: 12px;
       border-radius: 14px;
       font-size: 22px;
@@ -394,7 +394,7 @@
       background: #f3edff;
       color: #071437;
       span {
-        background: #6a23ff;
+        background: var(--brand-purple);
         color: white;
       }
     }

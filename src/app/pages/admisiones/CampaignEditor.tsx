@@ -1,3 +1,4 @@
+import './campaign-editor.css'
 import {NumberInput} from '@/app/shared/components/NumberInput'
 import {useIntl} from 'react-intl'
 import {useState} from 'react'
@@ -8,59 +9,51 @@ import {CampaignPreview} from './CampaignPreview'
 import {useIntakeText} from './intakeWorkflow'
 import {enrollmentSettingsPath, useEnrollmentSettings} from './enrollmentSettings.api'
 
-function copyForYear(source: Campaign, year: string, catalog: Catalog): Campaign['configuracion'] {
-  const target = (token: string) => {
-    const identity = catalog.grados.find(g => g.token === token)?.regla_token
-    const matches = catalog.grados.filter(g => g.ano_token === year && g.regla_token && g.regla_token === identity)
-    return matches.length === 1 ? matches[0] : undefined
-  }
-  return {...source.configuracion, pin_expira_en: null,
-    grados: source.configuracion.grados.flatMap(g => {const match = target(g.token); return match ? [{...g, token: match.token, nombre: match.nombre}] : []}),
-    documentos: source.configuracion.documentos.map(d => ({...d, grados: d.grados.map(token => target(token)?.token ?? token)}))}
+function identityRequirement(document: Requirement): Requirement {
+  const formats = document.formatos.filter(format => ['pdf', 'jpg', 'png'].includes(format))
+  return {...document, obligatorio: true, grados: [], formatos: formats.length ? formats : ['pdf', 'jpg', 'png']}
 }
 
 export function CampaignEditor({catalog, initial, duplicate = false, save, close, busy}: {catalog: Catalog; initial?: Campaign; duplicate?: boolean;
   save: (c: CampaignInput) => void; close: () => void; busy: boolean}) {
   const intl = useIntl()
+  const spanish = intl.locale.startsWith('es')
   const flow = useIntakeText()
   const t = (id: string, values?: Record<string, string | number>) => intl.formatMessage({id}, values)
   const settings = useEnrollmentSettings()
 
-  const sourceYearName = catalog.anos.find(y => y.token === initial?.ano_token)?.nombre ?? ''
-  const futureYears = catalog.anos.filter(y => y.nombre >= sourceYearName).sort((a, b) => a.nombre.localeCompare(b.nombre))
-  const destination = futureYears.find(year => year.nombre > sourceYearName) ?? futureYears[0]
-  const [form, setForm] = useState<Campaign>(initial && duplicate ? {...initial, url_token: undefined, nombre: `${initial.nombre} — ${destination?.nombre ?? ''}`,
-    ano_token: destination?.token ?? '', apertura_en: null, cierre_en: null, correcciones_hasta: null, abierta: false, desde: new Date().toLocaleDateString('en-CA'), hasta: null,
-    configuracion: copyForYear(initial, destination?.token ?? '', catalog)}
-    : initial ? {...initial, configuracion: {...initial.configuracion, pin_expira_en: initial.configuracion.pin_expira_en || null}}
+  const [form, setForm] = useState<Campaign>(initial ? {...initial, configuracion: {...initial.configuracion, pin_expira_en: initial.configuracion.pin_expira_en || null}}
     : {nombre: '', ano_token: catalog.anos[0]?.token ?? '', abierta: false,
-      desde: new Date().toLocaleDateString('en-CA'), hasta: '', configuracion: {grados: [], documentos: [], campos: [], privacidad: '', pin_expira_en: null}})
+      desde: new Date().toLocaleDateString('en-CA'), hasta: '', configuracion: {grados: [], documentos: [], campos: [], privacidad: '', pin_expira_en: null, verificar_identidad_automaticamente: false}})
   const [tab, setTab] = useState('general')
   const [preview, setPreview] = useState(false)
   const cfg = form.configuracion
-  const identityKey = cfg.documento_identidad ?? cfg.documentos.find(d => d.obligatorio && !d.grados.length && !d.formatos.includes('docx') && /identidad|identifica|identity/i.test(d.key + ' ' + d.nombre))?.key ?? ''
+  const identityKey = (cfg.documentos.some(document => document.key === cfg.documento_identidad) ? cfg.documento_identidad : undefined) ?? cfg.documentos.find(d => d.obligatorio && !d.grados.length && d.formatos.length > 0 && d.formatos.every(format => ['pdf', 'jpg', 'png'].includes(format)) && /identidad|identifica|identity/i.test(d.key + ' ' + d.nombre))?.key ?? ''
   const institutional = settings.data?.data
   const privacy = institutional && institutional.version > 0 ? institutional.privacidad : initial?.configuracion.privacidad || institutional?.privacidad
   const update = (changes: Partial<Campaign['configuracion']>) => setForm({...form, configuracion: {...cfg, ...changes}})
-  const doc = (index: number, changes: Partial<Requirement>) => update({documentos: cfg.documentos.map((d,i) => i === index ? {...d, ...changes} : d)})
-  const unmapped = duplicate && initial ? initial.configuracion.grados.filter(g => !catalog.grados.some(target =>
-    target.ano_token === form.ano_token && target.regla_token && target.regla_token === catalog.grados.find(source => source.token === g.token)?.regla_token)) : []
+  const doc = (index: number, changes: Partial<Requirement>) => update({documentos: cfg.documentos.map((d,i) => {
+    const next = i === index ? {...d, ...changes} : d
+    return next.key === identityKey ? identityRequirement(next) : next
+  })})
+  const requiredGrades = new Set(cfg.documentos.flatMap(doc => doc.grados))
+  const missingGrades = catalog.grados.filter(grade => requiredGrades.has(grade.token) && !cfg.grados.some(g => g.token === grade.token))
   return <div className='intake-next intake-stack'>
     <section className='intake-card'><button type='button' className='btn btn-sm btn-light mb-5' onClick={close}><IntakeIcon name='arrow-left' />{flow('backCampaigns')}</button>
-      <div className='d-flex flex-wrap align-items-center justify-content-between gap-4'><div><h1 className='fs-3 mb-2'>{duplicate ? t('intake.renewal.copyRound') : initial ? t('intake.ui.configureEnrollmentRound') : t('intake.ui.newEnrollmentRound')}</h1><p className='intake-muted mb-0'>{flow('campaignEditorHelp')}</p></div>
+      <div className='d-flex flex-wrap align-items-center justify-content-between gap-4'><div><h1 className='fs-3 mb-2'>{duplicate ? t('intake.flow.reuseCampaign') : initial ? t('intake.ui.configureEnrollmentRound') : t('intake.ui.newEnrollmentRound')}</h1><p className='intake-muted mb-0'>{flow('campaignEditorHelp')}</p></div>
       <button type='button' className='btn btn-light-info' onClick={() => setPreview(true)}><IntakeIcon name='eye' />{flow('previewForm')}</button></div>
     </section>
     <section className='intake-card'>
     <nav className='intake-tabs' aria-label={flow('campaignSections')}>{[['general','campaign','calendar-event'],['fields','formTab','ui-checks'],['documents','documents','files']].map(([key,label,icon]) => <button type='button' key={key} className={tab === key ? 'active' : ''} aria-selected={tab === key} onClick={() => setTab(key)}><IntakeIcon name={icon} />{flow(label)}</button>)}</nav>
     <form noValidate onSubmit={e => {e.preventDefault(); const element = e.currentTarget; if (!element.checkValidity()) {const invalid = element.querySelector<HTMLElement>(':invalid'); setTab(invalid?.closest<HTMLElement>('[data-campaign-tab]')?.dataset.campaignTab ?? 'general'); requestAnimationFrame(() => element.reportValidity()); return} save({url_token: form.url_token, nombre: form.nombre, ano_token: form.ano_token, abierta: form.abierta, desde: form.desde, hasta: form.hasta, apertura_en: form.apertura_en ?? `${form.desde}T00:00`, cierre_en: form.hasta === null ? null : form.cierre_en ?? `${form.hasta}T23:59`, correcciones_hasta: form.correcciones_hasta,
-      configuracion: {pin_manual: true, pin_expira_en: cfg.pin_expira_en, documento_identidad: identityKey, documentos: cfg.documentos, campos: cfg.campos,
+      configuracion: {pin_manual: true, pin_expira_en: cfg.pin_expira_en, verificar_identidad_automaticamente: cfg.verificar_identidad_automaticamente ?? true, documento_identidad: identityKey, documentos: cfg.documentos, campos: cfg.campos,
         grados: cfg.grados.map(({token, nombre, cupo}) => ({token, nombre, cupo}))}})}}><div className='ingreso'><div hidden={tab !== 'general'} data-campaign-tab='general'>
       <p className='ingreso-help'>{flow('snapshotHelp')}</p>
       <p className='ingreso-help'>{t('intake.ui.fieldsMarkedWithAreRequiredCompleteEveryDocumentRequirementOrAdditionalField')}</p>
       <div className='ingreso-grid'>
         <div><label htmlFor='campaign-name' className='required'>{t('intake.ui.name')}</label><input id='campaign-name' className='form-control' maxLength={120} required pattern='.*\S.*' value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})} /></div>
-        <div><label htmlFor='campaign-year' className='required'>{t('intake.ui.academicYear')}</label><select id='campaign-year' className='form-select' required value={form.ano_token} onChange={e => setForm({...form, ano_token: e.target.value, configuracion: duplicate && initial ? copyForYear(initial, e.target.value, catalog) : {...cfg, grados: []}})}>
-          {(duplicate ? futureYears : catalog.anos).map(y => <option key={y.token} value={y.token}>{y.nombre}</option>)}</select></div>
+        <div><label htmlFor='campaign-year' className='required'>{t('intake.ui.academicYear')}</label><select id='campaign-year' disabled={duplicate} className='form-select' required value={form.ano_token} onChange={e => setForm({...form, ano_token: e.target.value, configuracion: {...cfg, grados: []}})}>
+          {catalog.anos.map(y => <option key={y.token} value={y.token}>{y.nombre}</option>)}</select></div>
         <div><label htmlFor='campaign-start' className='required'>{t('intake.ui.opensOn')}</label><input id='campaign-start' type='datetime-local' required className='form-control' value={form.apertura_en ?? `${form.desde}T00:00`} onChange={e => setForm({...form, desde: e.target.value.slice(0,10), apertura_en: e.target.value})} /></div>
         <div><label htmlFor='campaign-end' className={form.hasta === null ? '' : 'required'}>{t('intake.ui.closingDate')}</label><input id='campaign-end' type='datetime-local' required={form.hasta !== null} disabled={form.hasta === null} min={form.apertura_en ?? `${form.desde}T00:00`} className='form-control' value={form.hasta === null ? '' : form.cierre_en ?? (form.hasta ? `${form.hasta}T23:59` : '')} onChange={e => setForm({...form, hasta: e.target.value.slice(0,10), cierre_en: e.target.value})} />
           <label className='form-check mt-3'><input id='campaign-no-end' type='checkbox' className='form-check-input' checked={form.hasta === null} onChange={e => setForm({...form, hasta: e.target.checked ? null : '', cierre_en: null})} />{t('intake.ui.noClosingDate')}</label></div>
@@ -70,7 +63,7 @@ export function CampaignEditor({catalog, initial, duplicate = false, save, close
           <p className='ingreso-help mt-2'>{flow('pinPolicy')}</p></div>
         <div><label htmlFor='campaign-corrections'>{flow('correctionDeadlineLabel')}</label><input id='campaign-corrections' type='datetime-local' className='form-control' min={form.cierre_en ?? undefined} value={form.correcciones_hasta ?? ''} onChange={e => setForm({...form, correcciones_hasta: e.target.value || null})} /><p className='ingreso-help'>{flow('timezone', {timezone: catalog.zona_horaria ?? ''})}</p></div>
       </div>
-      {unmapped.length > 0 && <p className='alert alert-warning mt-4' role='alert'>{t('intake.renewal.unmappedGrades', {grades: unmapped.map(g => g.nombre).join(', ')})}</p>}
+      {missingGrades.length > 0 && <p className='alert alert-warning mt-4' role='alert'>{t('intake.renewal.requiredGrades', {grades: missingGrades.map(g => g.nombre).join(', ')})}</p>}
       <div className='form-check form-switch mt-6 mb-3'><input id='campaign-open' type='checkbox' className='form-check-input' aria-describedby='campaign-open-help' checked={form.abierta} onChange={e => setForm({...form, abierta: e.target.checked})} /><label htmlFor='campaign-open'>{t('intake.ui.allowApplicationsThroughTheLink')}</label></div>
       <p id='campaign-open-help' className='ingreso-help'>{flow('campaignOpenHelp')}</p>
       <p className='ingreso-help mb-6'>{t('intake.ui.withNoClosingDateYouCanKeepTheLinkEnabledAndPause')}</p>
@@ -83,39 +76,48 @@ export function CampaignEditor({catalog, initial, duplicate = false, save, close
       {!cfg.grados.length && <p className='ingreso-help mt-3'>{t('intake.ui.selectAtLeastOneGradeAndSetItsCapacityBeforeSaving')}</p>}
     </div><div hidden={tab !== 'fields'} data-campaign-tab='fields'>
       <h3 className='mt-8'>{t('intake.ui.additionalInformation')}</h3><p className='ingreso-help'>{t('intake.ui.nameDateOfBirthAndIdentityDocumentAreAlreadyIncludedOnlyAdd')}</p>
-      {cfg.campos.map((f,i) => <div className='ingreso-row ingreso-grid align-items-center' key={f.key}><div><label className='required' htmlFor={`field-name-${i}`}>{t('intake.ui.additionalFieldName')}</label><input id={`field-name-${i}`} aria-label={t('intake.fieldNameLabel', {number: i+1})} className='form-control' required pattern='.*\S.*' maxLength={120} value={f.nombre} onChange={e => update({campos: cfg.campos.map((x,n) => n === i ? {...x, nombre: e.target.value} : x)})} /></div>
-        <div className='d-flex flex-wrap align-items-center gap-4 campaign-field-options'><select aria-label={t('intake.fieldTypeLabel', {number: i+1})} className='form-select w-auto' required value={f.tipo} onChange={e => update({campos: cfg.campos.map((x,n) => n === i ? {...x, tipo: e.target.value as typeof x.tipo} : x)})}><option value='texto'>{t('intake.ui.text')}</option><option value='fecha'>{t('intake.ui.date')}</option><option value='numero'>{t('intake.ui.numbers')}</option><option value='telefono'>{flow('telefono')}</option><option value='email'>{flow('email')}</option><option value='seleccion'>{flow('selection')}</option></select>
+      {cfg.campos.map((f,i) => <div className='ingreso-row campaign-extra-field' key={f.key}><div><label className='required' htmlFor={`field-name-${i}`}>{t('intake.ui.additionalFieldName')}</label><input id={`field-name-${i}`} aria-label={t('intake.fieldNameLabel', {number: i+1})} className='form-control' required pattern='.*\S.*' maxLength={120} value={f.nombre} onChange={e => update({campos: cfg.campos.map((x,n) => n === i ? {...x, nombre: e.target.value} : x)})} /></div>
+        <div className='d-flex flex-wrap align-items-center gap-4 campaign-field-options'><label className='campaign-field-type'>{spanish ? 'Tipo de dato' : 'Field type'}<select aria-label={t('intake.fieldTypeLabel', {number: i+1})} className='form-select w-auto' required value={f.tipo} onChange={e => update({campos: cfg.campos.map((x,n) => n === i ? {...x, tipo: e.target.value as typeof x.tipo} : x)})}><option value='texto'>{t('intake.ui.text')}</option><option value='fecha'>{t('intake.ui.date')}</option><option value='numero'>{t('intake.ui.numbers')}</option><option value='telefono'>{flow('telefono')}</option><option value='email'>{flow('email')}</option><option value='seleccion'>{flow('selection')}</option></select></label>
           {f.tipo === 'seleccion' && <label className='w-100'>{flow('options')}<textarea className='form-control' required value={(f.opciones ?? []).join('\n')} onChange={e => update({campos: cfg.campos.map((x,n) => n === i ? {...x, opciones: e.target.value.split('\n')} : x)})} /></label>}<label className='form-check'><input type='checkbox' className='form-check-input' checked={f.obligatorio} onChange={e => update({campos: cfg.campos.map((x,n) => n === i ? {...x, obligatorio: e.target.checked} : x)})} />{t('intake.ui.required')}</label>
           <button type='button' className='btn btn-sm btn-light-danger' onClick={() => update({campos: cfg.campos.filter((_,n) => n !== i)})}>{t('intake.ui.remove')}</button></div></div>)}
       <button type='button' className='btn btn-light-primary mt-4' disabled={cfg.campos.length >= 20} onClick={() => update({campos: [...cfg.campos, {key: `campo_${crypto.randomUUID().replace(/-/g, '').slice(0,12)}`, nombre: '', tipo: 'texto', obligatorio: false}]})}>{t('intake.ui.field')}</button>
-      <section className='ingreso-row mt-8' aria-labelledby='campaign-institutional-summary'>
+      <section className='campaign-settings-panel mt-8' aria-labelledby='campaign-institutional-summary'>
         <div className='d-flex flex-wrap align-items-center justify-content-between gap-3 mb-5'><h3 id='campaign-institutional-summary' className='mb-0'>{t('intake.settings.title')}</h3>
           <Link to={enrollmentSettingsPath} className='btn btn-sm btn-light-primary'><i className='ki-solid ki-setting-2 fs-4' aria-hidden='true' />{t('intake.settings.open')}</Link></div>
         <p className='ingreso-help'>{t('intake.settings.campaignHelp')}</p>
         {settings.isPending && <p role='status'>{t('intake.settings.loading')}</p>}
         {settings.error && <p className='text-danger' role='alert'>{settings.error.message}</p>}
-        {cfg.grados.map(g => {const ruleToken = catalog.grados.find(x => x.token === g.token)?.regla_token
+        <div className='campaign-age-grid'>{cfg.grados.map(g => {const ruleToken = catalog.grados.find(x => x.token === g.token)?.regla_token
           const rule = institutional && institutional.version > 0 ? institutional.grados.find(x => x.url_token === ruleToken) : g
-          return <p key={g.token}><strong>{g.nombre}</strong>{': '}{rule?.edad_min != null && rule.edad_max != null ? t('intake.settings.range', {min: rule.edad_min, max: rule.edad_max}) : t('intake.settings.unrestricted')}</p>})}
+          return <p key={g.token}><strong>{g.nombre}</strong>{': '}{rule?.edad_min != null && rule.edad_max != null ? t('intake.settings.range', {min: rule.edad_min, max: rule.edad_max}) : t('intake.settings.unrestricted')}</p>})}</div>
         <h4 className='fs-6 mt-5'>{t('intake.ui.schoolPrivacyNoticeAndConsent')}</h4>
-        <p className='text-break' style={{whiteSpace: 'pre-wrap'}}>{privacy || t('intake.settings.privacyMissing')}</p>
+        <p className='campaign-privacy-preview text-break' style={{whiteSpace: 'pre-wrap'}}>{privacy || t('intake.settings.privacyMissing')}</p>
       </section>
     </div><div hidden={tab !== 'documents'} data-campaign-tab='documents'>
       <h3 className='mt-8'>{t('intake.ui.requiredDocuments')}</h3>
-      {cfg.documentos.map((d,i) => <section key={d.key} className='ingreso-card'>
+      <div className='campaign-document-grid'>{cfg.documentos.map((d,i) => <section key={d.key} className='ingreso-card campaign-document-card'>
         <div><label htmlFor={`doc-name-${i}`} className='required'>{t('intake.ui.documentName')}</label><input id={`doc-name-${i}`} required pattern='.*\S.*' className='form-control' maxLength={120} value={d.nombre} onChange={e => doc(i, {nombre: e.target.value})} /></div>
         <label className='mt-4' htmlFor={`doc-validity-${i}`}>{flow('documentValidity')}</label><input id={`doc-validity-${i}`} className='form-control' maxLength={250} value={d.vigencia ?? ''} onChange={e => doc(i, {vigencia: e.target.value})} /><p className='ingreso-help'>{flow('documentValidityHelp')}</p>
         <label className='mt-4 required' htmlFor={`doc-help-${i}`}>{t('intake.ui.descriptionAndInstructions')}</label><textarea id={`doc-help-${i}`} required className='form-control' maxLength={1000} value={d.instrucciones ?? ''} onChange={e => {e.target.setCustomValidity(e.target.value.trim() ? '' : t('intake.ui.enterADescriptionForTheDocument')); doc(i, {instrucciones: e.target.value})}} />
-        <div className='d-flex flex-wrap align-items-center gap-5 mt-4' role='group' aria-label={t('intake.formatsLabel', {number: i+1})} aria-describedby={`doc-formats-help-${i}`}>{['pdf','jpg','png','docx'].map(ext => <label key={ext} className='form-check'><input type='checkbox' className='form-check-input' checked={d.formatos.includes(ext)} onChange={e => doc(i, {formatos: e.target.checked ? [...d.formatos, ext] : d.formatos.filter(x => x !== ext)})} />{ext.toUpperCase()}</label>)}
-          <label className='form-check'><input type='checkbox' className='form-check-input' checked={d.obligatorio} onChange={e => doc(i, {obligatorio: e.target.checked})} />{t('intake.ui.required')}</label></div>
+        <div className='campaign-document-options mt-4' role='group' aria-label={t('intake.formatsLabel', {number: i+1})} aria-describedby={`doc-formats-help-${i}`}>{['pdf','jpg','png','docx'].map(ext => <label key={ext} className='form-check'><input type='checkbox' className='form-check-input' checked={d.formatos.includes(ext)} disabled={d.key === identityKey && ext === 'docx'} onChange={e => doc(i, {formatos: e.target.checked ? [...d.formatos, ext] : d.formatos.filter(x => x !== ext)})} />{ext.toUpperCase()}</label>)}
+          <label className='form-check'><input type='checkbox' className='form-check-input' checked={d.obligatorio} disabled={d.key === identityKey} onChange={e => doc(i, {obligatorio: e.target.checked})} />{t('intake.ui.required')}</label></div>
         <p id={`doc-formats-help-${i}`} className='ingreso-help mt-3'>{t('intake.ui.selectAtLeastOneAllowedFormatForThisDocument')}</p>
-        <p className='ingreso-help mt-4'>{t('intake.ui.applyToTheseGradesNoneSelectedMeansAll')}</p><div className='d-flex flex-wrap gap-5'>{cfg.grados.map(g => <label key={g.token} className='form-check'><input type='checkbox' className='form-check-input' checked={d.grados.includes(g.token)} onChange={e => doc(i, {grados: e.target.checked ? [...d.grados, g.token] : d.grados.filter(x => x !== g.token)})} />{g.nombre}</label>)}</div>
+        <p className='ingreso-help mt-4'>{t('intake.ui.applyToTheseGradesNoneSelectedMeansAll')}</p><div className='campaign-document-options'>{cfg.grados.map(g => <label key={g.token} className='form-check'><input type='checkbox' className='form-check-input' checked={d.grados.includes(g.token)} disabled={d.key === identityKey} onChange={e => doc(i, {grados: e.target.checked ? [...d.grados, g.token] : d.grados.filter(x => x !== g.token)})} />{g.nombre}</label>)}</div>
+        {d.key === identityKey && <div className='campaign-identity-check'>
+          <label className='form-check form-switch'>
+            <input id='campaign-auto-identity' type='checkbox' className='form-check-input'
+              checked={cfg.verificar_identidad_automaticamente ?? true}
+              onChange={event => update({verificar_identidad_automaticamente: event.target.checked})} />
+            <span>{spanish ? 'Verificar identidad y fecha de nacimiento automáticamente' : 'Automatically check identity and date of birth'}</span>
+          </label>
+          <p className='ingreso-help mb-0'>{spanish ? 'Al desactivarlo, el colegio revisa la coincidencia de los datos con el documento.' : 'When disabled, school staff check that the information matches the document.'}</p>
+        </div>}
         <button type='button' className='btn btn-sm btn-light-danger mt-4' onClick={() => update({documentos: cfg.documentos.filter((_,n) => n !== i)})}>{t('intake.ui.removeRequirement')}</button>
-      </section>)}
+      </section>)}</div>
       <button type='button' className='btn btn-light-primary' disabled={cfg.documentos.length >= 30} onClick={() => update({documentos: [...cfg.documentos, {key: `doc_${crypto.randomUUID().replace(/-/g, '').slice(0,12)}`, nombre: '', instrucciones: '', obligatorio: true, formatos: [], grados: []}]})}>{t('intake.ui.document')}</button>
-<div className='mt-6'>      <label htmlFor='campaign-identity' className='required'>{t('intake.validation.identityRequirement')}</label><select id='campaign-identity' className='form-select mb-4' required value={identityKey} onChange={e => update({documento_identidad: e.target.value})}><option value=''>{t('intake.ui.select')}</option>{cfg.documentos.filter(d => d.obligatorio && !d.grados.length && !d.formatos.includes('docx')).map(d => <option key={d.key} value={d.key}>{d.nombre}</option>)}</select><p className='ingreso-help'>{t('intake.validation.identityHelp')}</p>
+<div className='mt-6'>      <label htmlFor='campaign-identity' className='required'>{t('intake.validation.identityRequirement')}</label><select id='campaign-identity' className='form-select mb-4' required value={identityKey} onChange={e => {const key = e.target.value; update({documento_identidad: key, documentos: cfg.documentos.map(document => document.key === key ? identityRequirement(document) : document)})}}><option value=''>{t('intake.ui.select')}</option>{cfg.documentos.filter(d => d.nombre.trim()).map(d => <option key={d.key} value={d.key}>{d.nombre}</option>)}</select><p className='ingreso-help'>{t('intake.validation.identityHelp')}</p>
 </div></div>
-    </div><div className='intake-actions justify-content-end border-top pt-6 mt-6'><button type='button' className='btn btn-light' disabled={busy} onClick={close}>{t('intake.ui.cancel')}</button><button className='btn btn-primary' disabled={busy || !form.ano_token || !!unmapped.length || !cfg.grados.length || cfg.documentos.some(d => !d.formatos.length)}>{busy ? t('intake.ui.saving') : t('intake.ui.saveEnrollmentRound')}</button></div></form></section>
+    </div><div className='intake-actions justify-content-end border-top pt-6 mt-6'><button type='button' className='btn btn-light' disabled={busy} onClick={close}>{t('intake.ui.cancel')}</button><button className='btn btn-primary' disabled={busy || !form.ano_token || !!missingGrades.length || !cfg.grados.length || cfg.documentos.some(d => !d.formatos.length)}>{busy ? t('intake.ui.saving') : t('intake.ui.saveEnrollmentRound')}</button></div></form></section>
     <section className='intake-card'><p className='alert alert-info'>{flow('snapshotHelp')}</p><IntakePayments /></section>
     {preview && <CampaignPreview name={form.nombre} configuration={cfg} close={() => setPreview(false)} />}
   </div>

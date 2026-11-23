@@ -5,7 +5,7 @@ import ts from 'typescript'
 
 const source = fs.readFileSync(new URL('../src/app/pages/admisiones/enrollmentAge.ts', import.meta.url), 'utf8')
 const js = ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022}}).outputText
-const {schoolDate, ageOnDate, isOutsideAgeRange} = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'))
+const {schoolDate, ageOnDate, isOutsideAgeRange, birthDateError} = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'))
 
 test('school calendar controls birthdays across UTC midnight and year boundaries', () => {
   const instant = new Date('2027-01-01T02:00:00Z')
@@ -42,4 +42,17 @@ test('a server snapshot survives birthdays and rule changes only for the same bi
   assert.equal(isOutsideAgeRange(snapshot.nacimiento, 'first', '2027-10-14', {edad_min: 5, edad_max: 5}, snapshot), false)
   assert.equal(isOutsideAgeRange(snapshot.nacimiento, 'second', '2027-10-14', range, snapshot), true)
   assert.equal(isOutsideAgeRange('2017-10-14', 'first', '2027-10-14', range, snapshot), true)
+})
+
+test('a disabled grade range admits age zero through the school day and still rejects invalid dates', () => {
+  const intl = {formatMessage: ({id}) => id}
+  const today = schoolDate('America/Bogota', new Date('2027-01-01T02:00:00Z'))
+  const disabled = {edad_min: null, edad_max: null}
+  for (const range of [undefined, disabled]) {
+    assert.equal(birthDateError(intl, '2026-01-01', today, 'first', range), '')
+    assert.equal(birthDateError(intl, today, today, 'first', range), '')
+    assert.equal(birthDateError(intl, '2027-01-01', today, 'first', range), 'intake.validation.birthDate')
+    assert.equal(birthDateError(intl, '2026-02-30', today, 'first', range), 'intake.validation.birthDate')
+  }
+  assert.equal(birthDateError(intl, today, today, 'first', {edad_min: 6, edad_max: 8}), 'intake.validation.ageMismatch')
 })

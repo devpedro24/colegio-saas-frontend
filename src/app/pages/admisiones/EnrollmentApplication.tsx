@@ -5,6 +5,7 @@ import type {Application, ApplicationsPage} from './ingreso.types'
 import {getEnrollmentStates} from './ingreso.types'
 import {IntakeIcon, IntakeModal, IntakeNotice, IntakePayments} from './IntakeUI'
 import {studentName, useIntakeText} from './intakeWorkflow'
+import {EnrollmentGradeSummary} from './EnrollmentGradeSummary'
 
 export function EnrollmentApplication({
   application: item,
@@ -31,12 +32,16 @@ export function EnrollmentApplication({
   const [correction, setCorrection] = useState(''),
     [reason, setReason] = useState(''),
     [deadline, setDeadline] = useState(item.campana.correcciones_hasta ?? '')
-  const [pinDialog, setPinDialog] = useState(false),
-    [expires, setExpires] = useState(item.campana.configuracion.pin_expira_en ?? ''),
+  const [pinBusy, setPinBusy] = useState(false),
     [pin, setPin] = useState('')
   const [decision, setDecision] = useState(''),
     [group, setGroup] = useState('')
   const base = `/ingreso/solicitudes/${item.url_token}`
+  const spanish = intl.locale.startsWith('es')
+  const [changingGrade, setChangingGrade] = useState(false)
+  const [targetGrade, setTargetGrade] = useState('')
+  const changeGradeLabel = spanish ? 'Cambiar grado' : 'Change grade'
+  const currentGrade = item.grado_aprobado_token ?? item.grado_token
   const reviewing = ['enviada', 'revision', 'correcciones', 'espera'].includes(item.estado)
   const fields = [
     'primer_nombre',
@@ -72,10 +77,18 @@ export function EnrollmentApplication({
     setCorrection(target)
     setReason('')
   }
-  const closePin = () => {
-    if (!busy) {
-      setPinDialog(false)
-      setPin('')
+  const activatePin = async () => {
+    if (busy || pinBusy) return
+    setPin('')
+    setPinBusy(true)
+    try {
+      await run(async () => {
+        const result = await api.post<{data: Application; pin: string}>(`${base}/pin`, {}, {notifyLocalChange: false})
+        await update(result.data)
+        setPin(result.pin)
+      })
+    } finally {
+      setPinBusy(false)
     }
   }
   async function saveCorrection() {
@@ -120,6 +133,7 @@ export function EnrollmentApplication({
           {section === 'data' && (
             <>
               <div className='intake-grid'>
+                <EnrollmentGradeSummary application={item} />
                 {fields.map((key) => (
                   <div key={key}>
                     <div className='intake-muted'>{t(key)}</div>
@@ -163,11 +177,16 @@ export function EnrollmentApplication({
           )}
           {section === 'documents' && (
             <>
+              {item.documentos.some(doc => doc.anexo_renovacion) && <section className='intake-card'>
+                <h3>{spanish ? 'Anexos de renovación' : 'Renewal attachments'}</h3>
+                {item.documentos.filter(doc => doc.anexo_renovacion).map(doc =>
+                  <a key={doc.url_token} className='d-block text-break' href={`/api${base}/documentos/${doc.url_token}`}>{doc.nombre}</a>)}
+              </section>}
               {item.campana.configuracion.documentos
                 .filter(
                   (requirement) =>
                     !requirement.grados.length ||
-                    requirement.grados.includes(item.grado_aprobado_token ?? item.grado_token),
+                    requirement.grados.includes(item.grado_aprobado_token ?? item.grado_token ?? ''),
                 )
                 .map((requirement) => {
                   const versions = item.documentos.filter((document) => document.requisito === requirement.key),
@@ -178,7 +197,12 @@ export function EnrollmentApplication({
                       <p className='intake-muted'>{requirement.instrucciones}</p>
                       {requirement.vigencia && <p className='intake-muted'>{requirement.vigencia}</p>}
                       {!latest ? (
-                        <p>{t('awaitingDocument')}</p>
+                        <>
+                          <p>{t('awaitingDocument')}</p>
+                          {item.pin_manual && reviewing && can('revisar') && <button type='button'
+                            className='btn btn-sm btn-light-warning' disabled={busy}
+                            onClick={() => requestCorrection(`documentos.${requirement.key}`)}>{t('requestCorrection')}</button>}
+                        </>
                       ) : (
                         <>
                           <div className='intake-document-file'>
@@ -281,15 +305,26 @@ export function EnrollmentApplication({
           <section className='intake-card'>
             <h2>{t('nextStep')}</h2>
             <p className='intake-muted'>{t(`status${item.estado}`)}</p>
+            {item.pin_manual && reviewing && can('revisar') && <div className='mb-4'>
+              <button type='button' className='btn btn-light-primary w-100' onClick={() => setSection('documents')}>
+                {spanish ? 'Revisar documentos' : 'Review documents'}
+              </button>
+              <p className='intake-muted mt-3 mb-0'>{spanish ? 'Aprueba los documentos y selecciona «Validar documentación» para habilitar la admisión.' : 'Approve the documents and select “Validate documentation” to enable admission.'}</p>
+            </div>}
             {can('revisar') || can('configurar')
               ? item.pin_manual &&
-                !['anulada', 'rechazada', 'matriculada'].includes(item.estado) && (
-                  <button className='btn btn-light-info w-100' disabled={busy} onClick={() => setPinDialog(true)}>
+                ['pin_pendiente', 'borrador'].includes(item.estado) && !item.enviada_en && (
+                  <button className='btn btn-light-info w-100' disabled={busy || pinBusy} onClick={() => void activatePin()}>
                     <IntakeIcon name='ticket-perforated' />
                     {t(item.estado === 'pin_pendiente' ? 'activatePin' : 'reissuePin')}
                   </button>
                 )
               : null}
+            {can('cambiar_grado') && ['enviada', 'revision', 'correcciones', 'validada', 'espera', 'aprobada'].includes(item.estado) &&
+              <button type='button' className='btn btn-light-primary w-100 mt-4' disabled={busy}
+                onClick={() => {setTargetGrade(currentGrade ?? ''); setReason(''); setChangingGrade(true)}}>
+                <IntakeIcon name='pencil' />{changeGradeLabel}
+              </button>}
             {can('decidir') && ['validada', 'espera'].includes(item.estado) && (
               <button
                 className='btn btn-primary w-100 mt-4'
@@ -365,6 +400,27 @@ export function EnrollmentApplication({
               </div>
             )}
           </section>
+          {(pinBusy || pin) && (
+            <section className='intake-card' aria-live='polite' aria-busy={pinBusy}>
+              <div className='d-flex align-items-center gap-3 mb-4'>
+                <span className='intake-avatar'><IntakeIcon name='ticket-perforated' /></span>
+                <h3 className='mb-0'>{t(pinBusy ? 'activatingPin' : 'pinReady')}</h3>
+              </div>
+              {pinBusy ? (
+                <div className='placeholder-glow' role='status'>
+                  <span className='placeholder col-10 rounded mb-3' style={{height: 36}} />
+                  <span className='placeholder col-7 rounded' />
+                </div>
+              ) : (
+                <>
+                  <div className='fs-1 fw-bold py-3' style={{letterSpacing: '.12em'}} data-testid='enrollment-pin'>{pin}</div>
+                  <p className='intake-muted'>{item.pin_expira_en ? t('pinValidityDate', {date: date(item.pin_expira_en)}) : t('pinNoExpiry')}</p>
+                  <button className='btn btn-light-info w-100' onClick={() => void navigator.clipboard.writeText(pin)}>{t('copyPin')}</button>
+                  <p className='intake-muted mt-4 mb-0'>{t('pinOnce')}</p>
+                </>
+              )}
+            </section>
+          )}
           <section className='intake-card'>
             <h3>{t('corrections')}</h3>
             {item.correcciones?.length ? (
@@ -442,60 +498,6 @@ export function EnrollmentApplication({
           <IntakeNotice>{t('correctionOnly')}</IntakeNotice>
         </IntakeModal>
       )}
-      {pinDialog && (
-        <IntakeModal
-          title={t('activatePin')}
-          close={closePin}
-          footer={
-            <button className='btn btn-light' disabled={busy} onClick={closePin}>
-              {t('close')}
-            </button>
-          }
-        >
-          <IntakeNotice>{t('manualDelivery')}</IntakeNotice>
-          {pin ? (
-            <>
-              <div className='display-5 fw-bold text-center py-6' aria-live='polite'>
-                {pin}
-              </div>
-              <button className='btn btn-light-info w-100' onClick={() => void navigator.clipboard.writeText(pin)}>
-                {t('copyPin')}
-              </button>
-              <p className='intake-muted mt-4'>{t('pinOnce')}</p>
-            </>
-          ) : (
-            <>
-              <label className='form-label' htmlFor='pin-expiry'>
-                {t('pinExpiry')}
-              </label>
-              <input
-                id='pin-expiry'
-                type='datetime-local'
-                className='form-control'
-                value={expires}
-                onChange={(e) => setExpires(e.target.value)}
-              />
-              <p className='intake-muted mt-4'>{t('timezone', {timezone: item.campana.zona_horaria ?? ''})}</p>
-              <button
-                className='btn btn-primary w-100'
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    const result = await api.post<{
-                      data: Application
-                      pin: string
-                    }>(`${base}/pin`, {expira_en: expires || null}, {notifyLocalChange: false})
-                    setPin(result.pin)
-                    await update(result.data)
-                  })
-                }
-              >
-                {busy ? t('processing') : t('activatePin')}
-              </button>
-            </>
-          )}
-        </IntakeModal>
-      )}
       {decision && (
         <IntakeModal
           title={t(decision === 'matriculada' ? 'confirmEnrollment' : 'confirmDecision')}
@@ -548,6 +550,7 @@ export function EnrollmentApplication({
           }
         >
           <IntakeNotice>{t(decision === 'matriculada' ? 'credentialsHelp' : 'decisionHelp')}</IntakeNotice>
+          <div className='d-flex flex-wrap gap-6 mb-5'><EnrollmentGradeSummary application={item} /></div>
           <p>
             <strong>{studentName(item)}</strong> · {states[decision]}
           </p>
@@ -563,6 +566,25 @@ export function EnrollmentApplication({
           />
         </IntakeModal>
       )}
+      {changingGrade && <IntakeModal title={changeGradeLabel} close={() => !busy && setChangingGrade(false)} footer={<>
+        <button type='button' className='btn btn-light' disabled={busy} onClick={() => setChangingGrade(false)}>{t('cancel')}</button>
+        <button type='button' className='btn btn-primary' disabled={busy || !targetGrade || targetGrade === currentGrade || reason.trim().length < 3}
+          onClick={() => void run(async () => {
+            const result = await api.put<{data: Application}>(`${base}/grado`, {grado_token: targetGrade, observacion: reason.trim()}, {notifyLocalChange: false})
+            await update(result.data)
+            setChangingGrade(false)
+          })}>{busy ? t('processing') : t('confirm')}</button>
+      </>}>
+        <div className='d-flex flex-wrap gap-6 mb-5'><EnrollmentGradeSummary application={item} /></div>
+        <label htmlFor='school-grade-select' className='form-label required'>{spanish ? 'Grado definido por el colegio' : 'Grade assigned by the school'}</label>
+        <select id='school-grade-select' className='form-select mb-5' disabled={busy} value={targetGrade} onChange={event => setTargetGrade(event.target.value)}>
+          <option value=''>{t('select')}</option>
+          {item.campana.configuracion.grados.map(grade => <option key={grade.token} value={grade.token}>{grade.nombre}</option>)}
+        </select>
+        <label htmlFor='school-grade-reason' className='form-label required'>{t('reason')}</label>
+        <textarea id='school-grade-reason' className='form-control' maxLength={2000} disabled={busy} value={reason} onChange={event => setReason(event.target.value)} />
+        <p className='intake-muted mt-4 mb-0'>{spanish ? 'El expediente volverá a revisión para validar los requisitos del grado elegido.' : 'The application returns to review so the selected grade requirements can be checked.'}</p>
+      </IntakeModal>}
     </div>
   )
 }

@@ -1,0 +1,33 @@
+.campaign-extra-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr);
+  align-items: end;
+  gap: 20px;
+}
+.campaign-field-options { align-items: end !important; }
+.campaign-field-type { flex: 1; min-width: 150px; margin-bottom: 0 !important; }
+.campaign-field-type select { width: 100% !important; margin-top: 8px; }
+.campaign-field-options > .form-check,
+.campaign-field-options > button { margin-bottom: 7px; }
+.campaign-document-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; margin-bottom: 24px; }
+.campaign-document-card { padding: 22px !important; min-width: 0; margin: 0 !important; }
+.campaign-document-card input,
+.campaign-document-card textarea { min-width: 0; }
+.campaign-document-card textarea { min-height: 100px; resize: vertical; }
+.campaign-document-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.campaign-document-options .form-check { display: flex; gap: 8px; align-items: start; margin: 0; }
+.campaign-document-options .form-check-input { flex-shrink: 0; }
+.campaign-identity-check { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--bs-gray-200); }
+.campaign-identity-check .form-check { display: flex; gap: 10px; align-items: start; }
+.campaign-identity-check .form-check-input { flex-shrink: 0; }
+.campaign-settings-panel { background: var(--bs-gray-100); border: 1px solid var(--bs-gray-200); border-radius: 20px; padding: 24px; }
+.campaign-age-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 20px; margin: 20px 0; }
+.campaign-age-grid p { margin: 0; }
+.campaign-privacy-preview { border-top: 1px solid var(--bs-gray-300); padding-top: 16px; margin-bottom: 0; }
+@media (min-width: 768px) { .campaign-document-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .campaign-document-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1700px) { .campaign-document-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 767px) {
+  .campaign-extra-field { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .campaign-settings-panel { padding: 18px; }
+}

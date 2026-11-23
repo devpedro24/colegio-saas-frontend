@@ -1,3 +1,4 @@
+import type {IntlShape} from 'react-intl'
 import type {AgeValidation} from './ingreso.types'
 
 /** Calendar date at the school, independent of the browser's time zone. */
@@ -23,4 +24,15 @@ export function isOutsideAgeRange(birth: string | undefined, grade: string | und
   if (hasValidatedAge(snapshot, birth, grade) || range?.edad_min == null || range.edad_max == null) return false
   const age = ageOnDate(birth, date)
   return age === null || age < range.edad_min || age > range.edad_max
+}
+
+export function birthDateError(intl: IntlShape, birth: string | undefined, date: string,
+  grade: string | undefined, range: {edad_min?: number | null; edad_max?: number | null} | undefined,
+  snapshot?: AgeValidation | null): string {
+  if (!birth) return ''
+  if (ageOnDate(birth, date) === null) return intl.formatMessage({id: 'intake.validation.birthDate'})
+  if (range?.edad_min != null && range.edad_max != null && isOutsideAgeRange(birth, grade, date, range, snapshot)) {
+    return intl.formatMessage({id: 'intake.validation.ageMismatch'}, {min: range.edad_min, max: range.edad_max, date})
+  }
+  return ''
 }

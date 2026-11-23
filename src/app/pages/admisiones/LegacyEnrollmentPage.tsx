@@ -7,18 +7,11 @@ import {KTIcon} from '@/_metronic/helpers'
 import type {Application, Campaign, Field, StudentData} from './ingreso.types'
 import {getEnrollmentStates} from './ingreso.types'
 import {EnrollmentAddress, type Department} from './EnrollmentAddress'
-import {ageOnDate, isOutsideAgeRange, schoolDate} from './enrollmentAge'
-import flagCo from 'flag-icons/flags/4x3/co.svg'
-import flagUs from 'flag-icons/flags/4x3/us.svg'
-import flagMx from 'flag-icons/flags/4x3/mx.svg'
-import flagVe from 'flag-icons/flags/4x3/ve.svg'
-import flagEc from 'flag-icons/flags/4x3/ec.svg'
-import flagPe from 'flag-icons/flags/4x3/pe.svg'
-import flagPa from 'flag-icons/flags/4x3/pa.svg'
-import flagEs from 'flag-icons/flags/4x3/es.svg'
-import flagAr from 'flag-icons/flags/4x3/ar.svg'
-import flagCl from 'flag-icons/flags/4x3/cl.svg'
-import flagGb from 'flag-icons/flags/4x3/gb.svg'
+import {ageOnDate, birthDateError, schoolDate} from './enrollmentAge'
+import {EnrollmentPrivacy} from './EnrollmentPrivacy'
+import {RepresentativeRelationshipField} from './RepresentativeRelationshipField'
+import {additionalInput, additionalType, cleanAdditional, cleanIdentity, cleanName, identityPattern, namePattern, numericIdentity} from './enrollmentInput'
+import {ContactMobileInput} from '@/lib/ui/ContactMobileInput'
 import './ingreso.css'
 
 const root = '/ingreso-publico'
@@ -27,52 +20,12 @@ const linkSecret = () => new URLSearchParams(window.location.hash.slice(1)).get(
 const initialMode = (campaign?: string) => campaign ? (linkSecret() ? 'verify' : 'start') : 'track'
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const isRepresentative = (field: Field) => /representante|acudiente|parentesco|emergencia|madre|padre/.test(normalize(`${field.key} ${field.nombre}`))
-const isRelationship = (field: Field) => /parentesco|relacion|vinculo/.test(normalize(`${field.key} ${field.nombre}`))
-const isPhone = (field: Field) => /telefono|celular|movil/.test(normalize(`${field.key} ${field.nombre}`))
-const phoneCountries = [
-  {dial: '+57', region: 'CO', flag: flagCo}, {dial: '+1', region: 'US', flag: flagUs},
-  {dial: '+52', region: 'MX', flag: flagMx}, {dial: '+58', region: 'VE', flag: flagVe},
-  {dial: '+593', region: 'EC', flag: flagEc}, {dial: '+51', region: 'PE', flag: flagPe},
-  {dial: '+507', region: 'PA', flag: flagPa}, {dial: '+34', region: 'ES', flag: flagEs},
-  {dial: '+54', region: 'AR', flag: flagAr}, {dial: '+56', region: 'CL', flag: flagCl},
-  {dial: '+44', region: 'GB', flag: flagGb},
-]
-export function PhoneField({id, label, dialLabel, otherCountry, locale, value, required, disabled, onChange}: {id: string; label: string; dialLabel: string; otherCountry: string; locale: string; value: string; required: boolean; disabled: boolean; onChange: (value: string) => void}) {
-  const found = phoneCountries.find(country => value.startsWith(country.dial))
-  const [selectedDial, setSelectedDial] = useState(found?.dial ?? (value.startsWith('+') ? 'other' : '+57'))
-  const [customDial, setCustomDial] = useState(value.startsWith('+') && !found ? value.match(/^\+[0-9]{1,3}/)?.[0] ?? '+' : '+')
-  useEffect(() => {
-    if (!value.startsWith('+')) return
-    const next = phoneCountries.find(country => value.startsWith(country.dial))?.dial ?? 'other'
-    setSelectedDial(next)
-    if (next === 'other') setCustomDial(value.match(/^\+[0-9]{1,3}/)?.[0] ?? '+')
-  }, [value])
-  const dialMenu = useRef<HTMLDetailsElement>(null)
-  const prefix = selectedDial === 'other' ? customDial : selectedDial
-  const number = value.startsWith('+') ? value.slice(prefix.length) : value
-  const selectedCountry = phoneCountries.find(country => country.dial === selectedDial)
-  const countryNames = new Intl.DisplayNames([locale], {type: 'region'})
-  const chooseDial = (next: string) => {
-    setSelectedDial(next)
-    onChange((next === 'other' ? customDial : next) + number)
-    if (dialMenu.current) dialMenu.current.open = false
-  }
-  return <div><label htmlFor={id} className={required ? 'required' : ''}>{label}</label><div className='ingreso-phone'>
-    <details ref={dialMenu} className='ingreso-dial-menu' onKeyDown={e => {if (e.key === 'Escape' && dialMenu.current) dialMenu.current.open = false}}>
-      <summary aria-label={dialLabel} aria-disabled={disabled} tabIndex={disabled ? -1 : 0} onClick={e => {if (disabled) e.preventDefault()}}>
-        {selectedCountry ? <img src={selectedCountry.flag} alt='' aria-hidden='true' /> : <span className='ingreso-globe' aria-hidden='true'>◎</span>}
-        <span>{prefix}</span><span className='ingreso-dial-chevron' aria-hidden='true'><KTIcon iconType='solid' iconName='down' /></span>
-      </summary>
-      <div className='ingreso-dial-options' role='listbox' aria-label={dialLabel}>
-        {phoneCountries.map(country => <button type='button' role='option' aria-selected={selectedDial === country.dial} key={country.region} onClick={() => chooseDial(country.dial)}>
-          <img src={country.flag} alt='' aria-hidden='true' /><span>{countryNames.of(country.region)}</span><strong>{country.dial}</strong>
-        </button>)}
-        <button type='button' role='option' aria-selected={selectedDial === 'other'} onClick={() => chooseDial('other')}><span className='ingreso-globe' aria-hidden='true'>◎</span><span>{otherCountry}</span><strong>+</strong></button>
-      </div>
-    </details>
-    {selectedDial === 'other' && <input aria-label={dialLabel} className='form-control ingreso-dial-other' inputMode='numeric' pattern='\+[1-9][0-9]{0,2}' value={customDial} disabled={disabled} onChange={e => {const next = '+' + e.target.value.replace(/\D/g, '').slice(0, 3); setCustomDial(next); onChange(next + number)}} />}
-    <input id={id} className='form-control' type='tel' inputMode='numeric' autoComplete='tel-national' required={required} disabled={disabled} pattern={prefix === '+57' ? '3[0-9]{9}' : '[0-9]{6,12}'} value={number} onChange={e => onChange(e.target.value ? prefix + e.target.value.replace(/\D/g, '').slice(0, 12) : '')} />
-  </div></div>
+const isPhone = (field: Field) => additionalType(field) === 'telefono'
+export function PhoneField({id, label, value, required, disabled, onChange}: {id: string; label: string; dialLabel: string; otherCountry: string; locale: string; value: string; required: boolean; disabled: boolean; onChange: (value: string) => void}) {
+  return <div><label htmlFor={id} className={required ? 'required' : ''}>{label}</label>
+    <ContactMobileInput id={id} value={value} required={required} disabled={disabled}
+      optionsPath='/ingreso-publico/indicativos' onChange={next => onChange(next)} />
+  </div>
 }
 function RepresentativePhone({id, label, dialLabel, otherCountry, sameLabel, locale, value, contact, required, disabled, onChange}: {id: string; label: string; dialLabel: string; otherCountry: string; sameLabel: string; locale: string; value: string; contact: string; required: boolean; disabled: boolean; onChange: (value: string) => void}) {
   const [same, setSame] = useState(!value || value === contact)
@@ -119,7 +72,7 @@ export default function LegacyEnrollmentPage() {
     return () => {window.clearInterval(timer); window.removeEventListener('focus', update); document.removeEventListener('visibilitychange', update)}
   }, [])
   const editable = !!app && ['borrador', 'correcciones'].includes(app.estado)
-  const ready = !!app && (campaign?.configuracion.documentos ?? []).filter(r => !r.grados.length || r.grados.includes(app.grado_aprobado_token ?? app.grado_token)).every(r => {
+  const ready = !!app && (campaign?.configuracion.documentos ?? []).filter(r => !r.grados.length || r.grados.includes(app.grado_aprobado_token ?? app.grado_token ?? '')).every(r => {
     const latest = app.documentos.find(d => d.requisito === r.key)
     const doc = latest?.estado === 'retirado' || removed.includes(r.key) ? undefined : latest
     return !!selectedFiles[r.key] || ((!r.obligatorio || !!doc) && doc?.estado !== 'rechazado')
@@ -197,8 +150,9 @@ export default function LegacyEnrollmentPage() {
     if (Object.keys(selectedFiles).length > limits.max_archivos || Object.values(selectedFiles).reduce((total, file) => total + file.size, 0) > limits.max_submission_bytes) {setSubmissionErrors([t('intake.validation.batchLimit', {count: limits.max_archivos})]); return}
     const setting = campaign?.configuracion.grados.find(g => g.token === (app?.grado_aprobado_token ?? app?.grado_token))
     const validationDate = schoolDate(timezone)
-    if (isOutsideAgeRange(data.nacimiento, app?.grado_aprobado_token ?? app?.grado_token, validationDate, setting, app?.validacion_edad)) {
-      setSubmissionErrors([t('intake.validation.ageMismatch', {min: setting!.edad_min!, max: setting!.edad_max!, date: validationDate})]); return
+    const ageError = birthDateError(intl, data.nacimiento, validationDate, app?.grado_aprobado_token ?? app?.grado_token ?? undefined, setting, app?.validacion_edad)
+    if (ageError) {
+      setSubmissionErrors([ageError]); return
     }
     setBusy(true)
     const body = new FormData()
@@ -248,15 +202,14 @@ export default function LegacyEnrollmentPage() {
   const otherFields = extraFields.filter(f => !isRepresentative(f))
   const additionalField = (f: Field) => {
     const value = data.adicionales[f.key] ?? ''
-    const update = (next: string) => setData(current => ({...current, adicionales: {...current.adicionales, [f.key]: next}}))
+    const update = (next: string) => setData(current => ({...current, adicionales: {...current.adicionales, [f.key]: cleanAdditional(f, next)}}))
+    if (f.tipo === 'seleccion') return <div key={f.key}><label htmlFor={`extra-${f.key}`} className={f.obligatorio ? 'required' : ''}>{f.nombre}</label><select id={`extra-${f.key}`} className='form-select' required={f.obligatorio} disabled={!editable || busy} value={value} onChange={e => update(e.target.value)}><option value=''>{t('intake.ui.select')}</option>{f.opciones?.map(option => <option key={option}>{option}</option>)}</select></div>
     if (f.tipo === 'numero') return <div key={f.key}><label htmlFor={`extra-${f.key}`} className={f.obligatorio ? 'required' : ''}>{f.nombre}</label><input id={`extra-${f.key}`} className='form-control' type='text' inputMode='numeric' pattern='[0-9]+' maxLength={1000} required={f.obligatorio} disabled={!editable || busy} value={value} onChange={e => update(e.target.value.replace(/[^0-9]/g, ''))} /></div>
-    if (isRelationship(f)) return <fieldset key={f.key} className='ingreso-relationship'><legend className={f.obligatorio ? 'required' : ''}>{f.nombre}</legend><div className='ingreso-relationship-options'>
-      {['Mamá', 'Papá', 'Otro'].map(choice => <label key={choice}><input type='radio' required={f.obligatorio} name={`extra-${f.key}`} disabled={!editable || busy} checked={choice === 'Otro' ? !!value && !['Mamá', 'Papá', 'Mama', 'Papa'].includes(value) : value === choice || (choice === 'Mamá' && value === 'Mama') || (choice === 'Papá' && value === 'Papa')} onChange={() => update(choice)} /><span>{choice === 'Mamá' ? t('intake.ui.mother') : choice === 'Papá' ? t('intake.ui.father') : t('intake.ui.other')}</span></label>)}
-    </div>{value && !['Mamá', 'Papá', 'Mama', 'Papa'].includes(value) && <input className='form-control mt-3' aria-label={t('intake.ui.specifyRelationship')} placeholder={t('intake.ui.specifyRelationship')} disabled={!editable || busy} required={f.obligatorio} maxLength={1000} value={value === 'Otro' ? '' : value} onChange={e => update(e.target.value || 'Otro')} />}</fieldset>
+    if (additionalType(f) === 'parentesco') return <RepresentativeRelationshipField key={f.key} id={`extra-${f.key}`} label={f.nombre} value={value} required={f.obligatorio} disabled={!editable || busy} onChange={update} />
     if (isPhone(f) && isRepresentative(f)) return <RepresentativePhone key={f.key} id={`extra-${f.key}`} label={f.nombre} dialLabel={t('intake.ui.countryCallingCode')} otherCountry={t('intake.ui.otherCountry')} sameLabel={t('intake.ui.sameContactPhone')} locale={intl.locale} value={value} contact={data.telefono ?? ''} required={f.obligatorio} disabled={!editable || busy} onChange={update} />
     if (isPhone(f)) return <PhoneField key={f.key} id={`extra-${f.key}`} label={f.nombre} dialLabel={t('intake.ui.countryCallingCode')} otherCountry={t('intake.ui.otherCountry')} locale={intl.locale} value={value} required={f.obligatorio} disabled={!editable || busy} onChange={update} />
     return <div key={f.key}><label htmlFor={`extra-${f.key}`} className={f.obligatorio ? 'required' : ''}>{f.nombre}</label><input id={`extra-${f.key}`} className='form-control' disabled={!editable || busy} required={f.obligatorio}
-      type={f.tipo === 'fecha' ? 'date' : 'text'} pattern={f.tipo === 'fecha' ? undefined : '.*\\S.*'} maxLength={1000} value={value} onChange={e => update(e.target.value)} /></div>
+      {...additionalInput(f)} value={value} onChange={e => update(e.target.value)} /></div>
   }
   const visibleHistory = app?.historial.filter(h => !['documento_cargado', 'documento_retirado', 'borrador'].includes(h.evento)) ?? []
   return <main className='ingreso ingreso-public' lang={intl.locale} translate='no'><div className='ingreso-shell'>
@@ -298,18 +251,18 @@ export default function LegacyEnrollmentPage() {
       <section className='ingreso-card ingreso-overview'><div className='d-flex justify-content-between flex-wrap gap-3'><div><span className='ingreso-overline'>{t('intake.ui.enrollmentApplication')}</span><h2>{t('intake.ui.yourEnrollment')}</h2><span className='ingreso-status' data-status={app.estado}>{states[app.estado]}</span></div>
         <button type='button' disabled={busy} className='btn btn-light' onClick={() => void run(async () => {await api.post(`${root}/salir`); setApp(undefined); setData(empty); setConsent(false); toast.success(t('intake.ui.trackingClosed'))})}>{t('intake.ui.signOutOfTracking')}</button></div>
         {app.observacion && <aside className='mt-5'>{app.observacion}</aside>}
-        <p className='mt-5'>{t('intake.ui.requestedGradeLabel')}{' '}{campaign?.configuracion.grados.find(g => g.token === app.grado_token)?.nombre}.
-          {app.grado_aprobado_token && <> {' '}{t('intake.ui.gradeAssignedByTheSchool')}{' '}<strong>{campaign?.configuracion.grados.find(g => g.token === app.grado_aprobado_token)?.nombre}</strong>.</>}</p>
+        <p className='mt-5'>{t('intake.ui.requestedGradeLabel')}{' '}{(app.grado_nombre ?? campaign?.configuracion.grados.find(g => g.token === app.grado_token)?.nombre)}.
+          {app.grado_aprobado_token && <> {' '}{t('intake.ui.gradeAssignedByTheSchool')}{' '}<strong>{(app.grado_aprobado_nombre ?? campaign?.configuracion.grados.find(g => g.token === app.grado_aprobado_token)?.nombre)}</strong>.</>}</p>
         {app.estado === 'aprobada' && <p className='mt-5'>{t(app.renovacion ? 'intake.renewal.approved' : 'intake.ui.yourStudentAccountIsReadyCheckYourEmailAndChangeTheTemporary')}</p>}
         {app.grupo && <p className='mt-5'>{t('intake.ui.assignedGroup')}{' '}<strong>{app.grupo}</strong></p>}
       </section>
       <form ref={studentForm} className='ingreso-student-form' onSubmit={e => e.preventDefault()}>
         <section className='ingreso-card ingreso-information-card'><div className='ingreso-section-heading'><span className='ingreso-section-mark'>01</span><div><h2>{t('intake.ui.studentInformation')}</h2><p className='ingreso-help'>{t('intake.ui.studentFieldsHelp')}</p></div></div><div className='ingreso-grid'>
-          {([['primer_nombre','intake.ui.firstName',true],['segundo_nombre','intake.ui.middleNameOptional',false],['primer_apellido','intake.ui.firstSurname',true],['segundo_apellido','intake.ui.secondSurnameOptional',false]] as const).map(([key,label,required]) => <div key={key}><label htmlFor={`data-${key}`} className={required ? 'required' : ''}>{t(label)}</label><input id={`data-${key}`} className='form-control' disabled={!editable || busy} required={required} pattern='.*\S.*' maxLength={80} value={data[key] ?? ''} onChange={e => setData({...data, [key]: e.target.value})} /></div>)}
+          {([['primer_nombre','intake.ui.firstName',true],['segundo_nombre','intake.ui.middleNameOptional',false],['primer_apellido','intake.ui.firstSurname',true],['segundo_apellido','intake.ui.secondSurnameOptional',false]] as const).map(([key,label,required]) => <div key={key}><label htmlFor={`data-${key}`} className={required ? 'required' : ''}>{t(label)}</label><input id={`data-${key}`} className='form-control' disabled={!editable || busy} required={required} pattern={namePattern} maxLength={80} value={data[key] ?? ''} onChange={e => setData({...data, [key]: cleanName(e.target.value)})} /></div>)}
           <div><label htmlFor='data-birth' className='required'>{t('intake.ui.dateOfBirthLabel')}</label><input id='data-birth' className='form-control' type='date' required disabled={!editable || busy} min='1900-01-02' max={today} value={data.nacimiento ?? ''} onChange={e => setData({...data, nacimiento: e.target.value})} />{currentAge !== null && <p className='ingreso-age' role='status'>{t('intake.ui.currentAge', {age: currentAge})}</p>}</div>
-          <div><label htmlFor='data-document-type' className='required'>{t('intake.ui.documentType')}</label><select id='data-document-type' className='form-select' required disabled={!editable || busy} value={data.tipo_documento ?? ''} onChange={e => {setData({...data, tipo_documento: e.target.value}); lastLookup.current = ''; setRenewalMessage('')}}>
+          <div><label htmlFor='data-document-type' className='required'>{t('intake.ui.documentType')}</label><select id='data-document-type' className='form-select' required disabled={!editable || busy} value={data.tipo_documento ?? ''} onChange={e => {setData({...data, tipo_documento: e.target.value, numero_documento: ''}); lastLookup.current = ''; setRenewalMessage('')}}>
             <option value=''>{t('intake.ui.select')}</option>{[['RC',t('intake.ui.birthRegistration')],['TI',t('intake.ui.colombianIdentityCardForMinors')],['CC',t('intake.ui.colombianCitizenshipId')],['CE',t('intake.ui.foreignResidentId')],['PASAPORTE',t('intake.ui.passport')],['OTRO',t('intake.ui.otherForeignIdentityDocument')]].map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></div>
-          <div><label htmlFor='data-number' className='required'>{t('intake.ui.documentNumber')}</label><input id='data-number' className='form-control' required disabled={!editable || busy} maxLength={40} pattern='[A-Za-z0-9-]{3,40}' value={data.numero_documento ?? ''} onChange={e => {setData({...data, numero_documento: e.target.value}); lastLookup.current = ''; setRenewalMessage('')}} onBlur={() => void lookupRenewal()} />{renewalMessage && <p className='ingreso-help mt-2' role='status'>{renewalMessage}</p>}</div>
+          <div><label htmlFor='data-number' className='required'>{t('intake.ui.documentNumber')}</label><input id='data-number' className='form-control' required disabled={!editable || busy} maxLength={40} pattern={identityPattern(data.tipo_documento)} inputMode={numericIdentity(data.tipo_documento) ? 'numeric' : 'text'} value={data.numero_documento ?? ''} onChange={e => {setData({...data, numero_documento: cleanIdentity(e.target.value, data.tipo_documento)}); lastLookup.current = ''; setRenewalMessage('')}} onBlur={() => void lookupRenewal()} />{renewalMessage && <p className='ingreso-help mt-2' role='status'>{renewalMessage}</p>}</div>
           <PhoneField id='data-phone' label={t('intake.ui.contactPhone')} dialLabel={t('intake.ui.countryCallingCode')} otherCountry={t('intake.ui.otherCountry')} locale={intl.locale} value={data.telefono ?? ''} required disabled={!editable || busy} onChange={value => setData({...data, telefono: value})} />
           <EnrollmentAddress data={data} departments={departments} disabled={!editable || busy} onChange={setData} />
         </div>
@@ -318,7 +271,7 @@ export default function LegacyEnrollmentPage() {
         {editable && <p className='ingreso-help mt-6'>{t('intake.validation.memoryOnly')}</p>}</section>
       </form>
       <section className='ingreso-card'><h2>{t('intake.ui.documents')}</h2><p className='ingreso-help'>{t(editable ? 'intake.validation.filesHelp' : 'intake.ui.onlyAuthorizedSchoolStaffCanReviewThemPreviousVersionsAreRetained')}</p>
-        {campaign?.configuracion.documentos.filter(d => !d.grados.length || d.grados.includes(app.grado_aprobado_token ?? app.grado_token)).map(req => {
+        {campaign?.configuracion.documentos.filter(d => !d.grados.length || d.grados.includes(app.grado_aprobado_token ?? app.grado_token ?? '')).map(req => {
           const versions = app.documentos.filter(d => d.requisito === req.key), doc = versions[0]?.estado === 'retirado' || removed.includes(req.key) ? undefined : versions[0]
           const pending = selectedFiles[req.key]
           return <div className='ingreso-document' key={req.key}><div><h3 className={`fs-5 ${req.obligatorio ? 'required' : ''}`}>{req.nombre}</h3><p>{req.instrucciones}</p>
@@ -340,7 +293,7 @@ export default function LegacyEnrollmentPage() {
             }}>{t('intake.ui.removeDocument')}</button>}</div>}</div>
         })}
       </section>
-      {editable && <section className='ingreso-card'><h2>{t('intake.ui.confirmSubmission')}</h2><p style={{whiteSpace: 'pre-wrap'}}>{campaign?.configuracion.privacidad}</p>
+      {editable && <section className='ingreso-card'><h2>{t('intake.ui.confirmSubmission')}</h2><EnrollmentPrivacy notice={campaign?.configuracion.privacidad} policy={campaign?.configuracion.politica_datos} />
         {noticeChanged && <div className='alert alert-warning' role='alert'><p>{t('intake.settings.noticeChanged')}</p><button type='button' className='btn btn-light-primary' disabled={busy} onClick={() => void reloadNotice()}>{t('intake.settings.reloadNotice')}</button></div>}
         <div className='form-check'><input id='intake-consent' type='checkbox' className='form-check-input' disabled={busy || noticeChanged} checked={consent} onChange={e => setConsent(e.target.checked)} /><label htmlFor='intake-consent'>{t('intake.ui.iConfirmTheInformationAndConsentToItsProcessingForThisApplication')}</label></div>
         {!ready && <p className='ingreso-help mt-4'>{t('intake.ui.uploadAllRequiredDocumentsAndReplaceRejectedOnesBeforeSubmitting')}</p>}

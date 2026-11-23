@@ -117,6 +117,8 @@ export default function EnrollmentManagement({section = 'applications'}: {sectio
     }
   }
   const update = async (next: Application) => {
+    const previous = qc.getQueryData<{data: Application}>(['ingreso', scope, 'solicitud', next.url_token])?.data
+    const gradeChanged = previous && (previous.grado_aprobado_token ?? previous.grado_token) !== (next.grado_aprobado_token ?? next.grado_token)
     qc.setQueryData(['ingreso', scope, 'solicitud', next.url_token], {
       ...qc.getQueryData<{data: Application; grupos: ApplicationsPage['grupos']}>(['ingreso', scope, 'solicitud', next.url_token]),
       data: next,
@@ -126,6 +128,7 @@ export default function EnrollmentManagement({section = 'applications'}: {sectio
       qc.invalidateQueries({queryKey: ['ingreso', scope, 'notificaciones']}),
       qc.invalidateQueries({queryKey: ['ingreso', scope, 'catalogo']}),
       qc.invalidateQueries({queryKey: ['matriculas']}),
+      ...(gradeChanged ? [qc.invalidateQueries({queryKey: ['ingreso', scope, 'solicitud', next.url_token], exact: true})] : []),
     ])
     toast.success(t('saved'))
   }

@@ -6,6 +6,7 @@ import {api, ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useEnrollmentScope, useEnrollmentSettings} from './enrollmentSettings.api'
 import type {EnrollmentSettings, EnrollmentSettingsInput} from './ingreso.types'
+import {privacyLabels} from './enrollmentPrivacyText'
 
 type Draft = Omit<EnrollmentSettings, 'grados'> & {grados: (EnrollmentSettings['grados'][number] & {enabled: boolean})[]}
 const edit = (value: EnrollmentSettings): Draft => ({...value, grados: value.grados.map(g => ({...g, enabled: g.edad_min !== null || g.edad_max !== null}))})
@@ -19,8 +20,11 @@ export function EnrollmentSettingsCard() {
   const [busy, setBusy] = useState(false), [conflict, setConflict] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const form = draft ?? (query.data ? edit(query.data.data) : undefined)
+  const ageLimit = form?.edad_limite ?? 20
+  const privacy = privacyLabels(intl.locale)
   const valid = form && form.privacidad.trim().length >= 20 && form.privacidad.length <= 5000 && form.grados.every(g => !g.enabled ||
-    (g.edad_min !== null && g.edad_max !== null && Number.isInteger(g.edad_min) && Number.isInteger(g.edad_max) && g.edad_min >= 1 && g.edad_max <= 120 && g.edad_min <= g.edad_max))
+    (g.edad_min !== null && g.edad_max !== null && Number.isInteger(g.edad_min) && Number.isInteger(g.edad_max) && g.edad_min >= 1 && g.edad_max <= ageLimit && g.edad_min <= g.edad_max)) &&
+    (!form.politica_datos?.trim() || (form.politica_datos.trim().length >= 20 && form.politica_datos.length <= 20000))
   const changeGrade = (token: string, changes: Partial<Draft['grados'][number]>) => {
     if (form) setDraft({...form, grados: form.grados.map(g => g.url_token === token ? {...g, ...changes} : g)})
   }
@@ -28,6 +32,7 @@ export function EnrollmentSettingsCard() {
     if (!form || !valid || busy || conflict) return
     setBusy(true); setErrors([])
     const input: EnrollmentSettingsInput = {version: form.version, privacidad: form.privacidad.trim(),
+      politica_datos: form.politica_datos?.trim() || '',
       grados: form.grados.map(g => ({url_token: g.url_token, edad_min: g.enabled ? g.edad_min : null, edad_max: g.enabled ? g.edad_max : null}))}
     try {
       const result = await api.put<{data: EnrollmentSettings}>('/ingreso/configuracion', input, {notifyLocalChange: false})
@@ -65,7 +70,7 @@ export function EnrollmentSettingsCard() {
               <label className='form-check-label' htmlFor={`age-enabled-${g.url_token}`}>{t('intake.settings.enableRange', {grade: g.nombre})}</label></div>
             {g.enabled ? <div className='row g-4'>{(['edad_min', 'edad_max'] as const).map(key => <div className='col-6' key={key}>
               <label className='form-label required' htmlFor={`${g.url_token}-${key}`}>{t(`intake.validation.${key}`)}</label>
-              <NumberInput id={`${g.url_token}-${key}`} className='form-control' type='number' step={1} required min={key === 'edad_max' ? g.edad_min ?? 1 : 1} max={120} value={g[key] ?? ''}
+              <NumberInput id={`${g.url_token}-${key}`} className='form-control' type='number' step={1} required min={key === 'edad_max' ? g.edad_min ?? 1 : 1} max={ageLimit} value={g[key] ?? ''}
                 onChange={e => changeGrade(g.url_token, {[key]: e.target.value === '' ? null : Number(e.target.value)})} />
             </div>)}</div> : <p className='text-muted mb-0'>{t('intake.settings.unrestricted')}</p>}
           </div>
@@ -73,6 +78,10 @@ export function EnrollmentSettingsCard() {
         <label className='form-label required mt-8' htmlFor='enrollment-privacy'>{t('intake.ui.schoolPrivacyNoticeAndConsent')}</label>
         <textarea id='enrollment-privacy' rows={6} className='form-control' required minLength={20} maxLength={5000} value={form.privacidad} onChange={e => setDraft({...form, privacidad: e.target.value})} aria-describedby='enrollment-privacy-help' />
         <p id='enrollment-privacy-help' className='text-muted mt-3'>{t('intake.settings.privacyHelp')}</p>
+        <label className='form-label mt-6' htmlFor='enrollment-policy'>{privacy.title}</label>
+        <textarea id='enrollment-policy' rows={10} className='form-control' minLength={20} maxLength={20000}
+          value={form.politica_datos ?? ''} onChange={e => setDraft({...form, politica_datos: e.target.value})} aria-describedby='enrollment-policy-help' />
+        <p id='enrollment-policy-help' className='text-muted mt-3'>{privacy.help}</p>
       </fieldset>
       {errors.length > 0 && <div className='alert alert-danger' role='alert'>{errors.map((message, i) => <p className='mb-1' key={i}>{message}</p>)}</div>}
       {conflict && <div className='alert alert-warning' role='alert'><p>{t('intake.settings.conflict')}</p><button type='button' className='btn btn-light-warning' disabled={busy} onClick={() => void reload()}>{t('intake.settings.reload')}</button></div>}

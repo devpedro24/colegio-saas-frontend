@@ -1,11 +1,16 @@
 import {useCallback, useEffect, useRef, useState, type FormEvent} from 'react'
-import {Link, useParams} from 'react-router-dom'
+import {Link, useNavigate, useParams} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 import {useQuery} from '@tanstack/react-query'
 import {api, ApiError} from '@/lib/api/client'
 import {AuthLayout} from '@/app/modules/auth/AuthLayout'
 import LegacyEnrollmentPage, {PhoneField} from './LegacyEnrollmentPage'
 import {EnrollmentAddress, type Department} from './EnrollmentAddress'
+import {EnrollmentPrivacy} from './EnrollmentPrivacy'
+import {EnrollmentGradeSummary} from './EnrollmentGradeSummary'
+import {RepresentativeRelationshipField} from './RepresentativeRelationshipField'
+import {ageOnDate, birthDateError, schoolDate} from './enrollmentAge'
+import {additionalInput, additionalType, cleanAdditional, cleanIdentity, cleanName, cleanText, identityPattern, nameFields, namePattern, numericIdentity} from './enrollmentInput'
 import {IntakeIcon, IntakeModal, IntakeNotice, IntakePayments} from './IntakeUI'
 import {editableElement, studentName, useIntakeText} from './intakeWorkflow'
 import {getEnrollmentStates, type Application, type Campaign, type StudentData} from './ingreso.types'
@@ -16,19 +21,26 @@ type PublicCatalog = {
   zona_horaria: string
   limites_envio: {max_file_bytes: number}
 }
-type View = 'portal' | 'request' | 'access' | 'received' | 'form' | 'status'
-const steps = ['personal', 'contact', 'family', 'additional', 'documents', 'send']
+type View = 'request' | 'access' | 'received' | 'form' | 'status'
+const formSteps = ['personal', 'contact', 'family', 'additional', 'documents', 'send'] as const
+type FormStep = typeof formSteps[number]
 const emptyData = (): StudentData => ({pais: 'CO', adicionales: {}})
 
 export default function PublicIntakePage() {
-  if (window.location.hash.includes('solicitud=')) return <LegacyEnrollmentPage />
-  return <PublicIntake />
+  const {renewalToken} = useParams()
+  if (!renewalToken && window.location.hash.includes('solicitud=')) return <LegacyEnrollmentPage />
+  return <PublicIntake key={renewalToken} renewalToken={renewalToken} />
 }
 
-function PublicIntake() {
+function PublicIntake({renewalToken}: {renewalToken?: string}) {
+  const applicationBase = renewalToken ? `/mi-renovacion/${renewalToken}` : '/ingreso-publico'
+  const navigate = useNavigate()
+  const [annex, setAnnex] = useState<File>()
+  const annexKey = useRef(crypto.randomUUID())
   const t = useIntakeText(),
     intl = useIntl(),
     {campaign: routeCampaign} = useParams()
+  const spanish = intl.locale.startsWith('es')
   const states = getEnrollmentStates(intl)
   const catalog = useQuery({
     queryKey: ['ingreso-publico', location.host, 'catalogo'],
@@ -36,19 +48,38 @@ function PublicIntake() {
     staleTime: 60000,
     retry: false,
   })
-  const [campaignToken, setCampaignToken] = useState<string | undefined>(routeCampaign)
-  const campaign = catalog.data?.campanas.find(
-    (item) => item.url_token === (campaignToken ?? catalog.data.campanas[0]?.url_token),
-  )
+  const selectedCampaign = useQuery({
+    queryKey: ['ingreso-publico', location.host, 'convocatoria', routeCampaign],
+    queryFn: () => api.get<{data: Campaign}>(`/ingreso-publico/campanas/${routeCampaign}`),
+    enabled: !!routeCampaign,
+    retry: false,
+  })
+  const campaign = selectedCampaign.data?.data
   const [application, setApplication] = useState<Application>()
-  const [view, setView] = useState<View>('portal'),
-    [step, setStep] = useState(0)
+  const [view, setView] = useState<View>(routeCampaign ? 'request' : 'access'),
+    [selectedStep, setStep] = useState<FormStep>('personal')
+  const hasAdditional = !!application?.campana.configuracion.campos.length
+  const steps = formSteps.filter(name => name !== 'additional' || hasAdditional)
+  const step = selectedStep === 'additional' && !hasAdditional ? 'documents' : selectedStep
+  const stepIndex = steps.indexOf(step)
   const [data, setData] = useState<StudentData>(emptyData),
     [email, setEmail] = useState(''),
     [grade, setGrade] = useState('')
   const [identityType, setIdentityType] = useState('TI'),
     [identity, setIdentity] = useState(''),
     [pin, setPin] = useState('')
+  const [showPin, setShowPin] = useState(false)
+  const [sameRepresentativePhone, setSameRepresentativePhone] = useState(false)
+  useEffect(() => {
+    setView(routeCampaign ? 'request' : 'access')
+    setApplication(undefined)
+    setData(emptyData())
+    setGrade('')
+    setError('')
+    setPin('')
+    setShowPin(false)
+    setSameRepresentativePhone(false)
+  }, [routeCampaign])
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [radicado, setRadicado] = useState('')
@@ -66,48 +97,75 @@ function PublicIntake() {
   })
   const apply = useCallback((next: Application) => {
     submissionKey.current = crypto.randomUUID()
+    setConsent(false)
+    setSameRepresentativePhone(!!next.datos.telefono && next.datos.telefono === next.datos.telefono_responsable)
     setApplication(next)
+    setGrade(next.grado_token ?? '')
     setData({
       pais: 'CO',
       ...next.datos,
       adicionales: next.datos.adicionales ?? {},
     })
-    savedData.current = JSON.stringify({
+    savedData.current = JSON.stringify({datos: {
       pais: 'CO',
       ...next.datos,
       adicionales: next.datos.adicionales ?? {},
-    })
+    }, grado_token: next.grado_token ?? ''})
     setView(next.estado === 'borrador' ? 'form' : 'status')
   }, [])
   useEffect(() => {
     let active = true
     api
-      .get<{data: Application}>('/ingreso-publico/solicitud')
-      .then((result) => {
-        if (active) apply(result.data)
+      .get<{data: Application}>(`${applicationBase}/solicitud`)
+      .then(async ({data: file}) => {
+        if (!active || (routeCampaign && file.campana.url_token !== routeCampaign)) return
+        if (renewalToken && file.estado === 'borrador' && !file.datos.nacimiento && file.datos.numero_documento) {
+          const {data: previous} = await api.post<{data: {datos?: StudentData; grado_token?: string}}>(
+            `${applicationBase}/solicitud/renovacion`,
+            {tipo_documento: file.datos.tipo_documento, numero_documento: file.datos.numero_documento},
+            {notifyLocalChange: false},
+          )
+          if (!active) return
+          apply(file)
+          if (previous.datos) {
+            setData({...previous.datos, ...file.datos, adicionales: file.datos.adicionales ?? previous.datos.adicionales ?? {}})
+            if (previous.grado_token) setGrade(previous.grado_token)
+          }
+        } else {
+          apply(file)
+        }
       })
       .catch((e) => {
-        if (active && (!(e instanceof ApiError) || e.status !== 401)) setError(e.message)
+        if (active && (renewalToken || !(e instanceof ApiError) || e.status !== 401)) setError(e.message)
       })
     return () => {
       active = false
     }
-  }, [apply])
+  }, [apply, routeCampaign, renewalToken, applicationBase])
   const editable = application && ['borrador', 'correcciones'].includes(application.estado)
   const canEdit = (key: string) =>
     !application ||
     (!['tipo_documento', 'numero_documento'].includes(key) && editableElement(application, `datos.${key}`))
+  const today = schoolDate(application?.campana.zona_horaria ?? catalog.data?.zona_horaria ?? 'America/Bogota')
+  const currentAge = ageOnDate(data.nacimiento, today)
+  const gradeRule = application?.campana.configuracion.grados.find(item => item.token === (application.grado_aprobado_token ?? grade))
+  const ageError = birthDateError(intl, data.nacimiento, today, application?.grado_aprobado_token ?? grade, gradeRule, application?.validacion_edad)
   const update = (key: keyof StudentData, value: string) => {
+    value = nameFields.includes(key) ? cleanName(value) : key === 'numero_documento' ? cleanIdentity(value, data.tipo_documento) : cleanText(value)
     setSaved(false)
-    setData((current) => ({...current, [key]: value}))
+    const copy = key === 'telefono' && sameRepresentativePhone && canEdit('telefono_responsable')
+    if (key === 'telefono' && sameRepresentativePhone && !canEdit('telefono_responsable')) setSameRepresentativePhone(false)
+    setData((current) => ({...current, [key]: value, ...(copy ? {telefono_responsable: value} : {})}))
   }
   const saveDraft = useCallback(async () => {
-    if (!application || !editable || JSON.stringify(data) === savedData.current) return
+    const snapshot = JSON.stringify({datos: data, grado_token: grade})
+    if (!application || !editable || snapshot === savedData.current) return
+    if (data.nacimiento && currentAge === null) throw new Error(ageError)
     if (saving.current) await saving.current
-    const snapshot = JSON.stringify(data)
     const request = api
-      .put('/ingreso-publico/solicitud/borrador', {datos: data}, {notifyLocalChange: false})
-      .then(() => {
+      .put<{data: Application}>(`${applicationBase}/solicitud/borrador`, {datos: data, grado_token: grade || null}, {notifyLocalChange: false})
+      .then((result) => {
+        setApplication(result.data)
         savedData.current = snapshot
         setSaved(true)
       })
@@ -117,7 +175,7 @@ function PublicIntake() {
     } finally {
       saving.current = null
     }
-  }, [application, editable, data])
+  }, [application, editable, data, grade, currentAge, ageError, applicationBase])
   useEffect(() => {
     if (view !== 'form' || busy || !editable) return
     const timer = setTimeout(() => {
@@ -132,6 +190,11 @@ function PublicIntake() {
     try {
       await action()
     } catch (e) {
+      if (e instanceof ApiError && e.status === 422 && e.errors?.privacidad_version) {
+        setConsent(false)
+        const latest = await api.get<{data: Application}>(`${applicationBase}/solicitud`).catch(() => undefined)
+        if (latest) setApplication(latest.data)
+      }
       setError(e instanceof Error ? e.message : t('failed'))
     } finally {
       setBusy(false)
@@ -146,12 +209,21 @@ function PublicIntake() {
         id={`intake-${key}`}
         className='form-control'
         type={type}
+        pattern={nameFields.includes(key) ? namePattern : undefined}
+        max={key === 'nacimiento' ? today : undefined}
+        ref={input => {if (key === 'nacimiento') input?.setCustomValidity(ageError)}}
         required={required}
-        maxLength={key === 'direccion' ? 200 : 160}
+        maxLength={key === 'direccion' ? 200 : ['madre', 'padre', 'responsable'].includes(key) ? 160 : nameFields.includes(key) ? 80 : 160}
         value={String(data[key] ?? '')}
         disabled={busy || !canEdit(key)}
         onChange={(event) => update(key, event.target.value)}
       />
+      {key === 'nacimiento' && <>
+        <small className='intake-muted d-block mt-2' role='status' aria-live='polite'>
+          {currentAge !== null ? intl.formatMessage({id: 'intake.ui.currentAge'}, {age: currentAge}) : intl.formatMessage({id: 'intake.ui.ageIsCalculatedFromTheDateOfBirth'})}
+        </small>
+        {ageError && <small className='text-danger d-block mt-2' role='alert'>{ageError}</small>}
+      </>}
     </div>
   )
   const phone = (key: 'telefono' | 'telefono_responsable') => (
@@ -164,9 +236,18 @@ function PublicIntake() {
         locale={intl.locale}
         required
         value={data[key] ?? ''}
-        disabled={busy || !canEdit(key)}
+        disabled={busy || !canEdit(key) || (key === 'telefono_responsable' && sameRepresentativePhone)}
         onChange={(value) => update(key, value)}
       />
+      {key === 'telefono_responsable' && <label className='form-check d-flex align-items-center gap-3 mt-3'>
+        <input id='same-contact-phone' type='checkbox' className='form-check-input' checked={sameRepresentativePhone}
+          disabled={busy || !canEdit(key) || (!data.telefono && !sameRepresentativePhone)}
+          onChange={event => {
+            setSameRepresentativePhone(event.target.checked)
+            if (event.target.checked) update('telefono_responsable', data.telefono ?? '')
+          }} />
+        {intl.formatMessage({id: 'intake.ui.sameContactPhone'})}
+      </label>}
     </div>
   )
   const identityFields = (
@@ -177,7 +258,7 @@ function PublicIntake() {
           id='intake-identity-type'
           className='form-select'
           value={identityType}
-          onChange={(e) => setIdentityType(e.target.value)}
+          onChange={(e) => {setIdentityType(e.target.value); setIdentity('')}}
         >
           {['RC', 'TI', 'CC', 'CE', 'PASAPORTE', 'OTRO'].map((value) => (
             <option key={value} value={value}>
@@ -200,9 +281,10 @@ function PublicIntake() {
           className='form-control'
           required
           maxLength={40}
-          pattern='[a-zA-Z0-9-]{3,40}'
+          inputMode={numericIdentity(identityType) ? 'numeric' : 'text'}
+          pattern={identityPattern(identityType)}
           value={identity}
-          onChange={(e) => setIdentity(e.target.value)}
+          onChange={(e) => setIdentity(cleanIdentity(e.target.value, identityType))}
         />
       </div>
     </>
@@ -213,7 +295,7 @@ function PublicIntake() {
         .filter(
           (requirement) =>
             !requirement.grados.length ||
-            requirement.grados.includes(application.grado_aprobado_token ?? application.grado_token),
+            requirement.grados.includes(application.grado_aprobado_token ?? application.grado_token ?? ''),
         )
         .map((requirement) => {
           const versions = application.documentos.filter((document) => document.requisito === requirement.key)
@@ -263,7 +345,7 @@ function PublicIntake() {
                         body.append('documento', file)
                         body.append('carga_token', crypto.randomUUID())
                         const result = await api.post<{data: Application}>(
-                          `/ingreso-publico/documentos/${requirement.key}`,
+                          `${applicationBase}/documentos/${requirement.key}`,
                           body,
                           {notifyLocalChange: false},
                         )
@@ -297,15 +379,17 @@ function PublicIntake() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     await run(async () => {
+      if ((step === 'personal' || step === 'send') && ageError) throw new Error(ageError)
       await saveDraft()
-      if (step < 5) {
-        setStep(step + 1)
+      if (step !== 'send') {
+        setStep(steps[stepIndex + 1])
         return
       }
       const result = await api.post<{data: Application}>(
-        '/ingreso-publico/solicitud',
+        `${applicationBase}/solicitud`,
         {
           datos: data,
+          grado_token: grade || null,
           enviar: true,
           consentimiento: consent,
           envio_token: submissionKey.current,
@@ -316,18 +400,18 @@ function PublicIntake() {
       apply(result.data)
     })
   }
-  if (application && !application.pin_manual) return <LegacyEnrollmentPage />
-  const errorNotice = (error || catalog.error) && (
-    <IntakeNotice kind='danger'>{error || catalog.error?.message}</IntakeNotice>
+  if (!renewalToken && application && !application.pin_manual) return <LegacyEnrollmentPage />
+  const errorNotice = (error || catalog.error || selectedCampaign.error) && (
+    <IntakeNotice kind='danger'>{error || catalog.error?.message || selectedCampaign.error?.message}</IntakeNotice>
   )
   const previewModal = preview && (
     <IntakeModal title={t('documentPreview')} close={() => setPreview(undefined)} wide>
       <iframe
         title={t('documentPreview')}
-        src={`/api/ingreso-publico/documentos/${preview}?vista=1`}
+        src={`/api${applicationBase}/documentos/${preview}?vista=1`}
         style={{width: '100%', height: '65vh', border: 0}}
       />
-      <a className='btn btn-light-primary mt-4' href={`/api/ingreso-publico/documentos/${preview}`}>
+      <a className='btn btn-light-primary mt-4' href={`/api${applicationBase}/documentos/${preview}`}>
         {t('download')}
       </a>
     </IntakeModal>
@@ -336,7 +420,7 @@ function PublicIntake() {
     return (
       <div className='intake-next intake-public-form'>
         <header className='intake-public-brand'>
-          <Link to='/auth'>
+          <Link to={renewalToken ? '/dashboard' : '/auth'}>
             <img src='/api/branding/logo' alt='' />
             <span>
               {catalog.data?.colegio}
@@ -350,14 +434,15 @@ function PublicIntake() {
             onClick={() =>
               void run(async () => {
                 await saveDraft()
+                if (renewalToken) { navigate('/dashboard'); return }
                 await api.post('/ingreso-publico/salir', {})
                 setApplication(undefined)
                 setData(emptyData())
-                setView('portal')
+                setView(routeCampaign ? 'request' : 'access')
               })
             }
           >
-            {t('exit')}
+            {renewalToken ? (spanish ? 'Volver a mi cuenta' : 'Back to my account') : t('exit')}
           </button>
         </header>
         <main className='intake-public-shell intake-stack'>
@@ -368,6 +453,7 @@ function PublicIntake() {
               <p className='intake-muted mb-0'>
                 {application.radicado} · {studentName(application)}
               </p>
+              <div className='d-flex flex-wrap gap-6 mt-4'><EnrollmentGradeSummary application={application} /></div>
             </div>
             <span className='intake-badge' data-status={application.estado}>
               {states[application.estado]}
@@ -381,13 +467,13 @@ function PublicIntake() {
                     <button
                       type='button'
                       key={name}
-                      className={step === index ? 'active' : ''}
-                      aria-current={step === index ? 'step' : undefined}
+                      className={step === name ? 'active' : ''}
+                      aria-current={step === name ? 'step' : undefined}
                       disabled={busy}
                       onClick={() =>
                         void run(async () => {
                           await saveDraft()
-                          setStep(index)
+                          setStep(name)
                         })
                       }
                     >
@@ -399,14 +485,23 @@ function PublicIntake() {
                 <p className='intake-muted mt-5 mb-0'>{t('serverDraft')}</p>
               </aside>
               <form className='intake-card' onSubmit={submit}>
-                <h2>{t(steps[step])}</h2>
+                <h2>{t(step)}</h2>
                 <p className='intake-muted'>{t('requiredHelp')}</p>
                 {application.estado === 'correcciones' && (
                   <IntakeNotice kind='warning'>{t('correctionOnly')}</IntakeNotice>
                 )}
                 <fieldset disabled={busy || !editable}>
-                  {step === 0 && (
+                  {step === 'personal' && (
                     <div className='intake-grid'>
+                      <div className='intake-field intake-wide'>
+                        <label className='required' htmlFor='application-grade'>{t('grade')}</label>
+                        <select id='application-grade' className='form-select' required value={grade}
+                          disabled={!!application.grado_token || application.estado !== 'borrador'}
+                          onChange={(event) => setGrade(event.target.value)}>
+                          <option value=''>{t('select')}</option>
+                          {application.campana.configuracion.grados.map((item) => <option key={item.token} value={item.token}>{item.nombre}</option>)}
+                        </select>
+                      </div>
                       {textField('primer_nombre', true)}
                       {textField('segundo_nombre')}
                       {textField('primer_apellido', true)}
@@ -420,7 +515,7 @@ function PublicIntake() {
                       </div>
                     </div>
                   )}
-                  {step === 1 && (
+                  {step === 'contact' && (
                     <div className='intake-grid'>
                       {phone('telefono')}
                       <EnrollmentAddress
@@ -438,22 +533,24 @@ function PublicIntake() {
                       {geography.error && <IntakeNotice kind='danger'>{geography.error.message}</IntakeNotice>}
                     </div>
                   )}
-                  {step === 2 && (
+                  {step === 'family' && (
                     <div className='intake-grid'>
                       {textField('madre')}
                       {textField('padre')}
                       {textField('responsable', true)}
-                      {textField('parentesco', true)}
+                      <RepresentativeRelationshipField id='intake-parentesco' label={t('parentesco')}
+                        required value={data.parentesco ?? ''} disabled={busy || !canEdit('parentesco')}
+                        onChange={value => update('parentesco', value)} />
                       {phone('telefono_responsable')}
                     </div>
                   )}
-                  {step === 3 && (
+                  {step === 'additional' && (
                     <div className='intake-grid'>
-                      {!application.campana.configuracion.campos.length && (
-                        <p className='intake-muted'>{t('noAdditional')}</p>
-                      )}
                       {application.campana.configuracion.campos.map((field) => (
-                        <div className='intake-field' key={field.key}>
+                        additionalType(field) === 'parentesco' ? <RepresentativeRelationshipField key={field.key}
+                          id={`extra-${field.key}`} label={field.nombre} required={field.obligatorio}
+                          disabled={busy || !canEdit(`adicionales.${field.key}`)} value={data.adicionales[field.key] ?? ''}
+                          onChange={value => {setSaved(false); setData(current => ({...current, adicionales: {...current.adicionales, [field.key]: value}}))}} /> : <div className='intake-field' key={field.key}>
                           <label htmlFor={`extra-${field.key}`} className={field.obligatorio ? 'required' : ''}>
                             {field.nombre}
                           </label>
@@ -479,7 +576,7 @@ function PublicIntake() {
                                 <option key={option}>{option}</option>
                               ))}
                             </select>
-                          ) : field.tipo === 'telefono' ? (
+                          ) : additionalType(field) === 'telefono' ? (
                             <PhoneField
                               id={`extra-${field.key}`}
                               label={field.nombre}
@@ -505,10 +602,7 @@ function PublicIntake() {
                               className='form-control'
                               required={field.obligatorio}
                               disabled={!canEdit(`adicionales.${field.key}`)}
-                              maxLength={1000}
-                              type={field.tipo === 'fecha' ? 'date' : field.tipo === 'email' ? 'email' : 'text'}
-                              inputMode={field.tipo === 'numero' ? 'numeric' : undefined}
-                              pattern={field.tipo === 'numero' ? '[0-9]+' : undefined}
+                              {...additionalInput(field)}
                               value={data.adicionales[field.key] ?? ''}
                               onChange={(e) =>
                                 setData({
@@ -516,7 +610,7 @@ function PublicIntake() {
                                   adicionales: {
                                     ...data.adicionales,
                                     [field.key]:
-                                      field.tipo === 'numero' ? e.target.value.replace(/\D/g, '') : e.target.value,
+                                      cleanAdditional(field, e.target.value),
                                   },
                                 })
                               }
@@ -526,8 +620,8 @@ function PublicIntake() {
                       ))}
                     </div>
                   )}
-                  {step === 4 && documents}
-                  {step === 5 && (
+                  {step === 'documents' && documents}
+                  {step === 'send' && (
                     <>
                       <IntakeNotice>{t('submissionHelp')}</IntakeNotice>
                       <p>
@@ -536,7 +630,7 @@ function PublicIntake() {
                         {application.email}
                       </p>
                       <h3>{t('privacy')}</h3>
-                      <p style={{whiteSpace: 'pre-wrap'}}>{application.campana.configuracion.privacidad}</p>
+                      <EnrollmentPrivacy notice={application.campana.configuracion.privacidad} policy={application.campana.configuracion.politica_datos} />
                       <label className='form-check d-flex gap-3'>
                         <input
                           type='checkbox'
@@ -551,8 +645,8 @@ function PublicIntake() {
                   )}
                 </fieldset>
                 <div className='intake-wizard-actions'>
-                  {step > 0 && (
-                    <button type='button' className='btn btn-light' disabled={busy} onClick={() => setStep(step - 1)}>
+                  {stepIndex > 0 && (
+                    <button type='button' className='btn btn-light' disabled={busy} onClick={() => setStep(steps[stepIndex - 1])}>
                       {t('previous')}
                     </button>
                   )}
@@ -565,7 +659,7 @@ function PublicIntake() {
                     {t('saveProgress')}
                   </button>
                   <button className='btn btn-primary ms-auto' disabled={busy || !editable}>
-                    {busy ? t('processing') : t(step === 5 ? 'submitApplication' : 'continue')}
+                    {busy ? t('processing') : t(step === 'send' ? 'submitApplication' : 'continue')}
                   </button>
                 </div>
                 <p className='intake-save-state' role='status'>
@@ -600,7 +694,7 @@ function PublicIntake() {
                       className='btn btn-primary'
                       onClick={() => {
                         setView('form')
-                        setStep(0)
+                        setStep('personal')
                       }}
                     >
                       {t(application.estado === 'correcciones' ? 'correctApplication' : 'continueForm')}
@@ -611,7 +705,7 @@ function PublicIntake() {
                     disabled={busy}
                     onClick={() =>
                       void run(async () => {
-                        const result = await api.get<{data: Application}>('/ingreso-publico/solicitud')
+                        const result = await api.get<{data: Application}>(`${applicationBase}/solicitud`)
                         apply(result.data)
                       })
                     }
@@ -619,7 +713,7 @@ function PublicIntake() {
                     <IntakeIcon name='arrow-clockwise' />
                     {t('refreshStatus')}
                   </button>
-                  {application.estado === 'matriculada' && (
+                  {!renewalToken && application.estado === 'matriculada' && (
                     <Link className='btn btn-primary' to='/auth'>
                       {t('signIn')}
                     </Link>
@@ -629,6 +723,34 @@ function PublicIntake() {
               <section className='intake-card'>
                 <h2>{t('documents')}</h2>
                 {documents}
+                {application.documentos.filter(doc => doc.anexo_renovacion).map(doc => (
+                  <a key={doc.url_token} className='d-block mt-3 text-break' href={`/api${applicationBase}/documentos/${doc.url_token}`}>
+                    {doc.nombre}
+                  </a>
+                ))}
+                {renewalToken && application.estado === 'aprobada' && <form className='mt-5' onSubmit={event => {
+                  event.preventDefault()
+                  if (!annex) return
+                  const input = event.currentTarget
+                  void run(async () => {
+                    const body = new FormData()
+                    body.append('documento', annex)
+                    body.append('carga_token', annexKey.current)
+                    const result = await api.post<{data: Application}>(`${applicationBase}/anexos`, body)
+                    apply(result.data)
+                    setAnnex(undefined)
+                    input.reset()
+                  })
+                }}>
+                  <label className='form-label' htmlFor='renewal-annex'>
+                    {spanish ? 'Adjuntar un documento mientras esperas grupo' : 'Attach a document while awaiting group assignment'}
+                  </label>
+                  <input id='renewal-annex' type='file' className='form-control' accept='.pdf,.jpg,.jpeg,.png' disabled={busy}
+                    onChange={event => {setAnnex(event.target.files?.[0]); annexKey.current = crypto.randomUUID()}} />
+                  <button className='btn btn-primary mt-3' disabled={busy || !annex}>
+                    {busy ? t('processing') : spanish ? 'Adjuntar documento' : 'Attach document'}
+                  </button>
+                </form>}
               </section>
               <section className='intake-card'>
                 <h2>{t('history')}</h2>
@@ -657,6 +779,10 @@ function PublicIntake() {
         {previewModal}
       </div>
     )
+  if (renewalToken) return <main className='container py-8' aria-live='polite'>
+    {errorNotice || (spanish ? 'Cargando tu trámite…' : 'Loading your application…')}
+    <Link className='d-block mt-3' to='/dashboard'>{spanish ? 'Volver a mi cuenta' : 'Back to my account'}</Link>
+  </main>
   return (
     <div className='intake-next intake-public-entry'>
       <AuthLayout>
@@ -671,63 +797,17 @@ function PublicIntake() {
           </div>
           <p className='intake-muted'>{catalog.data?.colegio}</p>
           {errorNotice}
-          {catalog.isPending ? (
+          {catalog.isPending || (!!routeCampaign && selectedCampaign.isPending) ? (
             <p role='status'>{t('loading')}</p>
           ) : (
             <>
-              {view !== 'received' && (
+              {view === 'request' && campaign && (
                 <div className='intake-field mb-6'>
-                  <label htmlFor='public-campaign'>{t('campaign')}</label>
-                  <select
-                    className='form-select'
-                    id='public-campaign'
-                    value={campaign?.url_token ?? ''}
-                    onChange={(e) => {
-                      setCampaignToken(e.target.value)
-                      setGrade('')
-                    }}
-                  >
-                    <option value=''>{t('select')}</option>
-                    {catalog.data?.campanas.map((item) => (
-                      <option key={item.url_token} value={item.url_token}>
-                        {item.nombre}
-                      </option>
-                    ))}
-                  </select>
+                  <label>{t('campaign')}</label>
+                  <p className='fw-semibold mb-0'>{campaign.nombre}</p>
                 </div>
               )}
-              {view === 'portal' && (
-                <>
-                  <p className='intake-muted'>{t('portalHelp')}</p>
-                  {!campaign && <IntakeNotice kind='warning'>{t(catalog.data?.campanas.length ? 'select' : 'noCampaigns')}</IntakeNotice>}
-                  <div className='intake-entry-options'>
-                    <button className='btn btn-primary' disabled={!campaign} onClick={() => setView('request')}>
-                      <IntakeIcon name='ticket-perforated' />
-                      {t('requestPin')}
-                    </button>
-                    <button
-                      className='btn btn-light-primary'
-                      onClick={() => {
-                        setCampaignToken('')
-                        setView('access')
-                      }}
-                    >
-                      {t('havePin')}
-                    </button>
-                    <button
-                      className='btn btn-light-info'
-                      onClick={() => {
-                        setCampaignToken('')
-                        setView('access')
-                      }}
-                    >
-                      {t('applicationStatus')}
-                    </button>
-                  </div>
-                  <IntakeNotice>{t('manualPinHelp')}</IntakeNotice>
-                </>
-              )}
-              {view === 'request' && (
+              {view === 'request' && campaign && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault()
@@ -738,7 +818,7 @@ function PublicIntake() {
                           primer_nombre: data.primer_nombre,
                           primer_apellido: data.primer_apellido,
                           email,
-                          grado_token: grade,
+                          grado_token: grade || null,
                           tipo_documento: identityType,
                           numero_documento: identity,
                         },
@@ -768,13 +848,12 @@ function PublicIntake() {
                       />
                     </div>
                     <div className='intake-field'>
-                      <label className='required' htmlFor='pin-grade'>
-                        {t('grade')}
+                      <label htmlFor='pin-grade'>
+                        {t('optionalGrade')}
                       </label>
                       <select
                         id='pin-grade'
                         className='form-select'
-                        required
                         value={grade}
                         onChange={(e) => setGrade(e.target.value)}
                       >
@@ -802,7 +881,6 @@ function PublicIntake() {
                         tipo_documento: identityType,
                         numero_documento: identity,
                         pin,
-                        ...(campaign ? {campana_token: campaign.url_token} : {}),
                       })
                       apply(result.data)
                       if (
@@ -835,19 +913,27 @@ function PublicIntake() {
                       <label className='required' htmlFor='access-pin'>
                         {t('pin')}
                       </label>
-                      <input
-                        id='access-pin'
-                        name='application-pin'
-                        className='form-control intake-pin'
-                        type='text'
-                        inputMode='numeric'
-                        autoComplete='one-time-code'
-                        required
-                        pattern='[0-9]{8}'
-                        maxLength={8}
-                        value={pin}
-                        onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                      />
+                      <div className='position-relative'>
+                        <input
+                          id='access-pin'
+                          name='application-pin'
+                          className={`form-control pe-12${showPin ? '' : ' intake-pin'}`}
+                          type='text'
+                          inputMode='numeric'
+                          autoComplete='one-time-code'
+                          required
+                          pattern='[0-9]{8}'
+                          maxLength={8}
+                          value={pin}
+                          disabled={busy}
+                          onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 8))}
+                        />
+                        <button type='button' className='btn btn-icon btn-active-light-primary position-absolute end-0 top-0'
+                          aria-label={t(showPin ? 'hidePin' : 'showPin')} aria-pressed={showPin}
+                          disabled={busy} onClick={() => setShowPin((visible) => !visible)}>
+                          <IntakeIcon name={showPin ? 'eye-slash' : 'eye'} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <p className='intake-muted my-5'>{t('pinHelp')}</p>
@@ -859,32 +945,22 @@ function PublicIntake() {
               {view === 'received' && (
                 <>
                   <IntakeNotice kind='success'>{t('requestReceived')}</IntakeNotice>
+                  <p className='intake-muted mb-1'>{t('requestNumber')}</p>
                   <h2>{radicado}</h2>
+                  <IntakeNotice>{t('pinPending')}</IntakeNotice>
                   <p className='intake-muted'>{t('manualPinHelp')}</p>
                   <button
                     className='btn btn-primary w-100 mb-5'
                     onClick={() => {
-                      setCampaignToken('')
                       setView('access')
                     }}
                   >
-                    {t('havePin')}
+                    {t('accessApplication')}
                   </button>
                 </>
               )}
-              {view !== 'portal' && (
-                <button
-                  type='button'
-                  className='btn btn-light w-100 my-5'
-                  disabled={busy}
-                  onClick={() => {
-                    setCampaignToken(undefined)
-                    setView('portal')
-                    setError('')
-                  }}
-                >
-                  {t('back')}
-                </button>
+              {view === 'request' && (
+                <Link to='/ingreso' className='btn btn-light w-100 my-5'>{t('accessApplication')}</Link>
               )}
               <IntakePayments />
             </>
