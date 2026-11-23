@@ -1089,6 +1089,16 @@ ${plan ? `<span class="badge badge-light-primary align-self-start mt-2 text-wrap
 													</span>
 												</a>
 												</div>` : ''}
+												${opts?.canManageCampuses ? String.raw`
+												<div class="menu-item">
+													<a href="/ajustes-institucionales/sedes" data-kt-nav="/ajustes-institucionales/sedes" class="menu-link institutional-menu__item">
+														<span class="institutional-menu__icon" aria-hidden="true"><i class="ki-solid ki-geolocation fs-2"></i></span>
+														<span class="institutional-menu__copy">
+															<span class="institutional-menu__title">${t('academico.config.tab.sedes')}</span>
+															<span class="institutional-menu__description">${t('header.user.campusesHint')}</span>
+														</span>
+													</a>
+												</div>` : ''}
 												${opts?.canConfigureMail ? String.raw`
                         <div class="menu-item">
                           <a href="/ajustes-institucionales/correo" data-kt-nav="/ajustes-institucionales/correo" class="menu-link institutional-menu__item">
@@ -1129,16 +1139,6 @@ ${plan ? `<span class="badge badge-light-primary align-self-start mt-2 text-wrap
                             </span>
                           </a>
                         </div>` : ''}
-												${opts?.canManageCampuses ? String.raw`
-												<div class="menu-item">
-													<a href="/ajustes-institucionales/sedes" data-kt-nav="/ajustes-institucionales/sedes" class="menu-link institutional-menu__item">
-														<span class="institutional-menu__icon" aria-hidden="true"><i class="ki-solid ki-geolocation fs-2"></i></span>
-														<span class="institutional-menu__copy">
-															<span class="institutional-menu__title">${t('academico.config.tab.sedes')}</span>
-															<span class="institutional-menu__description">${t('header.user.campusesHint')}</span>
-														</span>
-													</a>
-												</div>` : ''}
 											</div>
 										</div>
 										<!--end::Institutional settings-->` : ''}

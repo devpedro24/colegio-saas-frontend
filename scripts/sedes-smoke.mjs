@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict'
+import {chooseMobileCountry} from './contact-mobile-smoke.mjs'
 
 export const contactOptions = {countries: [
   {country: 'CO', calling_code: '57', lengths: [10], pattern: '3[0-9]{9}', leading_digits: null, example: '3211234567', timezones: ['America/Bogota']},
   {country: 'US', calling_code: '1', lengths: [10], pattern: '201[0-9]{7}', leading_digits: null, example: '2015550123', timezones: ['America/New_York']},
+  {country: 'MX', calling_code: '52', lengths: [10], pattern: '[2-9][0-9]{9}', leading_digits: null, example: '5512345678', timezones: ['America/Mexico_City']},
+  {country: 'AE', calling_code: '971', lengths: [9], pattern: '5[0-9]{8}', leading_digits: null, example: '501234567', timezones: ['Asia/Dubai']},
+  {country: 'ES', calling_code: '34', lengths: [9], pattern: '[67][0-9]{8}', leading_digits: null, example: '612345678', timezones: ['Europe/Madrid']},
+  {country: 'AR', calling_code: '54', lengths: [11], pattern: '9[0-9]{10}', leading_digits: null, example: '91123456789', timezones: ['America/Argentina/Buenos_Aires']},
+  {country: 'CL', calling_code: '56', lengths: [9], pattern: '9[0-9]{8}', leading_digits: null, example: '912345678', timezones: ['America/Santiago']},
   {country: 'GB', calling_code: '44', lengths: [10], pattern: '7[0-9]{9}', leading_digits: null, example: '7400123456', timezones: ['Europe/London']}
 ]}
 
@@ -130,6 +136,12 @@ export async function runSedesSmoke({
   assert.ok(await evaluate(`document.querySelector('#sede-city').disabled && getComputedStyle(document.querySelector('#sede-city')).cursor==='not-allowed'`))
   assert.ok(await evaluate(`['sede-name','sede-slug','sede-address','sede-phone'].every(id=>document.getElementById(id).placeholder.length>0)`))
   assert.ok(await evaluate(`document.querySelector('#sede-coordinator').textContent.includes('(Coordinador académico y de convivencia)')`))
+  await change('sede-name', '123')
+  assert.equal(await evaluate(`document.querySelector('#sede-name').checkValidity()`), false)
+  await change('sede-name', 'Sede 7 @de Agosto')
+  assert.equal(await evaluate(`document.querySelector('#sede-name').value`), 'Sede 7 de Agosto')
+  await change('sede-slug', 'SN01._Norte')
+  assert.equal(await evaluate(`document.querySelector('#sede-slug').value`), 'sn01norte')
   await change('sede-name', 'Sede Norte')
   await change('sede-slug', 'norte')
   await change('sede-department', '41')
@@ -151,11 +163,11 @@ export async function runSedesSmoke({
   await screenshot('sedes-capacity-desktop')
   await change('sede-capacity', '100')
   await change('sede-phone', '30012345678')
-  assert.equal(await evaluate(`document.getElementById('sede-phone').checkValidity()`), false)
-  assert.equal(await evaluate(`document.querySelector('.modal.show button[type=submit]').disabled`), true)
+  assert.equal(await evaluate(`document.getElementById('sede-phone').value`), '3001234567')
+  assert.equal(await evaluate(`document.getElementById('sede-phone').checkValidity()`), true)
   await evaluate(`(()=>{const input=document.getElementById('sede-phone');input.select();const data=new DataTransfer();data.setData('text','300123456789');input.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}))})()`)
-  assert.equal(await evaluate(`document.getElementById('sede-phone').value`), '300123456789')
-  assert.equal(await evaluate(`document.getElementById('sede-phone').checkValidity()`), false)
+  assert.equal(await evaluate(`document.getElementById('sede-phone').value`), '3001234567')
+  assert.equal(await evaluate(`document.getElementById('sede-phone').checkValidity()`), true)
   await change('sede-phone', '3001234567')
   await evaluate(`document.querySelector('.modal.show .form-switch input').click()`)
   await until(`!!document.getElementById('sede-inherit-all')`)
@@ -187,6 +199,8 @@ export async function runSedesSmoke({
   await until(`document.querySelector('.modal.show #sede-coordinator')?.options.length===2`)
   assert.equal(await evaluate(`document.getElementById('sede-coordinator').value`), 'c'.repeat(24))
   await until(`document.getElementById('sede-phone').value==='3001234567'`)
+  await change('sede-name', 'Sede San José (2)')
+  assert.equal(await evaluate(`document.querySelector('#sede-name').checkValidity()`), true)
   await change('sede-status', 'mantenimiento')
   await command('Emulation.setDeviceMetricsOverride', {
     width: 390,
@@ -197,6 +211,7 @@ export async function runSedesSmoke({
   await until(`innerWidth===390`)
   await until(`getComputedStyle(document.querySelector('.modal.show')).opacity==='1'`)
   await until(`!document.querySelector('.app-toast')`)
+  assert.equal(await evaluate(`document.getElementById('sede-phone-country').disabled`), true, 'Campus calling code follows the institutional country')
   await screenshot('sedes-edit-mobile')
   const geometry = await evaluate(
     `(()=>{const modal=document.querySelector('.modal.show .modal-content'),body=document.querySelector('.modal.show .modal-body'),r=modal.getBoundingClientRect();return {height:r.height,width:r.width,viewport:innerHeight,scroll:body.scrollHeight>body.clientHeight,overflow:document.documentElement.scrollWidth>innerWidth}})()`
@@ -232,7 +247,19 @@ export async function runSedesPlatformSmoke({fixture, navigate, evaluate, until,
   await navigate('/account/settings', 'Contacto de la plataforma')
   await until(`document.querySelector('#platform-whatsapp')?.value==='${fixture.state.whatsapp.slice(2)}'`)
   if (screenshot) await screenshot('platform-contact-desktop', true)
-  assert.equal(await evaluate(`document.querySelector('#platform-whatsapp-country').value`), 'CO')
+  assert.equal(await evaluate(`document.querySelector('#platform-whatsapp-country').dataset.country`), 'CO')
+  await command('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
+  await until(`innerWidth === 390 && innerHeight === 844`)
+  await new Promise(resolve => setTimeout(resolve, 300))
+  await evaluate(`document.getElementById('platform-whatsapp-country').scrollIntoView({block:'center'});document.getElementById('platform-whatsapp-country').click()`)
+  await until(`document.activeElement?.id === 'platform-whatsapp-country-search'`)
+  const picker = await evaluate(`(()=>{const r=document.querySelector('.contact-country-menu').getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:innerWidth,height:innerHeight}})()`)
+  assert.ok(picker.top >= 0 && picker.bottom <= picker.height && picker.left >= 0 && picker.right <= picker.width, JSON.stringify(picker))
+  if (screenshot) await screenshot('contact-country-search-mobile')
+  await command('Input.dispatchKeyEvent', {type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27})
+  await command('Input.dispatchKeyEvent', {type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27})
+  await until(`document.getElementById('platform-whatsapp-country').getAttribute('aria-expanded') === 'false'`)
+  await command('Emulation.setDeviceMetricsOverride', {width:1440,height:1000,deviceScaleFactor:1,mobile:false})
   await evaluate(
     `(()=>{const input=document.querySelector('#platform-whatsapp');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'3009876543');input.dispatchEvent(new Event('input',{bubbles:true}))})()`
   )
@@ -241,17 +268,17 @@ export async function runSedesPlatformSmoke({fixture, navigate, evaluate, until,
   assert.equal(fixture.state.whatsapp, '573009876543')
   await navigate('/account/settings', 'Contacto de la plataforma')
   await until(`document.querySelector('#platform-whatsapp')?.value==='3009876543'`)
-  await evaluate(`(()=>{const select=document.getElementById('platform-whatsapp-country');select.value='US';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+  await chooseMobileCountry({evaluate, until}, 'platform-whatsapp-country', 'US')
   await evaluate(`(()=>{const input=document.getElementById('platform-whatsapp');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2015550123');input.dispatchEvent(new Event('input',{bubbles:true}))})()`)
   await evaluate(`document.querySelector('#platform-whatsapp').closest('form').requestSubmit()`)
   await until(`!document.querySelector('#platform-whatsapp').disabled`)
   assert.equal(fixture.state.whatsapp, '12015550123')
   await navigate('/account/settings', 'Contacto de la plataforma')
-  await until(`document.querySelector('#platform-whatsapp-country')?.value==='US'`)
+  await until(`document.querySelector('#platform-whatsapp-country')?.dataset.country==='US'`)
   assert.equal(await evaluate(`document.querySelector('#platform-whatsapp').value`), '2015550123')
   await command('Emulation.setTimezoneOverride', {timezoneId: 'America/Bogota'})
   await navigate('/account/settings', 'Contacto de la plataforma')
-  await until(`document.querySelector('#profile-phone-country')?.value==='CO'`)
+  await until(`document.querySelector('#profile-phone-country')?.dataset.country==='CO'`)
   await evaluate(`(()=>{const input=document.getElementById('profile-phone');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'3211234567');input.dispatchEvent(new Event('input',{bubbles:true}))})()`)
   await evaluate(`document.querySelector('#profile-phone').closest('form').requestSubmit()`)
   await until(`!document.querySelector('#profile-phone').disabled`)
@@ -264,10 +291,12 @@ export async function runSedesPlatformSmoke({fixture, navigate, evaluate, until,
   await until(`!!document.querySelector('.modal.show tbody tr')`)
   await evaluate(`document.querySelector('.modal.show tbody tr td:last-child button').click()`)
   await until(`document.querySelector('#sede-capacity')?.value==='100'`)
+  await until(`document.querySelector('#sede-phone')?.readOnly === false && document.querySelector('#sede-name').closest('form').checkValidity()`)
   await evaluate(
     `(()=>{const input=document.querySelector('#sede-name');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'Principal renovada');input.dispatchEvent(new Event('input',{bubbles:true}))})()`
   )
-  await evaluate(`document.querySelector('.modal.show form').requestSubmit()`)
+  await until(`!document.querySelector('.modal.show button[type="submit"]').disabled`)
+  await evaluate(`document.querySelector('.modal.show button[type="submit"]').click()`)
   await until(`!document.getElementById('sede-name')`)
   assert.equal(fixture.state.writes.at(-1).nombre, 'Principal renovada')
   console.log(

@@ -8,6 +8,7 @@ import {sedeSubdomainUrl, useCreateSede, useUpdateSede} from '../../estructura/e
 import type {CreateSedeInput, Sede} from '../../estructura/estructura.types'
 import type {Department} from '../../../admisiones/EnrollmentAddress'
 import {ContactMobileInput} from '@/lib/ui/ContactMobileInput'
+import {cleanInstitutionName, cleanInstitutionText, cleanSedeSlug, institutionNamePattern} from '@/lib/validation/institutionInput'
 
 type Options = {
   capacidad: {contratados: number | null; asignados: number; disponibles: number | null}
@@ -124,6 +125,7 @@ export function SedeFormDialog({
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
+    if (!(event.currentTarget as HTMLFormElement).reportValidity()) return
     if (exceeds || belowEnrolled || !options.data || pending || !phoneValid) return
     setError(null)
     const input = {...form, capacidad_maxima: Number(capacity)}
@@ -194,10 +196,11 @@ export function SedeFormDialog({
                 id='sede-name'
                 required
                 maxLength={120}
+                pattern={institutionNamePattern}
                 placeholder={t('sede.nameExample')}
                 className='form-control form-control-solid'
                 value={form.nombre}
-                onChange={(event) => set({nombre: event.target.value})}
+                onChange={(event) => set({nombre: cleanInstitutionName(event.target.value)})}
               />
               {fieldError('nombre')}
             </div>
@@ -213,7 +216,7 @@ export function SedeFormDialog({
                 pattern='[a-z0-9]+(-[a-z0-9]+)*'
                 className='form-control form-control-solid'
                 value={form.slug}
-                onChange={(event) => set({slug: event.target.value.toLowerCase()})}
+                onChange={(event) => set({slug: cleanSedeSlug(event.target.value)})}
               />
               {fieldError('slug')}
             </div>
@@ -271,7 +274,7 @@ export function SedeFormDialog({
                 placeholder={t('sede.addressExample')}
                 className='form-control form-control-solid'
                 value={form.direccion ?? ''}
-                onChange={(event) => set({direccion: event.target.value})}
+                onChange={(event) => set({direccion: cleanInstitutionText(event.target.value)})}
               />
               {fieldError('direccion')}
             </div>
@@ -335,6 +338,7 @@ export function SedeFormDialog({
               <input
                 id='sede-capacity'
                 type='number'
+                max={100000}
                 min={Math.max(1, options.data?.matriculados ?? 0)}
                 step={1}
                 required

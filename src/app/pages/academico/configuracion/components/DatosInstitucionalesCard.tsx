@@ -9,6 +9,8 @@ import {ApiError} from '@/lib/api/client'
 import {useToast} from '@/lib/ui/toast'
 import {useDatosInstitucionales, useUpdateDatosInstitucionales} from '../configuracion.api'
 import type {DatosInstitucionales} from '../configuracion.types'
+import {ContactMobileInput} from '@/lib/ui/ContactMobileInput'
+import {cleanInstitutionField, institutionFieldProps} from '@/lib/validation/institutionInput'
 
 interface FormState {
   nombre: string
@@ -42,12 +44,14 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
     if (!editing.current) setForm(fromDatos(datos))
   }, [datos])
   const [error, setError] = useState<ApiError | null>(null)
+  const [phoneValid, setPhoneValid] = useState(false)
 
   const fe = (field: string): string | undefined => error?.fieldError(field)
   const set = (patch: Partial<FormState>) => { editing.current = true; setForm((prev) => ({...prev, ...patch})) }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
+    if (!phoneValid || !(e.currentTarget as HTMLFormElement).reportValidity()) return
     setError(null)
     update.mutate(
       {
@@ -76,91 +80,96 @@ const DatosForm: FC<{datos: DatosInstitucionales | undefined}> = ({datos}) => {
     <form onSubmit={handleSubmit}>
       <div className='row'>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='required fs-6 fw-semibold mb-2'>
+          <label htmlFor='institution-nombre' className='required fs-6 fw-semibold mb-2'>
             {t('academico.config.datos.field.nombre')}
           </label>
           <input
             type='text'
             className={`form-control form-control-solid ${fe('nombre') ? 'is-invalid' : ''}`}
             placeholder={t('academico.config.datos.field.nombrePh')}
+            id='institution-nombre'
+            {...institutionFieldProps('nombre')}
             value={form.nombre}
             required
-            onChange={(e) => set({nombre: e.target.value})}
+            onChange={(e) => set({nombre: cleanInstitutionField('nombre', e.target.value)})}
           />
           {fe('nombre') && <div className='invalid-feedback'>{fe('nombre')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='required fs-6 fw-semibold mb-2'>{t('common.field.nit')}</label>
+          <label htmlFor='institution-nit' className='required fs-6 fw-semibold mb-2'>{t('common.field.nit')}</label>
           <input
             type='text'
             className={`form-control form-control-solid ${fe('nit') ? 'is-invalid' : ''}`}
             placeholder={t('common.ph.nit')}
+            id='institution-nit'
+            {...institutionFieldProps('nit')}
             value={form.nit}
             required
-            onChange={(e) => set({nit: e.target.value})}
+            onChange={(e) => set({nit: cleanInstitutionField('nit', e.target.value)})}
           />
           {fe('nit') && <div className='invalid-feedback'>{fe('nit')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='required fs-6 fw-semibold mb-2'>
+          <label htmlFor='institution-resolucion_men' className='required fs-6 fw-semibold mb-2'>
             {t('academico.config.datos.field.resolucion')}
           </label>
           <input
             type='text'
             className={`form-control form-control-solid ${fe('resolucion_men') ? 'is-invalid' : ''}`}
             placeholder={t('academico.config.datos.field.resolucionPh')}
+            id='institution-resolucion_men'
+            {...institutionFieldProps('resolucion_men')}
             value={form.resolucion_men}
             required
-            onChange={(e) => set({resolucion_men: e.target.value})}
+            onChange={(e) => set({resolucion_men: cleanInstitutionField('resolucion_men', e.target.value)})}
           />
           {fe('resolucion_men') && <div className='invalid-feedback'>{fe('resolucion_men')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='required fs-6 fw-semibold mb-2'>
+          <label htmlFor='institution-telefono' className='required fs-6 fw-semibold mb-2'>
             {t('common.phone')}
           </label>
-          <input
-            type='text'
-            className={`form-control form-control-solid ${fe('telefono') ? 'is-invalid' : ''}`}
-            placeholder={t('academico.config.datos.field.telefonoPh')}
-            value={form.telefono}
-            required
-            onChange={(e) => set({telefono: e.target.value})}
-          />
+          <ContactMobileInput id='institution-telefono' required value={form.telefono}
+            disabled={update.isPending} onValidityChange={setPhoneValid}
+            onChange={value => set({telefono: value})} />
           {fe('telefono') && <div className='invalid-feedback'>{fe('telefono')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='required fs-6 fw-semibold mb-2'>
+          <label htmlFor='institution-direccion' className='required fs-6 fw-semibold mb-2'>
             {t('common.address')}
           </label>
           <input
             type='text'
             className={`form-control form-control-solid ${fe('direccion') ? 'is-invalid' : ''}`}
             placeholder={t('academico.config.datos.field.direccionPh')}
+            id='institution-direccion'
+            {...institutionFieldProps('direccion')}
             value={form.direccion}
             required
-            onChange={(e) => set({direccion: e.target.value})}
+            onChange={(e) => set({direccion: cleanInstitutionField('direccion', e.target.value)})}
           />
           {fe('direccion') && <div className='invalid-feedback'>{fe('direccion')}</div>}
         </div>
         <div className='col-md-6 fv-row mb-7'>
-          <label className='required fs-6 fw-semibold mb-2'>
+          <label htmlFor='institution-correo' className='required fs-6 fw-semibold mb-2'>
             {t('academico.config.datos.field.correo')}
           </label>
           <input
             type='email'
             className={`form-control form-control-solid ${fe('correo') ? 'is-invalid' : ''}`}
             placeholder={t('academico.config.datos.field.correoPh')}
+            id='institution-correo'
+            {...institutionFieldProps('correo')}
             value={form.correo}
             required
-            onChange={(e) => set({correo: e.target.value})}
+            onChange={(e) => set({correo: cleanInstitutionField('correo', e.target.value)})}
           />
           {fe('correo') && <div className='invalid-feedback'>{fe('correo')}</div>}
         </div>
       </div>
 
       <div className='d-flex justify-content-end'>
-        <button type='submit' className='btn btn-primary' disabled={update.isPending}>
+        <button type='submit' className='btn btn-primary' disabled={update.isPending || !phoneValid}>
           {update.isPending ? (
             <span className='indicator-progress d-block'>
               {t('common.pleaseWait')}

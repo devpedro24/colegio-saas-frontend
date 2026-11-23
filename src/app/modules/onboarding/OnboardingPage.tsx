@@ -9,6 +9,8 @@ import {PasswordField} from '@/app/shared/components/PasswordField'
 import {PasswordRequirements} from '@/app/shared/components/PasswordRequirements'
 import {passwordMeetsPolicy} from '@/app/shared/passwordPolicy'
 import {LogoUploader} from './LogoUploader'
+import {ContactMobileInput} from '@/lib/ui/ContactMobileInput'
+import {cleanInstitutionField, institutionFieldProps} from '@/lib/validation/institutionInput'
 import './OnboardingPage.css'
 
 type Props = {status: OnboardingStatus; refresh: () => Promise<unknown>}
@@ -31,6 +33,7 @@ export function OnboardingPage({status, refresh}: Props) {
   const [institution, setInstitution] = useState<Institution>({...blank, ...status.institution})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [phoneValid, setPhoneValid] = useState(false)
 
   const reload = async () => {
     await queryClient.invalidateQueries({queryKey: onboardingKey(currentUser?.tenant_channel)})
@@ -54,6 +57,7 @@ export function OnboardingPage({status, refresh}: Props) {
 
   const saveInstitution = async (e: FormEvent) => {
     e.preventDefault()
+    if (!phoneValid || !(e.currentTarget as HTMLFormElement).reportValidity()) return
     setError('')
     setBusy(true)
     try {
@@ -185,15 +189,17 @@ export function OnboardingPage({status, refresh}: Props) {
                 ] as const).map(([field, label, type]) => (
                   <div className='col-md-6' key={field}>
                     <label htmlFor={'onboarding-' + field} className='form-label required'>{label}</label>
-                    <input
+                    {field === 'telefono' ? <ContactMobileInput id='onboarding-telefono'
+                      value={institution.telefono ?? ''} required disabled={busy}
+                      onValidityChange={setPhoneValid} onChange={value => setInstitution(current => ({...current, telefono: value}))} /> : <input
                       id={'onboarding-' + field}
                       type={type}
                       className='form-control form-control-solid'
                       value={institution[field] ?? ''}
-                      onChange={e => setInstitution({...institution, [field]: e.target.value})}
+                      onChange={e => setInstitution({...institution, [field]: cleanInstitutionField(field, e.target.value)})}
                       required
-                      maxLength={field === 'nit' || field === 'telefono' ? 60 : 255}
-                    />
+                      {...institutionFieldProps(field)}
+                    />}
                   </div>
                 ))}
               </div>
@@ -202,7 +208,7 @@ export function OnboardingPage({status, refresh}: Props) {
                   <i className='bi bi-arrow-left me-2' aria-hidden='true' />
                   {t('onboarding.changeLogo')}
                 </button>
-                <button type='submit' className='btn btn-success' disabled={busy}>
+                <button type='submit' className='btn btn-success' disabled={busy || !phoneValid}>
                   {busy ? t('onboarding.saving') : t('onboarding.finish')}
                   {!busy && <i className='bi bi-arrow-right ms-3' aria-hidden='true' />}
                 </button>
