@@ -52,7 +52,7 @@ export function shouldRefreshQuery(key: readonly unknown[], resources: readonly 
   }
   if (root === 'aula' && resources.includes('aula-content')) {
     const detail = String(key[1] ?? '')
-    if ((key.length === 2 && detail !== 'catalogo') || ['recurso', 'entregas'].includes(detail)) return true
+    if ((key.length === 2 && detail !== 'catalogo') || ['recurso', 'entregas', 'historial'].includes(detail)) return true
   }
   // A root refreshes its whole module; root:section targets only that query family.
   return resources.some(resource => dependencies[resource].includes(root) || dependencies[resource].includes(`${root}:${key[1]}`))

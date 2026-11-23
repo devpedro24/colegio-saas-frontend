@@ -1,9 +1,39 @@
 import {useState} from 'react'
 import {useNavigate} from 'react-router-dom'
 import {useCatalogFilters} from '../../shared/useCatalogFilters'
-import {useAulaCatalogo, aulaPortadaUrl} from './aula.api'
+import {useAulaCatalogo, useEntregasAnteriores, aulaAdjuntoUrl, aulaPortadaUrl} from './aula.api'
 import {AulaConfigurationDialog} from './AulaConfigurationDialog'
 import './aula.css'
+
+function HistorialEntregas({year}: {year: string}) {
+  const [open, setOpen] = useState(false)
+  const [page, setPage] = useState(1)
+  const history = useEntregasAnteriores(year, page, open)
+  return <section className='card card-body'>
+    <h3 className='mb-0'><button type='button' className='btn btn-light text-start' aria-expanded={open}
+      onClick={() => setOpen(!open)}><i className='bi bi-clock-history me-2' aria-hidden='true' />
+      Entregas de grupos anteriores</button></h3>
+    {open && <div className='mt-4' aria-live='polite'>
+      {history.isLoading && <p>Cargando entregas…</p>}
+      {history.isError && <p className='text-danger'>No se pudieron cargar tus entregas. <button type='button'
+        className='btn btn-sm btn-light' onClick={() => history.refetch()}>Reintentar</button></p>}
+      {history.data?.data.map(item => <details key={item.token} className='border rounded p-3 mb-2 text-break'>
+        <summary><strong>{item.titulo}</strong> · {item.grado} / {item.grupo} · {item.materia}</summary>
+        {item.entregada_at && <p className='text-muted mt-3'>Entregada el {new Date(item.entregada_at).toLocaleDateString('es-CO')}</p>}
+        <h4 className='fs-6 mt-3'>Tu entrega</h4>
+        {item.texto && <p style={{whiteSpace: 'pre-wrap'}}>{item.texto}</p>}
+        {item.adjuntos.map(file => <a className='d-block mb-2' key={file.token} href={aulaAdjuntoUrl(file.token)}>{file.nombre}</a>)}
+        <h4 className='fs-6 mt-3'>Retroalimentación</h4>
+        <p className='mb-0' style={{whiteSpace: 'pre-wrap'}}>{item.retroalimentacion || 'Todavía no hay comentarios del docente.'}</p>
+      </details>)}
+      {history.data?.data.length === 0 && <p>No hay entregas en esta página.</p>}
+      {(page > 1 || history.data?.hay_mas) && <div className='d-flex gap-2 mt-3'>
+        <button type='button' className='btn btn-sm btn-light' disabled={page === 1} onClick={() => setPage(page - 1)}>Anterior</button>
+        <button type='button' className='btn btn-sm btn-light' disabled={!history.data?.hay_mas} onClick={() => setPage(page + 1)}>Siguiente</button>
+      </div>}
+    </div>}
+  </section>
+}
 
 export function AulaCatalogoView() {
   const navigate = useNavigate()
@@ -54,6 +84,7 @@ export function AulaCatalogoView() {
         <button type='button' className='btn btn-success w-100' onClick={() => open(item)}>Entrar al aula</button>
       </div></article>)}</div>
       : <div className='card card-body text-center text-muted py-15'>No hay asignaturas disponibles para estos filtros.</div>}
+    {data.tiene_entregas_anteriores && data.ano_token && <HistorialEntregas key={data.ano_token} year={data.ano_token} />}
     {data.puede_configurar && <AulaConfigurationDialog show={configurationOpen} onHide={() => setConfigurationOpen(false)} />}
   </div>
 }

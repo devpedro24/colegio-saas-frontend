@@ -8,7 +8,10 @@ export type AulaCard = {aula_token: string; grupo_token: string; grupo: string; 
 type AulaCatalogoData = {anos: {token: string; nombre: string; estado: string}[];
   ano_token: string | null; grupos: {token: string; nombre: string; grado: string; etiqueta: string}[];
   grupo_seleccionado: string | null; requiere_grupo: boolean; aulas: AulaCard[]; puede_gestionar: boolean;
-  puede_configurar: boolean}
+  puede_configurar: boolean; tiene_entregas_anteriores: boolean}
+type EntregaAnterior = {token: string; titulo: string; grado: string; grupo: string; materia: string;
+  entregada_at: string | null; texto: string | null; retroalimentacion: string | null;
+  adjuntos: {token: string; nombre: string}[]}
 export type AulaScale = {tipo: 'numerica' | 'imagenes'; nombre?: string; opciones: {
   url_token: string; nombre: string; emoji: string | null; imagen_url: string | null}[]}
 export type AulaResource = {token: string; tipo: 'texto' | 'archivo' | 'tarea' | 'cuestionario'; titulo: string;
@@ -68,6 +71,11 @@ export type Attempt = {token: string; version: number; estado: string; vence_at:
   permitir_regresar: boolean; permitir_editar_respuestas: boolean}
 
 const base = '/aula'
+export const useEntregasAnteriores = (year: string, page: number, open: boolean) => useQuery({
+  queryKey: ['aula', 'historial', year, page], enabled: open,
+  queryFn: () => api.get<{data: EntregaAnterior[]; hay_mas: boolean}>(
+    `${base}/historial/entregas?opaque=1&ano_token=${encodeURIComponent(year)}&page=${page}`),
+})
 export type AulaConfiguration = {permitir_edicion_periodos_cerrados: boolean;
   colores_periodos: Record<string, string>; color_preinforme: string;
   puede_configurar_colores: boolean; periodos_configurables: {orden: number; nombre: string}[]}

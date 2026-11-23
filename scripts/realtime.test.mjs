@@ -168,7 +168,7 @@ test('attachment uploads refresh only the visible classroom content', () => {
     assert.equal(resourceForPath(path), 'aula-content')
   }
   for (const key of [['aula', 'classroom-token'], ['aula', 'recurso', 'resource-token'],
-    ['aula', 'entregas', 'resource-token']]) {
+    ['aula', 'entregas', 'resource-token'], ['aula', 'historial', 'year-token', 1]]) {
     assert.equal(shouldRefreshQuery(key, ['aula-content', 'audit'], 'tenant'), true, key.join('/'))
   }
   for (const key of [['aula', 'catalogo', 'year-token', 'group-token'], ['aula', 'planilla-destino', 'section-token'],
